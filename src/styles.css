@@ -1,0 +1,368 @@
+/* Lima Farming Game — design tokens and component styles.
+   Values come from the Figma file "29 Oct Farm Management App". The game is laid out on a
+   fixed 874 × 402 landscape stage (iPhone landscape) that is scaled to fit the window. */
+
+:root {
+  --brown: #6b402b;
+  --brown-70: rgba(107, 64, 43, 0.7);
+  --brown-50: rgba(107, 64, 43, 0.5);
+  --brown-20: rgba(107, 64, 43, 0.2);
+  --brown-10: rgba(107, 64, 43, 0.1);
+  --brown-05: rgba(107, 64, 43, 0.05);
+  --cream: #fdedd4;
+  --cream-deep: #f5e4cb;
+  --gold: #ffae00;
+  --gold-edge: #c88900;
+  --gold-soft: #f6cf7a;
+  --xp: #ca9324;
+  --water: #22ade2;
+  --peach: #ffce7e;
+  --select-ring: #ffb005;
+  --green: #00a600;
+  --green-text: #2f9b14;
+  --sidebar-bg: rgba(0, 0, 0, 0.5);
+  --sidebar-line: rgba(253, 172, 101, 0.4);
+  --scrim: rgba(0, 0, 0, 0.7);
+
+  --font: 'Poppins', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --button-shadow: 2.08px 0 3.119px rgba(0, 0, 0, 0.35), 0 2.08px 2.08px rgba(0, 0, 0, 0.24),
+    0 2.08px 1.04px rgba(0, 0, 0, 0.22), 0 2.08px 2.08px rgba(0, 0, 0, 0.2);
+  --gold-inset: inset 0 -2px 2px rgba(0, 0, 0, 0.2), inset 0 2px 4px rgba(255, 255, 255, 0.5);
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body {
+  background: #0d1a10;
+  font-family: var(--font);
+  color: var(--brown);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+button:focus-visible, input:focus-visible, textarea:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+img { display: block; user-select: none; -webkit-user-drag: none; }
+p { margin: 0; }
+
+/* ---------- Stage ---------- */
+.viewport {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 40%, #1f3a21 0%, #0b150c 70%);
+}
+.stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 874px;
+  height: 402px;
+  overflow: hidden;
+  border-radius: 50px;
+  background: #4b7a2a;
+  transform-origin: center;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+}
+.abs { position: absolute !important; }
+
+/* ---------- Farm scene ---------- */
+.farm-bg { position: absolute; inset: 0; width: 874px; height: 402px; object-fit: cover; }
+.top-shade {
+  position: absolute; left: 0; right: 0; top: 0; height: 130px;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.28), rgba(0, 0, 0, 0));
+  pointer-events: none;
+}
+.label {
+  color: #fff;
+  font-weight: 600;
+  line-height: normal;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+/* Peach game button (avatar, shop, learn, coin sack, settings, mail) */
+.peach-btn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  background: var(--peach);
+  filter: drop-shadow(2.08px 0 3.119px rgba(0, 0, 0, 0.35)) drop-shadow(0 2.08px 2.08px rgba(0, 0, 0, 0.24));
+  transition: transform 0.12s ease;
+}
+.peach-btn::after {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 2px 2px rgba(255, 255, 255, 0.5);
+  pointer-events: none;
+}
+.peach-btn.inset-dark::after { box-shadow: inset 0 2px 2px rgba(0, 0, 0, 0.15); }
+.peach-btn.small { border-radius: 8px; }
+.peach-btn:hover { transform: translateY(-1px); }
+.peach-btn:active { transform: translateY(1px) scale(0.97); }
+
+/* Dark circular action bubble on the field */
+.bubble-btn {
+  position: relative;
+  width: 45px; height: 45px;
+  border-radius: 100px;
+  display: grid; place-items: center;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(3.5px);
+  -webkit-backdrop-filter: blur(3.5px);
+  box-shadow: inset 0 2px 2px rgba(255, 255, 255, 0.5);
+  transition: transform 0.15s ease;
+  animation: bob 2.6s ease-in-out infinite;
+}
+.bubble-btn:hover { transform: scale(1.08); }
+@keyframes bob { 0%, 100% { translate: 0 0; } 50% { translate: 0 -3px; } }
+
+/* Thin HUD meters */
+.meter {
+  position: relative;
+  height: 12px;
+  border: 0.7px solid #000;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(1px);
+}
+.meter > .fill {
+  position: absolute; left: 0.3px; top: 50%; translate: 0 -50%;
+  height: 10px; border-radius: 3px;
+  box-shadow: inset 0 4px 4px rgba(255, 255, 255, 0.25);
+  transition: width 0.5s ease;
+}
+.meter > .value {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  font-size: 8px; font-weight: 600; color: #fff; line-height: 1;
+}
+
+.task-row {
+  display: flex; align-items: center; gap: 2px; height: 18px;
+  color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+.task-row:hover .go-arrow { transform: translateX(2px); }
+.go-arrow { transition: transform 0.15s ease; margin-left: 2px; }
+
+/* Tooltip bubble on the field */
+.speech {
+  position: absolute;
+  display: grid; place-items: center;
+  text-align: center;
+  color: var(--brown);
+  font-size: 9px; font-weight: 500; line-height: normal;
+}
+.speech > img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.speech > span { position: relative; padding: 14px 16px 10px; }
+
+/* Selected plot */
+.plot-glow {
+  position: absolute;
+  border-radius: 2px;
+  background: rgba(214, 255, 102, 0.22);
+  box-shadow: 0 0 0 1px rgba(255, 255, 160, 0.25), 0 0 24px rgba(255, 255, 140, 0.35) inset;
+  pointer-events: none;
+}
+.plot-arrow { position: absolute; width: 34px; height: 34px; animation: nudge 1s ease-in-out infinite; }
+@keyframes nudge { 0%, 100% { translate: 0 0; } 50% { translate: var(--nx, 0) var(--ny, 0); } }
+.plot-hit { position: absolute; border-radius: 6px; }
+.plot-hit:hover { background: rgba(255, 255, 200, 0.08); }
+
+.farm-action {
+  width: 70px; height: 70px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(3.5px);
+  -webkit-backdrop-filter: blur(3.5px);
+  box-shadow: inset 0 2px 2px rgba(255, 255, 255, 0.25);
+  color: #fff; font-size: 12px; font-weight: 600;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+.farm-action:hover { background: rgba(0, 0, 0, 0.6); transform: translateY(-2px); }
+
+/* ---------- Modal shell ---------- */
+.scrim {
+  position: absolute; inset: 0;
+  background: var(--scrim);
+  animation: fade 0.18s ease both;
+}
+@keyframes fade { from { opacity: 0; } }
+@keyframes pop { from { opacity: 0; transform: scale(0.94); } }
+.modal-frame { position: absolute; animation: pop 0.2s ease both; }
+.modal-frame > .frame-img { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.modal-title {
+  position: absolute;
+  left: 0; right: 0;
+  text-align: center;
+  color: #fff;
+  font-size: 14px; font-weight: 600;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+.close-btn {
+  position: absolute;
+  width: 44px; height: 44px;
+  border-radius: 100px;
+  transition: transform 0.12s ease;
+}
+.close-btn:hover { transform: scale(1.06); }
+.close-btn:active { transform: scale(0.95); }
+.close-btn img { width: 44px; height: 44px; }
+
+.panel {
+  position: absolute;
+  background: var(--cream);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.panel.right-round { border-radius: 0 16px 16px 0; }
+
+/* Sidebar (shop tabs, farming steps, farms) */
+.sidebar {
+  position: absolute;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px;
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px solid var(--sidebar-line);
+  background: var(--sidebar-bg);
+  overflow: hidden;
+  animation: pop 0.2s ease both;
+}
+.sidebar.roomy { gap: 16px; }
+.side-item {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  color: #fff; font-size: 8px; font-weight: 700; white-space: nowrap;
+  position: relative;
+  transition: transform 0.12s ease;
+}
+.side-item:hover { transform: scale(1.05); }
+.side-sep { width: 100%; height: 1px; background: rgba(255, 255, 255, 0.35); flex-shrink: 0; }
+.side-check {
+  position: absolute; right: -4px; top: -4px;
+  width: 12px; height: 12px; border-radius: 100px;
+  background: var(--green);
+  display: grid; place-items: center;
+}
+
+/* ---------- Content pieces ---------- */
+.section-title { font-size: 10px; font-weight: 600; text-align: center; color: var(--brown); }
+.partner {
+  position: absolute; left: 50%; translate: -50% 0;
+  display: flex; align-items: center; gap: 4px;
+  font-size: 8px; font-weight: 500; color: var(--brown-70); white-space: nowrap;
+}
+.card {
+  position: relative;
+  background: var(--brown-05);
+  border: 1px solid var(--brown-20);
+  border-radius: 10px;
+  overflow: hidden;
+  color: var(--brown);
+}
+button.card { transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease; }
+button.card:hover { background: rgba(107, 64, 43, 0.09); }
+button.card:active { transform: scale(0.98); }
+.card.is-owned { box-shadow: inset 0 0 0 1.5px var(--select-ring); }
+
+.chip {
+  position: relative;
+  display: flex; align-items: center; justify-content: center; gap: 2px;
+  padding: 2px 0;
+  border: 0.4px solid var(--gold-edge);
+  border-radius: 10px 10px 8px 8px;
+  background: var(--gold);
+  color: #fff; font-weight: 700; letter-spacing: 1px; line-height: normal;
+  box-shadow: var(--gold-inset);
+  white-space: nowrap;
+}
+.chip img { width: 14px; height: 14px; object-fit: contain; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.25)); }
+
+.gold-btn {
+  display: grid; place-items: center;
+  border: 0.4px solid var(--gold-edge);
+  border-radius: 10px 10px 8px 8px;
+  background: var(--gold);
+  box-shadow: var(--gold-inset);
+  color: #fff; font-weight: 700; letter-spacing: 1px;
+  transition: filter 0.12s ease, transform 0.12s ease;
+}
+.gold-btn:hover { filter: brightness(1.06); }
+.gold-btn:active { transform: translateY(1px); }
+.gold-btn.is-selected, .gold-btn:disabled {
+  background: var(--gold-soft);
+  border-color: rgba(200, 137, 0, 0.4);
+  cursor: default;
+  filter: none;
+  transform: none;
+}
+
+.field-box {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 37px; padding: 4px; border-radius: 8px;
+  background: var(--brown-10);
+}
+.field-box input {
+  width: 80px; border: 0; background: transparent; outline: none;
+  font: inherit; font-size: 14px; font-weight: 500; color: var(--brown-50);
+}
+.field-box input:focus { color: var(--brown); }
+
+.kv { display: flex; justify-content: space-between; align-items: center; font-size: 10px; }
+.kv > :first-child { font-weight: 500; opacity: 0.7; }
+.kv > :last-child { font-weight: 600; display: flex; align-items: center; gap: 4px; }
+.hair { height: 0.5px; background: var(--brown-20); width: 100%; }
+
+.stars { display: inline-flex; gap: 1px; }
+
+.toast {
+  position: absolute; left: 50%; bottom: 18px; translate: -50% 0;
+  padding: 7px 14px; border-radius: 100px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff; font-size: 11px; font-weight: 600; white-space: nowrap;
+  animation: toast 2.2s ease both;
+  pointer-events: none;
+  z-index: 50;
+}
+@keyframes toast {
+  0% { opacity: 0; translate: -50% 8px; }
+  12%, 80% { opacity: 1; translate: -50% 0; }
+  100% { opacity: 0; translate: -50% -4px; }
+}
+
+/* ---------- Screen picker (outside the stage, for design review) ---------- */
+.picker {
+  position: fixed; left: 50%; bottom: 10px; translate: -50% 0;
+  display: flex; gap: 6px; align-items: center;
+  padding: 6px 8px; border-radius: 100px;
+  background: rgba(0, 0, 0, 0.45);
+  color: #e9f3df; font-size: 12px;
+  backdrop-filter: blur(6px);
+  z-index: 10;
+}
+.picker select {
+  font: inherit; font-size: 12px;
+  border-radius: 100px; border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.1); color: #fff; padding: 3px 10px;
+}
+.picker select option { color: #111; }
+.rotate-hint {
+  position: fixed; inset: 0; display: none; place-items: center;
+  color: #e9f3df; text-align: center; font-size: 15px; padding: 24px;
+}
+@media (orientation: portrait) and (max-width: 600px) {
+  .rotate-hint { display: grid; z-index: 20; background: #0b150c; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
