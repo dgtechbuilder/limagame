@@ -2,6 +2,8 @@ import type { Dispatch } from 'react';
 import { img } from '../assets';
 import { STEP_META, STEPS } from '../data';
 import { SELLING, SOLD, daysToHarvest, stepIndex, today, type Action, type GameState, type Modal } from '../state';
+import { FarmerPortrait } from '../first/art';
+import { LOOKS } from '../first/data';
 import { GoArrow, MailIcon, SettingsIcon, TimerIcon } from './Icons';
 import { Img, fmt } from './ui';
 
@@ -57,7 +59,7 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
 
   return (
     <>
-      <img className="farm-bg" src={img.bg} alt="Ojuok's farm: goats, chickens, a market stall and crop plots" draggable={false} />
+      <img className="farm-bg" src={img.bg} alt={`${s.farmer?.name ?? 'Ojuok'}'s farm: goats, chickens, a market stall and crop plots`} draggable={false} />
       <div className="top-shade" />
       {s.plotSelected && <div className="abs" style={{ inset: 0, background: 'rgba(0,0,0,0.32)', pointerEvents: 'none' }} />}
 
@@ -87,7 +89,13 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
         aria-label="Season results"
         onClick={() => open({ kind: 'outcome' })}
       >
-        <Img src={img.avatar} w={53} h={45} style={{ borderRadius: 10, objectFit: 'cover' }} />
+        {s.farmer ? (
+          <span style={{ display: 'grid', placeItems: 'center', width: 53, height: 45, borderRadius: 10, background: '#cfe6b0', overflow: 'hidden' }}>
+            <FarmerPortrait look={LOOKS[s.farmer.look] ?? LOOKS[0]} size={44} />
+          </span>
+        ) : (
+          <Img src={img.avatar} w={53} h={45} style={{ borderRadius: 10, objectFit: 'cover' }} />
+        )}
       </button>
       <div className="meter abs" style={{ left: 104, top: 36, width: 81, backdropFilter: 'blur(2.5px)' }} title={`Level ${s.level}`}>
         <span className="fill" style={{ width: Math.max(8, 79 * s.xp), background: 'var(--xp)' }} />
@@ -100,7 +108,7 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
       </div>
       {!busy && (
         <div className="abs" style={{ left: 104, top: 59 }}>
-          <p className="label" style={{ fontSize: 14, fontWeight: 700 }}>Ojuoks farm</p>
+          <p className="label" style={{ fontSize: 14, fontWeight: 700 }}>{s.farmer ? `${s.farmer.name}'s farm` : 'Ojuoks farm'}</p>
           <p className="label" style={{ fontSize: 12 }}>1 acre · Season {s.season}</p>
         </div>
       )}
@@ -134,7 +142,7 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
         className="peach-btn small inset-dark abs"
         style={{ left: busy ? 72 : 807, top: busy ? 85 : 77, width: 28, height: 28 }}
         aria-label="Messages"
-        onClick={() => dispatch({ type: 'toast', text: 'No messages yet' })}
+        onClick={() => dispatch({ type: 'toast', text: s.note ?? 'No messages yet' })}
       >
         <MailIcon size={20} />
       </button>

@@ -19,7 +19,7 @@ export function WelcomeModal({ dispatch }: Props) {
     dispatch({ type: 'open', modal: { kind: 'steps', step: 'landprep' } });
   };
   return (
-    <ModalShell frame="shop" x={178} y={28} title="Welcome to Lima" close={[633, 56]} onClose={() => {
+    <ModalShell frame="shop" x={178} y={28} title="How the farm works" close={[633, 56]} onClose={() => {
       dispatch({ type: 'onboarded' });
       dispatch({ type: 'close' });
     }}>
@@ -61,9 +61,9 @@ export function SettingsModal({ s, dispatch }: Props) {
   };
   const rows: { title: string; body: string; action: string; onClick: () => void; danger?: boolean }[] = [
     {
-      title: 'Replay the introduction',
-      body: 'See how the game works again.',
-      action: 'Replay',
+      title: 'How the farm works',
+      body: 'A quick guide to seasons, selling and rewards.',
+      action: 'Open',
       onClick: () => dispatch({ type: 'open', modal: { kind: 'welcome' } }),
     },
     {
@@ -82,13 +82,13 @@ export function SettingsModal({ s, dispatch }: Props) {
     },
     {
       title: 'Reset progress',
-      body: confirmReset ? 'This erases your seasons, coins and points on this device.' : 'Start again from season 1.',
+      body: confirmReset ? 'This erases your farmer, seasons, coins and points on this device.' : 'Start again with a new farmer.',
       action: confirmReset ? 'Yes, erase' : 'Reset',
       danger: true,
       onClick: () => {
         if (!confirmReset) return setConfirmReset(true);
         clearSave();
-        dispatch({ type: 'reset', state: { ...initialState, onboarded: true, modal: null, toast: { id: Date.now(), text: 'Progress reset · season 1' } } });
+        dispatch({ type: 'reset', state: { ...initialState, modal: null, toast: null } });
       },
     },
   ];

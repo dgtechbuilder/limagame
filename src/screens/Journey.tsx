@@ -1,4 +1,6 @@
 import { useState, type CSSProperties, type Dispatch, type ReactNode } from 'react';
+import { FarmerPortrait } from '../first/art';
+import { LOOKS } from '../first/data';
 import { img } from '../assets';
 import { nextAction } from '../components/FarmScene';
 import { EditIcon, InfoDot } from '../components/Icons';
@@ -622,9 +624,15 @@ export function RewardsModal({ s, dispatch }: Props) {
       <ModalShell frame="tall" x={130} y={4} title="Rewards & Discounts Hub" titleSize={12} close={[676, 33]} onClose={() => dispatch({ type: 'close' })}>
         <div className="panel" style={{ left: 170, top: 55, width: 530, height: 306 }}>
           <div style={box({ left: 11, top: 10, width: 65, height: 54, overflow: 'hidden', background: '#fff' })}>
-            <Img src={img.rewardAvatar} w={65} h={54} alt="Ojuok" />
+            {s.farmer ? (
+              <span style={{ display: 'grid', placeItems: 'center', width: 65, height: 54, borderRadius: 8, background: '#cfe6b0', overflow: 'hidden' }}>
+                <FarmerPortrait look={LOOKS[s.farmer.look] ?? LOOKS[0]} size={50} />
+              </span>
+            ) : (
+              <Img src={img.rewardAvatar} w={65} h={54} alt="Ojuok" />
+            )}
           </div>
-          <p style={{ position: 'absolute', left: 88, top: 16, fontSize: 11, fontWeight: 600 }}>Ojuok</p>
+          <p style={{ position: 'absolute', left: 88, top: 16, fontSize: 11, fontWeight: 600 }}>{s.farmer?.name ?? 'Ojuok'}</p>
           <p style={{ position: 'absolute', left: 88, top: 36, fontSize: 8, opacity: 0.8 }}>
             Earn points: +100 per farming step, +5 per bag sold
           </p>

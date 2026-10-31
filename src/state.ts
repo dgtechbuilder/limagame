@@ -56,7 +56,15 @@ export interface Prices {
   storage: number;
 }
 
+/** First session: create → walk → review (→ retry) → village opens → second review → done. */
+export type FsPhase = 'create' | 'walk1' | 'review1' | 'walkRetry' | 'retry' | 'walk2' | 'review2' | 'done';
+
 export interface GameState {
+  // first session
+  farmer: { name: string; look: number } | null;
+  fs: { phase: FsPhase; at: 'first' | 'lower'; opened: boolean };
+  /** reminder shown in Messages, e.g. the bean shamba to check tomorrow */
+  note: string | null;
   // UI
   modal: Modal | null;
   plotSelected: boolean;
@@ -107,6 +115,9 @@ export const freshSeason = {
 };
 
 export const initialState: GameState = {
+  farmer: null,
+  fs: { phase: 'create', at: 'first', opened: false },
+  note: null,
   modal: null,
   plotSelected: false,
   toast: null,
@@ -210,7 +221,9 @@ export type Action =
   | { type: 'toast'; text: string }
   | { type: 'tick'; seconds: number }
   | { type: 'picker'; on: boolean }
-  | { type: 'reset'; state: Partial<GameState> };
+  | { type: 'reset'; state: Partial<GameState> }
+  | { type: 'farmer'; name: string; look: number }
+  | { type: 'fs'; phase: FsPhase; at?: 'first' | 'lower'; opened?: boolean; note?: string };
 
 let toastId = 0;
 const toast = (text: string) => ({ id: ++toastId, text });
@@ -390,6 +403,16 @@ function reducer(s: GameState, a: Action): GameState {
       return { ...s, showPicker: a.on };
     case 'reset':
       return { ...s, ...a.state };
+    case 'farmer':
+      return { ...s, farmer: { name: a.name, look: a.look } };
+    case 'fs':
+      return {
+        ...s,
+        fs: { phase: a.phase, at: a.at ?? s.fs.at, opened: a.opened ?? s.fs.opened },
+        note: a.note ?? s.note,
+        // passing the first review completes onboarding, so it never repeats
+        onboarded: s.onboarded || a.phase === 'walk2',
+      };
   }
 }
 
@@ -406,8 +429,15 @@ export const reviewing = () => {
   return q.has('review') || q.has('screen');
 };
 
+/** Design review starts from a finished first session so every farm screen is reachable. */
+export const REVIEW_BASE: Partial<GameState> = {
+  onboarded: true,
+  farmer: { name: 'Wanjiku', look: 0 },
+  fs: { phase: 'done', at: 'first', opened: true },
+};
+
 function load(): GameState {
-  if (reviewing()) return { ...initialState, onboarded: true };
+  if (reviewing()) return { ...initialState, ...REVIEW_BASE };
   try {
     const raw = window.localStorage.getItem(SAVE_KEY);
     if (!raw) return initialState;

@@ -2,8 +2,9 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { FarmScene } from './components/FarmScene';
 import { ShopModal, StepsModal } from './screens/Catalog';
 import { InfoModal, OutcomeModal, ProcessModal, RewardsModal, SaleModal, StorageModal, TimingModal, ValueModal } from './screens/Journey';
+import { FirstSession } from './first/FirstSession';
 import { SettingsModal, WelcomeModal } from './screens/Meta';
-import { SELLING, SOLD, initialState, reviewing, useGame, type GameState, type SeasonResult } from './state';
+import { REVIEW_BASE, SELLING, SOLD, initialState, reviewing, useGame, type GameState, type SeasonResult } from './state';
 
 const STAGE_W = 874;
 const STAGE_H = 402;
@@ -35,7 +36,13 @@ const at = (stage: number): Partial<GameState> => ({ ...grown, stage, doneTasks:
 
 const SCREENS: { label: string; group: string; state: Partial<GameState> }[] = [
   { group: 'Game Design', label: 'Game', state: {} },
-  { group: 'Game Design', label: 'Game · first run', state: { onboarded: false, modal: { kind: 'welcome' } } },
+  { group: 'First session', label: '1 · Create the farmer', state: { onboarded: false, farmer: null, fs: { phase: 'create', at: 'first', opened: false } } },
+  { group: 'First session', label: '2 · Walk to the shamba', state: { onboarded: false, fs: { phase: 'walk1', at: 'first', opened: false } } },
+  { group: 'First session', label: '3 · First review', state: { onboarded: false, fs: { phase: 'review1', at: 'first', opened: false } } },
+  { group: 'First session', label: '3b · Walk to the retry shamba', state: { onboarded: false, fs: { phase: 'walkRetry', at: 'first', opened: false } } },
+  { group: 'First session', label: '3c · Retry review', state: { onboarded: false, fs: { phase: 'retry', at: 'lower', opened: false } } },
+  { group: 'First session', label: '4 · Village opens', state: { fs: { phase: 'walk2', at: 'first', opened: false } } },
+  { group: 'First session', label: '5 · Second review (beans)', state: { fs: { phase: 'review2', at: 'first', opened: true } } },
   { group: 'Game Design', label: 'Game · farm selected', state: { plotSelected: true } },
   { group: 'Game Design', label: 'Shop · Sell Food', state: { modal: { kind: 'shop', tab: 'food' } } },
   { group: 'Game Design', label: 'Shop · Fertilizer', state: { modal: { kind: 'shop', tab: 'fertilizer' } } },
@@ -82,12 +89,11 @@ export default function App() {
   const toastTimer = useRef<number | undefined>(undefined);
   const [toastVisible, setToastVisible] = useState(false);
 
-  // First run: show the welcome screen. Design review: jump to ?screen=<label>.
+  // Design review: jump to ?screen=<label>. (New players start in the first session, not a welcome screen.)
   useEffect(() => {
     const want = new URLSearchParams(window.location.search).get('screen');
     const hit = want && SCREENS.find(x => x.label.toLowerCase() === want.toLowerCase());
     if (hit) dispatch({ type: 'reset', state: { ...hit.state } });
-    else if (!s.onboarded) dispatch({ type: 'open', modal: { kind: 'welcome' } });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -107,12 +113,17 @@ export default function App() {
   }, [s.toast]);
 
   const m = s.modal;
-  const current = SCREENS.findIndex(x => JSON.stringify(x.state.modal ?? null) === JSON.stringify(m) && (m || (x.state.plotSelected ?? false) === s.plotSelected));
+  const firstSession = s.fs.phase !== 'done';
+  const current = SCREENS.findIndex(x =>
+    firstSession
+      ? x.state.fs?.phase === s.fs.phase
+      : !x.state.fs && JSON.stringify(x.state.modal ?? null) === JSON.stringify(m) && (m || (x.state.plotSelected ?? false) === s.plotSelected),
+  );
 
   return (
     <div className="viewport">
       <div className="stage" style={{ transform: `translate(-50%, -50%) scale(${scale})` }}>
-        <FarmScene s={s} dispatch={dispatch} />
+        {firstSession ? <FirstSession s={s} dispatch={dispatch} /> : <FarmScene s={s} dispatch={dispatch} />}
 
         {m?.kind === 'welcome' && <WelcomeModal s={s} dispatch={dispatch} />}
         {m?.kind === 'settings' && <SettingsModal s={s} dispatch={dispatch} />}
@@ -141,11 +152,11 @@ export default function App() {
             value={current >= 0 ? current : ''}
             onChange={e => {
               const sc = SCREENS[Number(e.target.value)];
-              if (sc) dispatch({ type: 'reset', state: { ...initialState, onboarded: true, ...sc.state } });
+              if (sc) dispatch({ type: 'reset', state: { ...initialState, ...REVIEW_BASE, ...sc.state } });
             }}
           >
             {current < 0 && <option value="">—</option>}
-            {['Game Design', 'New Design', 'New features', 'Added'].map(g => (
+            {['First session', 'Game Design', 'New Design', 'New features', 'Added'].map(g => (
               <optgroup key={g} label={g}>
                 {SCREENS.map((sc, i) =>
                   sc.group === g ? (
