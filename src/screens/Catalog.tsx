@@ -3,8 +3,8 @@ import { img } from '../assets';
 import { InfoDot, EditIcon } from '../components/Icons';
 import { IconSidebar, ModalShell } from '../components/Modal';
 import { GoldButton, Img, Partner, PriceChip } from '../components/ui';
-import { SHOP_TABS, STEPS, type ShopTab, type StepId } from '../data';
-import { isStepComplete, type Action, type GameState } from '../state';
+import { SHOP_TABS, STEP_META, STEPS, TASK_USES_ITEM, type ShopTab, type StepId } from '../data';
+import { stepIndex, tasksDone, type Action, type GameState } from '../state';
 
 /* ================================================================== */
 /* Shop (Figma: Food / Fertilizer / Water tanks / Equipments)          */
@@ -54,7 +54,7 @@ export function ShopModal({ s, tab, dispatch }: { s: GameState; tab: ShopTab; di
             <div key={ri} style={{ display: 'flex', gap: 10, alignSelf: ri === 1 && row.length < 3 ? 'flex-start' : 'center', marginLeft: ri === 1 && row.length < 3 ? 2 : 0 }}>
               {row.map(item => {
                 const left = item.stock ? s.stock[item.id] ?? 0 : undefined;
-                const owned = !item.stock && s.owned.includes(item.id);
+                const owned = !item.stock && s.inventory.includes(item.id);
                 return (
                   <button
                     key={item.id}
@@ -107,10 +107,20 @@ const STEP_FRAME_X: Record<StepId, number> = {
   harvest: 191,
 };
 
+type StepStatus = 'current' | 'finished' | 'locked';
+const statusOf = (s: GameState, step: StepId): StepStatus => {
+  const i = stepIndex(step);
+  return i === s.stage ? 'current' : i < s.stage ? 'finished' : 'locked';
+};
+
 export function StepsModal({ s, step, dispatch }: { s: GameState; step: StepId; dispatch: Dispatch<Action> }) {
   const def = STEPS.find(d => d.id === step)!;
+  const meta = STEP_META[step];
+  const status = statusOf(s, step);
   const fx = STEP_FRAME_X[step];
   const close = () => dispatch({ type: 'close' });
+  const done = tasksDone(s, step);
+  const current = STEPS[Math.min(s.stage, STEPS.length - 1)];
 
   return (
     <ModalShell frame="shop" x={fx} y={28} title="Farming Steps" close={[fx + 455, 56]} onClose={close}>
@@ -123,7 +133,8 @@ export function StepsModal({ s, step, dispatch }: { s: GameState; step: StepId; 
           iconOn: d.iconOn,
           size: d.iconSize,
           sizeOn: d.iconOnSize,
-          done: isStepComplete(s, d.id),
+          done: statusOf(s, d.id) === 'finished',
+          locked: statusOf(s, d.id) === 'locked',
         }))}
         active={step}
         onPick={id => dispatch({ type: 'open', modal: { kind: 'steps', step: id as StepId } })}
@@ -134,15 +145,52 @@ export function StepsModal({ s, step, dispatch }: { s: GameState; step: StepId; 
       <div className="panel" style={{ left: fx + 36, top: 78, width: 446, height: 254 }}>
         <p className="section-title" style={{ position: 'absolute', left: 0, right: 0, top: 2 }}>
           {def.title}
+          <span style={{ fontWeight: 400, fontSize: 8, opacity: 0.8 }}> · {meta.purpose}</span>
         </p>
-        {step === 'water' ? <WaterBody s={s} dispatch={dispatch} /> : <TaskGrid s={s} step={step} dispatch={dispatch} />}
-        <Partner top={233} />
+        {step === 'water' ? (
+          <WaterBody s={s} status={status} dispatch={dispatch} />
+        ) : (
+          <TaskGrid s={s} step={step} status={status} dispatch={dispatch} />
+        )}
+        <div style={{ position: 'absolute', left: 14, right: 14, top: 229, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, fontSize: 8 }}>
+          {status === 'current' && (
+            <>
+              <span style={{ fontWeight: 600 }}>
+                {done}/{meta.need} recommended tasks done
+                <span style={{ fontWeight: 400, opacity: 0.75 }}>
+                  {done < meta.need ? ' · fewer means a weaker crop' : ' · your crop is in good shape'}
+                </span>
+              </span>
+              <GoldButton font={9} height={20} style={{ width: 132, flexShrink: 0 }} onClick={() => dispatch({ type: 'finishStep', step })}>
+                {step === 'harvest' ? 'Harvest the crop' : done === 0 ? `Skip ${def.label}` : `Finish ${def.label} · ${meta.days}d`}
+              </GoldButton>
+            </>
+          )}
+          {status === 'finished' && (
+            <span style={{ fontWeight: 600, margin: '0 auto' }}>
+              Finished this season · {Math.round((s.stepScores[step] ?? 0) * 100)}% of the recommended work
+            </span>
+          )}
+          {status === 'locked' && (
+            <span style={{ fontWeight: 600, margin: '0 auto' }}>
+              Locked · finish {current.label} first. You can look around to plan ahead.
+            </span>
+          )}
+        </div>
       </div>
     </ModalShell>
   );
 }
 
-function TaskGrid({ s, step, dispatch }: { s: GameState; step: StepId; dispatch: Dispatch<Action> }) {
+function TaskChip({ s, taskId, price, done, status, width }: { s: GameState; taskId: string; price: number; done: boolean; status: StepStatus; width: number }) {
+  if (done) return <span className="chip" style={{ width, fontSize: 8, background: '#5fb544', borderColor: '#3e8c2a' }}>Done</span>;
+  if (status !== 'current') return <span className="chip" style={{ width, fontSize: 8, background: '#cdb89a', borderColor: '#a8916f' }}>{status === 'locked' ? 'Locked' : 'Skipped'}</span>;
+  const item = TASK_USES_ITEM[taskId];
+  if (item && s.inventory.includes(item)) return <span className="chip" style={{ width, fontSize: 8, background: '#5fb544', borderColor: '#3e8c2a' }}>In stock · free</span>;
+  return <PriceChip price={price} width={width} />;
+}
+
+function TaskGrid({ s, step, status, dispatch }: { s: GameState; step: StepId; status: StepStatus; dispatch: Dispatch<Action> }) {
   const def = STEPS.find(d => d.id === step)!;
   const three = def.columns === 3;
   return (
@@ -160,25 +208,22 @@ function TaskGrid({ s, step, dispatch }: { s: GameState; step: StepId; dispatch:
     >
       {def.tasks.map(t => {
         const done = s.doneTasks.includes(t.id);
+        const disabled = status !== 'current' || done;
         return (
           <button
             key={t.id}
             type="button"
             className={`card${done ? ' is-owned' : ''}`}
-            style={{ padding: '2px 8px 4px', minHeight: step === 'fertilizer' ? 87 : 99, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3 }}
-            onClick={() => dispatch({ type: 'task', id: t.id, price: t.price, name: t.name })}
-            aria-pressed={done}
-            aria-label={done ? `${t.name}, done` : `${t.name}, ${t.price} coins`}
+            style={{ padding: '2px 8px 4px', minHeight: step === 'fertilizer' ? 87 : 99, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, opacity: status === 'locked' ? 0.6 : 1, cursor: disabled ? 'default' : 'pointer' }}
+            onClick={() => !disabled && dispatch({ type: 'task', step, id: t.id, price: t.price, name: t.name })}
+            aria-disabled={disabled}
+            aria-label={done ? `${t.name}, done` : status !== 'current' ? `${t.name}, not available` : `${t.name}, ${t.price} coins`}
           >
             <Img src={t.icon} w={t.iconSize[0]} h={t.iconSize[1]} />
             <span style={{ fontSize: def.nameFont, fontWeight: 700, lineHeight: 1.15, maxWidth: step === 'landprep' ? 66 : 120, textAlign: 'center' }}>
               {t.name}
             </span>
-            {done ? (
-              <span className="chip" style={{ width: 110, fontSize: 8, background: '#5fb544', borderColor: '#3e8c2a' }}>Done</span>
-            ) : (
-              <PriceChip price={t.price} width={110} />
-            )}
+            <TaskChip s={s} taskId={t.id} price={t.price} done={done} status={status} width={110} />
           </button>
         );
       })}
@@ -186,12 +231,12 @@ function TaskGrid({ s, step, dispatch }: { s: GameState; step: StepId; dispatch:
   );
 }
 
-function WaterBody({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
+function WaterBody({ s, status, dispatch }: { s: GameState; status: StepStatus; dispatch: Dispatch<Action> }) {
   const def = STEPS.find(d => d.id === 'water')!;
   const [amount, setAmount] = useState('');
   const save = () => {
     const n = Number(amount.replace(/[^\d.]/g, ''));
-    if (!n) return dispatch({ type: 'toast', text: 'Enter a water amount first' });
+    if (!n) return dispatch({ type: 'toast', text: 'Type how many litres per square metre you plan to use' });
     dispatch({ type: 'water', litres: n });
     setAmount('');
   };
@@ -230,23 +275,21 @@ function WaterBody({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }
       <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
         {def.tasks.map((t, i) => {
           const done = s.doneTasks.includes(t.id);
+          const disabled = status !== 'current' || done;
           const litres = [1, 5, 10, 20][i];
           return (
             <button
               key={t.id}
               type="button"
               className={`card${done ? ' is-owned' : ''}`}
-              style={{ width: 85, height: 101, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: 6, padding: '6px 6px 8px' }}
-              onClick={() => dispatch({ type: 'task', id: t.id, price: t.price, name: `${t.name} of water`, water: litres })}
+              style={{ width: 85, height: 101, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: 6, padding: '6px 6px 8px', opacity: status === 'locked' ? 0.6 : 1, cursor: disabled ? 'default' : 'pointer' }}
+              onClick={() => !disabled && dispatch({ type: 'task', step: 'water', id: t.id, price: t.price, name: `${t.name} of water`, water: litres })}
+              aria-disabled={disabled}
               aria-label={done ? `${t.name}, added` : `Add ${t.name} of water for ${t.price} coins`}
             >
               <Img src={t.icon} w={t.iconSize[0]} h={t.iconSize[1]} />
               <span style={{ fontSize: 10, fontWeight: 700 }}>{t.name}</span>
-              {done ? (
-                <span className="chip" style={{ width: 70, fontSize: 8, background: '#5fb544', borderColor: '#3e8c2a' }}>Added</span>
-              ) : (
-                <PriceChip price={t.price} width={70} />
-              )}
+              <TaskChip s={s} taskId={t.id} price={t.price} done={done} status={status} width={70} />
             </button>
           );
         })}

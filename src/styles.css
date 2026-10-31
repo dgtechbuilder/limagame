@@ -326,7 +326,8 @@ button.card:active { transform: scale(0.98); }
 .stars { display: inline-flex; gap: 1px; }
 
 .toast {
-  position: absolute; left: 50%; bottom: 18px; translate: -50% 0;
+  /* Top of the stage: at the bottom it covered modal buttons and the plot's action row. */
+  position: absolute; left: 50%; top: 6px; translate: -50% 0;
   padding: 7px 14px; border-radius: 100px;
   background: rgba(0, 0, 0, 0.72);
   color: #fff; font-size: 11px; font-weight: 600; white-space: nowrap;

@@ -255,15 +255,18 @@ export interface StorageOption {
   name: string;
   icon: string;
   iconSize: [number, number];
-  cost: string;
+  /** coins per bag stored */
+  costPerBag: number;
   spoilage: 'High' | 'Medium' | 'Low';
+  /** share of bags lost while stored */
+  loss: number;
   time: string;
 }
 
 export const STORAGE_OPTIONS: StorageOption[] = [
-  { id: 'home', name: 'Home Storage', icon: asset('storage-home.png'), iconSize: [40, 43], cost: '0', spoilage: 'High', time: '3 days' },
-  { id: 'coop', name: 'Cooperative warehouse', icon: asset('storage-coop.png'), iconSize: [54, 43], cost: '20/bag', spoilage: 'Medium', time: '2 days' },
-  { id: 'cold', name: 'Cold storage', icon: asset('storage-cold.png'), iconSize: [34, 43], cost: '40/bag', spoilage: 'Low', time: '1 day' },
+  { id: 'home', name: 'Home Storage', icon: asset('storage-home.png'), iconSize: [40, 43], costPerBag: 0, spoilage: 'High', loss: 0.12, time: '3 days' },
+  { id: 'coop', name: 'Cooperative warehouse', icon: asset('storage-coop.png'), iconSize: [54, 43], costPerBag: 2, spoilage: 'Medium', loss: 0.05, time: '2 days' },
+  { id: 'cold', name: 'Cold storage', icon: asset('storage-cold.png'), iconSize: [34, 43], costPerBag: 4, spoilage: 'Low', loss: 0.01, time: '1 day' },
 ];
 
 export interface ProcessOption {
@@ -289,15 +292,17 @@ export interface Reward {
   name: string;
   icon: string;
   off: number;
+  /** points needed to redeem */
+  cost: number;
 }
 
 export const REWARDS: Reward[] = [
-  { id: 'fertilizer', name: 'Fertilizer discount', icon: asset('rw-fertilizer.png'), off: 30 },
-  { id: 'seed', name: 'Seed discount', icon: asset('rw-seed.png'), off: 10 },
-  { id: 'equipment', name: 'Equipment discount', icon: asset('rw-equipment.png'), off: 30 },
-  { id: 'irrigation', name: 'Irrigation system discount', icon: asset('rw-irrigation.png'), off: 30 },
-  { id: 'phone', name: 'Phone Loan Discount', icon: asset('rw-phone.png'), off: 10 },
-  { id: 'solar', name: 'Solar power discount', icon: asset('rw-solar.png'), off: 30 },
+  { id: 'fertilizer', name: 'Fertilizer discount', icon: asset('rw-fertilizer.png'), off: 30, cost: 1500 },
+  { id: 'seed', name: 'Seed discount', icon: asset('rw-seed.png'), off: 10, cost: 800 },
+  { id: 'equipment', name: 'Equipment discount', icon: asset('rw-equipment.png'), off: 30, cost: 1500 },
+  { id: 'irrigation', name: 'Irrigation system discount', icon: asset('rw-irrigation.png'), off: 30, cost: 1500 },
+  { id: 'phone', name: 'Phone Loan Discount', icon: asset('rw-phone.png'), off: 10, cost: 800 },
+  { id: 'solar', name: 'Solar power discount', icon: asset('rw-solar.png'), off: 30, cost: 1500 },
 ];
 
 export type HarvestChoice = 'now' | 'wait2' | 'week';
@@ -323,34 +328,71 @@ export const TIMELINE = [
   { week: 'Week 4', note: 'Over ripe,\nrisky, late', star: asset('tl-star4.png') },
 ];
 
-/* ------------------------------------------------------------------ */
-/* Outcome comparison (Farm 1 matches the design; 2–6 are sample data)  */
-/* ------------------------------------------------------------------ */
-
-export interface FarmOutcome {
-  id: number;
-  crop: string;
-  harvestChoice: string;
-  yieldBags: number;
-  quality: number;
-  saleValue: number;
-  profit: number;
-}
-
-export const FARM_OUTCOMES: FarmOutcome[] = [
-  { id: 1, crop: 'Maize', harvestChoice: 'Harvest now', yieldBags: 150, quality: 4, saleValue: 18000, profit: 2000 },
-  { id: 2, crop: 'Maize', harvestChoice: 'Wait 2 days', yieldBags: 165, quality: 5, saleValue: 21450, profit: 4300 },
-  { id: 3, crop: 'Maize', harvestChoice: 'Wait 1 week', yieldBags: 140, quality: 3, saleValue: 15400, profit: -600 },
-  { id: 4, crop: 'Maize', harvestChoice: 'Harvest now', yieldBags: 128, quality: 3, saleValue: 14080, profit: 900 },
-  { id: 5, crop: 'Maize', harvestChoice: 'Wait 2 days', yieldBags: 158, quality: 4, saleValue: 19750, profit: 3100 },
-  { id: 6, crop: 'Maize', harvestChoice: 'Wait 1 week', yieldBags: 120, quality: 2, saleValue: 11400, profit: -1800 },
-];
-
-export const LESSONS = [
-  { title: 'Harvest timing', body: 'Waiting too long can reduce quality, but a short delay often increases yield.' },
-  { title: 'Water & fertilizer pay', body: 'Farms that kept crops well-watered and fertilized had better quality.' },
-  { title: 'Market timing is key', body: 'Selecting when demand is high maximizes your profit' },
-];
-
 export const TIP =
   'Farmers across Africa dry, mill and package their products to earn more and reduce losses.';
+
+/* ------------------------------------------------------------------ */
+/* Season rules                                                         */
+/* ------------------------------------------------------------------ */
+
+export const STEP_META: Record<StepId, { days: number; need: number; purpose: string }> = {
+  landprep: { days: 3, need: 4, purpose: 'Get the soil ready before you plant' },
+  planting: { days: 7, need: 2, purpose: 'Get a strong, even crop in the ground' },
+  fertilizer: { days: 21, need: 2, purpose: 'Feed the crop while it grows' },
+  pesticides: { days: 14, need: 2, purpose: 'Protect the crop from weeds, pests and disease' },
+  water: { days: 21, need: 1, purpose: 'Keep the crop watered through tasseling' },
+  harvest: { days: 0, need: 3, purpose: 'Handle the ripe crop well to cut losses' },
+};
+
+/** One-line lesson shown when a task is done. */
+export const TASK_TIPS: Record<string, string> = {
+  'land-selection': 'Pick well-drained land in full sun; maize hates waterlogged soil.',
+  clearing: 'Clear weeds and stumps so seedlings are not fighting for light and water.',
+  tilling: 'Tilling loosens the soil so roots grow deep and rain soaks in.',
+  leveling: 'Level ground spreads water evenly and stops puddles that rot seed.',
+  'lp-manure': 'Manure dug in before planting feeds the soil all season.',
+  herbicide: 'A pre-planting herbicide clears weeds that would choke seedlings.',
+  seeding: 'Plant certified seed about 75 cm between rows and 25 cm apart.',
+  intercropping: 'Beans between maize rows add nitrogen and a second harvest.',
+  transplanting: 'Fill gaps with seedlings within two weeks so the stand stays even.',
+  'pl-manure': 'A handful of manure in each hole gives seedlings a strong start.',
+  'f-nitrogen': 'Top-dress nitrogen at knee height; it drives leaf growth.',
+  'f-phosphorus': 'Phosphorus at planting builds strong roots.',
+  'f-potassium': 'Potassium helps maize resist drought and disease.',
+  'f-npk': 'A balanced NPK covers all three main nutrients at once.',
+  'f-manure': 'Organic manure improves soil structure and holds moisture.',
+  herbicides: 'Control weeds in the first six weeks, when maize suffers most.',
+  fungicides: 'Fungicide protects leaves from blight in wet weather.',
+  nematicides: 'Nematicides protect roots from soil worms that stunt growth.',
+  insecticides: 'Scout weekly for fall armyworm and spray early, into the funnel.',
+  'w-1000': 'Even a little water at tasseling protects yield.',
+  'w-5000': 'Water most when the crop tassels and silks.',
+  'w-10000': 'Deep, less frequent watering grows deeper roots.',
+  'w-20000': 'A full tank carries the crop through a dry spell.',
+  protection: 'Guard the ripe crop from birds, rodents and theft.',
+  timing: 'Harvest when husks are dry and kernels are hard and dented.',
+  reaping: 'Reap carefully so cobs are not dropped and broken.',
+  sorting: 'Sorting out damaged cobs stops the rest from rotting.',
+  packaging: 'Clean, sealed bags keep grain dry and fetch better prices.',
+  storage: 'Dry grain well before storing to stop mould.',
+};
+
+/** Farming-step tasks that can use an item bought in the Shop instead of coins. */
+export const TASK_USES_ITEM: Record<string, string> = {
+  'f-nitrogen': 'nitrogen',
+  'f-phosphorus': 'phosphorus',
+  'f-potassium': 'potassium',
+  'f-npk': 'npk',
+  'f-manure': 'manure',
+  'lp-manure': 'manure',
+  'pl-manure': 'manure',
+};
+
+export const HARVEST_EFFECT: Record<HarvestChoice, { yieldFactor: number; qualityShift: number }> = {
+  now: { yieldFactor: 0.85, qualityShift: 0 },
+  wait2: { yieldFactor: 1, qualityShift: 0 },
+  week: { yieldFactor: 0.92, qualityShift: -1 },
+};
+
+export const GROWING_STEPS: StepId[] = ['landprep', 'planting', 'fertilizer', 'pesticides', 'water'];
+export const PLAY_GOAL_HOURS = 20;

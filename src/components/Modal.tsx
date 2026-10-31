@@ -73,6 +73,7 @@ export interface SideItem {
   size: [number, number];
   sizeOn: [number, number];
   done?: boolean;
+  locked?: boolean;
 }
 
 /** Dark translucent column of tabs on the left of Shop / Farming Steps. */
@@ -110,6 +111,8 @@ export function IconSidebar({
               className="side-item"
               onClick={() => onPick(it.id)}
               aria-current={on ? 'page' : undefined}
+              aria-label={it.locked ? `${it.label} (locked)` : undefined}
+              style={{ opacity: it.locked && !on ? 0.45 : 1 }}
             >
               <span style={{ position: 'relative' }}>
                 <Img src={on ? it.iconOn : it.icon} w={w} h={h} />
