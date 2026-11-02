@@ -118,7 +118,7 @@ export function Inspect({
           : `${ROUND_PARTS.length - seen.length} more to look at.`;
     if (allSeen) action = { label: 'Make your call', onClick: () => setStep('judge') };
   } else if (step === 'judge') {
-    line = group ? t('Which one, {name}?') : t('What is going on at this farm, {name}?');
+    line = group ? t('Which one, {name}?') : t('What is going on in this bed, {name}?');
   } else if (step === 'right') {
     line = `${t(round.right)} ${round.practice}`;
     action = { label: continueLabel, onClick: onContinue };
@@ -248,7 +248,7 @@ export function Inspect({
                   </svg>
                   <span className="rr-wait">
                     <img src={img.clock} alt="" width={16} height={16} />
-                    You can check this farm again in {CHECK_COOLDOWN_S} seconds.
+                    You can check this bed again in {CHECK_COOLDOWN_S} seconds.
                   </span>
                 </>
               )}

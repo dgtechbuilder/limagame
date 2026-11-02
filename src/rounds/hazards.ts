@@ -102,7 +102,7 @@ export const HAZARDS: Record<HazardId, Hazard> = {
   healthy: {
     id: 'healthy',
     call: 'healthy',
-    name: 'A healthy farm',
+    name: 'A healthy crop',
     crops: ALL,
     weights: { young: 1.5, grow: 1, harvest: 1.5 },
     diary: {
@@ -263,7 +263,7 @@ export const HAZARDS: Record<HazardId, Hazard> = {
     },
     clue: { part: 'farm', text: 'The fence is broken here, {name}, and goats are inside eating the {crop}.' },
     right: 'Animals got in! Well read, {name}.',
-    practice: 'Drive the animals out, mend the fence at once, and ask neighbours to tie up their animals.',
+    practice: 'Drive the animals out, mend the fence at once, and keep goats tied up away from the crops.',
   },
   wildlife: {
     id: 'wildlife',

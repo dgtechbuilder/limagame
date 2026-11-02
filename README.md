@@ -1,8 +1,10 @@
 # Lima Farming Game
 
-A farming game for smallholder farmers in Kenya, played on a landscape phone. Players learn to read a
-shamba with their own eyes, then grow a season of maize where every choice (doing the work, when to
-harvest, how to store, whether to process) changes what they earn. Points unlock real partner discounts.
+A farming game for smallholder farmers in Kenya, played on a landscape phone. It is **one farm, the
+player's own** — there are no neighbours. The player learns to read their crops with their own eyes, then
+checks every bed on the farm often, so the farm keeps growing healthy, nutritious food. Seasons of maize
+turn every choice (doing the work, when to harvest, how to store, whether to process) into what they earn.
+Points unlock real partner discounts.
 
 The game is built in React + TypeScript from the Figma file **"29 Oct Farm Management App"**
 (`dvRxEJtTy8rGBPIVmCLb4E`, section *Farm game*). The Figma farm map is the ground of the whole game.
@@ -36,10 +38,11 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 | When | What happens |
 | --- | --- |
 | **0:00** | Names a farmer (or taps *Wanjiku*, *Otieno* or *Chebet*) and picks a look. No menus or text walls first. |
-| **0:10** | Walks across the farm map to their maize shamba. The rest of the farm is under mist. |
-| **0:25** | Reviews the shamba by looking: spots the rows with fall armyworm and makes the right call. This is the moment the game is built around. |
-| **~2:00** | The farm opens. A neighbour's sukuma wiki needs the same kind of review, with fewer hints. |
-| **Then** | Plays seasons on their farm: six farming steps, harvest timing, storage, processing, selling, results, rewards. |
+| **0:10** | Walks across their farm to the maize. The rest of the farm is under mist. |
+| **0:25** | Checks the maize by looking: spots the rows with fall armyworm and makes the right call. This is the moment the game is built around. |
+| **~2:00** | The whole farm opens. Their sukuma wiki needs the same kind of check, with fewer hints. |
+| **~3:00** | **Field rounds**: checks every bed on the farm, one after another — and comes back often, because every bed changes every day. |
+| **Then** | Plays seasons of maize: six farming steps, harvest timing, storage, processing, selling, results, rewards. |
 
 A wrong call is part of learning: the clue they missed is circled, and they try again on a second maize bed.
 
@@ -87,7 +90,7 @@ src/
     Journey.tsx            harvest timing → sale → storage → value addition → process → results; rewards; info
     Meta.tsx               How the farm works, Settings
   first/                   the first session (see below)
-  rounds/                  field rounds: seven farm checks back to back (see below); loaded only when opened
+  rounds/                  field rounds: checks of every bed on the farm, back to back (see below); loaded only when opened
     photos/                drop-in real photos, one folder per round (see photos/README.md)
 public/
   assets/                  130 images exported from Figma, incl. bg-farm.webp and bg-farm@2x.webp
@@ -116,26 +119,27 @@ locked steps. They reuse the Figma frames, colours, wooden title plank and gold 
 
 ## The first session
 
-A new player never sees the farm screen first. In order:
+A new player never sees the farm screen first. Everything happens on their own farm. In order:
 
 1. **Create the farmer** — name plus one of four looks, saved immediately. The name is used in every line
    from then on, and the farmer's portrait replaces the HUD avatar.
-2. **Walk to the shamba** — on the Figma map: in along the dirt path, up the grass to the front maize bed.
+2. **Walk to the maize** — on the Figma map: in along the dirt path, up the grass to the front maize bed.
    The first tap or drag moves the farmer; a pulsing ring shows where to tap. About 10–15 seconds.
-3. **First review (the aha moment)** — four steps, the template for every review in Lima:
+3. **First check (the aha moment)** — four steps, the template for every check in Lima:
    - **Look** at four pictures (the crop, pests & disease, soil & water, layout). Tap to zoom; the next one glows.
    - **Spot** the rows that look wrong in the field.
    - **Judge**: healthy · needs water · pests · needs fertiliser.
    - **Result**. Right: the damaged rows light up, the farmer cheers by name and the maize recovers, ending on
-     *"You can read a shamba now, and your neighbours' shambas need you."* Wrong: the missed clue is circled and
+     *"You can read your crops now, so check every one of them often."* Wrong: the missed clue is circled and
      the player walks round to the **back maize bed** to try again.
-4. **The farm opens** — the mist lifts on screen, neighbours' beds are labelled, and Mama Achieng's
-   **sukuma wiki** (the greens on the left of the map) needs a review with fewer hints. Its problem is subtler:
-   no holes, just limp, dull leaves and cracked soil at the back.
-5. **Close** — *"The rains are due tonight. Check Mama Achieng's sukuma wiki again tomorrow."* The reminder
-   stays in Messages, and the farm screen opens.
+4. **The whole farm opens** — the mist lifts on screen and the crops are labelled. The farmer's **sukuma
+   wiki** (the greens on the left of the map) needs a check with fewer hints. Its problem is subtler: no
+   holes, just limp, dull leaves and cracked soil at the back.
+5. **Into the field rounds** — *"Your tomatoes need a check too: healthy crops mean good food for your
+   family."* **Check all my crops** opens the [field rounds](#field-rounds), where the player checks every
+   bed on the farm. From then on the farm screen's **Rounds** button brings them back.
 
-Passing the first review marks onboarding done, so it never repeats. Reloading mid-session resumes at the
+Passing the first check marks onboarding done, so it never repeats. Reloading mid-session resumes at the
 current moment.
 
 ![A review: spot the rows that look wrong](docs/review.webp)
@@ -168,7 +172,7 @@ nitrogen deficiency.
 | `data.ts` | Reviews, farmer looks, name suggestions, the four calls |
 | `art.tsx` | Crops, soil, close-ups, field and farmer, drawn from the data |
 | `Review.tsx` | The one review system: Look → Spot → Judge → Result |
-| `Village.tsx` | Tap-to-walk over the Figma map along fixed routes; mist, arrows and labels. Bed outlines and routes are in `SPOTS`, `MAIN`, `TO_LOWER`, `TO_ACHIENG`. |
+| `Village.tsx` | Tap-to-walk over the Figma map along fixed routes; mist, arrows and labels. Bed outlines and routes are in `SPOTS`, `MAIN`, `TO_LOWER`, `TO_SUKUMA`. |
 | `Create.tsx`, `FirstSession.tsx` | Farmer creation and the order of moments |
 | `track.ts` | Event log (below) |
 
@@ -197,8 +201,11 @@ Balance numbers live in `src/data.ts` (`STEP_META`, `HARVEST_EFFECT`, `STORAGE_O
 
 ## Field rounds
 
-Open **Rounds** on the farm screen (right edge, above Shop). The player checks **seven farms back to back**. For
-every farm the farmer **walks there** along the paths, then the player:
+The farmer has to check all their crops often for the farm to keep progressing and growing healthy food. Field
+rounds are how: the first session ends in them, and **Rounds** on the farm screen (right edge, above Shop) opens
+them again. The player checks **every bed on the farm back to back** — six beds, named by where they are (middle,
+back, left, front-left, right, front-right) because their crops rotate. For every bed the farmer **walks there**
+along the paths, then the player:
 
 1. **Looks** at five pictures: the crop, pests & disease, soil, water, and the state of the farm, plus the farmer's
    note (planting date, weather, what was done).
@@ -208,17 +215,17 @@ every farm the farmer **walks there** along the paths, then the player:
 
 ### A crop stays for three weeks
 
-Each farm keeps **one crop for 21 real days**, counted from the day the player first opened the rounds. The crop
+Each bed keeps **one crop for 21 real days**, counted from the day the player first opened the rounds. The crop
 moves through three stages: **seedlings** (days 1–7), **growing** (8–14) and **harvest time** (15–21). On day 22 the
-farm rotates to the next crop (maize → beans → sukuma wiki → tomatoes), so pests and disease do not build up.
+bed rotates to the next crop (maize → beans → sukuma wiki → tomatoes), so pests and disease do not build up.
 
-Every real day each farm gets a new situation, drawn from what can happen to that crop at that stage. The same farm
+Every real day each bed gets a new situation, drawn from what can happen to that crop at that stage. The same farm
 on the same day is always the same, so a re-check after 30 seconds shows the same farm. The mix and the stages are in
 `src/rounds/hazards.ts`.
 
 | Situation | What it is | Crops | Stages |
 |---|---|---|---|
-| `healthy` | A healthy farm | maize, beans, kale, tomato | seedlings, growing, harvest |
+| `healthy` | A healthy crop | maize, beans, kale, tomato | seedlings, growing, harvest |
 | `drought` | Not enough water | maize, beans, kale, tomato | growing |
 | `flood` | Too much water | maize, beans, kale, tomato | seedlings, growing, harvest |
 | `nitrogen` | Short of plant food | maize, kale, tomato | growing |
@@ -240,17 +247,17 @@ planting or harvesting at the wrong time are there on top of drought, pests and 
 
 ### Rules
 
-- **Every 30 seconds**: each farm can be checked once every 30 seconds (`CHECK_COOLDOWN_S` in `src/rounds/data.ts`).
-  A pin shows the countdown. A missed farm can be checked again after 30 seconds, from the chip bar or the summary.
-- **Points**: 100 for a right read first time, 50 after a second look, paid **once per farm per day**. Results reset at
-  the player's midnight, because every farm is a new situation then.
+- **Every 30 seconds**: each bed can be checked once every 30 seconds (`CHECK_COOLDOWN_S` in `src/rounds/data.ts`).
+  A pin shows the countdown. A missed bed can be checked again after 30 seconds, from the chip bar or the summary.
+- **Points**: 100 for a right read first time, 50 after a second look, paid **once per bed per day**. Results reset at
+  the player's midnight, because every bed is a new situation then.
 - **Real photos**: each picture uses a photo from `src/rounds/photos/<situation>/<part>.jpg` when one exists and a
   drawing otherwise. See `src/rounds/photos/README.md` for the shot list and specs.
 - **Review menu**: *Field rounds* lists the map, look, judge, right, wrong and summary screens, and one entry for
   each new situation.
 - **Events**: `round_start`, `round_part_viewed`, `round_call` (no names).
-- The Figma map has six beds, so round 7 reuses the front maize bed (shown as two pins side by side). The beds are
-  painted art and always show the same plants; the crop name on each pin says what is actually growing.
+- The Figma map has six beds, one round each. The beds are painted art and always show the same plants; the crop
+  name on each pin says what is actually growing.
 
 ## Design review mode
 
@@ -266,7 +273,7 @@ player's saved game or events.
   before the first session existed keep their coins and play the first session once.
 - **Events**: one per first-session moment, so drop-off can be measured — `create_shown`, `farmer_created`,
   `walk_start`, `first_move`, `shamba_reached`, `review_start`, `part_viewed`, `spot_found`, `call`,
-  `review_failed`, `review_passed`, `village_unlocked` (the farm opening), `session_close`. Each has a
+  `review_failed`, `review_passed`, `farm_opened`, `session_close`. Each has a
   timestamp and time since the first event. They are kept on the device (`lima-events`, last 300) and, only
   if `VITE_EVENTS_URL` is set at build time, sent with `navigator.sendBeacon`.
 - **No personal data is sent.** Events never include the farmer's name. There are no accounts, cookies or
@@ -291,12 +298,12 @@ player's saved game or events.
   stand in for a whole season) and the rotation. Round points are illustrative.
 - **Lima AI** is a rule-based stand-in that reads the season's numbers; it does not call an AI service.
 - **Rewards** are saved in the game but nothing is sent to a partner; there is no redemption backend.
-- **One painted farm**: the Figma map shows one farm, so the "neighbours" share it. A village with separate
-  farms would need a wider map painted in Figma.
+- **Missed checks** show in the rounds (a bed to look at again) but do not yet lower the maize harvest or the food
+  the farm produces; how much a missed check should cost is a game-design choice still to make.
 - **Art styles**: the farm and UI are the painted Figma art; the first-session crops and the farmer are
   drawn flat in code.
 - **Language**: English with a little Swahili (*Karibu*, *Twende*, shamba, sukuma wiki). Full Swahili is not done.
-- **Messages** shows the reminder from the first session; there is no inbox yet.
+- **Messages** shows a reminder to check every bed; there is no inbox yet.
 - The faint 5% pattern texture on the cream panels in Figma is omitted.
 
 ---

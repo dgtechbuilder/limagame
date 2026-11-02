@@ -1,10 +1,10 @@
 # Real photos for the field rounds
 
-Every farm check shows five pictures: the crop, pests and disease, soil, water, and the state of the farm. Until a
+Every bed check shows five pictures: the crop, pests and disease, soil, water, and the state of the farm. Until a
 real photo is dropped in, the game draws the picture in code, so nothing is broken without them.
 
-A farm meets a different situation each day (see `src/rounds/hazards.ts`), so photos are filed by **situation**, not by
-round. One photo then serves every farm that meets that situation.
+A bed meets a different situation each day (see `src/rounds/hazards.ts`), so photos are filed by **situation**, not by
+round. One photo then serves every bed that meets that situation.
 
 ## How to add one
 
@@ -36,7 +36,7 @@ photos where the crops look very different (for example blight on tomato and rus
 
 | Folder | What it shows | Crops | When it can happen |
 |---|---|---|---|
-| `healthy` | A healthy farm | maize, beans, kale, tomato | seedlings, growing, harvest |
+| `healthy` | A healthy crop | maize, beans, kale, tomato | seedlings, growing, harvest |
 | `drought` | Not enough water | maize, beans, kale, tomato | growing |
 | `flood` | Too much water | maize, beans, kale, tomato | seedlings, growing, harvest |
 | `nitrogen` | Short of plant food | maize, kale, tomato | growing |

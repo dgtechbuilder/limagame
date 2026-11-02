@@ -1,5 +1,5 @@
-/* First session: farmer looks, the shambas the player reviews, and every line they read.
-   One review system drives every shamba; to add a review, add an entry to SHAMBAS. */
+/* First session: farmer looks, the crops the player checks on their own farm, and every line they read.
+   One review system drives every check; to add one, add an entry to SHAMBAS. */
 
 export type Call =
   | 'healthy'
@@ -81,7 +81,7 @@ export const SHAMBAS: Record<string, ShambaReview> = {
   first: {
     id: 'first',
     crop: 'maize',
-    title: "{name}'s shamba",
+    title: "{name}'s maize",
     condition: 'armyworm',
     correct: 'pests',
     problemRows: [2, 3],
@@ -101,7 +101,7 @@ export const SHAMBAS: Record<string, ShambaReview> = {
   lower: {
     id: 'lower',
     crop: 'maize',
-    title: "{name}'s back shamba",
+    title: "{name}'s back maize",
     intro: 'Same maize, {name}. Look closely at every part this time.',
     condition: 'armyworm',
     correct: 'pests',
@@ -118,10 +118,11 @@ export const SHAMBAS: Record<string, ShambaReview> = {
     right: 'Fall armyworm! You caught it, {name}.',
     practice: 'A pinch of ash or sand in each funnel stops them early.',
   },
-  achieng: {
-    id: 'achieng',
+  sukuma: {
+    id: 'sukuma',
     crop: 'kale',
-    title: "Mama Achieng's sukuma wiki",
+    title: "{name}'s sukuma wiki",
+    intro: 'Now your sukuma wiki, {name}. Look at every part first.',
     condition: 'drought',
     correct: 'water',
     problemRows: [3, 4],
@@ -138,11 +139,5 @@ export const SHAMBAS: Record<string, ShambaReview> = {
     practice: 'Water at the roots in the cool of the morning.',
   },
 };
-
-/** Village names for the neighbours that appear when the village opens. */
-export const NEIGHBOURS = [
-  { id: 'achieng', owner: 'Mama Achieng', crop: 'Sukuma wiki' },
-  { id: 'baraka', owner: 'Baraka', crop: 'Tomatoes' },
-];
 
 export const say = (line: string, name: string) => line.replace(/\{name\}/g, name);

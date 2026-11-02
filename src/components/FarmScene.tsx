@@ -203,7 +203,7 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
             className="abs"
             style={{ left: 779, top: 238, width: 56, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}
             onClick={() => dispatch({ type: 'rounds', open: true })}
-            aria-label="Field rounds: check seven farms"
+            aria-label="Field rounds: check every bed on your farm"
           >
             <span className="peach-btn" style={{ width: 56, height: 48.66 }}>
               <Img src={img.maizeMini} w={28} h={28} />

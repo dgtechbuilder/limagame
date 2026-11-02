@@ -12,10 +12,10 @@ import type { Crop } from '../first/data';
 import { Inspect, type InspectView } from './Inspect';
 import { BEDS, START_NODE, START_POINT, measure, pointAt, routeBetween, standNode, type Pt } from './walk';
 
-/* Field rounds: seven farms, back to back.
+/* Field rounds: every bed on the farmer's farm, back to back.
    The farmer walks to each farm on the painted map, looks at five pictures (crop, pests & disease, soil, water,
    state of the farm), and makes a call. After a check a farm cannot be checked again for 30 seconds, so a missed
-   farm is revisited later: from the chip bar at the top, or from the summary after round 7. */
+   bed is revisited later: from the chip bar at the top, or from the summary after the last round. */
 
 type Phase = 'ready' | 'walking' | 'inspect' | 'between' | 'summary';
 type Status = 'pending' | 'current' | 'first' | 'second' | 'missed';
@@ -134,7 +134,6 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
         r4: { right: true, looks: 2 },
         r5: { right: true, looks: 1 },
         r6: { right: false, looks: 1 },
-        r7: { right: true, looks: 1 },
       });
       setCheckedAt({ r3: base - 12000, r6: base - 45000 });
       setEarned(550);
@@ -239,7 +238,7 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
   let line = '';
   let action: { label: string; onClick: () => void } | undefined;
   if (phase === 'ready') {
-    line = t('Seven farms need you today, {name}. Each keeps its crop for three weeks.');
+    line = t('Every bed on your farm needs a check today, {name}. Each keeps its crop for three weeks.');
     action = { label: 'Start round 1', onClick: goNext };
   } else if (phase === 'walking' && visit) {
     line = visit.second ? t(`Back to ${visit.round.title}, {name}.`) : t(`Round ${visit.round.n} of ${rounds.length}: off to ${visit.round.title}.`);
@@ -248,13 +247,13 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
     line = next
       ? t(`Round ${idx + 1} done, {name}. Next: ${next.title}.`) + (again.length ? ` You can look at ${again[0].short} again.` : '')
       : '';
-    action = next ? { label: 'Next farm', onClick: goNext } : undefined;
+    action = next ? { label: 'Next bed', onClick: goNext } : undefined;
   }
 
   return (
     <div className="abs fs-screen rounds" style={{ inset: 0 }}>
       <FarmMap />
-      <svg className="village" viewBox="0 0 874 402" width={874} height={402} role="group" aria-label="The farms. Tap a numbered pin to walk there.">
+      <svg className="village" viewBox="0 0 874 402" width={874} height={402} role="group" aria-label="Your farm. Tap a numbered pin to walk to that bed.">
         {/* the farm the farmer is heading for */}
         {target && (
           <polygon
@@ -314,7 +313,7 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
         Week {Math.floor((rounds[0].day) / 7) + 1} of 3 · {STAGE_LABELS[rounds[0].stage]} · crops change in {CYCLE_DAYS - rounds[0].day} days
       </p>
 
-      <ol className="rr-chips" aria-label="The seven rounds">
+      <ol className="rr-chips" aria-label="The rounds">
         {rounds.map(r => {
           const st = statusOf(r);
           const wait = st === 'missed' ? Math.ceil(left(r)) : 0;
@@ -334,7 +333,7 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
       {phase === 'summary' && (
         <div className="abs ending" style={{ inset: 0 }}>
           <div className="rr-summary">
-            <p className="rr-summary-title">{rightCount === rounds.length ? t('You read all seven farms, {name}!') : `${rightCount} of ${rounds.length} farms read right`}</p>
+            <p className="rr-summary-title">{rightCount === rounds.length ? t('You read every bed on your farm, {name}!') : `${rightCount} of ${rounds.length} beds read right`}</p>
             <ol>
               {rounds.map(r => {
                 const st = statusOf(r);

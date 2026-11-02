@@ -3,9 +3,9 @@ import { FarmMap } from '../components/FarmMap';
 import { FarmerFigure } from './art';
 import type { Look } from './data';
 
-/* The first session is played on the farm map from Figma (the same painting as the farm screen).
-   This layer only adds what moves or guides: the farmer, a dotted trail, the goal arrow, labels and
-   the mist over the parts of the farm that are still locked. The farmer walks along fixed routes
+/* The first session is played on the farmer's own farm: the map from Figma (the same painting as the
+   farm screen). This layer only adds what moves or guides: the farmer, a dotted trail, the goal arrow,
+   labels and the mist over the crops that open after the first check. The farmer walks along fixed routes
    traced over the painted path and grass, so a tap anywhere moves them to the nearest point ahead. */
 
 type Pt = [number, number];
@@ -16,10 +16,10 @@ export const SPOTS = {
   first: { poly: '405,250 510,194 557,222 455,272', cx: 482, cy: 232, label: [482, 166] as Pt },
   /** back maize bed: the retry shamba */
   lower: { poly: '328,222 440,176 470,192 360,246', cx: 400, cy: 210, label: [384, 146] as Pt },
-  /** the two greens beds on the left: Mama Achieng's sukuma wiki */
-  achieng: { poly: '172,275 300,226 432,290 305,346', cx: 300, cy: 280, label: [262, 216] as Pt },
-  /** tomatoes on the right: opens tomorrow */
-  baraka: { poly: '512,276 600,230 740,282 640,334', cx: 626, cy: 280, label: [660, 222] as Pt },
+  /** the two greens beds on the left: the farmer's sukuma wiki */
+  sukuma: { poly: '172,275 300,226 432,290 305,346', cx: 300, cy: 280, label: [262, 216] as Pt },
+  /** tomatoes on the right: checked in the field rounds */
+  tomato: { poly: '512,276 600,230 740,282 640,334', cx: 626, cy: 280, label: [660, 222] as Pt },
 };
 
 /** In from the dirt path on the left, along it to the gate, then up the grass to the front maize bed. */
@@ -42,8 +42,8 @@ const TO_LOWER: Pt[] = [
   [520, 186],
   [474, 178],
 ];
-/** Down to the path and along the front of the greens to Mama Achieng's sukuma wiki. */
-const TO_ACHIENG: Pt[] = [
+/** Down to the path and along the front of the greens to the sukuma wiki. */
+const TO_SUKUMA: Pt[] = [
   [474, 290],
   [452, 318],
   [420, 348],
@@ -52,13 +52,13 @@ const TO_ACHIENG: Pt[] = [
   [196, 310],
 ];
 
-export type Route = 'toFirst' | 'toLower' | 'toAchieng' | 'lowerToAchieng';
+export type Route = 'toFirst' | 'toLower' | 'toSukuma' | 'lowerToSukuma';
 
 export function routePoints(route: Route): Pt[] {
   if (route === 'toFirst') return MAIN;
   if (route === 'toLower') return TO_LOWER;
-  if (route === 'toAchieng') return TO_ACHIENG;
-  return [...[...TO_LOWER].reverse(), ...TO_ACHIENG.slice(1)];
+  if (route === 'toSukuma') return TO_SUKUMA;
+  return [...[...TO_LOWER].reverse(), ...TO_SUKUMA.slice(1)];
 }
 
 function measure(pts: Pt[]) {
@@ -302,12 +302,12 @@ export function Village({
         {route && <path d={pathD(pts)} fill="none" stroke="#fff6cf" strokeWidth={4} strokeDasharray="2 10" strokeLinecap="round" opacity={0.95} />}
 
         {/* labels */}
-        <MapLabel x={SPOTS.first.label[0]} y={SPOTS.first.label[1]} text={name ? `${name}'s shamba` : 'Your shamba'} strong={target === 'first'} />
-        {(target === 'lower' || route === 'toLower') && <MapLabel x={SPOTS.lower.label[0]} y={SPOTS.lower.label[1]} text="Back shamba" strong />}
+        <MapLabel x={SPOTS.first.label[0]} y={SPOTS.first.label[1]} text={name ? `${name}'s maize` : 'Your maize'} strong={target === 'first'} />
+        {(target === 'lower' || route === 'toLower') && <MapLabel x={SPOTS.lower.label[0]} y={SPOTS.lower.label[1]} text="Back maize" strong />}
         {lifted && (
           <g className="label-pop">
-            <MapLabel x={SPOTS.achieng.label[0]} y={SPOTS.achieng.label[1]} text="Mama Achieng · sukuma wiki" strong={target === 'achieng'} />
-            <MapLabel x={SPOTS.baraka.label[0]} y={SPOTS.baraka.label[1]} text="Baraka · tomorrow" />
+            <MapLabel x={SPOTS.sukuma.label[0]} y={SPOTS.sukuma.label[1]} text="Your sukuma wiki" strong={target === 'sukuma'} />
+            <MapLabel x={SPOTS.tomato.label[0]} y={SPOTS.tomato.label[1]} text="Your tomatoes" />
           </g>
         )}
 

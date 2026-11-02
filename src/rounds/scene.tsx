@@ -254,7 +254,7 @@ function CropPic({ r, uid }: { r: Round; uid: string }) {
         <Specimen crop={r.crop} early={early} x={148} y={118} marks={marksFor(r)} seed={12} uid={uid} />
       )}
       {lab(52, 'A healthy plant')}
-      {lab(148, 'This farm')}
+      {lab(148, 'This bed')}
     </>
   );
 }
@@ -428,7 +428,7 @@ function SoilPic({ r }: { r: Round }) {
       {r.hazard === 'harvestLate' && Array.from({ length: 5 }, (_, k) => <circle key={k} cx={x0 + 14 + rand() * 60} cy={30 + rand() * 76} r={6} fill="#8a6a34" stroke="#2a3a22" strokeWidth={1.6} />)}
       {r.hazard === 'harvestEarly' && Array.from({ length: 6 }, (_, k) => <path key={k} d={`M${x0 + 10 + rand() * 66},${40 + rand() * 66} q8,-8 16,-2 q-8,8 -16,2 Z`} fill="#7fbf4a" stroke="#4f8a2a" strokeWidth={0.8} />)}
       {lab(52, 'A healthy plot')}
-      {lab(148, 'This farm')}
+      {lab(148, 'This bed')}
     </>
   );
 }

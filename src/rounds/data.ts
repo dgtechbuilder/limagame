@@ -1,5 +1,5 @@
-/* Field rounds: seven farms, one after the other. Each farm keeps one crop for 21 real days and meets a new
-   situation every day (see hazards.ts). To add or move a farm, edit FARMS.
+/* Field rounds: every bed on the farmer's one farm, one after the other. Each bed keeps one crop for 21 real
+   days and meets a new situation every day (see hazards.ts). To add or move a bed, edit FARMS.
    {name} is replaced with the farmer's name everywhere. */
 
 import type { Call, Condition, Crop } from '../first/data';
@@ -19,7 +19,7 @@ export const ROUND_PART_LABELS: Record<RoundPart, string> = {
   farm: 'State of the farm',
 };
 
-/** After a check, the same farm cannot be checked again for this long. */
+/** After a check, the same bed cannot be checked again for this long. */
 export const CHECK_COOLDOWN_S = 30;
 
 /** One farm as it is today: its crop, how far along it is, and what is going on. This is what a check shows. */

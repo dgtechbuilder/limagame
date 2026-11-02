@@ -230,7 +230,7 @@ export function Review({
     line = t(shamba.clue.text);
     action = shamba.retry
       ? {
-          label: 'Try the back shamba',
+          label: 'Try the back maize',
           onClick: () => {
             track('review_failed', { shamba: shamba.id, call: wrongCall });
             onFailed();

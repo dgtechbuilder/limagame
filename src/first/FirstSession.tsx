@@ -7,9 +7,9 @@ import { GuideLine, Review } from './Review';
 import { track } from './track';
 import { Village } from './Village';
 
-/* The first session, in order:
-   create the farmer → walk to the shamba → first review (wrong call → back shamba → review)
-   → the village opens → walk to a neighbour → second review → back to the farm. */
+/* The first session, in order, all on the farmer's own farm:
+   create the farmer → walk to the maize → first check (wrong call → back maize bed → check again)
+   → the whole farm opens → walk to the sukuma wiki → second check → field rounds: check every bed. */
 
 export function FirstSession({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
   const phase = s.fs.phase;
@@ -30,10 +30,10 @@ export function FirstSession({ s, dispatch }: { s: GameState; dispatch: Dispatch
     if (phase === 'walk1' || phase === 'walkRetry' || phase === 'walk2') track('walk_start', { route: phase });
   }, [phase]);
 
-  // the village-opening moment plays once
+  // the farm-opening moment plays once
   useEffect(() => {
     if (phase !== 'walk2' || s.fs.opened) return;
-    track('village_unlocked');
+    track('farm_opened');
     setOpeningLine(true);
     const id = window.setTimeout(() => {
       go('walk2', { opened: true });
@@ -76,7 +76,7 @@ export function FirstSession({ s, dispatch }: { s: GameState; dispatch: Dispatch
       <>
         <Village look={look} name={name} route="toFirst" target="first" open={false} showTapHint={!moved} onFirstMove={() => (setMoved(true), track('first_move'))} onArrive={arrive('first', 'review1')} />
         {hud}
-        <GuideLine style={topLine} text={moved ? t('Keep going, {name}. Your maize is just ahead.') : t('Karibu, {name}! Tap the path to walk to your shamba.')} />
+        <GuideLine style={topLine} text={moved ? t('Keep going, {name}. Your maize is just ahead.') : t('Karibu, {name}! Tap the path to walk to your maize.')} />
       </>
     );
 
@@ -85,7 +85,7 @@ export function FirstSession({ s, dispatch }: { s: GameState; dispatch: Dispatch
       <>
         <Village look={look} name={name} route="toLower" target="lower" open={false} showTapHint={!moved} onFirstMove={() => setMoved(true)} onArrive={arrive('lower', 'retry')} />
         {hud}
-        <GuideLine style={topLine} text={t('Try again on your back shamba, {name}.')} />
+        <GuideLine style={topLine} text={t('Try again on your back maize, {name}.')} />
       </>
     );
 
@@ -96,15 +96,15 @@ export function FirstSession({ s, dispatch }: { s: GameState; dispatch: Dispatch
         <Village
           look={look}
           name={name}
-          route={s.fs.at === 'lower' ? 'lowerToAchieng' : 'toAchieng'}
-          target={opening ? null : 'achieng'}
+          route={s.fs.at === 'lower' ? 'lowerToSukuma' : 'toSukuma'}
+          target={opening ? null : 'sukuma'}
           frozen={opening}
           open
           opening={opening}
-          onArrive={arrive('achieng', 'review2')}
+          onArrive={arrive('sukuma', 'review2')}
         />
         {hud}
-        <GuideLine style={topLine} text={opening || openingLine ? t('The farm is open, {name}! Your neighbours need you.') : t('Mama Achieng asked you to check her sukuma wiki.')} />
+        <GuideLine style={topLine} text={opening || openingLine ? t('Your whole farm is open, {name}! Every crop needs checking.') : t('Your sukuma wiki is next, {name}.')} />
       </>
     );
   }
@@ -117,7 +117,7 @@ export function FirstSession({ s, dispatch }: { s: GameState; dispatch: Dispatch
         shamba={sh}
         name={name}
         look={look}
-        ending={{ line: "You can read a shamba now, {name}, and your neighbours' shambas need you.", button: 'Help the neighbours' }}
+        ending={{ line: 'You can read your crops now, {name}, so check every one of them often.', button: 'Check the next crop' }}
         onPassed={() => track('review_passed', { shamba: sh.id, first: true })}
         onFailed={() => go('walkRetry')}
         onEnd={() => go('walk2', { at: sh.id === 'lower' ? 'lower' : 'first', opened: false })}
@@ -128,17 +128,18 @@ export function FirstSession({ s, dispatch }: { s: GameState; dispatch: Dispatch
   if (phase === 'review2')
     return (
       <Review
-        key="achieng"
-        shamba={SHAMBAS.achieng}
+        key="sukuma"
+        shamba={SHAMBAS.sukuma}
         name={name}
         look={look}
-        ending={{ line: "The rains are due tonight, {name}. Check Mama Achieng's sukuma wiki again tomorrow.", button: 'Go to my farm' }}
-        onPassed={() => track('review_passed', { shamba: 'achieng' })}
+        ending={{ line: 'Your tomatoes need a check too, {name}: healthy crops mean good food for your family.', button: 'Check all my crops' }}
+        onPassed={() => track('review_passed', { shamba: 'sukuma' })}
         onFailed={() => undefined}
         onEnd={() => {
           track('session_close');
-          go('done', { note: "Check Mama Achieng's sukuma wiki after the rains." });
-          dispatch({ type: 'toast', text: t('Welcome to your farm, {name}.') });
+          go('done', { note: 'Check every bed on your farm often: open Rounds on the farm.' });
+          // straight into the field rounds: every bed on the farm, checked one after another
+          dispatch({ type: 'rounds', open: true });
         }}
       />
     );

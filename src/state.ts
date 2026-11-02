@@ -57,7 +57,7 @@ export interface Prices {
   storage: number;
 }
 
-/** First session: create → walk → review (→ retry) → village opens → second review → done. */
+/** First session: create → walk → review (→ retry) → the whole farm opens → second review → done. */
 export type FsPhase = 'create' | 'walk1' | 'review1' | 'walkRetry' | 'retry' | 'walk2' | 'review2' | 'done';
 
 /** The best result for one field round: read right (and on which look), or still missed. */
@@ -454,7 +454,7 @@ function reducer(s: GameState, a: Action): GameState {
         rounds: { ...s.rounds, day: a.day, done },
         points: s.points + earned,
         ...gainXp(s, a.right ? 0.06 : 0.01),
-        toast: earned ? toast(`Read right · +${earned} points · ${total} of ${FARMS.length} farms`) : s.toast,
+        toast: earned ? toast(`Read right · +${earned} points · ${total} of ${FARMS.length} beds`) : s.toast,
       };
     }
     case 'fs':
@@ -494,6 +494,8 @@ function load(): GameState {
     const raw = window.localStorage.getItem(SAVE_KEY);
     if (!raw) return initialState;
     const saved = JSON.parse(raw);
+    // Saves from before the farm had one owner may carry a reminder about neighbours.
+    if (typeof saved.note === 'string' && /Achieng|neighbour/i.test(saved.note)) saved.note = 'Check every bed on your farm often: open Rounds on the farm.';
     return { ...initialState, ...saved, modal: null, plotSelected: false, toast: null, roundsOpen: false, roundsView: null, roundsDemo: null, rounds: { ...initialState.rounds, ...(saved.rounds ?? {}) } };
   } catch {
     return initialState;
