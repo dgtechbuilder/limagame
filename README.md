@@ -1,110 +1,240 @@
 # Lima Farming Game
 
-A working React + TypeScript build of the Figma file **"29 Oct Farm Management App"**
-(`dvRxEJtTy8rGBPIVmCLb4E`, section *Farm game*). All 22 frames are implemented as one playable app.
+A farming game for smallholder farmers in Kenya, played on a landscape phone. Players learn to read a
+shamba with their own eyes, then grow a season of maize where every choice (doing the work, when to
+harvest, how to store, whether to process) changes what they earn. Points unlock real partner discounts.
 
-## Run it
+The game is built in React + TypeScript from the Figma file **"29 Oct Farm Management App"**
+(`dvRxEJtTy8rGBPIVmCLb4E`, section *Farm game*). The Figma farm map is the ground of the whole game.
+
+**▶ Play it: https://dgtechbuilder.github.io/limagame/** — best on a phone held sideways. On Android or
+iPhone, *Add to Home screen* runs it full screen like an app.
+
+![The first session on the Figma farm map](docs/first-session.webp)
+
+---
+
+## Contents
+
+- [What a player does](#what-a-player-does)
+- [Run it locally](#run-it-locally)
+- [Deploy](#deploy)
+- [Project structure](#project-structure)
+- [How the Figma design maps to code](#how-the-figma-design-maps-to-code)
+- [The first session](#the-first-session)
+- [The season](#the-season)
+- [Design review mode](#design-review-mode)
+- [Saving, events and privacy](#saving-events-and-privacy)
+- [Performance on low-cost phones](#performance-on-low-cost-phones)
+- [Assumptions and open decisions](#assumptions-and-open-decisions)
+
+---
+
+## What a player does
+
+| When | What happens |
+| --- | --- |
+| **0:00** | Names a farmer (or taps *Wanjiku*, *Otieno* or *Chebet*) and picks a look. No menus or text walls first. |
+| **0:10** | Walks across the farm map to their maize shamba. The rest of the farm is under mist. |
+| **0:25** | Reviews the shamba by looking: spots the rows with fall armyworm and makes the right call. This is the moment the game is built around. |
+| **~2:00** | The farm opens. A neighbour's sukuma wiki needs the same kind of review, with fewer hints. |
+| **Then** | Plays seasons on their farm: six farming steps, harvest timing, storage, processing, selling, results, rewards. |
+
+A wrong call is part of learning: the clue they missed is circled, and they try again on a second maize bed.
+
+## Run it locally
 
 ```bash
 npm install
-npm run dev      # http://localhost:5173
-npm run build    # production build in dist/
+npm run dev        # http://localhost:5173
+npm run build      # production build in dist/
+npm run preview    # serve the production build
+npm run typecheck  # TypeScript, no output files
 ```
 
-Requires Node 18+. No other services are needed; everything runs in the browser.
+Needs Node 18 or newer. There is no backend: everything runs in the browser.
 
-Pushing to `main` builds the site and deploys it to GitHub Pages (`.github/workflows/deploy.yml`).
+## Deploy
 
-Progress saves in the browser (`localStorage`, key `lima-farming-game:v2`). **Settings → Reset progress** clears it.
+Every push to `main` builds the site and publishes it to GitHub Pages with
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) (install → type-check → `vite build` →
+deploy). The workflow can also be started by hand from the *Actions* tab. Pages is set to deploy from
+**GitHub Actions** in the repository settings.
 
-**Design review:** open `?review=1` (or Settings → Design review) for a sandbox with a menu of every Figma frame
-filled with sample data. Deep-link with `?screen=<name>`, e.g. `?screen=Storage`. Review mode never saves.
+`vite.config.ts` uses a relative base (`./`), so the same build works at
+`https://<user>.github.io/<repo>/` or any other path.
 
-## How the design maps to code
+Optional build setting: `VITE_EVENTS_URL=https://…` sends the first-session events (see below) to your
+own collector.
 
-The design is a landscape phone game (874 × 402). The app renders on a fixed 874 × 402 stage that
-scales to fit the window, so every position matches the Figma frames.
-
-| Figma section | Frames | Code |
-| --- | --- | --- |
-| Game Design | Game (×3 variants), Food, Fertilizer, Water tanks, Equipments | `components/FarmScene.tsx`, `screens/Catalog.tsx` → `ShopModal` |
-| New Design | Land Prep (+ completed), Planting, Fertilizer, Pesticides, Water, Harvest, Sale of produce, Info | `screens/Catalog.tsx` → `StepsModal`; `screens/Journey.tsx` → `SaleModal`, `InfoModal` |
-| New features | Storage, Outcome comparison, Real world reward (Harvest timing), Reward hub, Value addition, Preview (Select Process) | `screens/Journey.tsx` |
+## Project structure
 
 ```
 src/
-  App.tsx              stage scaling, modal routing, first-run welcome, review picker
-  state.ts             game state and season rules (health, yield, sale maths), saved to localStorage
-  data.ts              all copy, prices and item lists from the design
-  assets.ts            image paths (all exported from Figma into public/assets)
-  styles.css           design tokens (colours, gold button, cards, sidebar) and component styles
-  components/          FarmScene (HUD + field), Modal shell + sidebars, Icons (inline SVG), ui helpers
-  screens/             Catalog (Shop, Farming Steps), Journey (timing → sale → storage → value → results, rewards), Meta (Welcome, Settings)
-design-refs/           PNG renders of every Figma frame, for visual comparison
+  main.tsx                 entry point
+  App.tsx                  scales the 874 × 402 stage to the screen; routes first session / farm / modals; review menu
+  state.ts                 game state, season rules and saving (useReducer + localStorage)
+  data.ts                  farm copy, prices, tasks, rewards, storage and processing options
+  assets.ts                image paths (art exported from Figma into public/assets)
+  styles.css               design tokens (colours, gold button, panels) and component styles
+  components/
+    FarmMap.tsx            the Figma farm map: the ground of the whole game (1× and 2×)
+    FarmScene.tsx          farm screen: HUD, Next Task, field bubbles, selected plot
+    Modal.tsx, ui.tsx, Icons.tsx   modal frames, buttons, chips, inline SVG icons
+  screens/
+    Catalog.tsx            Shop and Farming Steps
+    Journey.tsx            harvest timing → sale → storage → value addition → process → results; rewards; info
+    Meta.tsx               How the farm works, Settings
+  first/                   the first session (see below)
+public/
+  assets/                  130 images exported from Figma, incl. bg-farm.webp and bg-farm@2x.webp
+  manifest.webmanifest     installable web app (landscape, full screen) + icons
+design-refs/               PNG renders of the 22 Figma frames, for side-by-side checks
+docs/                      screenshots used in this README
 ```
+
+## How the Figma design maps to code
+
+The design is a landscape phone game on an **874 × 402** frame. The app draws everything on a fixed
+874 × 402 stage and scales it to fit the screen, so positions match the Figma frames exactly. Portrait
+phones see a "rotate your phone" prompt.
+
+| Figma group | Frames | Code |
+| --- | --- | --- |
+| Game Design | Game (3 variants), Food, Fertilizer, Water tanks, Equipments | `components/FarmScene.tsx`, `screens/Catalog.tsx` → `ShopModal` |
+| New Design | Land Prep (+ completed), Planting, Fertilizer, Pesticides, Water, Harvest, Sale of produce, Info | `screens/Catalog.tsx` → `StepsModal`; `screens/Journey.tsx` → `SaleModal`, `InfoModal` |
+| New features | Storage, Outcome comparison, Real world reward (Harvest timing), Reward hub, Value addition, Preview (Select process) | `screens/Journey.tsx` |
+| Map (`IMG_5612 1`, in every frame) | The painted farm | `components/FarmMap.tsx`, used by the farm, the first session and behind every review |
+
+Added beyond the Figma file: the first session, Settings, season results with history, empty states and
+locked steps. They reuse the Figma frames, colours, wooden title plank and gold buttons.
+
+![The farm screen](docs/farm.webp)
 
 ## The first session
 
-A new player never sees the farm first. They:
+A new player never sees the farm screen first. In order:
 
-1. **Create a farmer**: name (or tap Wanjiku, Otieno or Chebet) and one of four looks. Saved at once.
-2. **Walk to their shamba** on the Figma farm map: in along the dirt path, up the grass to the front maize
-   bed. Tap or drag to walk; everything else on the farm is under mist.
-3. **Review the shamba** (the aha moment): *Look* at four pictures (crop, pests & disease, soil & water,
-   layout; tap to zoom) → *Spot* the rows that look wrong → *Judge* (healthy, needs water, pests,
-   needs fertiliser) → *Result*. Right: the rows light up, the farmer cheers by name and the maize recovers.
-   Wrong: the clue they missed is circled and they walk round to the back maize bed to try again.
-4. **The farm opens**: the mist lifts, neighbours' beds are labelled, and Mama Achieng's sukuma wiki (the
-   greens on the left of the map) needs a review with fewer hints. The session ends on a reason to come
-   back, then opens the farm screen.
+1. **Create the farmer** — name plus one of four looks, saved immediately. The name is used in every line
+   from then on, and the farmer's portrait replaces the HUD avatar.
+2. **Walk to the shamba** — on the Figma map: in along the dirt path, up the grass to the front maize bed.
+   The first tap or drag moves the farmer; a pulsing ring shows where to tap. About 10–15 seconds.
+3. **First review (the aha moment)** — four steps, the template for every review in Lima:
+   - **Look** at four pictures (the crop, pests & disease, soil & water, layout). Tap to zoom; the next one glows.
+   - **Spot** the rows that look wrong in the field.
+   - **Judge**: healthy · needs water · pests · needs fertiliser.
+   - **Result**. Right: the damaged rows light up, the farmer cheers by name and the maize recovers, ending on
+     *"You can read a shamba now, and your neighbours' shambas need you."* Wrong: the missed clue is circled and
+     the player walks round to the **back maize bed** to try again.
+4. **The farm opens** — the mist lifts on screen, neighbours' beds are labelled, and Mama Achieng's
+   **sukuma wiki** (the greens on the left of the map) needs a review with fewer hints. Its problem is subtler:
+   no holes, just limp, dull leaves and cracked soil at the back.
+5. **Close** — *"The rains are due tonight. Check Mama Achieng's sukuma wiki again tomorrow."* The reminder
+   stays in Messages, and the farm screen opens.
 
-The Figma farm map (`public/assets/bg-farm.webp`, plus `bg-farm@2x.webp` for phone screens) is the ground
-of the whole game: the walks, the farm screen, and the backdrop behind every review and modal
-(`components/FarmMap.tsx`). Routes and bed outlines on that map are in `first/Village.tsx` → `SPOTS`.
+Passing the first review marks onboarding done, so it never repeats. Reloading mid-session resumes at the
+current moment.
 
-Passing the first review marks onboarding done. Code is in `src/first/`:
+![A review: spot the rows that look wrong](docs/review.webp)
 
-| File | What it does |
+### Every review is data
+
+All the pictures are drawn in SVG from a short record in [`src/first/data.ts`](src/first/data.ts), so every
+later review is the same experience with new content:
+
+```ts
+first: {
+  crop: 'maize',
+  condition: 'armyworm',          // what the art draws: holes, droppings in the funnel, a caterpillar
+  correct: 'pests',
+  problemRows: [2, 3],            // rows that show the problem; the rest are healthy
+  hints: 'full',                  // 'full' for the first review, 'few' afterwards
+  captions: { crop: '…', pests: '…', soil: '…', layout: '…' },  // one sentence each; points the eye, never diagnoses
+  clue: { part: 'pests', text: 'See the holes and the sawdust in the funnel, {name}?' },
+  right: 'Fall armyworm! Well read, {name}.',
+  practice: 'A pinch of ash or sand in each funnel stops them early.',
+  retry: 'lower',                 // shamba to send the player to after a wrong call
+}
+```
+
+Crops drawn today: maize, beans, sukuma wiki. Conditions: healthy, fall armyworm, drought (water stress),
+nitrogen deficiency.
+
+| File in `src/first/` | What it does |
 | --- | --- |
-| `data.ts` | Every shamba review as data (crop, condition, problem rows, right call, captions, clue, retry). Add a review by adding an entry. |
-| `art.tsx` | Crops, soil, close-ups, field, farmer and village pieces drawn in SVG from that data, so the pictures carry the information and cost almost nothing to download. |
-| `Review.tsx` | The one review system: Look → Spot → Judge → Result. |
-| `Village.tsx` | Tap-to-walk over the Figma farm map along fixed routes, the mist and the labels. |
-| `Create.tsx`, `FirstSession.tsx` | Farmer creation and the order of moments. |
-| `track.ts` | Event log: `create_shown`, `farmer_created`, `walk_start`, `first_move`, `shamba_reached`, `review_start`, `part_viewed`, `spot_found`, `call`, `review_failed`, `review_passed`, `village_unlocked`, `session_close`. Kept on the device (`lima-events`, last 300) and sent with `sendBeacon` to `VITE_EVENTS_URL` if set at build time. |
+| `data.ts` | Reviews, farmer looks, name suggestions, the four calls |
+| `art.tsx` | Crops, soil, close-ups, field and farmer, drawn from the data |
+| `Review.tsx` | The one review system: Look → Spot → Judge → Result |
+| `Village.tsx` | Tap-to-walk over the Figma map along fixed routes; mist, arrows and labels. Bed outlines and routes are in `SPOTS`, `MAIN`, `TO_LOWER`, `TO_ACHIENG`. |
+| `Create.tsx`, `FirstSession.tsx` | Farmer creation and the order of moments |
+| `track.ts` | Event log (below) |
 
-Design review has every first-session moment under **First session** in the `?review=1` menu.
+## The season
 
-## How a season plays
+One season of maize on *Farm Moja* (the maize beds on the map):
 
-One season of maize on *Farm Moja*, from first tap to results:
-
-1. After the first session the farm shows **Now : Land prep**; Settings → *How the farm works* explains the season.
-2. **Farming Steps** run in order: Land prep → Planting → Fertilizer → Pesticides → Water → Harvest.
-   Only the current step is open; later ones are locked, finished ones are read-only. Each task costs coins
-   (or is free if you bought the input in the Shop) and shows a one-line agronomy tip. *Finish* moves the
-   calendar on by that step's days; *Skip* is allowed but scores 0 for that step.
-3. **Crop health** is the average of the growing steps' scores (tasks done ÷ recommended). It sets expected
-   bags and quality, shown in Info and Harvest timing.
-4. **Harvest timing**: harvest now, wait 2 days (best) or wait a week (lower quality).
-5. **Sale → Storage → Value addition → Select process**: prices are editable; storage trades cost per bag
+1. **Farming Steps** run in order: Land prep → Planting → Fertilizer → Pesticides → Water → Harvest. Only the
+   current step is open; later ones are locked and finished ones are read-only. Each task costs coins (free
+   if the input was bought in the Shop) and shows a one-line farming tip. *Finish* moves the calendar on by
+   that step's days; *Skip* is allowed but scores zero for that step.
+2. **Crop health** is the average score of the growing steps (tasks done ÷ recommended). It sets expected bags
+   and quality, shown in Info and Harvest timing.
+3. **Harvest timing**: harvest now, wait 2 days (best), or wait a week (lower quality).
+4. **Sale → Storage → Value addition → Select process**: prices are editable; storage trades cost per bag
    against bags lost; processing raises the price. *Confirm and sell* pays out coins and points.
-6. **Season results** compares seasons, lists the three steps that cost you most, and Lima AI explains the
-   result from your own numbers. *Start season N+1* resets the field and keeps coins, points and history.
+5. **Season results** compare seasons, name the three steps that cost the most, and *Lima AI* explains the
+   result from the player's own numbers. *Start season N+1* keeps coins, points and history.
 
-Points: +100 × score per finished step, +5 per bag sold. Rewards cost 800 or 1,500 points; play-time counts
-while the tab is visible. Milk and eggs can be collected once per day. The farm always shows **Now : <task>**
-and a bubble on the field for the current task.
+Points: +100 × score for each finished step, +5 per bag sold. Rewards cost 800 or 1,500 points. Play time
+counts while the game is on screen. Milk and eggs can be collected once a day. The farm always shows
+**Now : &lt;task&gt;** and a bubble on the field for the current task.
 
-## Assumptions to review
+Balance numbers live in `src/data.ts` (`STEP_META`, `HARVEST_EFFECT`, `STORAGE_OPTIONS`, `PROCESSES`,
+`REWARDS`) and `src/state.ts` (`expectedHarvest`, `saleQuote`).
 
-- Game balance (task counts, yields, prices, point costs) lives in `data.ts` → `STEP_META`, `HARVEST_EFFECT`,
-  `STORAGE`, `PROCESSES`, `REWARDS` and in `state.ts` → `expectedHarvest`, `saleQuote`. The numbers are
-  illustrative, not agronomic data; have an agronomist check them.
-- *Lima AI Tool* is a rule-based stand-in that reads the season's data; it does not call an AI service.
-- Rewards are saved in the game but nothing is sent to a partner; there is no redemption backend.
-- Messages shows the reminder from the first session (the bean shamba to check); there is no inbox yet.
-- The first session is drawn in a flat style in code, not the painted style of the Figma farm art.
-- The HUD meters show coins and litres of water; the design shows these numbers without labels.
-- The faint 5% pattern texture on the cream panels is omitted.
-- The farm background is exported at 1× (874 × 402); most other art is 2×.
+## Design review mode
+
+Open **`?review=1`** (or *Settings → Design review*) for a sandbox with a menu of every screen filled with
+sample data: each first-session moment, every Figma frame, and the added screens. Deep-link with
+`?screen=<name>`, for example `?screen=Storage` or `?screen=3 · First review`. Review mode never touches the
+player's saved game or events.
+
+## Saving, events and privacy
+
+- **Progress** saves on the device in `localStorage` (`lima-farming-game:v2`): farmer, first-session progress,
+  coins, points, seasons. *Settings → Reset progress* erases it and starts again with a new farmer. Saves from
+  before the first session existed keep their coins and play the first session once.
+- **Events**: one per first-session moment, so drop-off can be measured — `create_shown`, `farmer_created`,
+  `walk_start`, `first_move`, `shamba_reached`, `review_start`, `part_viewed`, `spot_found`, `call`,
+  `review_failed`, `review_passed`, `village_unlocked` (the farm opening), `session_close`. Each has a
+  timestamp and time since the first event. They are kept on the device (`lima-events`, last 300) and, only
+  if `VITE_EVENTS_URL` is set at build time, sent with `navigator.sendBeacon`.
+- **No personal data is sent.** Events never include the farmer's name. There are no accounts, cookies or
+  third-party scripts; the only outside request is the Poppins font from Google Fonts.
+
+## Performance on low-cost phones
+
+- The first screen needs about **100 KB** of compressed code; it does not wait for the farm art.
+- The farm map is **86 KB** at 1× and **194 KB** at 2× (phones with sharp screens pick 2×).
+- All first-session crop art is SVG drawn in code: no images to download.
+- Checked with the CPU slowed 6×: taps respond in 0.3–0.6 s and the crop-recovery animation holds ~60 fps.
+- Animations respect *reduce motion*.
+
+## Assumptions and open decisions
+
+- **Game balance** (task counts, yields, prices, point costs) is illustrative, not agronomic data.
+- **Farming advice** in the game (e.g. ash or sand in the maize funnel for fall armyworm; watering at the
+  roots in the cool of the morning) should be checked by an agronomist or extension officer.
+- **Lima AI** is a rule-based stand-in that reads the season's numbers; it does not call an AI service.
+- **Rewards** are saved in the game but nothing is sent to a partner; there is no redemption backend.
+- **One painted farm**: the Figma map shows one farm, so the "neighbours" share it. A village with separate
+  farms would need a wider map painted in Figma.
+- **Art styles**: the farm and UI are the painted Figma art; the first-session crops and the farmer are
+  drawn flat in code.
+- **Language**: English with a little Swahili (*Karibu*, *Twende*, shamba, sukuma wiki). Full Swahili is not done.
+- **Messages** shows the reminder from the first session; there is no inbox yet.
+- The faint 5% pattern texture on the cream panels in Figma is omitted.
+
+---
+
+Design: Figma file *29 Oct Farm Management App*. Code built with [Claude](https://claude.ai).
