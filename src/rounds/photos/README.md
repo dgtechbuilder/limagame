@@ -1,33 +1,41 @@
 # Real photos for the field rounds
 
-Every bed check shows five pictures: the crop, pests and disease, soil, water, and the state of the farm. Until a
-real photo is dropped in, the game draws the picture in code, so nothing is broken without them.
+Every bed check shows five pictures: the crop, pests and disease, soil, water, and the state of the farm. The game ships
+with real, openly licensed photos from Wikimedia Commons for many of them (see `CREDITS.md`); any picture without a
+photo is drawn in code, so nothing breaks while the set grows.
 
 A bed meets a different situation each day (see `src/rounds/hazards.ts`), so photos are filed by **situation**, not by
 round. One photo then serves every bed that meets that situation.
 
 ## How to add one
 
-1. Save the photo as `src/rounds/photos/<situation>/<part>.jpg`, for example `src/rounds/photos/livestock/farm.jpg`.
-2. For a photo of one crop only, add the crop: `src/rounds/photos/disease/tomato/pests.jpg`. A crop photo is used in
-   preference to a general one.
-3. Run `npm run build`. Photos are found at build time; no code change is needed. Each photo replaces the drawing for
-   that one picture only, so you can add them a few at a time.
+1. Save the photo as `src/rounds/photos/<situation>/<part>.webp`, for example `src/rounds/photos/livestock/farm.webp`.
+2. To use it for one crop only, add the crop: `disease/tomato/pests.webp`. To use it only for seedlings or only for
+   grown plants, add the stage too: `healthy/maize/young/farm.webp` or `healthy/maize/grown/farm.webp`.
+   The most specific photo wins: `<situation>/<crop>/<young|grown>/<part>`, then `<situation>/<crop>/<part>`, then
+   `<situation>/<part>`.
+3. `_normal/<part>` holds neutral photos (healthy soil, a full tank) used where that picture is not the problem. The
+   list of situations that use them is `NORMAL` in `src/rounds/photos.ts`.
+4. Add an entry to `credits.json` with the same key (`title`, `page`, `author`, `license`, `licenseUrl`) and a row to
+   `CREDITS.md`. The game shows the author and licence on the photo.
+5. Run `npm run build`. Photos are found at build time; no code change is needed.
 
 `<part>` is `crop`, `pests`, `soil`, `water` or `farm`. `<crop>` is `maize`, `beans`, `kale` or `tomato`.
 
 ## Photo specs
 
-- Landscape, **10:7**, about **1000 × 700 px**; `.jpg` or `.webp`, **80 KB or less** each (the game is played on
+- Landscape, **10:7**, about **1000 × 700 px**; `.webp` (or `.jpg`), **80 KB or less** each (the game is played on
   low-cost phones). `.png` and `.avif` also work.
 - Taken in daylight, in focus, with the sign of the problem (or its absence) clearly in frame.
 - Strip location and other EXIF metadata before committing (for example `exiftool -all= photo.jpg`).
-- Only use photos you took or have a licence for, and get the farmer's permission if a person is recognisable.
+- Only use photos you took or that have a free licence (CC0, public domain, CC BY, CC BY-SA), and get the farmer's
+  permission if a person is recognisable.
 
 ## Optional: circle the clue
 
-When the player looks again after a wrong call, the clue picture can show a ring around the sign. A photo has no ring
-until one is set; without it the picture gets a gold frame instead.
+When the player looks again after a wrong call, the clue picture can show a ring around the sign. Set it with `ring: [x, y, r]` in the
+photo's `credits.json` entry (percent of the width and height, radius in percent of the width); without it the picture
+gets a gold frame instead.
 
 ## Situations to photograph
 

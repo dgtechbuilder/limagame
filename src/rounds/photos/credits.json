@@ -1,0 +1,368 @@
+{
+ "_normal/soil": {
+  "title": "20140918-NRCS-LSC-0458 (15105773000).jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:20140918-NRCS-LSC-0458_(15105773000).jpg",
+  "author": "Lance Cheung, U.S. Department of Agriculture",
+  "license": "Public domain"
+ },
+ "_normal/water": {
+  "title": "Garden water tank under homemade shade.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Garden_water_tank_under_homemade_shade.jpg",
+  "author": "Suzeen Simon",
+  "license": "CC BY-SA 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+ },
+ "aphids/beans/pests": {
+  "title": "Black Bean Aphids (Aphis fabae) (14464428176).jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Black_Bean_Aphids_(Aphis_fabae)_(14464428176).jpg",
+  "author": "Bernard Dupont",
+  "license": "CC BY-SA 2.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0/",
+  "ring": [
+   45,
+   45,
+   32
+  ]
+ },
+ "aphids/kale/crop": {
+  "title": "Grünkohl mit Mehlige Blattläuse (Brevicoryne brassicae)-2-Josef Schlaghecken.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Grünkohl_mit_Mehlige_Blattläuse_(Brevicoryne_brassicae)-2-Josef_Schlaghecken.jpg",
+  "author": "Josef Schlaghecken",
+  "license": "CC BY-SA 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+ },
+ "aphids/kale/pests": {
+  "title": "Cabbage Aphids on Kale Leaf.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Cabbage_Aphids_on_Kale_Leaf.jpg",
+  "author": "Sanjay Acharya",
+  "license": "CC BY-SA 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+  "ring": [
+   50,
+   50,
+   30
+  ]
+ },
+ "armyworm/crop": {
+  "title": "Zea mays damaged by Spodoptera frugiperda (200218-0814).jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Zea_mays_damaged_by_Spodoptera_frugiperda_(200218-0814).jpg",
+  "author": "Wee Hong",
+  "license": "CC BY-SA 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+ },
+ "armyworm/pests": {
+  "title": "Spodoptera frugiperda in stalk of Zea mays.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Spodoptera_frugiperda_in_stalk_of_Zea_mays.jpg",
+  "author": "Wee Hong",
+  "license": "CC BY-SA 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+  "ring": [
+   48,
+   47,
+   13
+  ]
+ },
+ "disease/beans/pests": {
+  "title": "Roest op stoksperzieboon (Uromyces appendiculatus var. appendiculatus).jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Roest_op_stoksperzieboon_(Uromyces_appendiculatus_var._appendiculatus).jpg",
+  "author": "Rasbak",
+  "license": "CC BY-SA 3.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+  "ring": [
+   52,
+   28,
+   17
+  ]
+ },
+ "disease/kale/crop": {
+  "title": "Cabbage Black rot (38409441606).jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Cabbage_Black_rot_(38409441606).jpg",
+  "author": "Scot Nelson",
+  "license": "CC0",
+  "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "disease/kale/pests": {
+  "title": "Cabbage Black rot (24593368478).jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Cabbage_Black_rot_(24593368478).jpg",
+  "author": "Scot Nelson",
+  "license": "CC0",
+  "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "ring": [
+   47,
+   68,
+   18
+  ]
+ },
+ "disease/maize/pests": {
+  "title": "Puccinia sorghi Schwein. 5465568.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Puccinia_sorghi_Schwein._5465568.jpg",
+  "author": "Daren Mueller, Iowa State University",
+  "license": "CC BY 3.0 US",
+  "licenseUrl": "https://creativecommons.org/licenses/by/3.0/us/",
+  "ring": [
+   56,
+   57,
+   16
+  ]
+ },
+ "disease/tomato/crop": {
+  "title": "Late blight of tomato caused by Phytophthora infestans (5815188381).jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Late_blight_of_tomato_caused_by_Phytophthora_infestans_(5815188381).jpg",
+  "author": "Scot Nelson",
+  "license": "CC0",
+  "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "disease/tomato/pests": {
+  "title": "Tomato with Phytophthora infestans (late blight).jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Tomato_with_Phytophthora_infestans_(late_blight).jpg",
+  "author": "Downtowngal",
+  "license": "CC BY-SA 3.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+  "ring": [
+   19,
+   50,
+   18
+  ]
+ },
+ "drought/maize/crop": {
+  "title": "Drought-stressed corn, western Tennessee-Kentucky border.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Drought-stressed_corn,_western_Tennessee-Kentucky_border.jpg",
+  "author": "CraneStation",
+  "license": "CC BY 2.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by/2.0/"
+ },
+ "drought/maize/farm": {
+  "title": "Corn shows the effect of drought.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Corn_shows_the_effect_of_drought.jpg",
+  "author": "Bob Nichols, USDA",
+  "license": "Public domain"
+ },
+ "drought/soil": {
+  "title": "Dry Cracked Mud (4957b8b2-f52c-43b0-acc2-ead42cf6f03b).jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Dry_Cracked_Mud_(4957b8b2-f52c-43b0-acc2-ead42cf6f03b).jpg",
+  "author": "Andrew Cattoir, US National Park Service",
+  "license": "Public domain"
+ },
+ "flood/farm": {
+  "title": "Flooded Field - geograph.org.uk - 269743.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Flooded_Field_-_geograph.org.uk_-_269743.jpg",
+  "author": "Adam Ward",
+  "license": "CC BY-SA 2.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0/"
+ },
+ "flood/maize/farm": {
+  "title": "FEMA - 36365 - Flooded corn field in Illinois.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:FEMA_-_36365_-_Flooded_corn_field_in_Illinois.jpg",
+  "author": "Robert Kaufmann, FEMA",
+  "license": "Public domain"
+ },
+ "flood/water": {
+  "title": "Waterlogged Field - geograph.org.uk - 1072676.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Waterlogged_Field_-_geograph.org.uk_-_1072676.jpg",
+  "author": "Andy Beecroft",
+  "license": "CC BY-SA 2.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0/",
+  "ring": [
+   24,
+   82,
+   14
+  ]
+ },
+ "hail/maize/crop": {
+  "title": "Plants NR 85 (38851124922).jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Plants_NR_85_(38851124922).jpg",
+  "author": "USDA NRCS Montana",
+  "license": "Public domain",
+  "ring": [
+   63,
+   66,
+   20
+  ]
+ },
+ "hail/soil": {
+  "title": "Hail on the Ground.JPG",
+  "page": "https://commons.wikimedia.org/wiki/File:Hail_on_the_Ground.JPG",
+  "author": "Gunthercx",
+  "license": "CC BY-SA 3.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/"
+ },
+ "hail/tomato/crop": {
+  "title": "PozegaDubrovacka 20210625-steta-od-tuce-vrtovi-1.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:PozegaDubrovacka_20210625-steta-od-tuce-vrtovi-1.jpg",
+  "author": "Nikola",
+  "license": "CC BY-SA 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+  "ring": [
+   45,
+   45,
+   30
+  ]
+ },
+ "harvestLate/tomato/pests": {
+  "title": "2 x Cracked tomato 2017 A.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:2_x_Cracked_tomato_2017_A.jpg",
+  "author": "Fructibus",
+  "license": "CC0",
+  "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "ring": [
+   62,
+   40,
+   22
+  ]
+ },
+ "healthy/beans/grown/crop": {
+  "title": "Starr-090421-6290-Phaseolus vulgaris-beans and leaves-Pukalani-Maui (24859099901).jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Starr-090421-6290-Phaseolus_vulgaris-beans_and_leaves-Pukalani-Maui_(24859099901).jpg",
+  "author": "Forest and Kim Starr",
+  "license": "CC BY 3.0 US",
+  "licenseUrl": "https://creativecommons.org/licenses/by/3.0/us/"
+ },
+ "healthy/kale/grown/crop": {
+  "title": "20170714-PJK-Gleaning-0239TONEDINSTAGRAM.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:20170714-PJK-Gleaning-0239TONEDINSTAGRAM.jpg",
+  "author": "U.S. Department of Agriculture (USDAgov)",
+  "license": "Public domain"
+ },
+ "healthy/kale/grown/farm": {
+  "title": "Sankofa USDA People's Garden, New Orleans, April 2023 - 34.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Sankofa_USDA_People's_Garden,_New_Orleans,_April_2023_-_34.jpg",
+  "author": "U.S. Department of Agriculture (USDAgov)",
+  "license": "Public domain"
+ },
+ "healthy/kale/grown/pests": {
+  "title": "Sankofa USDA People's Garden, New Orleans, April 2023 - 35.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Sankofa_USDA_People's_Garden,_New_Orleans,_April_2023_-_35.jpg",
+  "author": "U.S. Department of Agriculture (USDAgov)",
+  "license": "Public domain"
+ },
+ "healthy/maize/grown/crop": {
+  "title": "Maize and beans farm.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Maize_and_beans_farm.jpg",
+  "author": "Cut angles",
+  "license": "CC BY-SA 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+ },
+ "healthy/maize/grown/farm": {
+  "title": "Maize farming in Kenya.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Maize_farming_in_Kenya.jpg",
+  "author": "Kuza Kilimo",
+  "license": "CC BY-SA 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+ },
+ "healthy/maize/young/crop": {
+  "title": "Zea mays acid soil 2017 01 05 6259b.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Zea_mays_acid_soil_2017_01_05_6259b.jpg",
+  "author": "Alandmanson",
+  "license": "CC BY 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by/4.0/"
+ },
+ "healthy/maize/young/farm": {
+  "title": "2020-06-03 15 40 52 Corn seedlings growing in a field during early summer in Fountain Mills, Frederick County, Maryland.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:2020-06-03_15_40_52_Corn_seedlings_growing_in_a_field_during_early_summer_in_Fountain_Mills,_Frederick_County,_Maryland.jpg",
+  "author": "Famartin",
+  "license": "CC BY-SA 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+ },
+ "healthy/tomato/grown/crop": {
+  "title": "2012 07 26 016 Cocktailtomaten.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:2012_07_26_016_Cocktailtomaten.jpg",
+  "author": "Friedrich Haag",
+  "license": "CC BY-SA 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+ },
+ "healthy/tomato/grown/farm": {
+  "title": "Tomato Support (5843173257).jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Tomato_Support_(5843173257).jpg",
+  "author": "Dwight Sipler",
+  "license": "CC BY 2.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by/2.0/"
+ },
+ "healthy/tomato/young/crop": {
+  "title": "Drip irrigation (2552390830).jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Drip_irrigation_(2552390830).jpg",
+  "author": "Dwight Sipler",
+  "license": "CC BY 2.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by/2.0/"
+ },
+ "livestock/farm": {
+  "title": "Local goat eating fresh leaves.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Local_goat_eating_fresh_leaves.jpg",
+  "author": "Samson Ssemakadde",
+  "license": "CC0",
+  "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "ring": [
+   73,
+   16,
+   13
+  ]
+ },
+ "livestock/soil": {
+  "title": "2021-01-02 12 39 01 White-tailed deer hoof print in dirt along Tranquility Court in the Franklin Farm section of Oak Hill, Fairfax County, Virginia.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:2021-01-02_12_39_01_White-tailed_deer_hoof_print_in_dirt_along_Tranquility_Court_in_the_Franklin_Farm_section_of_Oak_Hill,_Fairfax_County,_Virginia.jpg",
+  "author": "Famartin",
+  "license": "CC BY-SA 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+ },
+ "nitrogen/kale/crop": {
+  "title": "Spitskool stikstofgebrek (nitrogen deficiency) Brassica oleracea convar. capitata var. alba.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Spitskool_stikstofgebrek_(nitrogen_deficiency)_Brassica_oleracea_convar._capitata_var._alba.jpg",
+  "author": "Rasbak",
+  "license": "CC BY-SA 3.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+  "ring": [
+   70,
+   55,
+   11
+  ]
+ },
+ "plantEarly/maize/soil": {
+  "title": "Maize seedlings - geograph.org.uk - 442579.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Maize_seedlings_-_geograph.org.uk_-_442579.jpg",
+  "author": "David Hawgood",
+  "license": "CC BY-SA 2.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0/"
+ },
+ "weeds/maize/grown/farm": {
+  "title": "Striga hermonthica flowering among maize and cassava in Uganda.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Striga_hermonthica_flowering_among_maize_and_cassava_in_Uganda.jpg",
+  "author": "Oliversamson1",
+  "license": "CC0",
+  "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "ring": [
+   45,
+   45,
+   24
+  ]
+ },
+ "weeds/maize/young/farm": {
+  "title": "2005 1220 Mown grass and weeds as permanent cover 2.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:2005_1220_Mown_grass_and_weeds_as_permanent_cover_2.jpg",
+  "author": "Alandmanson",
+  "license": "CC BY 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+  "ring": [
+   33,
+   52,
+   24
+  ]
+ },
+ "wildlife/farm": {
+  "title": "Quelea quelea (flock), Tsavo West National Park, Kenya.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Quelea_quelea_(flock),_Tsavo_West_National_Park,_Kenya.jpg",
+  "author": "Frédéric SALEIN",
+  "license": "CC BY-SA 2.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0/"
+ },
+ "wildlife/maize/pests": {
+  "title": "Counting the Corns.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Counting_the_Corns.jpg",
+  "author": "Warren Francis",
+  "license": "CC BY-SA 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+  "ring": [
+   18,
+   54,
+   14
+  ]
+ }
+}

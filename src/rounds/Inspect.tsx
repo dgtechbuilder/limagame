@@ -8,7 +8,8 @@ import { CallIcon, GuideLine } from '../first/Review';
 import { track } from '../first/track';
 import { CHECK_COOLDOWN_S, FARMS, ROUND_PARTS, ROUND_PART_LABELS, usesLegacyArt, type Round, type RoundPart } from './data';
 import { CALL_GROUPS, CROP_NAME, CYCLE_DAYS, STAGE_LABELS, type CallGroup } from './hazards';
-import { photoFor } from './photos';
+import { PhotoPicture } from '../components/PhotoPicture';
+import { photoInfo } from './photos';
 import { ScenePart } from './scene';
 
 /* One farm check: Look at five pictures (crop, pests & disease, soil, water, state of the farm) → Judge → Result.
@@ -17,22 +18,12 @@ import { ScenePart } from './scene';
 export type InspectView = 'look' | 'judge' | 'right' | 'wrong';
 type Step = InspectView;
 
-export function RoundPicture({ round, part, flag = false }: { round: Round; part: RoundPart; flag?: boolean }) {
-  const url = photoFor(round, part);
+export function RoundPicture({ round, part, flag = false, credit = false }: { round: Round; part: RoundPart; flag?: boolean; credit?: boolean }) {
+  const photo = photoInfo(round, part);
   const isClue = flag && round.clue.part === part;
-  if (url) {
-    const ring = isClue ? round.clue.ring : undefined;
-    return (
-      <span className="rr-photo-wrap">
-        <img className="rr-photo" src={url} alt={`${ROUND_PART_LABELS[part]}: a real photo of the farm`} loading="lazy" decoding="async" draggable={false} />
-        {isClue && ring && (
-          <svg className="rr-ring" viewBox="0 0 100 70" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-            <circle className="clue-ring" cx={ring[0]} cy={ring[1] * 0.7} r={ring[2]} fill="none" stroke="#ffb005" strokeWidth={1.4} />
-          </svg>
-        )}
-        {isClue && !ring && <span className="rr-flag" />}
-      </span>
-    );
+  if (photo) {
+    const withRing = round.clue.ring ? { ...photo, ring: round.clue.ring } : photo;
+    return <PhotoPicture photo={withRing} alt={`${ROUND_PART_LABELS[part]}: a real photo`} clue={isClue} credit={credit} />;
   }
   if (part === 'water') return <WaterArt dry={round.cond === 'drought' || round.hazard === 'plantEarly'} flood={round.hazard === 'flood'} ring={isClue} />;
   if (usesLegacyArt(round)) return <PartArt part={part === 'farm' ? 'layout' : part} crop={round.crop} cond={round.cond} problemRows={round.problemRows} rows={round.rows} ring={isClue} />;
@@ -226,7 +217,7 @@ export function Inspect({
         {(step === 'right' || step === 'wrong') && (
           <>
             <div className="clue-art">
-              <RoundPicture round={round} part={round.clue.part} flag={step === 'wrong'} />
+              <RoundPicture round={round} part={round.clue.part} flag={step === 'wrong'} credit />
               <span className="zoom-label">{ROUND_PART_LABELS[round.clue.part]}</span>
             </div>
             <div className="wrong-note rr-result">
@@ -260,7 +251,7 @@ export function Inspect({
       {zoom && (
         <div className="abs zoom" style={{ inset: 0 }} onClick={() => setZoom(null)} role="dialog" aria-label={ROUND_PART_LABELS[zoom]}>
           <div className="zoom-art" onClick={e => e.stopPropagation()}>
-            <RoundPicture round={round} part={zoom} />
+            <RoundPicture round={round} part={zoom} credit />
             <span className="zoom-label">{ROUND_PART_LABELS[zoom]}</span>
           </div>
         </div>

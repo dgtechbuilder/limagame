@@ -66,6 +66,8 @@ export interface ShambaReview {
   hints: 'full' | 'few';
   /** First line of the review, if it differs from the default. */
   intro?: string;
+  /** Real photos for some parts, by key under src/rounds/photos (e.g. "armyworm/pests"). Other parts are drawn. */
+  photos?: Partial<Record<PartId, string>>;
   /** One short sentence per part, shown when the player zooms in. It points the eye, it never diagnoses. */
   captions: Record<PartId, string>;
   /** The part to show, and the sentence to read, when the call is wrong. */
@@ -84,6 +86,7 @@ export const SHAMBAS: Record<string, ShambaReview> = {
     title: "{name}'s maize",
     condition: 'armyworm',
     correct: 'pests',
+    photos: { pests: 'armyworm/pests', soil: '_normal/soil' },
     problemRows: [2, 3],
     rows: 5,
     hints: 'full',
@@ -105,6 +108,7 @@ export const SHAMBAS: Record<string, ShambaReview> = {
     intro: 'Same maize, {name}. Look closely at every part this time.',
     condition: 'armyworm',
     correct: 'pests',
+    photos: { pests: 'armyworm/pests', soil: '_normal/soil' },
     problemRows: [0, 1],
     rows: 5,
     hints: 'full',
@@ -125,6 +129,7 @@ export const SHAMBAS: Record<string, ShambaReview> = {
     intro: 'Now your sukuma wiki, {name}. Look at every part first.',
     condition: 'drought',
     correct: 'water',
+    photos: { soil: 'drought/soil' },
     problemRows: [3, 4],
     rows: 5,
     hints: 'few',

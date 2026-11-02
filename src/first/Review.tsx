@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { img } from '../assets';
 import { CheckBadge } from '../components/Icons';
 import { FarmMap } from '../components/FarmMap';
+import { PhotoPicture } from '../components/PhotoPicture';
+import { photoByKey } from '../rounds/photos';
 import { GoldButton } from '../components/ui';
 import { Field, FIELD_H, FIELD_W, FarmerFigure, PartArt, rowGeometry } from './art';
 import { CALLS, PART_LABELS, say, type Call, type Look, type PartId, type ShambaReview } from './data';
@@ -119,6 +121,14 @@ export function CallIcon({ id }: { id: Call }) {
       </text>
     </svg>
   );
+}
+
+/** One picture of a check: a real photo when the shamba has one for that part, otherwise the drawing. */
+function Pic({ shamba, part, ring = false, credit = false }: { shamba: ShambaReview; part: PartId; ring?: boolean; credit?: boolean }) {
+  const key = shamba.photos?.[part];
+  const photo = key ? photoByKey(key) : undefined;
+  if (photo) return <PhotoPicture photo={photo} alt={`${PART_LABELS[part]}: a real photo`} clue={ring} credit={credit} />;
+  return <PartArt part={part} crop={shamba.crop} cond={shamba.condition} problemRows={shamba.problemRows} rows={shamba.rows} ring={ring} />;
 }
 
 export function Review({
@@ -282,7 +292,7 @@ export function Review({
                 aria-label={`Look at ${PART_LABELS[p]}`}
               >
                 <span className="part-img">
-                  <PartArt part={p} crop={shamba.crop} cond={shamba.condition} problemRows={shamba.problemRows} rows={shamba.rows} />
+                  <Pic shamba={shamba} part={p} />
                 </span>
                 <span className="part-label">
                   {PART_LABELS[p]} {seen.includes(p) && <CheckBadge size={12} />}
@@ -367,7 +377,7 @@ export function Review({
               {PARTS.map(p => (
                 <button type="button" key={p} className="part-tile small" onClick={() => setZoom(p)} aria-label={`Look again at ${PART_LABELS[p]}`}>
                   <span className="part-img">
-                    <PartArt part={p} crop={shamba.crop} cond={shamba.condition} problemRows={shamba.problemRows} rows={shamba.rows} />
+                    <Pic shamba={shamba} part={p} />
                   </span>
                 </button>
               ))}
@@ -386,7 +396,7 @@ export function Review({
         {step === 'wrong' && (
           <>
             <div className="clue-art">
-              <PartArt part={shamba.clue.part} crop={shamba.crop} cond={shamba.condition} problemRows={shamba.problemRows} rows={shamba.rows} ring />
+              <Pic shamba={shamba} part={shamba.clue.part} ring credit />
             </div>
             <div className="wrong-note">
               <p className="wrong-title">Not quite, {name}.</p>
@@ -401,7 +411,7 @@ export function Review({
       {zoom && (
         <div className="abs zoom" style={{ inset: 0 }} onClick={() => setZoom(null)} role="dialog" aria-label={PART_LABELS[zoom]}>
           <div className="zoom-art" onClick={e => e.stopPropagation()}>
-            <PartArt part={zoom} crop={shamba.crop} cond={shamba.condition} problemRows={shamba.problemRows} rows={shamba.rows} />
+            <Pic shamba={shamba} part={zoom} credit />
             <span className="zoom-label">{PART_LABELS[zoom]}</span>
           </div>
         </div>

@@ -91,7 +91,7 @@ src/
     Meta.tsx               How the farm works, Settings
   first/                   the first session (see below)
   rounds/                  field rounds: checks of every bed on the farm, back to back (see below); loaded only when opened
-    photos/                drop-in real photos, one folder per round (see photos/README.md)
+    photos/                real photos from Wikimedia Commons by situation, credits.json + CREDITS.md (see photos/README.md)
 public/
   assets/                  130 images exported from Figma, incl. bg-farm.webp and bg-farm@2x.webp
   manifest.webmanifest     installable web app (landscape, full screen) + icons
@@ -251,8 +251,14 @@ planting or harvesting at the wrong time are there on top of drought, pests and 
   A pin shows the countdown. A missed bed can be checked again after 30 seconds, from the chip bar or the summary.
 - **Points**: 100 for a right read first time, 50 after a second look, paid **once per bed per day**. Results reset at
   the player's midnight, because every bed is a new situation then.
-- **Real photos**: each picture uses a photo from `src/rounds/photos/<situation>/<part>.jpg` when one exists and a
-  drawing otherwise. See `src/rounds/photos/README.md` for the shot list and specs.
+- **Real photos**: the game ships with 42 real, openly licensed photos from Wikimedia Commons (CC0, public domain,
+  CC BY and CC BY-SA): fall armyworm in a maize funnel, aphids on kale and beans, late blight on tomato, rust on maize
+  and beans, black rot on sukuma, hail-stripped tomatoes, Striga and weeds between maize rows, flooded and drought
+  fields, a quelea flock, goats, hoof prints, seedlings on dry soil and healthy crops. About half of all pictures
+  (210 of 430) are photos: every one of the 86 situation, crop and stage combinations has at least one, and 58 show a
+  photo as the clue, ringed where it helps. The first walkthrough uses them too. Each photo shows its author and
+  licence when zoomed; the full list is in [`src/rounds/photos/CREDITS.md`](src/rounds/photos/CREDITS.md). Pictures
+  without a photo stay drawn. To add more, see `src/rounds/photos/README.md`.
 - **Review menu**: *Field rounds* lists the map, look, judge, right, wrong and summary screens, and one entry for
   each new situation.
 - **Events**: `round_start`, `round_part_viewed`, `round_call` (no names).
