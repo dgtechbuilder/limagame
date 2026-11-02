@@ -1,8 +1,12 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { FarmScene } from './components/FarmScene';
 import { ShopModal, StepsModal } from './screens/Catalog';
 import { InfoModal, OutcomeModal, ProcessModal, RewardsModal, SaleModal, StorageModal, TimingModal, ValueModal } from './screens/Journey';
 import { FirstSession } from './first/FirstSession';
+import { FarmMap } from './components/FarmMap';
+
+// the field rounds are loaded only when opened, so the first session stays as small as before
+const Rounds = lazy(() => import('./rounds/Rounds').then(m => ({ default: m.Rounds })));
 import { SettingsModal, WelcomeModal } from './screens/Meta';
 import { REVIEW_BASE, SELLING, SOLD, initialState, reviewing, useGame, type GameState, type SeasonResult } from './state';
 
@@ -64,6 +68,23 @@ const SCREENS: { label: string; group: string; state: Partial<GameState> }[] = [
   { group: 'New features', label: 'Value Addition', state: { ...selling, modal: { kind: 'value' } } },
   { group: 'New features', label: 'Select Process', state: { ...selling, modal: { kind: 'process' } } },
   { group: 'Added', label: 'Settings', state: { modal: { kind: 'settings' } } },
+  { group: 'Field rounds', label: 'Rounds · Map', state: { roundsOpen: true, roundsView: 'map' } },
+  { group: 'Field rounds', label: 'Rounds · Look at five pictures', state: { roundsOpen: true, roundsView: 'look' } },
+  { group: 'Field rounds', label: 'Rounds · Broken fence', state: { roundsOpen: true, roundsView: 'look', roundsDemo: 'livestock:maize:young' } },
+  { group: 'Field rounds', label: 'Rounds · Hail', state: { roundsOpen: true, roundsView: 'look', roundsDemo: 'hail:tomato:grow' } },
+  { group: 'Field rounds', label: 'Rounds · Flood', state: { roundsOpen: true, roundsView: 'look', roundsDemo: 'flood:kale:grow' } },
+  { group: 'Field rounds', label: 'Rounds · Disease', state: { roundsOpen: true, roundsView: 'look', roundsDemo: 'disease:tomato:grow' } },
+  { group: 'Field rounds', label: 'Rounds · Weeds', state: { roundsOpen: true, roundsView: 'look', roundsDemo: 'weeds:beans:young' } },
+  { group: 'Field rounds', label: 'Rounds · Birds and monkeys', state: { roundsOpen: true, roundsView: 'look', roundsDemo: 'wildlife:maize:harvest' } },
+  { group: 'Field rounds', label: 'Rounds · Planted too early', state: { roundsOpen: true, roundsView: 'look', roundsDemo: 'plantEarly:maize:young' } },
+  { group: 'Field rounds', label: 'Rounds · Planted too late', state: { roundsOpen: true, roundsView: 'look', roundsDemo: 'plantLate:maize:grow' } },
+  { group: 'Field rounds', label: 'Rounds · Harvested too early', state: { roundsOpen: true, roundsView: 'look', roundsDemo: 'harvestEarly:tomato:harvest' } },
+  { group: 'Field rounds', label: 'Rounds · Harvested too late', state: { roundsOpen: true, roundsView: 'look', roundsDemo: 'harvestLate:maize:harvest' } },
+  { group: 'Field rounds', label: 'Rounds · Healthy at harvest', state: { roundsOpen: true, roundsView: 'look', roundsDemo: 'healthy:beans:harvest' } },
+  { group: 'Field rounds', label: 'Rounds · Judge', state: { roundsOpen: true, roundsView: 'judge' } },
+  { group: 'Field rounds', label: 'Rounds · Right call', state: { roundsOpen: true, roundsView: 'right' } },
+  { group: 'Field rounds', label: 'Rounds · Wrong call', state: { roundsOpen: true, roundsView: 'wrong' } },
+  { group: 'Field rounds', label: 'Rounds · Summary', state: { roundsOpen: true, roundsView: 'summary' } },
 ];
 
 function useStageScale(roomForPicker: boolean) {
@@ -117,13 +138,21 @@ export default function App() {
   const current = SCREENS.findIndex(x =>
     firstSession
       ? x.state.fs?.phase === s.fs.phase
-      : !x.state.fs && JSON.stringify(x.state.modal ?? null) === JSON.stringify(m) && (m || (x.state.plotSelected ?? false) === s.plotSelected),
+      : s.roundsOpen
+        ? x.state.roundsOpen && x.state.roundsView === s.roundsView && (x.state.roundsDemo ?? null) === s.roundsDemo
+        : !x.state.fs && !x.state.roundsOpen && JSON.stringify(x.state.modal ?? null) === JSON.stringify(m) && (m || (x.state.plotSelected ?? false) === s.plotSelected),
   );
 
   return (
     <div className="viewport">
       <div className="stage" style={{ transform: `translate(-50%, -50%) scale(${scale})` }}>
-        {firstSession ? <FirstSession s={s} dispatch={dispatch} /> : <FarmScene s={s} dispatch={dispatch} />}
+        {firstSession ? <FirstSession s={s} dispatch={dispatch} /> : s.roundsOpen ? (
+          <Suspense fallback={<FarmMap />}>
+            <Rounds s={s} dispatch={dispatch} />
+          </Suspense>
+        ) : (
+          <FarmScene s={s} dispatch={dispatch} />
+        )}
 
         {m?.kind === 'welcome' && <WelcomeModal s={s} dispatch={dispatch} />}
         {m?.kind === 'settings' && <SettingsModal s={s} dispatch={dispatch} />}
@@ -156,7 +185,7 @@ export default function App() {
             }}
           >
             {current < 0 && <option value="">—</option>}
-            {['First session', 'Game Design', 'New Design', 'New features', 'Added'].map(g => (
+            {['First session', 'Field rounds', 'Game Design', 'New Design', 'New features', 'Added'].map(g => (
               <optgroup key={g} label={g}>
                 {SCREENS.map((sc, i) =>
                   sc.group === g ? (

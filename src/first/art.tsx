@@ -10,7 +10,7 @@ import type { Condition, Crop, Look, PartId } from './data';
 /* helpers                                                              */
 /* ------------------------------------------------------------------ */
 
-function rng(seed: number) {
+export function rng(seed: number) {
   let a = seed | 0;
   return () => {
     a = (a + 0x6d2b79f5) | 0;
@@ -21,7 +21,7 @@ function rng(seed: number) {
 }
 
 /** Irregular polygon, used for ragged holes and soil crumbs. */
-function blob(cx: number, cy: number, r: number, rand: () => number, n = 7) {
+export function blob(cx: number, cy: number, r: number, rand: () => number, n = 7) {
   const pts: string[] = [];
   for (let i = 0; i < n; i++) {
     const a = (i / n) * Math.PI * 2;
@@ -36,9 +36,10 @@ const LEAF = {
   armyworm: { fill: '#5d9e3a', rib: '#a9d67f', edge: '#3d6f24' },
   drought: { fill: '#86985a', rib: '#b3bf86', edge: '#5f6d3a' },
   nitrogen: { fill: '#9fb43c', rib: '#e3d55a', edge: '#6f7f26' },
+  aphids: { fill: '#79a947', rib: '#c1e093', edge: '#47782b' },
 };
 
-const SOIL = { moist: '#5b3a22', moistDark: '#432916', dry: '#c39b68', dryDark: '#8a6a40' };
+export const SOIL = { moist: '#5b3a22', moistDark: '#432916', dry: '#c39b68', dryDark: '#8a6a40' };
 
 /* ------------------------------------------------------------------ */
 /* Plants                                                               */
@@ -147,7 +148,8 @@ export const Bean = memo(function Bean({ x, y, s = 1, cond, seed }: PlantProps) 
 export const Kale = memo(function Kale({ x, y, s = 1, cond, seed }: PlantProps) {
   const rand = rng(seed);
   const dry = cond === 'drought';
-  const leafFill = dry ? '#93a274' : '#4f9070';
+  const aphids = cond === 'aphids';
+  const leafFill = dry ? '#93a274' : aphids ? '#6f9a62' : '#4f9070';
   const edge = dry ? '#8f7034' : '#2f6a50';
   const rib = dry ? '#c9cfa8' : '#bfe0cc';
   const top = -24;
@@ -165,12 +167,13 @@ export const Kale = memo(function Kale({ x, y, s = 1, cond, seed }: PlantProps) 
           <g key={i} transform={`translate(0,${top}) rotate(${rot})`}>
             <path d="M0,0 L0,-9" stroke={rib} strokeWidth={1.4} />
             <path
-              d={dry ? 'M0,-8 Q-6,-14 -4.5,-24 Q0,-28 4.5,-24 Q6,-14 0,-8 Z' : 'M0,-8 Q-9,-12 -8,-22 Q-6,-30 0,-31 Q6,-30 8,-22 Q9,-12 0,-8 Z'}
+              d={dry || aphids ? 'M0,-8 Q-6,-14 -4.5,-24 Q0,-28 4.5,-24 Q6,-14 0,-8 Z' : 'M0,-8 Q-9,-12 -8,-22 Q-6,-30 0,-31 Q6,-30 8,-22 Q9,-12 0,-8 Z'}
               fill={leafFill}
               stroke={edge}
               strokeWidth={dry ? 1.1 : 0.8}
             />
             <path d="M0,-8 L0,-28 M0,-14 L-4,-18 M0,-14 L4,-18 M0,-20 L-4,-24 M0,-20 L4,-24" stroke={rib} strokeWidth={0.7} fill="none" />
+            {aphids && i % 2 === 0 && [0, 1, 2, 3, 4].map(k => <circle key={k} cx={-2 + k * 1.2} cy={-22 + (k % 2) * 3} r={1} fill="#31461f" />)}
           </g>
         );
       })}
@@ -178,9 +181,49 @@ export const Kale = memo(function Kale({ x, y, s = 1, cond, seed }: PlantProps) 
   );
 });
 
+/** Staked tomato: compound leaves up a stem, red fruit low down. Hungry plants go yellow from the lowest leaves up;
+    thirsty plants hang their leaves and carry less fruit. */
+export const Tomato = memo(function Tomato({ x, y, s = 1, cond, seed }: PlantProps) {
+  const rand = rng(seed);
+  const dry = cond === 'drought';
+  const hungry = cond === 'nitrogen';
+  const c = LEAF[cond];
+  const height = dry ? 52 : 64;
+  const leaves: ReactNode[] = [];
+  for (let i = 0; i < 5; i++) {
+    const ay = -8 - i * (height / 5.4);
+    const side = i % 2 ? 1 : -1;
+    const yellow = hungry && i < 3;
+    const fill = yellow ? '#d9c94c' : dry ? '#8f9d5e' : hungry ? '#8fae45' : c.fill;
+    const reach = (22 - i * 2) * (0.9 + rand() * 0.2);
+    const sag = dry ? 18 : 2;
+    leaves.push(
+      <g key={i} transform={`translate(0,${ay})`}>
+        <path d={`M0,0 Q${side * reach * 0.5},${-4 + sag * 0.4} ${side * reach},${sag}`} fill="none" stroke={dry ? '#7d8b4c' : '#4f8a2a'} strokeWidth={1.2} />
+        {[0.45, 0.75, 1].map((t, k) => (
+          <ellipse key={k} cx={side * reach * t} cy={sag * t - (k % 2 ? 4 : -1)} rx={5.4 - k} ry={3.2} transform={`rotate(${side * (20 + k * 12) + (dry ? side * 30 : 0)} ${side * reach * t} ${sag * t})`} fill={fill} stroke={c.edge} strokeWidth={0.6} />
+        ))}
+      </g>,
+    );
+  }
+  const fruit = dry ? [[-5, -10]] : [[-6, -11], [5, -9], [-2, -17]];
+  return (
+    <g transform={`translate(${x},${y}) scale(${s})`}>
+      <path d={`M3,0 L3,${-height - 6}`} stroke="#9a7a48" strokeWidth={1.2} />
+      <path d={`M0,0 L0,${-height}`} stroke={dry ? '#7d8b4c' : '#5c8f2c'} strokeWidth={2} />
+      {leaves}
+      {fruit.map(([fx, fy], i) => (
+        <circle key={i} cx={fx} cy={fy} r={3.4} fill={hungry ? '#e2573c' : '#d8382c'} stroke="#8f1f17" strokeWidth={0.5} />
+      ))}
+      <path d={`M-1,${-height} q-3,-4 0,-8 q3,4 0,8 Z`} fill={dry ? '#8f9d5e' : '#5c9f35'} />
+    </g>
+  );
+});
+
 export function Plant(p: PlantProps & { crop: Crop }) {
   if (p.crop === 'maize') return <Maize {...p} />;
   if (p.crop === 'kale') return <Kale {...p} />;
+  if (p.crop === 'tomato') return <Tomato {...p} />;
   return <Bean {...p} />;
 }
 
@@ -208,7 +251,7 @@ export function Field({
   seed = 1,
 }: {
   crop: Crop;
-  cond: Exclude<Condition, 'healthy'>;
+  cond: Condition;
   problemRows: number[];
   rows: number;
   healed?: boolean;
@@ -245,7 +288,7 @@ export function Field({
             <ellipse cx={300} cy={g.y + 3} rx={(g.x1 - g.x0) / 2 + 6} ry={6 * g.s} fill="rgba(40,22,10,0.35)" />
             {Array.from({ length: n }, (_, k) => {
               const x = g.x0 + 18 * g.s + (k / (n - 1)) * (g.x1 - g.x0 - 36 * g.s);
-              return <Plant key={k} crop={crop} x={x} y={g.y} s={(crop === 'maize' ? 0.62 : crop === 'kale' ? 0.95 : 1.05) * g.s} cond={bad ? cond : 'healthy'} seed={seed * 100 + i * 10 + k} bg={bad && cond === 'drought' ? SOIL.dry : '#6b4528'} />;
+              return <Plant key={k} crop={crop} x={x} y={g.y} s={(crop === 'maize' ? 0.62 : crop === 'kale' ? 0.95 : crop === 'tomato' ? 1 : 1.05) * g.s} cond={bad ? cond : 'healthy'} seed={seed * 100 + i * 10 + k} bg={bad && cond === 'drought' ? SOIL.dry : '#6b4528'} />;
             })}
           </g>
         );
@@ -290,7 +333,7 @@ export function PartArt({
 }: {
   part: PartId;
   crop: Crop;
-  cond: Exclude<Condition, 'healthy'>;
+  cond: Condition;
   problemRows: number[];
   rows: number;
   ring?: boolean;
@@ -301,7 +344,7 @@ export function PartArt({
   let body: ReactNode;
 
   if (part === 'crop') {
-    const scale = crop === 'maize' ? 0.98 : crop === 'kale' ? 1.6 : 1.55;
+    const scale = crop === 'maize' ? 0.98 : crop === 'kale' ? 1.6 : crop === 'tomato' ? 1.35 : 1.55;
     body = (
       <>
         <rect width={PART_W} height={PART_H} fill={sky} />
@@ -340,7 +383,7 @@ export function PartArt({
   );
 }
 
-function SoilPatch({ x, y, w, h, dry, seed }: { x: number; y: number; w: number; h: number; dry: boolean; seed: number }) {
+export function SoilPatch({ x, y, w, h, dry, seed }: { x: number; y: number; w: number; h: number; dry: boolean; seed: number }) {
   const rand = rng(seed);
   return (
     <g>
@@ -429,7 +472,7 @@ function LeafUnderside({ cond, kale = false }: { cond: Condition; kale?: boolean
       <g transform={`translate(100,72) rotate(${dry ? 18 : -8})`}>
         <path
           d={dry ? 'M-70,0 Q-40,-38 0,-40 Q42,-36 70,4 Q40,30 0,34 Q-44,30 -70,0 Z' : 'M-74,0 Q-40,-46 0,-48 Q46,-44 76,0 Q44,44 0,46 Q-44,42 -74,0 Z'}
-          fill={dry ? '#a4b27a' : kale ? '#86b89c' : '#8cc86a'}
+          fill={dry ? '#a4b27a' : cond === 'nitrogen' ? '#cdd36a' : kale ? '#86b89c' : '#8cc86a'}
           stroke={dry ? '#8f7034' : kale ? '#2f6a50' : '#3f8f2f'}
           strokeWidth={dry ? 3 : 1.5}
         />
@@ -438,6 +481,20 @@ function LeafUnderside({ cond, kale = false }: { cond: Condition; kale?: boolean
           <path key={x} d={`M${x},1 Q${x + 10},-18 ${x + 18},-30 M${x},1 Q${x + 10},18 ${x + 18},28`} stroke="#e8f2d0" strokeWidth={1.1} fill="none" />
         ))}
         {dry && <path d="M50,-26 Q66,-12 70,4" stroke="#7a5a24" strokeWidth={3} fill="none" />}
+        {cond === 'aphids' &&
+          (() => {
+            const rand = rng(41);
+            return [
+              [-40, -14],
+              [-8, 12],
+              [30, -10],
+              [10, -26],
+            ].flatMap(([cx, cy], g) =>
+              Array.from({ length: 16 }, (_, k) => (
+                <ellipse key={`${g}-${k}`} cx={cx + (rand() - 0.5) * 22} cy={cy + (rand() - 0.5) * 14} rx={2.3} ry={1.6} transform={`rotate(${rand() * 180} ${cx} ${cy})`} fill={k % 4 ? '#52703a' : '#9bb36a'} stroke="#2f4521" strokeWidth={0.4} />
+              )),
+            );
+          })()}
       </g>
     </>
   );
@@ -623,5 +680,52 @@ export function MapShamba({
       })}
       {plants}
     </g>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Water: the furrow that feeds the shamba and the level in the tank    */
+/* ------------------------------------------------------------------ */
+
+export function WaterArt({ dry, ring = false, flood = false }: { dry: boolean; ring?: boolean; flood?: boolean }) {
+  const rand = rng(51);
+  const level = dry ? 0.14 : flood ? 1 : 0.7;
+  return (
+    <svg viewBox={`0 0 ${PART_W} ${PART_H}`} width="100%" height="100%" role="img" aria-label="Water for the shamba">
+      <rect width={PART_W} height={PART_H} fill="#f6ead2" />
+      <rect y={92} width={PART_W} height={48} fill={dry ? '#c39b68' : '#6b4528'} />
+      {/* tank with a gauge */}
+      <rect x={14} y={14} width={54} height={86} rx={9} fill="#2e86c1" stroke="#1d5a86" strokeWidth={2} />
+      <rect x={22} y={22} width={14} height={70} rx={5} fill="#d9eaf5" />
+      <rect x={22} y={22 + 70 * (1 - level)} width={14} height={70 * level} rx={5} fill="#2fa8e6" />
+      <path d="M40,32 h20 M40,50 h14 M40,68 h20 M40,86 h14" stroke="#d9eaf5" strokeWidth={1.4} />
+      <rect x={32} y={100} width={6} height={10} fill="#1d5a86" />
+      {/* furrow between the rows */}
+      <path d="M72,112 L196,104 L196,126 L72,134 Z" fill={dry ? '#a27c4c' : '#4a2f1b'} stroke="#3d2614" strokeWidth={1.5} />
+      {dry ? (
+        <>
+          {Array.from({ length: 9 }, (_, k) => {
+            const x = 84 + rand() * 100;
+            const y = 112 + rand() * 14;
+            return <polyline key={k} points={`${x},${y} ${x + 5},${y + 4} ${x + 2},${y + 8}`} fill="none" stroke="#8a6a40" strokeWidth={1.3} />;
+          })}
+        </>
+      ) : flood ? (
+        <>
+          {/* the furrow is full and spills over the bed */}
+          <path d="M66,100 L198,92 L198,134 L66,140 Z" fill="#a08a52" opacity={0.95} />
+          <path d="M80,108 L194,101 L194,128 L80,134 Z" fill="#8d7a48" />
+          <path d="M92,116 h26 M132,110 h30 M170,106 h20 M100,126 h22 M146,122 h26" stroke="#d9cfa0" strokeWidth={1.6} strokeLinecap="round" />
+          <ellipse cx={150} cy={86} rx={30} ry={5} fill="#a08a52" opacity={0.9} />
+          <path d="M38,100 q-6,8 -2,16 M44,100 q6,8 2,16" stroke="#8fd0f0" strokeWidth={2} fill="none" />
+        </>
+      ) : (
+        <>
+          <path d="M76,117 L194,109 L194,121 L76,129 Z" fill="#4fb3e8" opacity={0.95} />
+          <path d="M90,119 h24 M130,115 h28 M168,112 h18" stroke="#d6f0fb" strokeWidth={1.6} strokeLinecap="round" />
+        </>
+      )}
+      {ring && <circle className="clue-ring" cx={dry ? 130 : flood ? 120 : 100} cy={dry ? 118 : flood ? 112 : 60} r={dry ? 40 : 46} fill="none" stroke="#ffb005" strokeWidth={3.5} />}
+    </svg>
   );
 }

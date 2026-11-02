@@ -516,3 +516,97 @@ button.card:active { transform: scale(0.98); }
 @media (prefers-reduced-motion: reduce) {
   .farmer-walk, .farmer-walk .leg-l, .farmer-walk .leg-r, .create-farmer, .cheer, .goal-arrow > path, .tap-ring, .part-tile.is-next .part-img { animation: none; }
 }
+
+/* ================================================================== */
+/* Field rounds: seven farms back to back                               */
+/* ================================================================== */
+.rounds .village { cursor: default; }
+
+/* five pictures to look at (the first session shows four) */
+.part-row.five { gap: 12px; }
+.part-row.five .part-tile { width: 148px; }
+.part-row.five .part-img { width: 148px; height: 104px; }
+.part-row.five .part-label { font-size: 11px; text-align: center; }
+.judge-thumbs.five { left: 22px; top: 62px; grid-template-columns: repeat(3, 84px); gap: 8px; }
+.judge-thumbs.five .part-tile.small { width: 84px; }
+.judge-thumbs.five .part-tile.small .part-img { width: 84px; height: 59px; }
+.calls.five { left: 306px; top: 20px; bottom: 20px; gap: 8px; grid-auto-rows: 1fr; }
+.calls.five .call-btn { padding: 0 12px; gap: 9px; font-size: 13px; line-height: 1.15; }
+.calls.five .call-btn svg { width: 26px; height: 26px; flex-shrink: 0; }
+.calls.five .call-btn i { margin-left: auto; font-style: normal; font-size: 18px; opacity: 0.5; }
+.calls.five .call-btn.wide { grid-column: 1 / -1; }
+.calls.five.sub { grid-template-rows: 30px; }
+.call-back { grid-column: 1 / -1; justify-self: start; padding: 0 14px; border-radius: 100px; background: #fff8ec; border: 2px solid var(--brown-20); font-size: 12px; font-weight: 700; }
+.call-back:hover { border-color: var(--gold); }
+/* the farmer's note: planting date, weather, what was done */
+.rr-diary { margin: 0; font-size: 11px; line-height: 1.3; text-align: center; padding: 0 28px; }
+.part-row.five .rr-diary { position: absolute; left: 0; right: 0; bottom: 14px; }
+.rr-diary.judge { position: absolute; left: 22px; width: 270px; top: 196px; padding: 0; text-align: left; }
+.rr-progress { position: absolute; top: 18px; left: 0; right: 0; margin: 0; text-align: center; font-size: 12px; font-weight: 700; opacity: 0.75; }
+
+/* a real photo, or the drawn picture, fills the same frame */
+.rr-photo-wrap { position: relative; display: block; width: 100%; height: 100%; }
+.rr-photo { display: block; width: 100%; height: 100%; object-fit: cover; background: #e8dcc4; }
+.rr-ring { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.rr-flag { position: absolute; inset: 0; border: 4px solid #ffb005; border-radius: inherit; pointer-events: none; animation: rowpulse 1s ease-in-out infinite; }
+
+.rr-roundtag {
+  position: absolute; left: 24px; top: 14px; padding: 3px 12px; border-radius: 100px;
+  background: rgba(40, 24, 12, 0.66); color: #fff; font-size: 11px; font-weight: 700;
+}
+.rr-roundtag.rr-cropnote { top: 38px; background: rgba(47, 125, 39, 0.82); }
+.rr-result { align-items: center; }
+.rr-points {
+  padding: 4px 16px; border-radius: 100px; background: var(--gold); border: 0.4px solid var(--gold-edge);
+  box-shadow: var(--gold-inset); color: #fff; font-size: 13px; font-weight: 700;
+}
+.rr-wait { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; text-align: center; line-height: 1.25; }
+
+/* the seven rounds, with the 30-second wait on any farm that was missed */
+.rr-chips { position: absolute; left: 0; right: 0; top: 68px; margin: 0; padding: 0; list-style: none; display: flex; justify-content: center; gap: 6px; z-index: 5; }
+.rr-chip {
+  display: flex; align-items: center; justify-content: center; gap: 3px; min-width: 46px; height: 30px; padding: 0 12px;
+  border-radius: 100px; background: rgba(0, 0, 0, 0.4); color: #fff; font-size: 12px; font-weight: 800;
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.25);
+}
+.rr-chip i { font-style: normal; font-size: 10px; font-weight: 700; }
+.rr-chip.is-current { background: var(--gold); box-shadow: 0 0 0 2px #fff; }
+.rr-chip.is-first, .rr-chip.is-second { background: #2f9b14; }
+.rr-chip.is-missed { background: #c0392b; }
+.rr-chip.is-ready { background: var(--gold); box-shadow: 0 0 0 3px #fff; animation: glow 1.1s ease-in-out infinite; }
+.rr-exit {
+  position: absolute; right: 14px; top: 12px; height: 32px; padding: 0 14px; border-radius: 100px; z-index: 31;
+  background: rgba(40, 24, 12, 0.66); color: #fff; font-size: 12px; font-weight: 700;
+}
+
+/* pins on the farms */
+.rr-pin { cursor: pointer; }
+.rr-pin-disc { fill: rgba(40, 24, 12, 0.8); stroke: #fff; stroke-width: 2; }
+.rr-pin.is-current .rr-pin-disc, .rr-pin.is-ready .rr-pin-disc { fill: #ffae00; stroke: #7a4a10; }
+.rr-pin.is-first .rr-pin-disc, .rr-pin.is-second .rr-pin-disc { fill: #2f9b14; }
+.rr-pin.is-missed:not(.is-ready) .rr-pin-disc { fill: #c0392b; }
+.goal-arrow-p { animation: arrowbob 0.9s ease-in-out infinite; }
+
+/* summary after round 7 */
+.rr-summary {
+  width: 620px; padding: 10px 22px 12px; border-radius: 18px; background: var(--cream); color: var(--brown);
+  box-shadow: 0 0 0 4px #eea660, 0 0 0 7px #a8612f; animation: pop 0.25s ease both;
+}
+.rr-summary-title { font-size: 16px; font-weight: 700; text-align: center; }
+.rr-summary ol { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.rr-summary li { display: flex; align-items: center; gap: 10px; height: 25px; padding: 0 8px; border-radius: 10px; background: #fff8ec; font-size: 12px; font-weight: 600; }
+.rr-summary li b { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 100px; background: rgba(40, 24, 12, 0.7); color: #fff; font-size: 11px; flex-shrink: 0; }
+.rr-summary li.is-first b, .rr-summary li.is-second b { background: #2f9b14; }
+.rr-summary li.is-missed b { background: #c0392b; }
+.rr-summary .rr-title { flex: 1; }
+.rr-summary .rr-state { font-size: 11px; font-weight: 700; color: #2f7d27; }
+.rr-summary .rr-state.is-wait { color: #c0392b; }
+.rr-summary-points { margin-top: 6px; text-align: center; font-size: 13px; font-weight: 700; }
+.rr-summary-buttons { display: flex; justify-content: center; gap: 12px; margin-top: 6px; }
+@media (prefers-reduced-motion: reduce) {
+  .rr-chip.is-ready, .goal-arrow-p, .rr-flag { animation: none; }
+}
+
+.rr-pin-label { font-size: 8px; font-weight: 800; fill: #fff; stroke: #3d2614; stroke-width: 2.4px; paint-order: stroke; font-family: Poppins, sans-serif; }
+.rr-cycle { position: absolute; left: 12px; bottom: 10px; margin: 0; padding: 3px 12px; border-radius: 100px; background: rgba(40, 24, 12, 0.66); color: #fff; font-size: 10px; font-weight: 700; z-index: 4; }
+.rr-summary li small { font-weight: 500; opacity: 0.7; }

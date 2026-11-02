@@ -23,6 +23,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [How the Figma design maps to code](#how-the-figma-design-maps-to-code)
 - [The first session](#the-first-session)
 - [The season](#the-season)
+- [Field rounds](#field-rounds)
 - [Design review mode](#design-review-mode)
 - [Saving, events and privacy](#saving-events-and-privacy)
 - [Performance on low-cost phones](#performance-on-low-cost-phones)
@@ -86,6 +87,8 @@ src/
     Journey.tsx            harvest timing → sale → storage → value addition → process → results; rewards; info
     Meta.tsx               How the farm works, Settings
   first/                   the first session (see below)
+  rounds/                  field rounds: seven farm checks back to back (see below); loaded only when opened
+    photos/                drop-in real photos, one folder per round (see photos/README.md)
 public/
   assets/                  130 images exported from Figma, incl. bg-farm.webp and bg-farm@2x.webp
   manifest.webmanifest     installable web app (landscape, full screen) + icons
@@ -192,6 +195,63 @@ counts while the game is on screen. Milk and eggs can be collected once a day. T
 Balance numbers live in `src/data.ts` (`STEP_META`, `HARVEST_EFFECT`, `STORAGE_OPTIONS`, `PROCESSES`,
 `REWARDS`) and `src/state.ts` (`expectedHarvest`, `saleQuote`).
 
+## Field rounds
+
+Open **Rounds** on the farm screen (right edge, above Shop). The player checks **seven farms back to back**. For
+every farm the farmer **walks there** along the paths, then the player:
+
+1. **Looks** at five pictures: the crop, pests & disease, soil, water, and the state of the farm, plus the farmer's
+   note (planting date, weather, what was done).
+2. **Judges** in two taps: a group (healthy, water, plant food, pests & disease, weeds, animals & weather, plant &
+   harvest time), then the exact problem when the group has more than one.
+3. Gets the answer. A wrong call shows the one picture that held the clue, then a second look.
+
+### A crop stays for three weeks
+
+Each farm keeps **one crop for 21 real days**, counted from the day the player first opened the rounds. The crop
+moves through three stages: **seedlings** (days 1–7), **growing** (8–14) and **harvest time** (15–21). On day 22 the
+farm rotates to the next crop (maize → beans → sukuma wiki → tomatoes), so pests and disease do not build up.
+
+Every real day each farm gets a new situation, drawn from what can happen to that crop at that stage. The same farm
+on the same day is always the same, so a re-check after 30 seconds shows the same farm. The mix and the stages are in
+`src/rounds/hazards.ts`.
+
+| Situation | What it is | Crops | Stages |
+|---|---|---|---|
+| `healthy` | A healthy farm | maize, beans, kale, tomato | seedlings, growing, harvest |
+| `drought` | Not enough water | maize, beans, kale, tomato | growing |
+| `flood` | Too much water | maize, beans, kale, tomato | seedlings, growing, harvest |
+| `nitrogen` | Short of plant food | maize, kale, tomato | growing |
+| `armyworm` | Fall armyworm | maize | growing |
+| `aphids` | Aphids | kale, tomato, beans | growing |
+| `disease` | A leaf disease | maize, beans, kale, tomato | growing, harvest |
+| `weeds` | Weeds | maize, beans, kale, tomato | seedlings, growing |
+| `livestock` | Animals broke the fence | maize, beans, kale, tomato | seedlings, growing, harvest |
+| `wildlife` | Birds and monkeys | maize, tomato, beans | harvest |
+| `hail` | Hail damage | maize, beans, kale, tomato | growing, harvest |
+| `plantEarly` | Planted too early | maize, beans, tomato | seedlings |
+| `plantLate` | Planted too late | maize, beans, tomato | growing |
+| `harvestEarly` | Harvested too early | maize, beans, tomato | harvest |
+| `harvestLate` | Harvested too late | maize, beans, tomato | harvest |
+
+Animals that break the fence (`livestock`), birds and monkeys (`wildlife`), hail, flooding, disease, weeds, and
+planting or harvesting at the wrong time are there on top of drought, pests and hunger. To add one, add it to
+`HAZARDS` and give it a call and, if it needs a new picture, a drawing in `src/rounds/scene.tsx`.
+
+### Rules
+
+- **Every 30 seconds**: each farm can be checked once every 30 seconds (`CHECK_COOLDOWN_S` in `src/rounds/data.ts`).
+  A pin shows the countdown. A missed farm can be checked again after 30 seconds, from the chip bar or the summary.
+- **Points**: 100 for a right read first time, 50 after a second look, paid **once per farm per day**. Results reset at
+  the player's midnight, because every farm is a new situation then.
+- **Real photos**: each picture uses a photo from `src/rounds/photos/<situation>/<part>.jpg` when one exists and a
+  drawing otherwise. See `src/rounds/photos/README.md` for the shot list and specs.
+- **Review menu**: *Field rounds* lists the map, look, judge, right, wrong and summary screens, and one entry for
+  each new situation.
+- **Events**: `round_start`, `round_part_viewed`, `round_call` (no names).
+- The Figma map has six beds, so round 7 reuses the front maize bed (shown as two pins side by side). The beds are
+  painted art and always show the same plants; the crop name on each pin says what is actually growing.
+
 ## Design review mode
 
 Open **`?review=1`** (or *Settings → Design review*) for a sandbox with a menu of every screen filled with
@@ -214,6 +274,7 @@ player's saved game or events.
 
 ## Performance on low-cost phones
 
+- Field rounds are a separate chunk (about 17 KB compressed) loaded when opened; they add about 3 KB to the first load.
 - The first screen needs about **100 KB** of compressed code; it does not wait for the farm art.
 - The farm map is **86 KB** at 1× and **194 KB** at 2× (phones with sharp screens pick 2×).
 - All first-session crop art is SVG drawn in code: no images to download.
@@ -225,6 +286,9 @@ player's saved game or events.
 - **Game balance** (task counts, yields, prices, point costs) is illustrative, not agronomic data.
 - **Farming advice** in the game (e.g. ash or sand in the maize funnel for fall armyworm; watering at the
   roots in the cool of the morning) should be checked by an agronomist or extension officer.
+- **Field-round advice** (ash or sand for armyworm, soapy water for aphids, top-dressing, drainage after floods, what to
+  do after hail, when each crop is ready to pick) needs agronomist review, and so do the crop calendar (21 real days
+  stand in for a whole season) and the rotation. Round points are illustrative.
 - **Lima AI** is a rule-based stand-in that reads the season's numbers; it does not call an AI service.
 - **Rewards** are saved in the game but nothing is sent to a partner; there is no redemption backend.
 - **One painted farm**: the Figma map shows one farm, so the "neighbours" share it. A village with separate

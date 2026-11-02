@@ -1,10 +1,24 @@
 /* First session: farmer looks, the shambas the player reviews, and every line they read.
    One review system drives every shamba; to add a review, add an entry to SHAMBAS. */
 
-export type Call = 'healthy' | 'water' | 'pests' | 'fertiliser';
-export type Crop = 'maize' | 'beans' | 'kale';
+export type Call =
+  | 'healthy'
+  | 'water'
+  | 'pests'
+  | 'fertiliser'
+  // the field rounds add these
+  | 'flood'
+  | 'disease'
+  | 'weeds'
+  | 'animals'
+  | 'hail'
+  | 'plantEarly'
+  | 'plantLate'
+  | 'harvestEarly'
+  | 'harvestLate';
+export type Crop = 'maize' | 'beans' | 'kale' | 'tomato';
 /** What is wrong with the problem rows. The art draws each one from this value. */
-export type Condition = 'healthy' | 'armyworm' | 'drought' | 'nitrogen';
+export type Condition = 'healthy' | 'armyworm' | 'drought' | 'nitrogen' | 'aphids';
 export type PartId = 'crop' | 'pests' | 'soil' | 'layout';
 
 export const NAME_SUGGESTIONS = ['Wanjiku', 'Otieno', 'Chebet'];
