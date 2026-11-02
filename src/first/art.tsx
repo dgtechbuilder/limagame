@@ -142,8 +142,46 @@ export const Bean = memo(function Bean({ x, y, s = 1, cond, seed }: PlantProps) 
   return <g transform={`translate(${x},${y}) scale(${s})`}>{stems}</g>;
 });
 
+/** Sukuma wiki (collard kale): a bare stem where lower leaves were picked, broad blue-green leaves on top.
+    Thirsty plants hang their leaves down, turn dull and brown at the edges. */
+export const Kale = memo(function Kale({ x, y, s = 1, cond, seed }: PlantProps) {
+  const rand = rng(seed);
+  const dry = cond === 'drought';
+  const leafFill = dry ? '#93a274' : '#4f9070';
+  const edge = dry ? '#8f7034' : '#2f6a50';
+  const rib = dry ? '#c9cfa8' : '#bfe0cc';
+  const top = -24;
+  const angles = [-72, -44, -16, 12, 40, 68, -2];
+  return (
+    <g transform={`translate(${x},${y}) scale(${s})`}>
+      <path d={`M-1.8,0 L-1.4,${top} L1.4,${top} L1.8,0 Z`} fill={dry ? '#9a9f7a' : '#88a890'} />
+      {[-6, -12, -18].map(yy => (
+        <path key={yy} d={`M-1.6,${yy} l-2.4,-1.4 M1.6,${yy - 3} l2.4,-1.4`} stroke="#6f8a74" strokeWidth={1} />
+      ))}
+      {angles.map((a, i) => {
+        const tilt = a + (rand() - 0.5) * 8;
+        const rot = dry ? tilt + (tilt < 0 ? -62 : 62) : tilt;
+        return (
+          <g key={i} transform={`translate(0,${top}) rotate(${rot})`}>
+            <path d="M0,0 L0,-9" stroke={rib} strokeWidth={1.4} />
+            <path
+              d={dry ? 'M0,-8 Q-6,-14 -4.5,-24 Q0,-28 4.5,-24 Q6,-14 0,-8 Z' : 'M0,-8 Q-9,-12 -8,-22 Q-6,-30 0,-31 Q6,-30 8,-22 Q9,-12 0,-8 Z'}
+              fill={leafFill}
+              stroke={edge}
+              strokeWidth={dry ? 1.1 : 0.8}
+            />
+            <path d="M0,-8 L0,-28 M0,-14 L-4,-18 M0,-14 L4,-18 M0,-20 L-4,-24 M0,-20 L4,-24" stroke={rib} strokeWidth={0.7} fill="none" />
+          </g>
+        );
+      })}
+    </g>
+  );
+});
+
 export function Plant(p: PlantProps & { crop: Crop }) {
-  return p.crop === 'maize' ? <Maize {...p} /> : <Bean {...p} />;
+  if (p.crop === 'maize') return <Maize {...p} />;
+  if (p.crop === 'kale') return <Kale {...p} />;
+  return <Bean {...p} />;
 }
 
 /* ------------------------------------------------------------------ */
@@ -207,7 +245,7 @@ export function Field({
             <ellipse cx={300} cy={g.y + 3} rx={(g.x1 - g.x0) / 2 + 6} ry={6 * g.s} fill="rgba(40,22,10,0.35)" />
             {Array.from({ length: n }, (_, k) => {
               const x = g.x0 + 18 * g.s + (k / (n - 1)) * (g.x1 - g.x0 - 36 * g.s);
-              return <Plant key={k} crop={crop} x={x} y={g.y} s={(crop === 'maize' ? 0.62 : 1.05) * g.s} cond={bad ? cond : 'healthy'} seed={seed * 100 + i * 10 + k} bg={bad && cond === 'drought' ? SOIL.dry : '#6b4528'} />;
+              return <Plant key={k} crop={crop} x={x} y={g.y} s={(crop === 'maize' ? 0.62 : crop === 'kale' ? 0.95 : 1.05) * g.s} cond={bad ? cond : 'healthy'} seed={seed * 100 + i * 10 + k} bg={bad && cond === 'drought' ? SOIL.dry : '#6b4528'} />;
             })}
           </g>
         );
@@ -263,7 +301,7 @@ export function PartArt({
   let body: ReactNode;
 
   if (part === 'crop') {
-    const scale = crop === 'maize' ? 0.98 : 1.55;
+    const scale = crop === 'maize' ? 0.98 : crop === 'kale' ? 1.6 : 1.55;
     body = (
       <>
         <rect width={PART_W} height={PART_H} fill={sky} />
@@ -277,7 +315,7 @@ export function PartArt({
       </>
     );
   } else if (part === 'pests') {
-    body = crop === 'maize' ? <Whorl cond={cond} /> : <LeafUnderside cond={cond} />;
+    body = crop === 'maize' ? <Whorl cond={cond} /> : <LeafUnderside cond={cond} kale={crop === 'kale'} />;
   } else if (part === 'soil') {
     const dry = cond === 'drought';
     body = (
@@ -383,7 +421,7 @@ function Whorl({ cond }: { cond: Condition }) {
 }
 
 /** Underside of a bean leaf. Drought: limp, curling, dull edges, and no insects anywhere. */
-function LeafUnderside({ cond }: { cond: Condition }) {
+function LeafUnderside({ cond, kale = false }: { cond: Condition; kale?: boolean }) {
   const dry = cond === 'drought';
   return (
     <>
@@ -391,8 +429,8 @@ function LeafUnderside({ cond }: { cond: Condition }) {
       <g transform={`translate(100,72) rotate(${dry ? 18 : -8})`}>
         <path
           d={dry ? 'M-70,0 Q-40,-38 0,-40 Q42,-36 70,4 Q40,30 0,34 Q-44,30 -70,0 Z' : 'M-74,0 Q-40,-46 0,-48 Q46,-44 76,0 Q44,44 0,46 Q-44,42 -74,0 Z'}
-          fill={dry ? '#a4b27a' : '#8cc86a'}
-          stroke={dry ? '#8f7034' : '#3f8f2f'}
+          fill={dry ? '#a4b27a' : kale ? '#86b89c' : '#8cc86a'}
+          stroke={dry ? '#8f7034' : kale ? '#2f6a50' : '#3f8f2f'}
           strokeWidth={dry ? 3 : 1.5}
         />
         <path d="M-70,0 L72,2" stroke="#e8f2d0" strokeWidth={2} />
@@ -434,7 +472,8 @@ function TopDown({ crop, cond, problemRows, rows }: { crop: Crop; cond: Conditio
                   </g>
                 );
               }
-              return <circle key={k} cx={x} cy={y} r={bad ? 4.4 : 6} fill={bad ? '#9aa66a' : '#4fae3c'} stroke={bad ? '#8f7034' : '#2f7d27'} strokeWidth={0.8} />;
+              const healthy = crop === 'kale' ? '#4f9070' : '#4fae3c';
+              return <circle key={k} cx={x} cy={y} r={bad ? 4.4 : 6} fill={bad ? '#9aa66a' : healthy} stroke={bad ? '#8f7034' : '#2f6a50'} strokeWidth={0.8} />;
             })}
           </g>
         );

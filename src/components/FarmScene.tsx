@@ -3,6 +3,7 @@ import { img } from '../assets';
 import { STEP_META, STEPS } from '../data';
 import { SELLING, SOLD, daysToHarvest, stepIndex, today, type Action, type GameState, type Modal } from '../state';
 import { FarmerPortrait } from '../first/art';
+import { FarmMap } from './FarmMap';
 import { LOOKS } from '../first/data';
 import { GoArrow, MailIcon, SettingsIcon, TimerIcon } from './Icons';
 import { Img, fmt } from './ui';
@@ -59,7 +60,7 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
 
   return (
     <>
-      <img className="farm-bg" src={img.bg} alt={`${s.farmer?.name ?? 'Ojuok'}'s farm: goats, chickens, a market stall and crop plots`} draggable={false} />
+      <FarmMap alt={`${s.farmer?.name ?? 'Ojuok'}'s farm: goats, chickens, a market stall and crop plots`} />
       <div className="top-shade" />
       {s.plotSelected && <div className="abs" style={{ inset: 0, background: 'rgba(0,0,0,0.32)', pointerEvents: 'none' }} />}
 

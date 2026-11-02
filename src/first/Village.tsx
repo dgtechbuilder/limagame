@@ -1,40 +1,55 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent } from 'react';
-import { FarmerFigure, Hut, MapShamba, Tree } from './art';
+import { FarmMap } from '../components/FarmMap';
+import { FarmerFigure } from './art';
 import type { Look } from './data';
 
-/* The village on the 874 × 402 stage. The farmer walks along fixed paths (no pathfinding),
-   so a tap anywhere moves them to the nearest point of the path that is open now. */
+/* The first session is played on the farm map from Figma (the same painting as the farm screen).
+   This layer only adds what moves or guides: the farmer, a dotted trail, the goal arrow, labels and
+   the mist over the parts of the farm that are still locked. The farmer walks along fixed routes
+   traced over the painted path and grass, so a tap anywhere moves them to the nearest point ahead. */
 
 type Pt = [number, number];
 
+/** Beds on the painted map (stage coordinates), used for taps, arrows and labels. */
 export const SPOTS = {
-  first: { x: 600, y: 150, w: 170, h: 70 },
-  lower: { x: 652, y: 262, w: 160, h: 64 },
-  achieng: { x: 226, y: 112, w: 136, h: 60 },
-  baraka: { x: 416, y: 64, w: 118, h: 52 },
-  kiprono: { x: 24, y: 52, w: 150, h: 66 },
+  /** front maize bed: the player's shamba */
+  first: { poly: '405,250 510,194 557,222 455,272', cx: 482, cy: 232, label: [482, 166] as Pt },
+  /** back maize bed: the retry shamba */
+  lower: { poly: '328,222 440,176 470,192 360,246', cx: 400, cy: 210, label: [384, 146] as Pt },
+  /** the two greens beds on the left: Mama Achieng's sukuma wiki */
+  achieng: { poly: '172,275 300,226 432,290 305,346', cx: 300, cy: 280, label: [262, 216] as Pt },
+  /** tomatoes on the right: opens tomorrow */
+  baraka: { poly: '512,276 600,230 740,282 640,334', cx: 626, cy: 280, label: [660, 222] as Pt },
 };
 
+/** In from the dirt path on the left, along it to the gate, then up the grass to the front maize bed. */
 const MAIN: Pt[] = [
-  [140, 346],
-  [250, 322],
-  [350, 284],
-  [452, 254],
-  [560, 236],
-  [612, 228],
+  [26, 292],
+  [120, 322],
+  [230, 352],
+  [330, 378],
+  [414, 388],
+  [440, 350],
+  [466, 312],
+  [474, 290],
 ];
+/** Round the right of the front bed, between it and the tomatoes, to the back bed. */
 const TO_LOWER: Pt[] = [
-  [612, 228],
-  [630, 262],
-  [640, 300],
-  [646, 338],
+  [474, 290],
+  [506, 262],
+  [546, 240],
+  [574, 206],
+  [520, 186],
+  [474, 178],
 ];
+/** Down to the path and along the front of the greens to Mama Achieng's sukuma wiki. */
 const TO_ACHIENG: Pt[] = [
-  [612, 228],
-  [540, 208],
-  [462, 194],
-  [392, 184],
-  [352, 182],
+  [474, 290],
+  [452, 318],
+  [420, 348],
+  [330, 356],
+  [236, 334],
+  [196, 310],
 ];
 
 export type Route = 'toFirst' | 'toLower' | 'toAchieng' | 'lowerToAchieng';
@@ -65,7 +80,7 @@ function at(pts: Pt[], cum: number[], d: number): { p: Pt; dir: number } {
   return { p: pts[0], dir: 1 };
 }
 
-/** Distance along the path of the point nearest to (x, y). */
+/** Distance along the route of the point nearest to (x, y). */
 function project(pts: Pt[], cum: number[], x: number, y: number) {
   let best = { d: 0, dist: Infinity };
   for (let i = 1; i < pts.length; i++) {
@@ -75,9 +90,7 @@ function project(pts: Pt[], cum: number[], x: number, y: number) {
     const vy = by - ay;
     const len2 = vx * vx + vy * vy || 1;
     const t = Math.max(0, Math.min(1, ((x - ax) * vx + (y - ay) * vy) / len2));
-    const px = ax + vx * t;
-    const py = ay + vy * t;
-    const dist = Math.hypot(x - px, y - py);
+    const dist = Math.hypot(x - (ax + vx * t), y - (ay + vy * t));
     if (dist < best.dist) best = { d: cum[i - 1] + t * Math.sqrt(len2), dist };
   }
   return best;
@@ -85,7 +98,7 @@ function project(pts: Pt[], cum: number[], x: number, y: number) {
 
 const pathD = (pts: Pt[]) => 'M' + pts.map(p => p.join(',')).join(' L');
 
-const SPEED = 52; // stage px per second: the first walk takes about 9 s
+const SPEED = 52; // stage px per second: the first walk takes about 11 s
 
 export function Village({
   look,
@@ -101,16 +114,16 @@ export function Village({
 }: {
   look: Look;
   name: string;
-  /** null = the farmer stands at the start of the first walk (creation backdrop) */
+  /** null = no walk (backdrop for creating the farmer) */
   route: Route | null;
-  /** shamba the player is heading to (arrow + label) */
+  /** bed the player is heading to (arrow + label) */
   target: keyof typeof SPOTS | null;
-  /** neighbours visible */
+  /** the rest of the farm is open (no mist) */
   open: boolean;
-  /** play the opening animation */
+  /** play the opening moment */
   opening?: boolean;
   showTapHint?: boolean;
-  /** ignore taps (while the village-opening moment plays) */
+  /** ignore taps (while the opening moment plays) */
   frozen?: boolean;
   onFirstMove?: () => void;
   onArrive?: () => void;
@@ -127,7 +140,7 @@ export function Village({
   const moved = useRef(false);
   const arrived = useRef(false);
   const [idleHint, setIdleHint] = useState(false);
-  // the mist lifts on screen when the village opens, instead of being gone on the first frame
+  // the mist lifts on screen when the farm opens, instead of being gone on the first frame
   const [lifted, setLifted] = useState(open && !opening);
   useEffect(() => {
     if (!open) return setLifted(false);
@@ -150,7 +163,7 @@ export function Village({
     setIdleHint(false);
     const id = window.setTimeout(() => setIdleHint(true), 6000);
     return () => window.clearTimeout(id);
-  }, [route, moving, d]);
+  }, [route, frozen, moving, d]);
 
   const step = useRef<number | null>(null);
   const run = () => {
@@ -176,9 +189,12 @@ export function Village({
     setMoving(true);
     step.current = requestAnimationFrame(tick);
   };
-  useEffect(() => () => {
-    if (step.current != null) cancelAnimationFrame(step.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (step.current != null) cancelAnimationFrame(step.current);
+    },
+    [],
+  );
 
   const toStage = (e: RPointerEvent) => {
     const svg = svgRef.current!;
@@ -204,128 +220,131 @@ export function Village({
   const { p, dir } = at(pts, cum, d);
   const hintAt = at(pts, cum, Math.min(total, d + 90)).p;
   const goal = target ? SPOTS[target] : null;
-  const firstWalk = route === 'toFirst';
+
+  // Open ground before the farm opens: the walk to the maize beds and the beds themselves.
+  // Feathered edges come from stacked strokes, lightest and widest first (cheap on low-end phones;
+  // no blur filter). Each level is drawn for every route before the next, so overlaps never re-add mist.
+  const clear = (
+    <>
+      <ellipse cx={440} cy={224} rx={182} ry={96} fill="url(#hole)" />
+      {[
+        [56, '#c8c8c8'],
+        [36, '#8a8a8a'],
+        [18, '#444'],
+        [0, '#000'],
+      ].map(([extra, c]) =>
+        [
+          [MAIN, 48],
+          [TO_LOWER, 44],
+        ].map(([r, core]) => (
+          <path key={`${extra}-${core}`} d={pathD(r as Pt[])} stroke={c as string} strokeWidth={(core as number) + (extra as number)} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+        )),
+      )}
+      <ellipse cx={440} cy={224} rx={140} ry={70} fill="#000" />
+    </>
+  );
 
   return (
-    <svg
-      ref={svgRef}
-      className="village"
-      viewBox="0 0 874 402"
-      width={874}
-      height={402}
-      onPointerDown={e => {
-        dragging.current = true;
-        goTo(e);
-      }}
-      onPointerMove={e => dragging.current && goTo(e)}
-      onPointerUp={() => (dragging.current = false)}
-      onPointerLeave={() => (dragging.current = false)}
-      role="application"
-      aria-label={route ? `Village map. Tap the path to walk ${name} to the shamba.` : 'Village map'}
-    >
-      <defs>
-        <radialGradient id="grass" cx="50%" cy="60%" r="75%">
-          <stop offset="0" stopColor="#7cb84a" />
-          <stop offset="1" stopColor="#4f8f2e" />
-        </radialGradient>
-      </defs>
-      <rect width={874} height={402} fill="url(#grass)" />
+    <div className="abs" style={{ inset: 0 }}>
+      <FarmMap />
+      <svg
+        ref={svgRef}
+        className="village"
+        viewBox="0 0 874 402"
+        width={874}
+        height={402}
+        onPointerDown={e => {
+          dragging.current = true;
+          goTo(e);
+        }}
+        onPointerMove={e => dragging.current && goTo(e)}
+        onPointerUp={() => (dragging.current = false)}
+        onPointerLeave={() => (dragging.current = false)}
+        role="application"
+        aria-label={route ? `Farm map. Tap the path to walk ${name} to the shamba.` : 'Farm map'}
+      >
+        <defs>
+          <radialGradient id="hole">
+            <stop offset="0.5" stopColor="#000" />
+            <stop offset="1" stopColor="#fff" />
+          </radialGradient>
+          <mask id="mist-mask" maskUnits="userSpaceOnUse" x={0} y={0} width={874} height={402}>
+            <rect width={874} height={402} fill="#fff" />
+            {clear}
+          </mask>
+        </defs>
 
-      {/* every path in the village; only the active one is bright */}
-      {[MAIN, TO_LOWER, TO_ACHIENG].map((ps, i) => {
-        const hidden = i === 2 && !lifted;
-        return (
-          <g key={i} opacity={hidden ? 0 : 1} className="fade-slow">
-            <path d={pathD(ps)} fill="none" stroke="#a9824f" strokeWidth={26} strokeLinecap="round" strokeLinejoin="round" />
-            <path d={pathD(ps)} fill="none" stroke="#d9b47c" strokeWidth={20} strokeLinecap="round" strokeLinejoin="round" />
+        {/* the rest of the farm under mist until it opens */}
+        <g className={`mist ${lifted ? 'is-gone' : ''}`} pointerEvents="none">
+          <rect width={874} height={402} fill="#eef3ea" opacity={0.78} mask="url(#mist-mask)" />
+          {[
+            [110, 90, 90],
+            [250, 300, 80],
+            [640, 300, 90],
+            [720, 120, 90],
+            [560, 70, 70],
+          ].map(([cx, cy, r]) => (
+            <ellipse key={cx} cx={cx} cy={cy} rx={r} ry={r * 0.42} fill="#fff" opacity={0.45} />
+          ))}
+          {[
+            [262, 282],
+            [626, 284],
+            [640, 120],
+          ].map(([x, y]) => (
+            <g key={x} transform={`translate(${x},${y})`}>
+              <rect x={-13} y={-8} width={26} height={19} rx={4} fill="#8a6a40" />
+              <path d="M-7,-8 v-5 a7,7 0 0 1 14,0 v5" fill="none" stroke="#8a6a40" strokeWidth={3.5} />
+            </g>
+          ))}
+        </g>
+
+        {/* dotted trail for the current walk */}
+        {route && <path d={pathD(pts)} fill="none" stroke="#fff6cf" strokeWidth={4} strokeDasharray="2 10" strokeLinecap="round" opacity={0.95} />}
+
+        {/* labels */}
+        <MapLabel x={SPOTS.first.label[0]} y={SPOTS.first.label[1]} text={name ? `${name}'s shamba` : 'Your shamba'} strong={target === 'first'} />
+        {(target === 'lower' || route === 'toLower') && <MapLabel x={SPOTS.lower.label[0]} y={SPOTS.lower.label[1]} text="Back shamba" strong />}
+        {lifted && (
+          <g className="label-pop">
+            <MapLabel x={SPOTS.achieng.label[0]} y={SPOTS.achieng.label[1]} text="Mama Achieng · sukuma wiki" strong={target === 'achieng'} />
+            <MapLabel x={SPOTS.baraka.label[0]} y={SPOTS.baraka.label[1]} text="Baraka · tomorrow" />
           </g>
-        );
-      })}
-      {route && <path d={pathD(pts)} fill="none" stroke="#ffe39a" strokeWidth={4} strokeDasharray="2 10" strokeLinecap="round" opacity={0.9} />}
+        )}
 
-      {/* decoration */}
-      <Tree x={60} y={392} s={1.1} />
-      <Tree x={548} y={392} s={0.9} kind="banana" />
-      <Tree x={840} y={130} s={1} />
-      <Tree x={808} y={392} s={0.8} kind="bush" />
-      <Tree x={500} y={318} kind="bush" />
-      <Tree x={292} y={392} kind="banana" />
-      <Hut x={92} y={330} s={1.05} />
-      <Hut x={746} y={118} s={0.8} />
+        {goal && (
+          <g className="goal-arrow" transform={`translate(${goal.cx},${goal.cy - 4})`} pointerEvents="none">
+            <path d="M-10,-26 L10,-26 L10,-12 L18,-12 L0,4 L-18,-12 L-10,-12 Z" fill="#ffae00" stroke="#7a4a10" strokeWidth={2} />
+          </g>
+        )}
 
-      <MapShamba {...SPOTS.first} crop="maize" />
-      <MapShamba {...SPOTS.lower} crop="maize" />
+        {/* tap the bed itself to walk all the way */}
+        {route && goal && !frozen && (
+          <polygon
+            points={goal.poly}
+            fill="transparent"
+            className="goal-hit"
+            onPointerDown={e => {
+              e.stopPropagation();
+              goTo(e, true);
+            }}
+          />
+        )}
 
-      {/* neighbours, under mist until the village opens */}
-      <g className={opening ? 'village-open' : undefined} style={{ opacity: open && !lifted ? 0 : 1, transition: 'opacity 1.4s ease' }}>
-        <Hut x={200} y={96} s={0.75} />
-        <Hut x={392} y={58} s={0.7} />
-        <Hut x={182} y={196} s={0.7} />
-        <Tree x={560} y={110} s={0.8} />
-        <MapShamba {...SPOTS.kiprono} crop="tea" />
-        <MapShamba {...SPOTS.achieng} crop="beans" />
-        <MapShamba {...SPOTS.baraka} crop="kale" />
-      </g>
-      <g className={`mist ${lifted ? 'is-gone' : ''}`} pointerEvents="none">
-        <path d="M0,0 L600,0 Q620,70 560,128 Q470,200 300,214 Q150,226 0,262 Z" fill="#eef3ea" opacity={0.86} />
-        {[
-          [120, 80, 70],
-          [300, 120, 80],
-          [470, 60, 70],
-          [220, 190, 60],
-        ].map(([cx, cy, r]) => (
-          <ellipse key={cx} cx={cx} cy={cy} rx={r} ry={r * 0.45} fill="#fff" opacity={0.5} />
-        ))}
-        <g transform="translate(300,150)">
-          <rect x={-15} y={-10} width={30} height={22} rx={4} fill="#8a6a40" />
-          <path d="M-8,-10 v-6 a8,8 0 0 1 16,0 v6" fill="none" stroke="#8a6a40" strokeWidth={4} />
-        </g>
-      </g>
+        {route && (showTapHint || idleHint) && !moving && d < total - 1 && (
+          <g transform={`translate(${hintAt[0]},${hintAt[1]})`} pointerEvents="none">
+            <circle className="tap-ring" r={16} fill="none" stroke="#fff" strokeWidth={3} />
+            <circle r={6} fill="#fff" opacity={0.9} />
+          </g>
+        )}
 
-      {/* labels */}
-      <MapLabel x={685} y={140} text={`${name}'s shamba`} strong={target === 'first'} />
-      {(target === 'lower' || route === 'toLower') && <MapLabel x={732} y={256} text="Lower shamba" strong />}
-      {open && (
-        <g className={opening ? 'label-pop' : undefined}>
-          <MapLabel x={294} y={104} text="Mama Achieng · beans" strong={target === 'achieng'} />
-          <MapLabel x={475} y={128} text="Baraka · tomorrow" />
-          <MapLabel x={99} y={132} text="Mzee Kiprono · tomorrow" />
-        </g>
-      )}
-
-      {goal && (
-        <g className="goal-arrow" transform={`translate(${goal.x + goal.w / 2},${goal.y + goal.h / 2 - 6})`}>
-          <path d="M-10,-26 L10,-26 L10,-12 L18,-12 L0,4 L-18,-12 L-10,-12 Z" fill="#ffae00" stroke="#7a4a10" strokeWidth={2} />
-        </g>
-      )}
-
-      {/* tap the shamba itself to walk all the way */}
-      {route && goal && !frozen && (
-        <rect
-          x={goal.x}
-          y={goal.y}
-          width={goal.w}
-          height={goal.h}
-          fill="transparent"
-          onPointerDown={e => {
-            e.stopPropagation();
-            goTo(e, true);
-          }}
-        />
-      )}
-
-      {route && (showTapHint || idleHint) && !moving && d < total - 1 && (
-        <g transform={`translate(${hintAt[0]},${hintAt[1]})`} pointerEvents="none">
-          <circle className="tap-ring" r={16} fill="none" stroke="#fff" strokeWidth={3} />
-          <circle r={6} fill="#fff" opacity={0.9} />
-        </g>
-      )}
-
-      <g transform={`translate(${p[0]},${p[1]}) scale(0.62)`} pointerEvents="none">
-        <FarmerFigure look={look} pose={moving ? 'walk' : 'stand'} facing={dir as 1 | -1} />
-      </g>
-      {firstWalk && d === 0 && <MapLabel x={p[0]} y={p[1] - 62} text={name} strong />}
-    </svg>
+        {route && (
+          <g transform={`translate(${p[0]},${p[1]}) scale(0.6)`} pointerEvents="none">
+            <FarmerFigure look={look} pose={moving ? 'walk' : 'stand'} facing={dir as 1 | -1} />
+          </g>
+        )}
+        {route === 'toFirst' && d === 0 && <MapLabel x={p[0] + 30} y={p[1] - 56} text={name} strong />}
+      </svg>
+    </div>
   );
 }
 
@@ -333,7 +352,7 @@ function MapLabel({ x, y, text, strong }: { x: number; y: number; text: string; 
   const w = text.length * 5.6 + 18;
   return (
     <g transform={`translate(${x},${y})`} pointerEvents="none">
-      <rect x={-w / 2} y={-11} width={w} height={18} rx={9} fill={strong ? '#ffae00' : 'rgba(40,24,12,0.72)'} stroke={strong ? '#7a4a10' : 'none'} />
+      <rect x={-w / 2} y={-11} width={w} height={18} rx={9} fill={strong ? '#ffae00' : 'rgba(40,24,12,0.75)'} stroke={strong ? '#7a4a10' : 'none'} />
       <text y={2} textAnchor="middle" fontSize={10} fontWeight={700} fill="#fff" fontFamily="Poppins, sans-serif">
         {text}
       </text>

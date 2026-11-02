@@ -8,6 +8,8 @@ export const asset = (file: string) => `${BASE}assets/${file}`;
 export const img = {
   // farm scene + HUD
   bg: asset('bg-farm.webp'),
+  /** the same Figma farm map at 2× (1748 × 804), for phone screens */
+  bg2x: asset('bg-farm@2x.webp'),
   avatar: asset('avatar.png'),
   star: asset('star.png'),
   coin: asset('coin.png'),

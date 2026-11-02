@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { img } from '../assets';
 import { CheckBadge } from '../components/Icons';
+import { FarmMap } from '../components/FarmMap';
 import { GoldButton } from '../components/ui';
 import { Field, FIELD_H, FIELD_W, FarmerFigure, PartArt, rowGeometry } from './art';
 import { CALLS, PART_LABELS, say, type Call, type Look, type PartId, type ShambaReview } from './data';
@@ -176,7 +177,7 @@ export function Review({
     line = t(shamba.clue.text);
     action = shamba.retry
       ? {
-          label: 'Try the lower shamba',
+          label: 'Try the back shamba',
           onClick: () => {
             track('review_failed', { shamba: shamba.id, call: wrongCall });
             onFailed();
@@ -200,6 +201,7 @@ export function Review({
 
   return (
     <div className="abs fs-screen review" style={{ inset: 0 }}>
+      <FarmMap dim={0.42} />
       <div className="abs" style={{ left: 336, top: -4, width: 203, height: 58 }}>
         <img src={img.plank} alt="" width={203} height={58} />
         <span className="label abs" style={{ left: 0, right: 0, top: 21, textAlign: 'center', fontSize: 13 }}>

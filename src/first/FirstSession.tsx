@@ -8,7 +8,7 @@ import { track } from './track';
 import { Village } from './Village';
 
 /* The first session, in order:
-   create the farmer → walk to the shamba → first review (wrong call → lower shamba → review)
+   create the farmer → walk to the shamba → first review (wrong call → back shamba → review)
    → the village opens → walk to a neighbour → second review → back to the farm. */
 
 export function FirstSession({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
@@ -85,7 +85,7 @@ export function FirstSession({ s, dispatch }: { s: GameState; dispatch: Dispatch
       <>
         <Village look={look} name={name} route="toLower" target="lower" open={false} showTapHint={!moved} onFirstMove={() => setMoved(true)} onArrive={arrive('lower', 'retry')} />
         {hud}
-        <GuideLine style={topLine} text={t('Try again on your lower shamba, {name}.')} />
+        <GuideLine style={topLine} text={t('Try again on your back shamba, {name}.')} />
       </>
     );
 
@@ -104,7 +104,7 @@ export function FirstSession({ s, dispatch }: { s: GameState; dispatch: Dispatch
           onArrive={arrive('achieng', 'review2')}
         />
         {hud}
-        <GuideLine style={topLine} text={opening || openingLine ? t('The village is open, {name}! Your neighbours need you.') : t('Mama Achieng asked you to check her beans.')} />
+        <GuideLine style={topLine} text={opening || openingLine ? t('The farm is open, {name}! Your neighbours need you.') : t('Mama Achieng asked you to check her sukuma wiki.')} />
       </>
     );
   }
@@ -132,12 +132,12 @@ export function FirstSession({ s, dispatch }: { s: GameState; dispatch: Dispatch
         shamba={SHAMBAS.achieng}
         name={name}
         look={look}
-        ending={{ line: "The rains are due tonight, {name}. Check Mama Achieng's beans again tomorrow.", button: 'Go to my farm' }}
+        ending={{ line: "The rains are due tonight, {name}. Check Mama Achieng's sukuma wiki again tomorrow.", button: 'Go to my farm' }}
         onPassed={() => track('review_passed', { shamba: 'achieng' })}
         onFailed={() => undefined}
         onEnd={() => {
           track('session_close');
-          go('done', { note: "Check Mama Achieng's beans after the rains." });
+          go('done', { note: "Check Mama Achieng's sukuma wiki after the rains." });
           dispatch({ type: 'toast', text: t('Welcome to your farm, {name}.') });
         }}
       />

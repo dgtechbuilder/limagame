@@ -48,13 +48,19 @@ design-refs/           PNG renders of every Figma frame, for visual comparison
 A new player never sees the farm first. They:
 
 1. **Create a farmer**: name (or tap Wanjiku, Otieno or Chebet) and one of four looks. Saved at once.
-2. **Walk to their shamba**: tap or drag on the path; the rest of the village is under mist.
+2. **Walk to their shamba** on the Figma farm map: in along the dirt path, up the grass to the front maize
+   bed. Tap or drag to walk; everything else on the farm is under mist.
 3. **Review the shamba** (the aha moment): *Look* at four pictures (crop, pests & disease, soil & water,
    layout; tap to zoom) → *Spot* the rows that look wrong → *Judge* (healthy, needs water, pests,
    needs fertiliser) → *Result*. Right: the rows light up, the farmer cheers by name and the maize recovers.
-   Wrong: the clue they missed is circled and they walk to the lower shamba to try again.
-4. **The village opens**: the mist lifts, neighbours' shambas appear, and Mama Achieng's beans need a
-   review with fewer hints. The session ends on a reason to come back, then opens the farm.
+   Wrong: the clue they missed is circled and they walk round to the back maize bed to try again.
+4. **The farm opens**: the mist lifts, neighbours' beds are labelled, and Mama Achieng's sukuma wiki (the
+   greens on the left of the map) needs a review with fewer hints. The session ends on a reason to come
+   back, then opens the farm screen.
+
+The Figma farm map (`public/assets/bg-farm.webp`, plus `bg-farm@2x.webp` for phone screens) is the ground
+of the whole game: the walks, the farm screen, and the backdrop behind every review and modal
+(`components/FarmMap.tsx`). Routes and bed outlines on that map are in `first/Village.tsx` → `SPOTS`.
 
 Passing the first review marks onboarding done. Code is in `src/first/`:
 
@@ -63,7 +69,7 @@ Passing the first review marks onboarding done. Code is in `src/first/`:
 | `data.ts` | Every shamba review as data (crop, condition, problem rows, right call, captions, clue, retry). Add a review by adding an entry. |
 | `art.tsx` | Crops, soil, close-ups, field, farmer and village pieces drawn in SVG from that data, so the pictures carry the information and cost almost nothing to download. |
 | `Review.tsx` | The one review system: Look → Spot → Judge → Result. |
-| `Village.tsx` | The map and tap-to-walk along fixed paths. |
+| `Village.tsx` | Tap-to-walk over the Figma farm map along fixed routes, the mist and the labels. |
 | `Create.tsx`, `FirstSession.tsx` | Farmer creation and the order of moments. |
 | `track.ts` | Event log: `create_shown`, `farmer_created`, `walk_start`, `first_move`, `shamba_reached`, `review_start`, `part_viewed`, `spot_found`, `call`, `review_failed`, `review_passed`, `village_unlocked`, `session_close`. Kept on the device (`lima-events`, last 300) and sent with `sendBeacon` to `VITE_EVENTS_URL` if set at build time. |
 

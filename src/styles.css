@@ -372,7 +372,6 @@ button.card:active { transform: scale(0.98); }
 /* First session: create farmer → walk → review → village opens         */
 /* ================================================================== */
 .fs-screen { color: var(--brown); }
-.review { background: linear-gradient(180deg, #67a23b 0%, #3f7424 100%); }
 .fs-panel {
   position: absolute;
   background: var(--cream);

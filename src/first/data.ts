@@ -2,7 +2,7 @@
    One review system drives every shamba; to add a review, add an entry to SHAMBAS. */
 
 export type Call = 'healthy' | 'water' | 'pests' | 'fertiliser';
-export type Crop = 'maize' | 'beans';
+export type Crop = 'maize' | 'beans' | 'kale';
 /** What is wrong with the problem rows. The art draws each one from this value. */
 export type Condition = 'healthy' | 'armyworm' | 'drought' | 'nitrogen';
 export type PartId = 'crop' | 'pests' | 'soil' | 'layout';
@@ -87,7 +87,7 @@ export const SHAMBAS: Record<string, ShambaReview> = {
   lower: {
     id: 'lower',
     crop: 'maize',
-    title: "{name}'s lower shamba",
+    title: "{name}'s back shamba",
     intro: 'Same maize, {name}. Look closely at every part this time.',
     condition: 'armyworm',
     correct: 'pests',
@@ -106,8 +106,8 @@ export const SHAMBAS: Record<string, ShambaReview> = {
   },
   achieng: {
     id: 'achieng',
-    crop: 'beans',
-    title: "Mama Achieng's beans",
+    crop: 'kale',
+    title: "Mama Achieng's sukuma wiki",
     condition: 'drought',
     correct: 'water',
     problemRows: [3, 4],
@@ -127,9 +127,8 @@ export const SHAMBAS: Record<string, ShambaReview> = {
 
 /** Village names for the neighbours that appear when the village opens. */
 export const NEIGHBOURS = [
-  { id: 'achieng', owner: 'Mama Achieng', crop: 'Beans' },
-  { id: 'baraka', owner: 'Baraka', crop: 'Sukuma wiki' },
-  { id: 'kiprono', owner: 'Mzee Kiprono', crop: 'Tea' },
+  { id: 'achieng', owner: 'Mama Achieng', crop: 'Sukuma wiki' },
+  { id: 'baraka', owner: 'Baraka', crop: 'Tomatoes' },
 ];
 
 export const say = (line: string, name: string) => line.replace(/\{name\}/g, name);
