@@ -1,5 +1,5 @@
 import { useEffect, useReducer } from 'react';
-import { ROUND_POINTS, ROUNDS } from './rounds/data';
+import { FARMS, ROUND_POINTS, dayNumber } from './rounds/farms';
 import {
   GROWING_STEPS,
   HARVEST_EFFECT,
@@ -72,9 +72,12 @@ export type RoundsView = 'map' | 'look' | 'judge' | 'right' | 'wrong' | 'summary
 
 export interface GameState {
   // field rounds
-  rounds: { done: Record<string, RoundRecord> };
+  /** start: the day the player first opened the rounds (the 21-day crop cycle counts from it); done: today's results, by farm */
+  rounds: { start: number | null; day: number; done: Record<string, RoundRecord> };
   roundsOpen: boolean;
   roundsView: RoundsView | null;
+  /** design review only: show one situation, as hazard:crop:stage */
+  roundsDemo: string | null;
   // first session
   farmer: { name: string; look: number } | null;
   fs: { phase: FsPhase; at: 'first' | 'lower'; opened: boolean };
@@ -130,9 +133,10 @@ export const freshSeason = {
 };
 
 export const initialState: GameState = {
-  rounds: { done: {} },
+  rounds: { start: null, day: 0, done: {} },
   roundsOpen: false,
   roundsView: null,
+  roundsDemo: null,
   farmer: null,
   fs: { phase: 'create', at: 'first', opened: false },
   note: null,
@@ -241,8 +245,8 @@ export type Action =
   | { type: 'picker'; on: boolean }
   | { type: 'reset'; state: Partial<GameState> }
   | { type: 'farmer'; name: string; look: number }
-  | { type: 'rounds'; open: boolean; view?: RoundsView | null }
-  | { type: 'roundResult'; id: string; right: boolean; tries: number }
+  | { type: 'rounds'; open: boolean; view?: RoundsView | null; demo?: string | null }
+  | { type: 'roundResult'; id: string; right: boolean; tries: number; day: number }
   | { type: 'fs'; phase: FsPhase; at?: 'first' | 'lower'; opened?: boolean; note?: string };
 
 let toastId = 0;
@@ -426,20 +430,31 @@ function reducer(s: GameState, a: Action): GameState {
     case 'farmer':
       return { ...s, farmer: { name: a.name, look: a.look } };
     case 'rounds':
-      return { ...s, roundsOpen: a.open, roundsView: a.open ? (a.view ?? null) : null, modal: null, plotSelected: false };
-    case 'roundResult': {
-      const before = s.rounds.done[a.id];
-      // points are paid once per farm, the first time it is read right
-      const earned = a.right && !before?.right ? (a.tries === 1 ? ROUND_POINTS.first : ROUND_POINTS.second) : 0;
-      const record: RoundRecord = before?.right ? before : { right: a.right, tries: a.tries };
-      const done = { ...s.rounds.done, [a.id]: record };
-      const total = ROUNDS.filter(r => done[r.id]?.right).length;
       return {
         ...s,
-        rounds: { done },
+        roundsOpen: a.open,
+        roundsView: a.open ? (a.view ?? null) : null,
+        roundsDemo: a.open ? (a.demo ?? null) : null,
+        // the crops stay for 21 real days from the first time the rounds are opened
+        rounds: a.open && s.rounds.start === null ? { ...s.rounds, start: dayNumber() } : s.rounds,
+        modal: null,
+        plotSelected: false,
+      };
+    case 'roundResult': {
+      // every farm is a new situation each day, so results (and the points) start again at midnight
+      const today = s.rounds.day === a.day ? s.rounds.done : {};
+      const before = today[a.id];
+      // points are paid once per farm per day, the first time it is read right
+      const earned = a.right && !before?.right ? (a.tries === 1 ? ROUND_POINTS.first : ROUND_POINTS.second) : 0;
+      const record: RoundRecord = before?.right ? before : { right: a.right, tries: a.tries };
+      const done = { ...today, [a.id]: record };
+      const total = FARMS.filter(r => done[r.id]?.right).length;
+      return {
+        ...s,
+        rounds: { ...s.rounds, day: a.day, done },
         points: s.points + earned,
         ...gainXp(s, a.right ? 0.06 : 0.01),
-        toast: earned ? toast(`Read right · +${earned} points · ${total} of ${ROUNDS.length} farms`) : s.toast,
+        toast: earned ? toast(`Read right · +${earned} points · ${total} of ${FARMS.length} farms`) : s.toast,
       };
     }
     case 'fs':
@@ -458,7 +473,7 @@ function reducer(s: GameState, a: Action): GameState {
 /* ------------------------------------------------------------------ */
 
 const SAVE_KEY = 'lima-farming-game:v2';
-const TRANSIENT: (keyof GameState)[] = ['modal', 'plotSelected', 'toast', 'roundsOpen', 'roundsView'];
+const TRANSIENT: (keyof GameState)[] = ['modal', 'plotSelected', 'toast', 'roundsOpen', 'roundsView', 'roundsDemo'];
 
 /** Design-review links (?review or ?screen) use a throwaway game so they never touch a player's save. */
 export const reviewing = () => {
@@ -478,7 +493,8 @@ function load(): GameState {
   try {
     const raw = window.localStorage.getItem(SAVE_KEY);
     if (!raw) return initialState;
-    return { ...initialState, ...JSON.parse(raw), modal: null, plotSelected: false, toast: null, roundsOpen: false, roundsView: null };
+    const saved = JSON.parse(raw);
+    return { ...initialState, ...saved, modal: null, plotSelected: false, toast: null, roundsOpen: false, roundsView: null, roundsDemo: null, rounds: { ...initialState.rounds, ...(saved.rounds ?? {}) } };
   } catch {
     return initialState;
   }

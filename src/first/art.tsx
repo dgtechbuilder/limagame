@@ -10,7 +10,7 @@ import type { Condition, Crop, Look, PartId } from './data';
 /* helpers                                                              */
 /* ------------------------------------------------------------------ */
 
-function rng(seed: number) {
+export function rng(seed: number) {
   let a = seed | 0;
   return () => {
     a = (a + 0x6d2b79f5) | 0;
@@ -21,7 +21,7 @@ function rng(seed: number) {
 }
 
 /** Irregular polygon, used for ragged holes and soil crumbs. */
-function blob(cx: number, cy: number, r: number, rand: () => number, n = 7) {
+export function blob(cx: number, cy: number, r: number, rand: () => number, n = 7) {
   const pts: string[] = [];
   for (let i = 0; i < n; i++) {
     const a = (i / n) * Math.PI * 2;
@@ -39,7 +39,7 @@ const LEAF = {
   aphids: { fill: '#79a947', rib: '#c1e093', edge: '#47782b' },
 };
 
-const SOIL = { moist: '#5b3a22', moistDark: '#432916', dry: '#c39b68', dryDark: '#8a6a40' };
+export const SOIL = { moist: '#5b3a22', moistDark: '#432916', dry: '#c39b68', dryDark: '#8a6a40' };
 
 /* ------------------------------------------------------------------ */
 /* Plants                                                               */
@@ -383,7 +383,7 @@ export function PartArt({
   );
 }
 
-function SoilPatch({ x, y, w, h, dry, seed }: { x: number; y: number; w: number; h: number; dry: boolean; seed: number }) {
+export function SoilPatch({ x, y, w, h, dry, seed }: { x: number; y: number; w: number; h: number; dry: boolean; seed: number }) {
   const rand = rng(seed);
   return (
     <g>
@@ -687,9 +687,9 @@ export function MapShamba({
 /* Water: the furrow that feeds the shamba and the level in the tank    */
 /* ------------------------------------------------------------------ */
 
-export function WaterArt({ dry, ring = false }: { dry: boolean; ring?: boolean }) {
+export function WaterArt({ dry, ring = false, flood = false }: { dry: boolean; ring?: boolean; flood?: boolean }) {
   const rand = rng(51);
-  const level = dry ? 0.14 : 0.7;
+  const level = dry ? 0.14 : flood ? 1 : 0.7;
   return (
     <svg viewBox={`0 0 ${PART_W} ${PART_H}`} width="100%" height="100%" role="img" aria-label="Water for the shamba">
       <rect width={PART_W} height={PART_H} fill="#f6ead2" />
@@ -710,13 +710,22 @@ export function WaterArt({ dry, ring = false }: { dry: boolean; ring?: boolean }
             return <polyline key={k} points={`${x},${y} ${x + 5},${y + 4} ${x + 2},${y + 8}`} fill="none" stroke="#8a6a40" strokeWidth={1.3} />;
           })}
         </>
+      ) : flood ? (
+        <>
+          {/* the furrow is full and spills over the bed */}
+          <path d="M66,100 L198,92 L198,134 L66,140 Z" fill="#a08a52" opacity={0.95} />
+          <path d="M80,108 L194,101 L194,128 L80,134 Z" fill="#8d7a48" />
+          <path d="M92,116 h26 M132,110 h30 M170,106 h20 M100,126 h22 M146,122 h26" stroke="#d9cfa0" strokeWidth={1.6} strokeLinecap="round" />
+          <ellipse cx={150} cy={86} rx={30} ry={5} fill="#a08a52" opacity={0.9} />
+          <path d="M38,100 q-6,8 -2,16 M44,100 q6,8 2,16" stroke="#8fd0f0" strokeWidth={2} fill="none" />
+        </>
       ) : (
         <>
           <path d="M76,117 L194,109 L194,121 L76,129 Z" fill="#4fb3e8" opacity={0.95} />
           <path d="M90,119 h24 M130,115 h28 M168,112 h18" stroke="#d6f0fb" strokeWidth={1.6} strokeLinecap="round" />
         </>
       )}
-      {ring && <circle className="clue-ring" cx={dry ? 130 : 100} cy={dry ? 118 : 60} r={dry ? 40 : 46} fill="none" stroke="#ffb005" strokeWidth={3.5} />}
+      {ring && <circle className="clue-ring" cx={dry ? 130 : flood ? 120 : 100} cy={dry ? 118 : flood ? 112 : 60} r={dry ? 40 : 46} fill="none" stroke="#ffb005" strokeWidth={3.5} />}
     </svg>
   );
 }

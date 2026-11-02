@@ -57,6 +57,59 @@ export function CallIcon({ id }: { id: Call }) {
         <path d="M3,18 L5,15 L7,18 M5,15 L5,12.5" stroke="#f2e6c8" strokeWidth={0.9} fill="none" />
       </svg>
     );
+  if (id === 'flood')
+    return (
+      <svg {...common}>
+        <path d="M15,3 Q23,13 23,17 A8,8 0 0 1 7,17 Q7,13 15,3 Z" fill="#22ade2" stroke="#137aa3" strokeWidth={1.2} />
+        <path d="M2,23 q4,-4 7,0 t7,0 t7,0 t5,0 M2,27 q4,-4 7,0 t7,0 t7,0 t5,0" stroke="#137aa3" strokeWidth={1.6} fill="none" />
+      </svg>
+    );
+  if (id === 'disease')
+    return (
+      <svg {...common}>
+        <path d="M4,22 Q4,6 24,5 Q26,24 8,26 Z" fill="#6fbf3a" stroke="#2a6f24" strokeWidth={1.1} />
+        <circle cx={12} cy={14} r={3} fill="#7a3b10" />
+        <circle cx={19} cy={10} r={2} fill="#7a3b10" />
+        <circle cx={16} cy={19} r={2.2} fill="#7a3b10" />
+      </svg>
+    );
+  if (id === 'weeds')
+    return (
+      <svg {...common}>
+        <path d="M4,27 L26,27" stroke="#7a5230" strokeWidth={2} />
+        <path d="M9,27 Q7,17 4,11 M9,27 Q10,15 12,8 M16,27 Q15,17 19,9 M21,27 Q22,19 26,14" stroke="#4fae3c" strokeWidth={2.4} fill="none" strokeLinecap="round" />
+        <circle cx={12} cy={7} r={2.4} fill="#f5d33a" />
+      </svg>
+    );
+  if (id === 'animals')
+    return (
+      <svg {...common}>
+        <ellipse cx={14} cy={18} rx={9} ry={5.6} fill="#f3efe6" stroke="#8a7a64" strokeWidth={1.1} />
+        <circle cx={23} cy={14} r={3.6} fill="#f3efe6" stroke="#8a7a64" strokeWidth={1.1} />
+        <path d="M22,10.5 l-1,-4 M25,11 l2,-4 M8,23 v4 M12,23.5 v4 M17,23.5 v4 M21,22 v5" stroke="#5a4a38" strokeWidth={1.4} />
+      </svg>
+    );
+  if (id === 'hail')
+    return (
+      <svg {...common}>
+        <path d="M6,15 Q2,15 3,11 Q4,7 9,8 Q11,3 17,5 Q22,3 24,9 Q29,9 27,14 Q27,16 24,15 Z" fill="#9aa7b4" stroke="#5f6b78" strokeWidth={1.1} />
+        {[[9, 21], [15, 24], [21, 20], [12, 28], [19, 28]].map(([x, y], k) => (
+          <circle key={k} cx={x} cy={y} r={2.2} fill="#fff" stroke="#6b8aa0" strokeWidth={0.9} />
+        ))}
+      </svg>
+    );
+  if (id === 'plantEarly' || id === 'plantLate' || id === 'harvestEarly' || id === 'harvestLate')
+    return (
+      <svg {...common}>
+        <rect x={4} y={6} width={22} height={21} rx={3} fill="#fff8ec" stroke="#7a5230" strokeWidth={1.4} />
+        <rect x={4} y={6} width={22} height={6} rx={3} fill="#c9925a" stroke="#7a5230" strokeWidth={1.4} />
+        {id.startsWith('plant') ? (
+          <path d="M15,25 L15,18 M15,19 Q10,18 9,14 Q14,14 15,19 Z M15,18 Q20,17 21,13 Q16,13 15,18 Z" fill="#4fae3c" stroke="#2a6f24" strokeWidth={1} />
+        ) : (
+          <path d="M11,25 Q9,18 14,14 Q20,16 18,24 Z" fill="#f2c230" stroke="#8a6a24" strokeWidth={1} />
+        )}
+      </svg>
+    );
   return (
     <svg {...common}>
       <path d="M7,9 Q15,5 23,9 L25,26 Q15,29 5,26 Z" fill="#c9925a" stroke="#7a5230" strokeWidth={1.2} />

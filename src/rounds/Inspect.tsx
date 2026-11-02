@@ -3,11 +3,13 @@ import { img } from '../assets';
 import { FarmMap } from '../components/FarmMap';
 import { CheckBadge } from '../components/Icons';
 import { FarmerFigure, PartArt, WaterArt } from '../first/art';
-import { CALLS, say, type Call, type Look } from '../first/data';
+import { say, type Call, type Look } from '../first/data';
 import { CallIcon, GuideLine } from '../first/Review';
 import { track } from '../first/track';
-import { CHECK_COOLDOWN_S, ROUNDS, ROUND_PARTS, ROUND_PART_LABELS, type Round, type RoundPart } from './data';
+import { CHECK_COOLDOWN_S, FARMS, ROUND_PARTS, ROUND_PART_LABELS, usesLegacyArt, type Round, type RoundPart } from './data';
+import { CALL_GROUPS, CROP_NAME, CYCLE_DAYS, STAGE_LABELS, type CallGroup } from './hazards';
 import { photoFor } from './photos';
+import { ScenePart } from './scene';
 
 /* One farm check: Look at five pictures (crop, pests & disease, soil, water, state of the farm) → Judge → Result.
    A picture is a real photo when one has been added for it (see photos.ts), and drawn art until then. */
@@ -16,7 +18,7 @@ export type InspectView = 'look' | 'judge' | 'right' | 'wrong';
 type Step = InspectView;
 
 export function RoundPicture({ round, part, flag = false }: { round: Round; part: RoundPart; flag?: boolean }) {
-  const url = photoFor(round.id, part);
+  const url = photoFor(round, part);
   const isClue = flag && round.clue.part === part;
   if (url) {
     const ring = isClue ? round.clue.ring : undefined;
@@ -32,8 +34,9 @@ export function RoundPicture({ round, part, flag = false }: { round: Round; part
       </span>
     );
   }
-  if (part === 'water') return <WaterArt dry={round.cond === 'drought'} ring={isClue} />;
-  return <PartArt part={part === 'farm' ? 'layout' : part} crop={round.crop} cond={round.cond} problemRows={round.problemRows} rows={round.rows} ring={isClue} />;
+  if (part === 'water') return <WaterArt dry={round.cond === 'drought' || round.hazard === 'plantEarly'} flood={round.hazard === 'flood'} ring={isClue} />;
+  if (usesLegacyArt(round)) return <PartArt part={part === 'farm' ? 'layout' : part} crop={round.crop} cond={round.cond} problemRows={round.problemRows} rows={round.rows} ring={isClue} />;
+  return <ScenePart round={round} part={part} ring={isClue} />;
 }
 
 export function Inspect({
@@ -67,6 +70,7 @@ export function Inspect({
   // what this call pays, fixed when the check starts (the saved result changes `points` as soon as the call is made)
   const [payout] = useState(points);
   const [zoom, setZoom] = useState<RoundPart | null>(null);
+  const [group, setGroup] = useState<CallGroup | null>(null);
   const started = useRef(performance.now());
   const t = (line: string) => say(line, name);
 
@@ -114,7 +118,7 @@ export function Inspect({
           : `${ROUND_PARTS.length - seen.length} more to look at.`;
     if (allSeen) action = { label: 'Make your call', onClick: () => setStep('judge') };
   } else if (step === 'judge') {
-    line = t('What does this farm need, {name}?');
+    line = group ? t('Which one, {name}?') : t('What is going on at this farm, {name}?');
   } else if (step === 'right') {
     line = `${t(round.right)} ${round.practice}`;
     action = { label: continueLabel, onClick: onContinue };
@@ -133,8 +137,11 @@ export function Inspect({
         </span>
       </div>
       <span className="rr-roundtag">
-        Round {round.n} of {ROUNDS.length}
+        Round {round.n} of {FARMS.length}
         {second ? ' · second look' : ''}
+      </span>
+      <span className="rr-roundtag rr-cropnote">
+        {CROP_NAME[round.crop]} · {STAGE_LABELS[round.stage]} · day {round.day + 1} of {CYCLE_DAYS}
       </span>
       <button type="button" className="close-btn" style={{ left: 826, top: 4, width: 36, height: 36 }} aria-label="Back to my farm" onClick={onLeave}>
         <img src={img.close} alt="" style={{ width: 36, height: 36 }} />
@@ -170,6 +177,9 @@ export function Inspect({
                 </span>
               </button>
             ))}
+            <p className="rr-diary">
+              <b>Farmer's note:</b> {t(round.diary)}
+            </p>
           </div>
         )}
 
@@ -184,13 +194,31 @@ export function Inspect({
                 </button>
               ))}
             </div>
-            <div className="calls five">
-              {CALLS.map(c => (
-                <button type="button" key={c.id} className="call-btn" onClick={() => judge(c.id)}>
-                  <CallIcon id={c.id} />
-                  <span>{c.label}</span>
-                </button>
-              ))}
+            <p className="rr-diary judge">
+              <b>Farmer's note:</b> {t(round.diary)}
+            </p>
+            <div className={`calls five${group ? ' sub' : ''}`}>
+              {group ? (
+                <>
+                  <button type="button" className="call-back" onClick={() => setGroup(null)}>
+                    ← Back
+                  </button>
+                  {group.calls.map(c => (
+                    <button type="button" key={c.id} className="call-btn" onClick={() => judge(c.id)}>
+                      <CallIcon id={c.id} />
+                      <span>{c.label}</span>
+                    </button>
+                  ))}
+                </>
+              ) : (
+                CALL_GROUPS.map(g => (
+                  <button type="button" key={g.id} className={`call-btn${g.id === 'ok' ? ' wide' : ''}`} onClick={() => (g.calls.length === 1 ? judge(g.calls[0].id) : setGroup(g))}>
+                    <CallIcon id={g.icon} />
+                    <span>{g.label}</span>
+                    {g.calls.length > 1 && <i aria-hidden="true">›</i>}
+                  </button>
+                ))
+              )}
             </div>
           </>
         )}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type Dispatch } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch } from 'react';
 import { FarmMap } from '../components/FarmMap';
 import { GoldButton } from '../components/ui';
 import type { Action, GameState, RoundsView } from '../state';
@@ -6,7 +6,9 @@ import { FarmerFigure, FarmerPortrait } from '../first/art';
 import { LOOKS, say } from '../first/data';
 import { GuideLine } from '../first/Review';
 import { track } from '../first/track';
-import { CHECK_COOLDOWN_S, ROUNDS, ROUND_POINTS, roundById, type Round } from './data';
+import { CHECK_COOLDOWN_S, FARMS, ROUND_POINTS, checkFor, type Round } from './data';
+import { CROP_NAME, CYCLE_DAYS, STAGE_LABELS, dayNumber, type HazardId, type Stage } from './hazards';
+import type { Crop } from '../first/data';
 import { Inspect, type InspectView } from './Inspect';
 import { BEDS, START_NODE, START_POINT, measure, pointAt, routeBetween, standNode, type Pt } from './walk';
 
@@ -82,6 +84,18 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
   const t = (line: string) => say(line, name);
   const walker = useWalker();
 
+  // each farm keeps one crop for 21 real days from the day the player first opened the rounds
+  const today = useMemo(() => dayNumber(), []);
+  const elapsed = today - (s.rounds.start ?? today);
+  const demo = s.roundsDemo?.split(':') as [HazardId, Crop, Stage] | undefined;
+  const rounds = useMemo(
+    () => FARMS.map(f => checkFor(f, elapsed, demo && f.id === 'r3' ? { hazard: demo[0], crop: demo[1], stage: demo[2] } : undefined)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [elapsed, s.roundsDemo],
+  );
+  // results are for today only: tomorrow every farm is a new situation, and pays again
+  const doneToday = s.rounds.day === today ? s.rounds.done : {};
+
   const [phase, setPhase] = useState<Phase>('ready');
   const [idx, setIdx] = useState(-1); // the round visited last in this run; the next is idx + 1
   const [visit, setVisit] = useState<{ round: Round; second: boolean } | null>(null);
@@ -112,7 +126,7 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
       setVisit(null);
       setPhase('ready');
     } else if (view === 'summary') {
-      setIdx(ROUNDS.length - 1);
+      setIdx(rounds.length - 1);
       setResults({
         r1: { right: true, looks: 1 },
         r2: { right: true, looks: 1 },
@@ -126,14 +140,15 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
       setEarned(550);
       setPhase('summary');
     } else {
-      setVisit({ round: roundById('r3'), second: false });
+      setVisit({ round: rounds[2], second: false });
       setDemoView(view);
       setPhase('inspect');
     }
-  }, [view]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, s.roundsDemo]);
 
   const left = (r: Round) => Math.max(0, CHECK_COOLDOWN_S - (now - (checkedAt[r.id] ?? -Infinity)) / 1000);
-  const next = ROUNDS[idx + 1] as Round | undefined;
+  const next = rounds[idx + 1] as Round | undefined;
   // the farm being walked to or looked at; when the map is waiting, the next farm in the run
   const target = visit && (phase === 'walking' || phase === 'inspect') ? visit.round : phase === 'between' || phase === 'ready' ? (next ?? null) : null;
 
@@ -146,7 +161,7 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
   };
 
   const readyAgain = (r: Round) => statusOf(r) === 'missed' && left(r) <= 0;
-  const rightCount = ROUNDS.filter(r => results[r.id]?.right).length;
+  const rightCount = rounds.filter(r => results[r.id]?.right).length;
 
   const begin = (round: Round, second = false) => {
     setVisit({ round, second });
@@ -168,17 +183,17 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
     if (!visit) return;
     const r = visit.round;
     const looks = (results[r.id]?.looks ?? 0) + 1;
-    const paid = right && !s.rounds.done[r.id]?.right ? (looks === 1 ? ROUND_POINTS.first : ROUND_POINTS.second) : 0;
+    const paid = right && !doneToday[r.id]?.right ? (looks === 1 ? ROUND_POINTS.first : ROUND_POINTS.second) : 0;
     setResults(prev => ({ ...prev, [r.id]: { right: right || !!prev[r.id]?.right, looks } }));
     setCheckedAt(prev => ({ ...prev, [r.id]: Date.now() }));
     setEarned(e => e + paid);
-    dispatch({ type: 'roundResult', id: r.id, right, tries: looks });
+    dispatch({ type: 'roundResult', id: r.id, right, tries: looks, day: today });
   };
 
   const onContinue = () => {
     if (!visit) return;
-    if (visit.second) return setPhase(idx >= ROUNDS.length - 1 ? 'summary' : 'between');
-    if (idx + 1 < ROUNDS.length) return setPhase('between');
+    if (visit.second) return setPhase(idx >= rounds.length - 1 ? 'summary' : 'between');
+    if (idx + 1 < rounds.length) return setPhase('between');
     setPhase('summary');
   };
 
@@ -201,8 +216,8 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
   /* ---------------- inspecting a farm ---------------- */
   if (phase === 'inspect' && visit) {
     const r = visit.round;
-    const last = visit.second ? idx >= ROUNDS.length - 1 : idx + 1 >= ROUNDS.length;
-    const fresh = !s.rounds.done[r.id]?.right;
+    const last = visit.second ? idx >= rounds.length - 1 : idx + 1 >= rounds.length;
+    const fresh = !doneToday[r.id]?.right;
     return (
       <Inspect
         key={`${r.id}-${visit.second}-${demoView ?? ''}`}
@@ -224,12 +239,12 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
   let line = '';
   let action: { label: string; onClick: () => void } | undefined;
   if (phase === 'ready') {
-    line = t('Seven farms need you today, {name}. Check them one after the other.');
+    line = t('Seven farms need you today, {name}. Each keeps its crop for three weeks.');
     action = { label: 'Start round 1', onClick: goNext };
   } else if (phase === 'walking' && visit) {
-    line = visit.second ? t(`Back to ${visit.round.title}, {name}.`) : t(`Round ${visit.round.n} of ${ROUNDS.length}: off to ${visit.round.title}.`);
+    line = visit.second ? t(`Back to ${visit.round.title}, {name}.`) : t(`Round ${visit.round.n} of ${rounds.length}: off to ${visit.round.title}.`);
   } else if (phase === 'between') {
-    const again = ROUNDS.filter(readyAgain);
+    const again = rounds.filter(readyAgain);
     line = next
       ? t(`Round ${idx + 1} done, {name}. Next: ${next.title}.`) + (again.length ? ` You can look at ${again[0].short} again.` : '')
       : '';
@@ -254,7 +269,7 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
         )}
 
         {Object.values(BEDS).map(bed => {
-          const here = ROUNDS.filter(r => r.bed === bed.id);
+          const here = rounds.filter(r => r.bed === bed.id);
           return here.map((r, k) => {
             const st = statusOf(r);
             const x = bed.pin[0] + (k - (here.length - 1) / 2) * 26;
@@ -269,6 +284,11 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
                 {wait > 0 && <circle r={15} fill="none" stroke="#fff" strokeOpacity={0.35} strokeWidth={4} />}
                 {wait > 0 && <circle r={15} fill="none" stroke="#ffd23f" strokeWidth={4} strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - frac)} transform="rotate(-90)" />}
                 <circle r={11} className="rr-pin-disc" />
+                {k === 0 && (
+                  <text x={((here.length - 1) / 2) * 26} y={27} textAnchor="middle" className="rr-pin-label" pointerEvents="none">
+                    {CROP_NAME[r.crop]}
+                  </text>
+                )}
                 <text y={4} textAnchor="middle" fontSize={11} fontWeight={800} fill="#fff" fontFamily="Poppins, sans-serif" pointerEvents="none">
                   {st === 'first' || st === 'second' ? '✓' : st === 'missed' && !readyAgain(r) ? Math.ceil(wait) : st === 'missed' ? '↺' : r.n}
                 </text>
@@ -290,8 +310,12 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
         My farm
       </button>
 
+      <p className="rr-cycle">
+        Week {Math.floor((rounds[0].day) / 7) + 1} of 3 · {STAGE_LABELS[rounds[0].stage]} · crops change in {CYCLE_DAYS - rounds[0].day} days
+      </p>
+
       <ol className="rr-chips" aria-label="The seven rounds">
-        {ROUNDS.map(r => {
+        {rounds.map(r => {
           const st = statusOf(r);
           const wait = st === 'missed' ? Math.ceil(left(r)) : 0;
           return (
@@ -310,17 +334,19 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
       {phase === 'summary' && (
         <div className="abs ending" style={{ inset: 0 }}>
           <div className="rr-summary">
-            <p className="rr-summary-title">{rightCount === ROUNDS.length ? t('You read all seven farms, {name}!') : `${rightCount} of ${ROUNDS.length} farms read right`}</p>
+            <p className="rr-summary-title">{rightCount === rounds.length ? t('You read all seven farms, {name}!') : `${rightCount} of ${rounds.length} farms read right`}</p>
             <ol>
-              {ROUNDS.map(r => {
+              {rounds.map(r => {
                 const st = statusOf(r);
                 const wait = Math.ceil(left(r));
                 return (
                   <li key={r.id} className={`is-${st}`}>
                     <b>{r.n}</b>
-                    <span className="rr-title">{t(r.title)}</span>
-                    {st === 'first' && <span className="rr-state">Read right</span>}
-                    {st === 'second' && <span className="rr-state">Read right on a second look</span>}
+                    <span className="rr-title">
+                      {t(r.title)} <small>· {CROP_NAME[r.crop]}</small>
+                    </span>
+                    {st === 'first' && <span className="rr-state">{r.what}</span>}
+                    {st === 'second' && <span className="rr-state">{r.what} · second look</span>}
                     {st === 'missed' &&
                       (wait > 0 ? (
                         <span className="rr-state is-wait">Look again in 0:{String(wait).padStart(2, '0')}</span>

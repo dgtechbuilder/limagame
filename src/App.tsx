@@ -70,6 +70,17 @@ const SCREENS: { label: string; group: string; state: Partial<GameState> }[] = [
   { group: 'Added', label: 'Settings', state: { modal: { kind: 'settings' } } },
   { group: 'Field rounds', label: 'Rounds · Map', state: { roundsOpen: true, roundsView: 'map' } },
   { group: 'Field rounds', label: 'Rounds · Look at five pictures', state: { roundsOpen: true, roundsView: 'look' } },
+  { group: 'Field rounds', label: 'Rounds · Broken fence', state: { roundsOpen: true, roundsView: 'look', roundsDemo: 'livestock:maize:young' } },
+  { group: 'Field rounds', label: 'Rounds · Hail', state: { roundsOpen: true, roundsView: 'look', roundsDemo: 'hail:tomato:grow' } },
+  { group: 'Field rounds', label: 'Rounds · Flood', state: { roundsOpen: true, roundsView: 'look', roundsDemo: 'flood:kale:grow' } },
+  { group: 'Field rounds', label: 'Rounds · Disease', state: { roundsOpen: true, roundsView: 'look', roundsDemo: 'disease:tomato:grow' } },
+  { group: 'Field rounds', label: 'Rounds · Weeds', state: { roundsOpen: true, roundsView: 'look', roundsDemo: 'weeds:beans:young' } },
+  { group: 'Field rounds', label: 'Rounds · Birds and monkeys', state: { roundsOpen: true, roundsView: 'look', roundsDemo: 'wildlife:maize:harvest' } },
+  { group: 'Field rounds', label: 'Rounds · Planted too early', state: { roundsOpen: true, roundsView: 'look', roundsDemo: 'plantEarly:maize:young' } },
+  { group: 'Field rounds', label: 'Rounds · Planted too late', state: { roundsOpen: true, roundsView: 'look', roundsDemo: 'plantLate:maize:grow' } },
+  { group: 'Field rounds', label: 'Rounds · Harvested too early', state: { roundsOpen: true, roundsView: 'look', roundsDemo: 'harvestEarly:tomato:harvest' } },
+  { group: 'Field rounds', label: 'Rounds · Harvested too late', state: { roundsOpen: true, roundsView: 'look', roundsDemo: 'harvestLate:maize:harvest' } },
+  { group: 'Field rounds', label: 'Rounds · Healthy at harvest', state: { roundsOpen: true, roundsView: 'look', roundsDemo: 'healthy:beans:harvest' } },
   { group: 'Field rounds', label: 'Rounds · Judge', state: { roundsOpen: true, roundsView: 'judge' } },
   { group: 'Field rounds', label: 'Rounds · Right call', state: { roundsOpen: true, roundsView: 'right' } },
   { group: 'Field rounds', label: 'Rounds · Wrong call', state: { roundsOpen: true, roundsView: 'wrong' } },
@@ -128,7 +139,7 @@ export default function App() {
     firstSession
       ? x.state.fs?.phase === s.fs.phase
       : s.roundsOpen
-        ? x.state.roundsOpen && x.state.roundsView === s.roundsView
+        ? x.state.roundsOpen && x.state.roundsView === s.roundsView && (x.state.roundsDemo ?? null) === s.roundsDemo
         : !x.state.fs && !x.state.roundsOpen && JSON.stringify(x.state.modal ?? null) === JSON.stringify(m) && (m || (x.state.plotSelected ?? false) === s.plotSelected),
   );
 
