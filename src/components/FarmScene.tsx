@@ -198,6 +198,19 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
             <span className="label" style={{ fontSize: 14 }}>Shop</span>
           </button>
 
+          <button
+            type="button"
+            className="abs"
+            style={{ left: 779, top: 238, width: 56, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}
+            onClick={() => dispatch({ type: 'rounds', open: true })}
+            aria-label="Field rounds: check seven farms"
+          >
+            <span className="peach-btn" style={{ width: 56, height: 48.66 }}>
+              <Img src={img.maizeMini} w={28} h={28} />
+            </span>
+            <span className="label" style={{ fontSize: 14 }}>Rounds</span>
+          </button>
+
           {!s.plotSelected && (
             <>
               <FieldAction left={500} top={182} width={92} icon={now.icon} label={now.short} onClick={() => open(now.modal)} />

@@ -1,4 +1,5 @@
 import { useEffect, useReducer } from 'react';
+import { ROUND_POINTS, ROUNDS } from './rounds/data';
 import {
   GROWING_STEPS,
   HARVEST_EFFECT,
@@ -59,7 +60,21 @@ export interface Prices {
 /** First session: create → walk → review (→ retry) → village opens → second review → done. */
 export type FsPhase = 'create' | 'walk1' | 'review1' | 'walkRetry' | 'retry' | 'walk2' | 'review2' | 'done';
 
+/** The best result for one field round: read right (and on which look), or still missed. */
+export interface RoundRecord {
+  right: boolean;
+  /** which look got it right (1 or 2), or how many looks so far */
+  tries: number;
+}
+
+/** Which part of the field rounds to open in design review (the rounds keep their own place otherwise). */
+export type RoundsView = 'map' | 'look' | 'judge' | 'right' | 'wrong' | 'summary';
+
 export interface GameState {
+  // field rounds
+  rounds: { done: Record<string, RoundRecord> };
+  roundsOpen: boolean;
+  roundsView: RoundsView | null;
   // first session
   farmer: { name: string; look: number } | null;
   fs: { phase: FsPhase; at: 'first' | 'lower'; opened: boolean };
@@ -115,6 +130,9 @@ export const freshSeason = {
 };
 
 export const initialState: GameState = {
+  rounds: { done: {} },
+  roundsOpen: false,
+  roundsView: null,
   farmer: null,
   fs: { phase: 'create', at: 'first', opened: false },
   note: null,
@@ -223,6 +241,8 @@ export type Action =
   | { type: 'picker'; on: boolean }
   | { type: 'reset'; state: Partial<GameState> }
   | { type: 'farmer'; name: string; look: number }
+  | { type: 'rounds'; open: boolean; view?: RoundsView | null }
+  | { type: 'roundResult'; id: string; right: boolean; tries: number }
   | { type: 'fs'; phase: FsPhase; at?: 'first' | 'lower'; opened?: boolean; note?: string };
 
 let toastId = 0;
@@ -405,6 +425,23 @@ function reducer(s: GameState, a: Action): GameState {
       return { ...s, ...a.state };
     case 'farmer':
       return { ...s, farmer: { name: a.name, look: a.look } };
+    case 'rounds':
+      return { ...s, roundsOpen: a.open, roundsView: a.open ? (a.view ?? null) : null, modal: null, plotSelected: false };
+    case 'roundResult': {
+      const before = s.rounds.done[a.id];
+      // points are paid once per farm, the first time it is read right
+      const earned = a.right && !before?.right ? (a.tries === 1 ? ROUND_POINTS.first : ROUND_POINTS.second) : 0;
+      const record: RoundRecord = before?.right ? before : { right: a.right, tries: a.tries };
+      const done = { ...s.rounds.done, [a.id]: record };
+      const total = ROUNDS.filter(r => done[r.id]?.right).length;
+      return {
+        ...s,
+        rounds: { done },
+        points: s.points + earned,
+        ...gainXp(s, a.right ? 0.06 : 0.01),
+        toast: earned ? toast(`Read right · +${earned} points · ${total} of ${ROUNDS.length} farms`) : s.toast,
+      };
+    }
     case 'fs':
       return {
         ...s,
@@ -421,7 +458,7 @@ function reducer(s: GameState, a: Action): GameState {
 /* ------------------------------------------------------------------ */
 
 const SAVE_KEY = 'lima-farming-game:v2';
-const TRANSIENT: (keyof GameState)[] = ['modal', 'plotSelected', 'toast'];
+const TRANSIENT: (keyof GameState)[] = ['modal', 'plotSelected', 'toast', 'roundsOpen', 'roundsView'];
 
 /** Design-review links (?review or ?screen) use a throwaway game so they never touch a player's save. */
 export const reviewing = () => {
@@ -441,7 +478,7 @@ function load(): GameState {
   try {
     const raw = window.localStorage.getItem(SAVE_KEY);
     if (!raw) return initialState;
-    return { ...initialState, ...JSON.parse(raw), modal: null, plotSelected: false, toast: null };
+    return { ...initialState, ...JSON.parse(raw), modal: null, plotSelected: false, toast: null, roundsOpen: false, roundsView: null };
   } catch {
     return initialState;
   }

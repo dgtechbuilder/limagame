@@ -32,7 +32,7 @@ export function GuideLine({ text, action, style }: { text: ReactNode; action?: {
   );
 }
 
-function CallIcon({ id }: { id: Call }) {
+export function CallIcon({ id }: { id: Call }) {
   const common = { width: 30, height: 30, viewBox: '0 0 30 30' };
   if (id === 'healthy')
     return (

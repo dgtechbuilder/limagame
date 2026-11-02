@@ -23,6 +23,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [How the Figma design maps to code](#how-the-figma-design-maps-to-code)
 - [The first session](#the-first-session)
 - [The season](#the-season)
+- [Field rounds](#field-rounds)
 - [Design review mode](#design-review-mode)
 - [Saving, events and privacy](#saving-events-and-privacy)
 - [Performance on low-cost phones](#performance-on-low-cost-phones)
@@ -86,6 +87,8 @@ src/
     Journey.tsx            harvest timing → sale → storage → value addition → process → results; rewards; info
     Meta.tsx               How the farm works, Settings
   first/                   the first session (see below)
+  rounds/                  field rounds: seven farm checks back to back (see below); loaded only when opened
+    photos/                drop-in real photos, one folder per round (see photos/README.md)
 public/
   assets/                  130 images exported from Figma, incl. bg-farm.webp and bg-farm@2x.webp
   manifest.webmanifest     installable web app (landscape, full screen) + icons
@@ -192,6 +195,36 @@ counts while the game is on screen. Milk and eggs can be collected once a day. T
 Balance numbers live in `src/data.ts` (`STEP_META`, `HARVEST_EFFECT`, `STORAGE_OPTIONS`, `PROCESSES`,
 `REWARDS`) and `src/state.ts` (`expectedHarvest`, `saleQuote`).
 
+## Field rounds
+
+Open **Rounds** on the farm screen (right edge, above Shop). The player does **seven rounds back to back**, one
+farm each. For every round the farmer **walks to the farm** along the paths, then the player:
+
+1. **Looks** at five pictures of that farm: the crop, pests & disease, soil, water, and the state of the farm.
+2. **Judges** with one call: healthy, needs water, pests or needs fertiliser.
+3. Gets the answer. A wrong call shows the one picture that held the clue, then a second look.
+
+| Round | Farm | What is going on |
+|---|---|---|
+| 1 | Your shamba (maize) | Fall armyworm |
+| 2 | Back shamba (maize) | Healthy |
+| 3 | Wambui, sukuma wiki | Aphids |
+| 4 | Mama Achieng, sukuma wiki | Drought |
+| 5 | Baraka, tomatoes | Short of nitrogen |
+| 6 | Mzee Kamau, tomatoes | Drought |
+| 7 | Your shamba, six weeks on (maize) | Short of nitrogen |
+
+- **Every 30 seconds**: each farm can be checked once every 30 seconds (`CHECK_COOLDOWN_S` in `src/rounds/data.ts`).
+  A pin shows the countdown. A farm that was missed or needs another look can be checked again after 30 seconds,
+  from the chip bar at the bottom or from the summary.
+- **Points**: 100 for a right read first time, 50 after a second look, paid **once per farm**. Progress is saved
+  (`rounds.done`), so replaying a farm earns nothing more.
+- **Real photos**: each picture uses a photo from `src/rounds/photos/<round>/<part>.jpg` when one exists and a
+  drawing otherwise. See `src/rounds/photos/README.md` for the 35-photo shot list and specs.
+- **Review menu**: *Field rounds* lists the map, look, judge, right, wrong and summary screens.
+- **Events**: `round_start`, `round_part_viewed`, `round_call` (no names).
+- The Figma map has six beds, so round 7 reuses the front maize bed (shown as two pins side by side).
+
 ## Design review mode
 
 Open **`?review=1`** (or *Settings → Design review*) for a sandbox with a menu of every screen filled with
@@ -214,6 +247,7 @@ player's saved game or events.
 
 ## Performance on low-cost phones
 
+- Field rounds are a separate chunk loaded when opened; they add about 3 KB to the first load.
 - The first screen needs about **100 KB** of compressed code; it does not wait for the farm art.
 - The farm map is **86 KB** at 1× and **194 KB** at 2× (phones with sharp screens pick 2×).
 - All first-session crop art is SVG drawn in code: no images to download.
@@ -225,6 +259,8 @@ player's saved game or events.
 - **Game balance** (task counts, yields, prices, point costs) is illustrative, not agronomic data.
 - **Farming advice** in the game (e.g. ash or sand in the maize funnel for fall armyworm; watering at the
   roots in the cool of the morning) should be checked by an agronomist or extension officer.
+- **Field-round advice** (ash or sand for armyworm, soapy water for aphids, manure or top-dressing for hungry
+  plants) and the real photos' captions also need agronomist review. Round points are illustrative.
 - **Lima AI** is a rule-based stand-in that reads the season's numbers; it does not call an AI service.
 - **Rewards** are saved in the game but nothing is sent to a partner; there is no redemption backend.
 - **One painted farm**: the Figma map shows one farm, so the "neighbours" share it. A village with separate
