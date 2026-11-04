@@ -7,6 +7,8 @@ import { FarmMap } from './components/FarmMap';
 
 // the field rounds are loaded only when opened, so the first session stays as small as before
 const Rounds = lazy(() => import('./rounds/Rounds').then(m => ({ default: m.Rounds })));
+const Trials = lazy(() => import('./trials/Trials').then(m => ({ default: m.Trials })));
+import { TRIAL_SAMPLES } from './trials/samples';
 import { SettingsModal, WelcomeModal } from './screens/Meta';
 import { REVIEW_BASE, SELLING, SOLD, initialState, reviewing, useGame, type GameState, type SeasonResult } from './state';
 
@@ -68,6 +70,14 @@ const SCREENS: { label: string; group: string; state: Partial<GameState> }[] = [
   { group: 'New features', label: 'Value Addition', state: { ...selling, modal: { kind: 'value' } } },
   { group: 'New features', label: 'Select Process', state: { ...selling, modal: { kind: 'process' } } },
   { group: 'Added', label: 'Settings', state: { modal: { kind: 'settings' } } },
+  { group: 'Six farms', label: 'Six farms · Start', state: { trialsOpen: true } },
+  { group: 'Six farms', label: 'Six farms · Plan two farms', state: { trialsOpen: true, trial: TRIAL_SAMPLES.guidedPlan } },
+  { group: 'Six farms', label: 'Six farms · Two farms growing', state: { trialsOpen: true, trial: TRIAL_SAMPLES.guidedGrowing } },
+  { group: 'Six farms', label: 'Six farms · Two farms compared', state: { trialsOpen: true, trial: TRIAL_SAMPLES.guidedDone } },
+  { group: 'Six farms', label: 'Six farms · Plan six farms', state: { trialsOpen: true, trial: TRIAL_SAMPLES.sixPlan, trialHistory: TRIAL_SAMPLES.history } },
+  { group: 'Six farms', label: 'Six farms · Growing', state: { trialsOpen: true, trial: TRIAL_SAMPLES.sixGrowing, trialHistory: TRIAL_SAMPLES.history } },
+  { group: 'Six farms', label: 'Six farms · Check a farm', state: { roundsOpen: true, roundsTrial: true, roundsView: 'look', trial: TRIAL_SAMPLES.sixGrowing, trialHistory: TRIAL_SAMPLES.history } },
+  { group: 'Six farms', label: 'Six farms · Results', state: { trialsOpen: true, trial: TRIAL_SAMPLES.sixDone, trialHistory: TRIAL_SAMPLES.history } },
   { group: 'Field rounds', label: 'Rounds · Map', state: { roundsOpen: true, roundsView: 'map' } },
   { group: 'Field rounds', label: 'Rounds · Look at five pictures', state: { roundsOpen: true, roundsView: 'look' } },
   { group: 'Field rounds', label: 'Rounds · Broken fence', state: { roundsOpen: true, roundsView: 'look', roundsDemo: 'livestock:maize:young' } },
@@ -139,8 +149,10 @@ export default function App() {
     firstSession
       ? x.state.fs?.phase === s.fs.phase
       : s.roundsOpen
-        ? x.state.roundsOpen && x.state.roundsView === s.roundsView && (x.state.roundsDemo ?? null) === s.roundsDemo
-        : !x.state.fs && !x.state.roundsOpen && JSON.stringify(x.state.modal ?? null) === JSON.stringify(m) && (m || (x.state.plotSelected ?? false) === s.plotSelected),
+        ? x.state.roundsOpen && !!x.state.roundsTrial === s.roundsTrial && x.state.roundsView === s.roundsView && (x.state.roundsDemo ?? null) === s.roundsDemo
+        : s.trialsOpen
+          ? !!x.state.trialsOpen && (x.state.trial ?? null) === s.trial
+          : !x.state.fs && !x.state.roundsOpen && !x.state.trialsOpen && JSON.stringify(x.state.modal ?? null) === JSON.stringify(m) && (m || (x.state.plotSelected ?? false) === s.plotSelected),
   );
 
   return (
@@ -149,6 +161,10 @@ export default function App() {
         {firstSession ? <FirstSession s={s} dispatch={dispatch} /> : s.roundsOpen ? (
           <Suspense fallback={<FarmMap />}>
             <Rounds s={s} dispatch={dispatch} />
+          </Suspense>
+        ) : s.trialsOpen ? (
+          <Suspense fallback={<FarmMap />}>
+            <Trials s={s} dispatch={dispatch} />
           </Suspense>
         ) : (
           <FarmScene s={s} dispatch={dispatch} />
@@ -185,7 +201,7 @@ export default function App() {
             }}
           >
             {current < 0 && <option value="">—</option>}
-            {['First session', 'Field rounds', 'Game Design', 'New Design', 'New features', 'Added'].map(g => (
+            {['First session', 'Six farms', 'Field rounds', 'Game Design', 'New Design', 'New features', 'Added'].map(g => (
               <optgroup key={g} label={g}>
                 {SCREENS.map((sc, i) =>
                   sc.group === g ? (

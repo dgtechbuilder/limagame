@@ -10,6 +10,8 @@ import { CHECK_COOLDOWN_S, FARMS, ROUND_POINTS, checkFor, type Round } from './d
 import { CROP_NAME, CYCLE_DAYS, STAGE_LABELS, dayNumber, type HazardId, type Stage } from './hazards';
 import type { Crop } from '../first/data';
 import { Inspect, type InspectView } from './Inspect';
+import { trialRounds, type TrialRound } from './trial';
+import { CHECK_DAYS, FORECASTS, checkKey, currentDay } from '../trials/model';
 import { BEDS, START_NODE, START_POINT, measure, pointAt, routeBetween, standNode, type Pt } from './walk';
 
 /* Field rounds: every bed on the farmer's farm, back to back.
@@ -88,13 +90,27 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
   const today = useMemo(() => dayNumber(), []);
   const elapsed = today - (s.rounds.start ?? today);
   const demo = s.roundsDemo?.split(':') as [HazardId, Crop, Stage] | undefined;
-  const rounds = useMemo(
-    () => FARMS.map(f => checkFor(f, elapsed, demo && f.id === 'r3' ? { hazard: demo[0], crop: demo[1], stage: demo[2] } : undefined)),
+  // the six farms: each farm's check comes from its own plan, on the cycle's day
+  const trial = s.roundsTrial && s.trial?.phase === 'growing' ? s.trial : null;
+  const tDay = trial ? currentDay(trial, today) : 0;
+  const rounds: Round[] = useMemo(
+    () =>
+      trial && tDay <= CHECK_DAYS
+        ? trialRounds(trial, tDay)
+        : FARMS.map(f => checkFor(f, elapsed, demo && f.id === 'r3' ? { hazard: demo[0], crop: demo[1], stage: demo[2] } : undefined)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [elapsed, s.roundsDemo],
+    [elapsed, s.roundsDemo, trial?.cycle, trial?.plans, tDay],
   );
   // results are for today only: tomorrow every farm is a new situation, and pays again
-  const doneToday = s.rounds.day === today ? s.rounds.done : {};
+  const doneToday: Record<string, { right: boolean; tries: number }> = trial
+    ? Object.fromEntries(rounds.flatMap(r => {
+        const rec = trial.checks[checkKey((r as TrialRound).farmIndex, tDay)];
+        return rec ? [[r.id, rec]] : [];
+      }))
+    : s.rounds.day === today
+      ? s.rounds.done
+      : {};
+  const unit = trial ? 'farm' : 'bed';
 
   const [phase, setPhase] = useState<Phase>('ready');
   const [idx, setIdx] = useState(-1); // the round visited last in this run; the next is idx + 1
@@ -147,12 +163,16 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
   }, [view, s.roundsDemo]);
 
   const left = (r: Round) => Math.max(0, CHECK_COOLDOWN_S - (now - (checkedAt[r.id] ?? -Infinity)) / 1000);
-  const next = rounds[idx + 1] as Round | undefined;
+  // a farm already checked today (in an earlier run) counts as done, so a run picks up where it left off
+  const resultOf = (r: Round): Result | undefined =>
+    results[r.id] ?? (trial && doneToday[r.id] ? { right: doneToday[r.id].right, looks: doneToday[r.id].tries } : undefined);
+  const nextIndex = rounds.findIndex((r, i) => i > idx && !resultOf(r));
+  const next = nextIndex >= 0 ? rounds[nextIndex] : undefined;
   // the farm being walked to or looked at; when the map is waiting, the next farm in the run
   const target = visit && (phase === 'walking' || phase === 'inspect') ? visit.round : phase === 'between' || phase === 'ready' ? (next ?? null) : null;
 
   const statusOf = (r: Round): Status => {
-    const res = results[r.id];
+    const res = resultOf(r);
     if (res?.right) return res.looks === 1 ? 'first' : 'second';
     if (res) return 'missed';
     if (target?.id === r.id) return 'current';
@@ -160,7 +180,7 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
   };
 
   const readyAgain = (r: Round) => statusOf(r) === 'missed' && left(r) <= 0;
-  const rightCount = rounds.filter(r => results[r.id]?.right).length;
+  const rightCount = rounds.filter(r => resultOf(r)?.right).length;
 
   const begin = (round: Round, second = false) => {
     setVisit({ round, second });
@@ -174,7 +194,7 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
 
   const goNext = () => {
     if (!next) return setPhase('summary');
-    setIdx(idx + 1);
+    setIdx(nextIndex);
     begin(next);
   };
 
@@ -186,14 +206,15 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
     setResults(prev => ({ ...prev, [r.id]: { right: right || !!prev[r.id]?.right, looks } }));
     setCheckedAt(prev => ({ ...prev, [r.id]: Date.now() }));
     setEarned(e => e + paid);
-    dispatch({ type: 'roundResult', id: r.id, right, tries: looks, day: today });
+    if (trial) dispatch({ type: 'trialCheck', farm: (r as TrialRound).farmIndex, day: tDay, right, tries: looks });
+    else dispatch({ type: 'roundResult', id: r.id, right, tries: looks, day: today });
   };
 
   const onContinue = () => {
     if (!visit) return;
-    if (visit.second) return setPhase(idx >= rounds.length - 1 ? 'summary' : 'between');
-    if (idx + 1 < rounds.length) return setPhase('between');
-    setPhase('summary');
+    // `next` was worked out before this farm's result: skip it if it is this farm
+    const after = rounds.findIndex((r, i) => i > idx && r.id !== visit.round.id && !resultOf(r));
+    setPhase(after >= 0 ? 'between' : 'summary');
   };
 
   const restart = () => {
@@ -205,6 +226,17 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
     setPhase('ready');
   };
 
+  // a new day on the six farms starts a new run of checks; after the last day the farms are ready to harvest
+  const lastDay = useRef(tDay);
+  useEffect(() => {
+    if (lastDay.current === tDay) return;
+    lastDay.current = tDay;
+    if (trial && tDay > CHECK_DAYS) dispatch({ type: 'rounds', open: false });
+    else restart();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tDay]);
+  const allChecked = rounds.every(r => resultOf(r));
+
   const tapRound = (r: Round) => {
     if (phase === 'walking' || phase === 'inspect') return;
     if (readyAgain(r)) return begin(r, true);
@@ -215,10 +247,14 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
   /* ---------------- inspecting a farm ---------------- */
   if (phase === 'inspect' && visit) {
     const r = visit.round;
-    const last = visit.second ? idx >= rounds.length - 1 : idx + 1 >= rounds.length;
+    const last = !rounds.some((x, i) => i > idx && x.id !== r.id && !resultOf(x));
     const fresh = !doneToday[r.id]?.right;
+    const tr = trial ? (r as TrialRound) : null;
     return (
       <Inspect
+        tag={tr ? `${tr.short} of ${rounds.length}` : undefined}
+        note={tr ? `Maize · ${STAGE_LABELS[r.stage]} · day ${tDay} of ${CHECK_DAYS}` : undefined}
+        after={tr?.after}
         key={`${r.id}-${visit.second}-${demoView ?? ''}`}
         round={r}
         name={name}
@@ -238,8 +274,12 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
   let line = '';
   let action: { label: string; onClick: () => void } | undefined;
   if (phase === 'ready') {
-    line = t('Every bed on your farm needs a check today, {name}. Each keeps its crop for three weeks.');
-    action = { label: 'Start round 1', onClick: goNext };
+    line = trial
+      ? next
+        ? t(`Day ${tDay} of ${CHECK_DAYS} on your ${rounds.length} farms, {name}. Check every farm today.`)
+        : t(`Every farm is checked for day ${tDay}, {name}.`)
+      : t('Every bed on your farm needs a check today, {name}. Each keeps its crop for three weeks.');
+    action = next ? { label: next.n === 1 ? 'Start round 1' : `Check ${next.short}`, onClick: goNext } : { label: 'See the day', onClick: () => setPhase('summary') };
   } else if (phase === 'walking' && visit) {
     line = visit.second ? t(`Back to ${visit.round.title}, {name}.`) : t(`Round ${visit.round.n} of ${rounds.length}: off to ${visit.round.title}.`);
   } else if (phase === 'between') {
@@ -247,7 +287,7 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
     line = next
       ? t(`Round ${idx + 1} done, {name}. Next: ${next.title}.`) + (again.length ? ` You can look at ${again[0].short} again.` : '')
       : '';
-    action = next ? { label: 'Next bed', onClick: goNext } : undefined;
+    action = next ? { label: `Next ${unit}`, onClick: goNext } : undefined;
   }
 
   return (
@@ -306,11 +346,13 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
         <span>{name}</span>
       </div>
       <button type="button" className="rr-exit" onClick={() => dispatch({ type: 'rounds', open: false })}>
-        My farm
+        {trial ? 'Six farms' : 'My farm'}
       </button>
 
       <p className="rr-cycle">
-        Week {Math.floor((rounds[0].day) / 7) + 1} of 3 · {STAGE_LABELS[rounds[0].stage]} · crops change in {CYCLE_DAYS - rounds[0].day} days
+        {trial
+          ? `Cycle ${trial.cycle} · maize · day ${tDay} of ${CHECK_DAYS} · ${FORECASTS[trial.forecast].label.split(':')[0]}`
+          : `Week ${Math.floor(rounds[0].day / 7) + 1} of 3 · ${STAGE_LABELS[rounds[0].stage]} · crops change in ${CYCLE_DAYS - rounds[0].day} days`}
       </p>
 
       <ol className="rr-chips" aria-label="The rounds">
@@ -333,7 +375,11 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
       {phase === 'summary' && (
         <div className="abs ending" style={{ inset: 0 }}>
           <div className="rr-summary">
-            <p className="rr-summary-title">{rightCount === rounds.length ? t('You read every bed on your farm, {name}!') : `${rightCount} of ${rounds.length} beds read right`}</p>
+            <p className="rr-summary-title">
+              {rightCount === rounds.length
+                ? t(trial ? `You read every farm on day ${tDay}, {name}!` : 'You read every bed on your farm, {name}!')
+                : `${rightCount} of ${rounds.length} ${unit}s read right`}
+            </p>
             <ol>
               {rounds.map(r => {
                 const st = statusOf(r);
@@ -361,12 +407,20 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
             <p className="rr-summary-points">{earned > 0 ? `+${earned} points this run` : 'No new points this run'}</p>
             <div className="rr-summary-buttons">
               <GoldButton font={11} height={34} style={{ width: 150 }} onClick={() => dispatch({ type: 'rounds', open: false })}>
-                Back to my farm
+                {trial ? 'Back to six farms' : 'Back to my farm'}
               </GoldButton>
-              <GoldButton font={11} height={34} style={{ width: 150 }} onClick={restart}>
-                Play again
-              </GoldButton>
+              {!trial && (
+                <GoldButton font={11} height={34} style={{ width: 150 }} onClick={restart}>
+                  Play again
+                </GoldButton>
+              )}
+              {trial?.clock === 'fast' && allChecked && (
+                <GoldButton font={11} height={34} style={{ width: 150 }} onClick={() => dispatch({ type: 'trialNextDay' })}>
+                  {tDay >= CHECK_DAYS ? 'Go to harvest' : `Start day ${tDay + 1}`}
+                </GoldButton>
+              )}
             </div>
+            {trial?.clock === 'daily' && <p className="rr-summary-points">{tDay >= CHECK_DAYS ? 'Harvest is ready tomorrow.' : `Day ${tDay + 1} starts tomorrow.`}</p>}
           </div>
         </div>
       )}

@@ -7,6 +7,18 @@ import { FarmMap } from './FarmMap';
 import { LOOKS } from '../first/data';
 import { GoArrow, MailIcon, SettingsIcon, TimerIcon } from './Icons';
 import { Img, fmt } from './ui';
+import { CHECK_DAYS, checkKey, currentDay } from '../trials/model';
+import { dayNumber } from '../rounds/farms';
+
+/** What the six farms need now: a count of farms to check today, '!' at harvest time, or nothing. */
+function trialBadge(s: GameState): string | null {
+  const t = s.trial;
+  if (!t || t.phase !== 'growing') return null;
+  const day = currentDay(t, dayNumber());
+  if (day > CHECK_DAYS) return '!';
+  const left = t.plans.filter((_, i) => !t.checks[checkKey(i, day)]).length;
+  return left ? String(left) : null;
+}
 
 /** What the player should do now, used by Next Task, the field bubble and the farm card. */
 export function nextAction(s: GameState): { label: string; short: string; icon: string; modal: Modal } {
@@ -202,7 +214,7 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
             type="button"
             className="abs"
             style={{ left: 779, top: 238, width: 56, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}
-            onClick={() => dispatch({ type: 'rounds', open: true })}
+            onClick={() => dispatch({ type: 'rounds', open: true, trial: !!s.trial && s.trial.phase === 'growing' && currentDay(s.trial, dayNumber()) <= CHECK_DAYS })}
             aria-label="Field rounds: check every bed on your farm"
           >
             <span className="peach-btn" style={{ width: 56, height: 48.66 }}>
@@ -210,6 +222,25 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
             </span>
             <span className="label" style={{ fontSize: 14 }}>Rounds</span>
           </button>
+
+          <button
+            type="button"
+            className="abs"
+            style={{ left: 779, top: 166, width: 56, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}
+            onClick={() => dispatch({ type: 'trials', open: true })}
+            aria-label={`Six farms: grow maize to different plans and compare${trialBadge(s) ? ` (${trialBadge(s) === '!' ? 'ready to harvest' : `${trialBadge(s)} to check today`})` : ''}`}
+          >
+            <span className="peach-btn" style={{ width: 56, height: 48.66, position: 'relative' }}>
+              <Img src={img.sprout} w={28} h={28} />
+              {trialBadge(s) && <span className="tr-badge">{trialBadge(s)}</span>}
+            </span>
+            <span className="label" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>Six farms</span>
+          </button>
+          {s.onboarded && !s.trial && s.trialHistory.length === 0 && !s.plotSelected && (
+            <button type="button" className="tr-hint" onClick={() => dispatch({ type: 'trials', open: true })}>
+              New: grow maize two ways and see which grows more.
+            </button>
+          )}
 
           {!s.plotSelected && (
             <>

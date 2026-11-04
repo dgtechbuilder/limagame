@@ -1,10 +1,12 @@
 # Lima Farming Game
 
-A farming game for smallholder farmers in Kenya, played on a landscape phone. It is **one farm, the
-player's own** — there are no neighbours. The player learns to read their crops with their own eyes, then
-checks every bed on the farm often, so the farm keeps growing healthy, nutritious food. Seasons of maize
-turn every choice (doing the work, when to harvest, how to store, whether to process) into what they earn.
-Points unlock real partner discounts.
+A farming game for young Africans who farm or want to — including "satellite farmers" with a city job and a
+rural farm — played on a landscape phone. It is **one farm, the player's own** — there are no neighbours. The
+player learns to read their crops with their own eyes, then checks every bed on the farm often, so the farm keeps
+growing healthy, nutritious food. Its core is **the six farms**: the same maize grown to six different plans side
+by side, so a year or more of trial and error happens in a few weeks of play. Seasons of maize turn every choice
+(doing the work, when to harvest, how to store, whether to process) into what they earn. Points unlock real
+partner discounts.
 
 The game is built in React + TypeScript from the Figma file **"29 Oct Farm Management App"**
 (`dvRxEJtTy8rGBPIVmCLb4E`, section *Farm game*). The Figma farm map is the ground of the whole game.
@@ -26,6 +28,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [The first session](#the-first-session)
 - [The season](#the-season)
 - [Field rounds](#field-rounds)
+- [The six farms](#the-six-farms)
 - [Design review mode](#design-review-mode)
 - [Saving, events and privacy](#saving-events-and-privacy)
 - [Performance on low-cost phones](#performance-on-low-cost-phones)
@@ -42,7 +45,9 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 | **0:25** | Checks the maize by looking: spots the rows with fall armyworm and makes the right call. This is the moment the game is built around. |
 | **~2:00** | The whole farm opens. Their sukuma wiki needs the same kind of check, with fewer hints. |
 | **~3:00** | **Field rounds**: checks every bed on the farm, one after another — and comes back often, because every bed changes every day. |
-| **Then** | Plays seasons of maize: six farming steps, harvest timing, storage, processing, selling, results, rewards. |
+| **Then** | **Two farms** (about 10 minutes): Farm 1 grows maize a common way, the player changes one thing on Farm 2, checks both every day for six days, harvests and sees which grew more, and why. |
+| **Every week** | **Six farms**: a different plan on each farm, one day of checks each real day (or all now), then the harvests compared. The plan that worked becomes their recipe for the next cycle. |
+| **Any time** | Plays seasons of maize on Farm Moja: six farming steps, harvest timing, storage, processing, selling, results, rewards. |
 
 A wrong call is part of learning: the clue they missed is circled, and they try again on a second maize bed.
 
@@ -90,7 +95,9 @@ src/
     Journey.tsx            harvest timing → sale → storage → value addition → process → results; rewards; info
     Meta.tsx               How the farm works, Settings
   first/                   the first session (see below)
+  trials/                  the six farms (see below): model.ts holds every number; Trials.tsx the screens (loaded when opened)
   rounds/                  field rounds: checks of every bed on the farm, back to back (see below); loaded only when opened
+    trial.ts               a six-farm check: what a farm shows today, from its own plan
     photos/                real photos from Wikimedia Commons by situation, credits.json + CREDITS.md (see photos/README.md)
 public/
   assets/                  130 images exported from Figma, incl. bg-farm.webp and bg-farm@2x.webp
@@ -265,6 +272,67 @@ planting or harvesting at the wrong time are there on top of drought, pests and 
 - The Figma map has six beds, one round each. The beds are painted art and always show the same plants; the crop
   name on each pin says what is actually growing.
 
+## The six farms
+
+The six farms are LIMA's core idea: grow the same maize on up to six farms, each to a **different plan**, and
+compare the harvests. Six chances to fail safely in one cycle, so a player sees in a few weeks what would take a
+year or more on a real farm. **Six farms** on the farm screen opens them (a badge shows how many farms need a check
+today, or **!** at harvest).
+
+![Planning six farms](docs/six-farms-plan.webp)
+
+**One cycle**
+
+1. **Plan.** A table with one column per farm and one row per farming step: land prep, planting (seed), planting
+   date, fertilizer, pest control, water (litres per m² a week on top of the rain) and harvest. Tap a box to choose;
+   each choice says what the farmer does and what it costs, never how well it works. No two farms may have the same
+   plan. Boxes that differ from Farm 1 are gold. *Suggest one change per farm* fills Farms 2–6 with one change each
+   against Farm 1, so every farm tests one thing.
+2. **Grow.** Six days of checks: two of seedlings, two growing, two at harvest time. Each day every farm gets a
+   field check (the same five pictures and calls as the field rounds), and **what a farm shows comes from its own
+   plan**: the farm with no watering in a dry season shows drought, the farm with fertilizer at planting only goes
+   hungry mid-season, the farm with no pest control can't treat armyworm, a planting date before the rains shows on
+   day 1. In the guided cycle both farms share each day's luck, so they differ only where their plans differ; with six
+   farms each has its own luck, as real fields do, and the plans set the odds. A right call treats
+   the problem (for a few coins) and stops most of the damage; a missed or wrong call lets it run. After the call the
+   player is told why this farm has this problem and what was done about it.
+3. **Harvest and compare.** Bags of maize, quality, and profit per farm, side by side, with the plan rows that
+   differ. **Lima AI** splits the gap between the best and worst farm into its causes from the player's own numbers
+   (for example *Fertilizer: planting + top-dress instead of at planting only gave 0.6 bags more*), and says when the
+   farm that grew most is not the one that made most. The player can keep any farm's plan as their **recipe**; the
+   next cycle starts from it.
+
+![Six harvests compared, with Lima AI's reasons](docs/six-farms-results.webp)
+
+**The first cycle is guided**: two farms, Farm 1 locked to a common way of growing maize (hand hoe, saved seed,
+planted with the rains, fertilizer at planting only, no pest control, rain only, harvested when ready), and the
+player changes one thing on Farm 2. Its days move on as soon as both farms are checked, so the whole cycle takes
+about 10 minutes. From the second cycle there are six farms, the season's rain changes (normal, dry, normal, wet),
+and the player chooses how the days pass: **one day each real day** (the daily habit, about a week a cycle) or
+**all six days now**; they can switch at any time.
+
+**The model** lives in one file, [`src/trials/model.ts`](src/trials/model.ts), so an agronomist can review it
+without reading any screen code:
+
+| Table | What it sets |
+| --- | --- |
+| `PLAN_STEPS` | every choice: its words, its cost in coins, and its yield factor |
+| `FORECASTS`, `WATER_NEED`, `WATER_TOO_MUCH` | rain per week by season (8, 15 or 28 L/m²), what maize needs (35), when it waterlogs (above 50) |
+| `BASE`, `weightsFor` | how likely each problem is on a day, and how each plan changes that (weeds from land prep, hunger from fertilizer, drought and waterlogging from water, disease from close spacing or a wet season, birds from a late harvest) |
+| `DAMAGE` | the share of the harvest a problem costs when missed and when caught, and what the treatment costs |
+| `POTENTIAL_BAGS`, `PRICE_BY_QUALITY` | 6 bags (90 kg) per farm when everything goes right; price by quality |
+
+Yield = potential × each step's factor × (1 − loss) for every problem. With perfect checks, in a normal season, the
+common plan grows about 2.1 bags; changing one thing on it gives about +0.7 bags (certified seed, a top-dress, or
+20 L of water a week) down to −0.4 (planting before the rains or three weeks late); a plan that gets every step
+right grows about 5.7. Missing every check costs a good plan about 0.9 bags. Spraying every week or a double dose of
+fertilizer grows about as much as the right plan but costs more than it earns. **All of these numbers are
+illustrative until an agronomist reviews them.**
+
+*Tractor hire* is a land-prep choice with a placeholder price; it is where a tractor-hire partner would plug in.
+Points: the field-check points (100, or 50 on a second look) for each farm each day, plus 50 per farm at harvest.
+Events: the checks use the field-round events (`round_start`, `round_part_viewed`, `round_call`).
+
 ## Design review mode
 
 Open **`?review=1`** (or *Settings → Design review*) for a sandbox with a menu of every screen filled with
@@ -304,8 +372,11 @@ player's saved game or events.
   stand in for a whole season) and the rotation. Round points are illustrative.
 - **Lima AI** is a rule-based stand-in that reads the season's numbers; it does not call an AI service.
 - **Rewards** are saved in the game but nothing is sent to a partner; there is no redemption backend.
-- **Missed checks** show in the rounds (a bed to look at again) but do not yet lower the maize harvest or the food
-  the farm produces; how much a missed check should cost is a game-design choice still to make.
+- **Missed checks** cost harvest on the six farms (see `DAMAGE` in `src/trials/model.ts`). In the everyday field
+  rounds they still only show as a bed to look at again.
+- **The six-farm model** (yields, problem odds, damage, prices) is illustrative and needs agronomist review before any
+  pilot. Only maize is planned in it so far; beans, sukuma wiki and tomatoes would each need their own table.
+- **No two plans the same** is enforced; *one change per farm* is suggested, not enforced.
 - **Art styles**: the farm and UI are the painted Figma art; the first-session crops and the farmer are
   drawn flat in code.
 - **Language**: English with a little Swahili (*Karibu*, *Twende*, shamba, sukuma wiki). Full Swahili is not done.

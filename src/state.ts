@@ -1,6 +1,27 @@
 import { useEffect, useReducer } from 'react';
 import { FARMS, ROUND_POINTS, dayNumber } from './rounds/farms';
 import {
+  CHECK_DAYS,
+  COMMON_PLAN,
+  DAMAGE,
+  canTreat,
+  checkKey,
+  currentDay,
+  explain,
+  farmName,
+  harvestFarm,
+  hazardFor,
+  newTrial,
+  planCost,
+  planProblem,
+  setChoice,
+  suggestPlans,
+  type Plan,
+  type StepKey,
+  type Trial,
+  type TrialSummary,
+} from './trials/model';
+import {
   GROWING_STEPS,
   HARVEST_EFFECT,
   PROCESSES,
@@ -71,6 +92,14 @@ export interface RoundRecord {
 export type RoundsView = 'map' | 'look' | 'judge' | 'right' | 'wrong' | 'summary';
 
 export interface GameState {
+  // the six farms: one crop grown to a different plan on each farm, compared at harvest
+  trial: Trial | null;
+  trialHistory: TrialSummary[];
+  /** the plan the player kept from an earlier cycle; the next cycle starts from it */
+  recipe: Plan | null;
+  trialsOpen: boolean;
+  /** the field rounds are checking the six farms (not the everyday beds) */
+  roundsTrial: boolean;
   // field rounds
   /** start: the day the player first opened the rounds (the 21-day crop cycle counts from it); done: today's results, by farm */
   rounds: { start: number | null; day: number; done: Record<string, RoundRecord> };
@@ -133,6 +162,11 @@ export const freshSeason = {
 };
 
 export const initialState: GameState = {
+  trial: null,
+  trialHistory: [],
+  recipe: null,
+  trialsOpen: false,
+  roundsTrial: false,
   rounds: { start: null, day: 0, done: {} },
   roundsOpen: false,
   roundsView: null,
@@ -245,7 +279,17 @@ export type Action =
   | { type: 'picker'; on: boolean }
   | { type: 'reset'; state: Partial<GameState> }
   | { type: 'farmer'; name: string; look: number }
-  | { type: 'rounds'; open: boolean; view?: RoundsView | null; demo?: string | null }
+  | { type: 'rounds'; open: boolean; view?: RoundsView | null; demo?: string | null; trial?: boolean }
+  | { type: 'trials'; open: boolean }
+  | { type: 'trialNew' }
+  | { type: 'trialPlan'; farm: number; key: StepKey; value: string }
+  | { type: 'trialSuggest' }
+  | { type: 'trialPlant'; clock: Trial['clock'] }
+  | { type: 'trialCheck'; farm: number; day: number; right: boolean; tries: number }
+  | { type: 'trialNextDay' }
+  | { type: 'trialClock'; clock: Trial['clock'] }
+  | { type: 'trialHarvest' }
+  | { type: 'trialRecipe'; farm: number }
   | { type: 'roundResult'; id: string; right: boolean; tries: number; day: number }
   | { type: 'fs'; phase: FsPhase; at?: 'first' | 'lower'; opened?: boolean; note?: string };
 
@@ -432,6 +476,9 @@ function reducer(s: GameState, a: Action): GameState {
     case 'rounds':
       return {
         ...s,
+        // closing the checks of the six farms goes back to the six farms
+        trialsOpen: !a.open && s.roundsTrial ? true : a.open ? false : s.trialsOpen,
+        roundsTrial: a.open ? !!a.trial : false,
         roundsOpen: a.open,
         roundsView: a.open ? (a.view ?? null) : null,
         roundsDemo: a.open ? (a.demo ?? null) : null,
@@ -457,6 +504,95 @@ function reducer(s: GameState, a: Action): GameState {
         toast: earned ? toast(`Read right · +${earned} points · ${total} of ${FARMS.length} beds`) : s.toast,
       };
     }
+    case 'trials':
+      return { ...s, trialsOpen: a.open, roundsOpen: false, roundsTrial: false, modal: null, plotSelected: false };
+    case 'trialNew': {
+      if (s.trial && s.trial.phase !== 'done') return s;
+      const guided = s.trialHistory.length === 0;
+      return { ...s, trial: newTrial(s.trialHistory.length + 1, guided, s.recipe ?? COMMON_PLAN) };
+    }
+    case 'trialPlan': {
+      const t = s.trial;
+      if (!t || t.phase !== 'plan' || (t.guided && a.farm === 0)) return s;
+      const plans = t.plans.map((p, i) => (i === a.farm ? setChoice(p, a.key, a.value) : p));
+      return { ...s, trial: { ...t, plans } };
+    }
+    case 'trialSuggest': {
+      const t = s.trial;
+      if (!t || t.phase !== 'plan') return s;
+      return { ...s, trial: { ...t, plans: suggestPlans(t.plans[0], t.plans.length, Math.floor(Math.random() * 7)) } };
+    }
+    case 'trialPlant': {
+      const t = s.trial;
+      if (!t || t.phase !== 'plan') return s;
+      const problem = planProblem(t.plans, s.coins);
+      if (problem) return { ...s, toast: toast(problem) };
+      const cost = t.plans.reduce((n, p) => n + planCost(p), 0);
+      return {
+        ...s,
+        coins: s.coins - cost,
+        trial: { ...t, phase: 'growing', clock: a.clock, planted: dayNumber(), day: 1 },
+        ...gainXp(s, 0.1),
+        toast: toast(`${t.plans.length} farms planted for ${fmt(cost)} coins · day 1: check every farm`),
+      };
+    }
+    case 'trialCheck': {
+      const t = s.trial;
+      if (!t || t.phase !== 'growing' || a.day < 1 || a.day > CHECK_DAYS) return s;
+      const key = checkKey(a.farm, a.day);
+      const before = t.checks[key];
+      if (before?.right) return s;
+      const h = hazardFor(t, a.farm, a.day);
+      const p = t.plans[a.farm];
+      const fix = a.right && canTreat(h, p) ? DAMAGE[h].treat : 0;
+      const paid = fix > 0 && s.coins >= fix;
+      const earned = a.right ? (a.tries === 1 ? ROUND_POINTS.first : ROUND_POINTS.second) : 0;
+      const treatments = t.treatments.map((n, i) => (i === a.farm && paid ? n + fix : n));
+      return {
+        ...s,
+        coins: s.coins - (paid ? fix : 0),
+        points: s.points + earned,
+        trial: { ...t, checks: { ...t.checks, [key]: { right: a.right, tries: a.tries, treated: paid } }, treatments },
+        ...gainXp(s, a.right ? 0.06 : 0.01),
+        toast: earned ? toast(`Read right · +${earned} points${paid ? ` · treated for ${fix} coins` : ''}`) : s.toast,
+      };
+    }
+    case 'trialNextDay': {
+      const t = s.trial;
+      if (!t || t.phase !== 'growing' || t.clock !== 'fast') return s;
+      const day = currentDay(t, dayNumber());
+      if (day > CHECK_DAYS) return s;
+      const unchecked = t.plans.findIndex((_, i) => !t.checks[checkKey(i, day)]);
+      if (unchecked >= 0) return { ...s, toast: toast(`Check ${farmName(unchecked)} first`) };
+      return { ...s, trial: { ...t, day: day + 1 }, toast: toast(day + 1 > CHECK_DAYS ? 'Harvest time on every farm' : `Day ${day + 1} of ${CHECK_DAYS}`) };
+    }
+    case 'trialClock': {
+      const t = s.trial;
+      if (!t || t.phase !== 'growing') return s;
+      return { ...s, trial: { ...t, clock: a.clock, day: currentDay(t, dayNumber()), planted: a.clock === 'daily' ? dayNumber() - currentDay(t, dayNumber()) + 1 : t.planted } };
+    }
+    case 'trialHarvest': {
+      const t = s.trial;
+      if (!t || t.phase !== 'growing' || currentDay(t, dayNumber()) <= CHECK_DAYS) return s;
+      const results = t.plans.map((_, i) => harvestFarm(t, i));
+      const income = results.reduce((n, r) => n + r.income, 0);
+      const why = explain(t, results);
+      const summary: TrialSummary = { cycle: t.cycle, farms: t.plans.length, best: why.best, bags: results.map(r => r.bags), profit: results.map(r => r.profit) };
+      return {
+        ...s,
+        coins: s.coins + income,
+        points: s.points + 50 * t.plans.length,
+        trial: { ...t, phase: 'done', results },
+        trialHistory: [...s.trialHistory, summary],
+        ...gainXp(s, 0.4),
+        toast: toast(`Harvest sold for ${fmt(income)} coins · +${50 * t.plans.length} points`),
+      };
+    }
+    case 'trialRecipe': {
+      const t = s.trial;
+      if (!t) return s;
+      return { ...s, recipe: t.plans[a.farm], toast: toast(`${farmName(a.farm)}'s plan is your recipe: the next cycle starts from it`) };
+    }
     case 'fs':
       return {
         ...s,
@@ -473,7 +609,7 @@ function reducer(s: GameState, a: Action): GameState {
 /* ------------------------------------------------------------------ */
 
 const SAVE_KEY = 'lima-farming-game:v2';
-const TRANSIENT: (keyof GameState)[] = ['modal', 'plotSelected', 'toast', 'roundsOpen', 'roundsView', 'roundsDemo'];
+const TRANSIENT: (keyof GameState)[] = ['modal', 'plotSelected', 'toast', 'roundsOpen', 'roundsView', 'roundsDemo', 'trialsOpen', 'roundsTrial'];
 
 /** Design-review links (?review or ?screen) use a throwaway game so they never touch a player's save. */
 export const reviewing = () => {
@@ -496,7 +632,7 @@ function load(): GameState {
     const saved = JSON.parse(raw);
     // Saves from before the farm had one owner may carry a reminder about neighbours.
     if (typeof saved.note === 'string' && /Achieng|neighbour/i.test(saved.note)) saved.note = 'Check every bed on your farm often: open Rounds on the farm.';
-    return { ...initialState, ...saved, modal: null, plotSelected: false, toast: null, roundsOpen: false, roundsView: null, roundsDemo: null, rounds: { ...initialState.rounds, ...(saved.rounds ?? {}) } };
+    return { ...initialState, ...saved, modal: null, plotSelected: false, toast: null, roundsOpen: false, roundsView: null, roundsDemo: null, trialsOpen: false, roundsTrial: false, rounds: { ...initialState.rounds, ...(saved.rounds ?? {}) } };
   } catch {
     return initialState;
   }

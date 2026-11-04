@@ -41,8 +41,17 @@ export function Inspect({
   onResult,
   onContinue,
   onLeave,
+  tag,
+  note,
+  after,
 }: {
   round: Round;
+  /** replaces "Round n of 6" (the six farms say "Farm 2 of 6") */
+  tag?: string;
+  /** replaces the crop and day line */
+  note?: string;
+  /** a line beside the result: why it happened and what was done about it */
+  after?: { right: string; wrong: string };
   name: string;
   look: Look;
   /** a second look, after the 30-second wait: the picture that held the clue is highlighted */
@@ -128,12 +137,10 @@ export function Inspect({
         </span>
       </div>
       <span className="rr-roundtag">
-        Round {round.n} of {FARMS.length}
+        {tag ?? `Round ${round.n} of ${FARMS.length}`}
         {second ? ' · second look' : ''}
       </span>
-      <span className="rr-roundtag rr-cropnote">
-        {CROP_NAME[round.crop]} · {STAGE_LABELS[round.stage]} · day {round.day + 1} of {CYCLE_DAYS}
-      </span>
+      <span className="rr-roundtag rr-cropnote">{note ?? `${CROP_NAME[round.crop]} · ${STAGE_LABELS[round.stage]} · day ${round.day + 1} of ${CYCLE_DAYS}`}</span>
       <button type="button" className="close-btn" style={{ left: 826, top: 4, width: 36, height: 36 }} aria-label="Back to my farm" onClick={onLeave}>
         <img src={img.close} alt="" style={{ width: 36, height: 36 }} />
       </button>
@@ -226,21 +233,23 @@ export function Inspect({
                   <p className="wrong-title" style={{ color: '#2f9b14' }}>
                     {name}!
                   </p>
-                  <svg viewBox="-40 -100 80 104" width={104} height={136} className="cheer" aria-hidden="true">
+                  <svg viewBox="-40 -100 80 104" width={after?.right ? 66 : 104} height={after?.right ? 86 : 136} className="cheer" aria-hidden="true">
                     <FarmerFigure look={look} pose="cheer" />
                   </svg>
                   <span className="rr-points">{payout > 0 ? `+${payout} points` : 'Points already earned'}</span>
+                  {after?.right && <p className="tr-after">{after.right}</p>}
                 </>
               ) : (
                 <>
                   <p className="wrong-title">Not quite, {name}.</p>
-                  <svg viewBox="-40 -100 80 104" width={92} height={120} aria-hidden="true">
+                  <svg viewBox="-40 -100 80 104" width={after?.wrong ? 62 : 92} height={after?.wrong ? 80 : 120} aria-hidden="true">
                     <FarmerFigure look={look} />
                   </svg>
                   <span className="rr-wait">
                     <img src={img.clock} alt="" width={16} height={16} />
                     You can check this bed again in {CHECK_COOLDOWN_S} seconds.
                   </span>
+                  {after?.wrong && <p className="tr-after is-wrong">{after.wrong}</p>}
                 </>
               )}
             </div>
