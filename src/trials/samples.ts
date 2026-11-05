@@ -1,5 +1,6 @@
 /* Sample cycles for design review (?screen=Six farms · …). They never touch a saved game. */
 
+import { FULL, emptyField, type Field } from '../world/field';
 import {
   CHECK_DAYS,
   COMMON_PLAN,
@@ -44,4 +45,44 @@ const sixDone = finish(play({ ...sixGrowing, day: CHECK_DAYS + 1 }, CHECK_DAYS, 
 const res = guidedDone.results!;
 const history: TrialSummary[] = [{ cycle: 1, farms: 2, best: explain(guidedDone, res).best, bags: res.map(r => r.bags), profit: res.map(r => r.profit) }];
 
-export const TRIAL_SAMPLES = { guidedPlan, guidedGrowing, guidedDone, sixPlan, sixGrowing, sixDone, history };
+/** Field work for a sample cycle: every farm dug, sown and fed, today's treatments not yet done; `harvested` farms picked. */
+function fieldOf(t: Trial, opts: { setup?: number[]; harvested?: number[]; carry?: Field['carry'] } = {}): Field {
+  const f = emptyField(t.cycle);
+  const setup = opts.setup ?? t.plans.map((_, i) => i);
+  for (const i of setup) {
+    f.marks[`${i}:prep`] = FULL;
+    f.marks[`${i}:sow`] = FULL;
+    if (t.plans[i].fert !== 'none') f.marks[`${i}:setupFeed`] = FULL;
+    // earlier days' treatments are done
+    for (let d = 1; d < t.day; d++) f.marks[`${i}:t${d}`] = FULL;
+  }
+  for (const i of opts.harvested ?? []) f.marks[`${i}:harvest`] = FULL;
+  f.carry = opts.carry ?? null;
+  return f;
+}
+
+/** The farm world, planting: Farm 1 dug, Farm 2 half dug. */
+const worldPlanting: Trial = { ...guidedPlan, phase: 'growing', clock: 'fast', planted: 0, day: 1 };
+const worldPlantingField: Field = { ...emptyField(1), marks: { '0:prep': FULL, '0:sow': 0b1111_1111_0000_0000_0000 & FULL, '1:prep': 0b0000_0000_1111_1111_1111 }, carry: 'seeds' };
+/** The farm world, day 3 of the guided cycle, checks to do. */
+const worldGrowing = { ...guidedGrowing, day: 3, checks: Object.fromEntries(Object.entries(guidedGrowing.checks).filter(([k]) => Number(k.split(':')[1]) < 3)) };
+const worldGrowingField = fieldOf(worldGrowing);
+/** The farm world at harvest: Farm 1 picked, Farm 2 still standing. */
+const worldHarvest = play({ ...guidedGrowing, day: CHECK_DAYS + 1 }, CHECK_DAYS);
+const worldHarvestField = fieldOf(worldHarvest, { harvested: [0] });
+
+export const TRIAL_SAMPLES = {
+  guidedPlan,
+  guidedGrowing,
+  guidedDone,
+  sixPlan,
+  sixGrowing,
+  sixDone,
+  history,
+  worldPlanting,
+  worldPlantingField,
+  worldGrowing,
+  worldGrowingField,
+  worldHarvest,
+  worldHarvestField,
+};

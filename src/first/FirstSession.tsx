@@ -132,11 +132,20 @@ export function FirstSession({ s, dispatch }: { s: GameState; dispatch: Dispatch
         shamba={SHAMBAS.sukuma}
         name={name}
         look={look}
-        ending={{ line: 'Your tomatoes need a check too, {name}: healthy crops mean good food for your family.', button: 'Check all my crops' }}
+        ending={
+          s.view === 'world'
+            ? { line: 'Now your own farm, {name}: grow maize two ways and see which grows more. Healthy crops mean good food for your family.', button: 'Go to my farm' }
+            : { line: 'Your tomatoes need a check too, {name}: healthy crops mean good food for your family.', button: 'Check all my crops' }
+        }
         onPassed={() => track('review_passed', { shamba: 'sukuma' })}
         onFailed={() => undefined}
         onEnd={() => {
           track('session_close');
+          if (s.view === 'world') {
+            // into the walkable farm: its task card says what to do first
+            go('done', { note: 'Plan your farms: tap the task card at the top of the farm.' });
+            return;
+          }
           go('done', { note: 'Check every bed on your farm often: open Rounds on the farm.' });
           // straight into the field rounds: every bed on the farm, checked one after another
           dispatch({ type: 'rounds', open: true });

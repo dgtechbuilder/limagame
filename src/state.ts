@@ -21,6 +21,7 @@ import {
   type Trial,
   type TrialSummary,
 } from './trials/model';
+import { carryNeeded, emptyField, treatCost, treatLeft, type Carry, type Field } from './world/field';
 import {
   GROWING_STEPS,
   HARVEST_EFFECT,
@@ -92,6 +93,10 @@ export interface RoundRecord {
 export type RoundsView = 'map' | 'look' | 'judge' | 'right' | 'wrong' | 'summary';
 
 export interface GameState {
+  /** the farm screen: the walkable 3D farm, or the classic painted one */
+  view: 'world' | 'classic';
+  /** field work done by hand in the farm world, for the current cycle */
+  field: Field;
   // the six farms: one crop grown to a different plan on each farm, compared at harvest
   trial: Trial | null;
   trialHistory: TrialSummary[];
@@ -162,6 +167,8 @@ export const freshSeason = {
 };
 
 export const initialState: GameState = {
+  view: 'world',
+  field: emptyField(),
   trial: null,
   trialHistory: [],
   recipe: null,
@@ -285,7 +292,11 @@ export type Action =
   | { type: 'trialPlan'; farm: number; key: StepKey; value: string }
   | { type: 'trialSuggest' }
   | { type: 'trialPlant'; clock: Trial['clock'] }
-  | { type: 'trialCheck'; farm: number; day: number; right: boolean; tries: number }
+  | { type: 'trialCheck'; farm: number; day: number; right: boolean; tries: number; physical?: boolean }
+  | { type: 'view'; view: GameState['view'] }
+  | { type: 'fieldMark'; farm: number; job: string; bits: number }
+  | { type: 'carry'; item: Carry }
+  | { type: 'fieldHire' }
   | { type: 'trialNextDay' }
   | { type: 'trialClock'; clock: Trial['clock'] }
   | { type: 'trialHarvest' }
@@ -532,8 +543,9 @@ function reducer(s: GameState, a: Action): GameState {
         ...s,
         coins: s.coins - cost,
         trial: { ...t, phase: 'growing', clock: a.clock, planted: dayNumber(), day: 1 },
+        field: emptyField(t.cycle),
         ...gainXp(s, 0.1),
-        toast: toast(`${t.plans.length} farms planted for ${fmt(cost)} coins · day 1: check every farm`),
+        toast: toast(s.view === 'world' ? `${t.plans.length} farm plans paid: ${fmt(cost)} coins · now get them planted` : `${t.plans.length} farms planted for ${fmt(cost)} coins · day 1: check every farm`),
       };
     }
     case 'trialCheck': {
@@ -545,7 +557,8 @@ function reducer(s: GameState, a: Action): GameState {
       const h = hazardFor(t, a.farm, a.day);
       const p = t.plans[a.farm];
       const fix = a.right && canTreat(h, p) ? DAMAGE[h].treat : 0;
-      const paid = fix > 0 && s.coins >= fix;
+      // in the farm world the treatment is done by hand afterwards (fieldMark), and paid for then
+      const paid = !a.physical && fix > 0 && s.coins >= fix;
       const earned = a.right ? (a.tries === 1 ? ROUND_POINTS.first : ROUND_POINTS.second) : 0;
       const treatments = t.treatments.map((n, i) => (i === a.farm && paid ? n + fix : n));
       return {
@@ -587,6 +600,50 @@ function reducer(s: GameState, a: Action): GameState {
         ...gainXp(s, 0.4),
         toast: toast(`Harvest sold for ${fmt(income)} coins · +${50 * t.plans.length} points`),
       };
+    }
+    case 'view':
+      return { ...s, view: a.view, modal: null };
+    case 'carry':
+      return s.field.carry === a.item ? s : { ...s, field: { ...s.field, carry: a.item } };
+    case 'fieldHire': {
+      const t = s.trial;
+      if (!t) return s;
+      const f = s.field.cycle === t.cycle ? s.field : emptyField(t.cycle);
+      return { ...s, field: { ...f, hired: true } };
+    }
+    case 'fieldMark': {
+      const t = s.trial;
+      if (!t || t.phase !== 'growing') return s;
+      const f = s.field.cycle === t.cycle ? s.field : emptyField(t.cycle);
+      const key = `${a.farm}:${a.job}`;
+      const before = f.marks[key] ?? 0;
+      const after = before | a.bits;
+      if (after === before) return s;
+      const marked = { ...f, marks: { ...f.marks, [key]: after } };
+      // put down what is carried once no job left today needs it
+      const putDown = (tr: Trial) => (carryNeeded(marked, tr, currentDay(tr, dayNumber())) ? marked : { ...marked, carry: null });
+      let field = putDown(t);
+      // a treatment done by hand counts (and is paid for) once its last tile is done
+      if (/^t\d$/.test(a.job)) {
+        const day = Number(a.job.slice(1));
+        const pending = treatLeft(f, t, a.farm, day);
+        if (pending && (after & pending.need) === pending.need) {
+          const cost = treatCost(pending.hazard);
+          if (s.coins < cost) return { ...s, field: marked, toast: toast(`You need ${cost} coins to treat ${farmName(a.farm)}`) };
+          const ck = checkKey(a.farm, day);
+          const trial = { ...t, checks: { ...t.checks, [ck]: { ...t.checks[ck], treated: true } }, treatments: t.treatments.map((n, i) => (i === a.farm ? n + cost : n)) };
+          field = putDown(trial);
+          return {
+            ...s,
+            field,
+            coins: s.coins - cost,
+            trial,
+            ...gainXp(s, 0.03),
+            toast: toast(`${farmName(a.farm)} treated · −${cost} coins · most of the damage stopped`),
+          };
+        }
+      }
+      return { ...s, field };
     }
     case 'trialRecipe': {
       const t = s.trial;

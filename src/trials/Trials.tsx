@@ -67,7 +67,7 @@ export function Trials({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
     body = <PlanBoard s={s} tr={tr} dispatch={dispatch} t={t} />;
   } else if (tr.phase === 'growing') {
     title = `Cycle ${tr.cycle} · growing`;
-    body = <Growing tr={tr} dispatch={dispatch} t={t} />;
+    body = <Growing tr={tr} dispatch={dispatch} t={t} inWorld={s.view === 'world'} />;
   } else {
     title = `Cycle ${tr.cycle} · results`;
     body = <Compare s={s} tr={tr} dispatch={dispatch} t={t} />;
@@ -145,9 +145,15 @@ function PlanBoard({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) 
     line = problem ?? t('Each farm tests something, {name}. Change one thing per farm against Farm 1 to see what each choice does.');
   }
 
+  const inWorld = s.view === 'world';
+  // in the farm world, planting sends the farmer out to do the work
+  const sow = (clock: Trial['clock']) => {
+    dispatch({ type: 'trialPlant', clock });
+    if (inWorld) dispatch({ type: 'trials', open: false });
+  };
   const plant = () => {
     if (problem) return dispatch({ type: 'toast', text: problem });
-    if (tr.guided) dispatch({ type: 'trialPlant', clock: 'fast' });
+    if (tr.guided) sow('fast');
     else setPlanting(true);
   };
 
@@ -208,11 +214,11 @@ function PlanBoard({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) 
             <p className="tr-card-title">How should the days pass?</p>
             <p>Each cycle has six days of checks before the harvest.</p>
             <div className="tr-choice">
-              <button type="button" onClick={() => dispatch({ type: 'trialPlant', clock: 'daily' })}>
+              <button type="button" onClick={() => sow('daily')}>
                 <b>One day each real day</b>
                 <span>Check your farms once a day, like a real farm. Harvest in about a week.</span>
               </button>
-              <button type="button" onClick={() => dispatch({ type: 'trialPlant', clock: 'fast' })}>
+              <button type="button" onClick={() => sow('fast')}>
                 <b>Play the six days now</b>
                 <span>A new day starts as soon as every farm is checked.</span>
               </button>
@@ -272,7 +278,7 @@ function Picker({ s, tr, farm, stepKey, dispatch, onClose }: { s: GameState; tr:
 
 /* ---------------- growing ---------------- */
 
-function Growing({ tr, dispatch, t }: Props & { tr: Trial }) {
+function Growing({ tr, dispatch, t, inWorld }: Props & { tr: Trial; inWorld: boolean }) {
   const day = currentDay(tr, dayNumber());
   const ready = day > CHECK_DAYS;
   const k = tr.plans.length;
@@ -282,10 +288,14 @@ function Growing({ tr, dispatch, t }: Props & { tr: Trial }) {
   let action: { label: string; onClick: () => void } | undefined;
   if (ready) {
     line = t('Harvest time, {name}! Pick every farm and see which grew the most.');
-    action = { label: 'Harvest all farms', onClick: () => dispatch({ type: 'trialHarvest' }) };
+    action = inWorld
+      ? { label: 'Go and harvest', onClick: () => dispatch({ type: 'trials', open: false }) }
+      : { label: 'Harvest all farms', onClick: () => dispatch({ type: 'trialHarvest' }) };
   } else if (todayLeft > 0) {
     line = t(`Day ${day} of ${CHECK_DAYS}: ${todayLeft === k ? (k === 2 ? 'both farms need' : `all ${k} farms need`) : `${todayLeft} ${todayLeft === 1 ? 'farm needs' : 'farms need'}`} a check today, {name}.`);
-    action = { label: 'Check my farms', onClick: () => dispatch({ type: 'rounds', open: true, trial: true }) };
+    action = inWorld
+      ? { label: 'Back to the farm', onClick: () => dispatch({ type: 'trials', open: false }) }
+      : { label: 'Check my farms', onClick: () => dispatch({ type: 'rounds', open: true, trial: true }) };
   } else if (tr.clock === 'fast') {
     line = t(`Every farm is checked for day ${day}, {name}.`);
     action = { label: day >= CHECK_DAYS ? 'Go to harvest' : `Start day ${day + 1}`, onClick: () => dispatch({ type: 'trialNextDay' }) };

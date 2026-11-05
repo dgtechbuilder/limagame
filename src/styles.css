@@ -719,3 +719,114 @@ button.card:active { transform: scale(0.98); }
 }
 .tr-hint::after { content: ''; position: absolute; right: -9px; top: 18px; border: 6px solid transparent; border-left-color: #eea660; }
 .tr-compare .tr-grid { overflow-y: auto; padding-bottom: 6px; }
+
+/* ================================================================== */
+/* The farm world: a walkable 3D farm with a game HUD                   */
+/* ================================================================== */
+.world { overflow: hidden; background: #a5d62c; }
+.world-canvas { position: absolute; inset: 0; width: 874px; height: 402px; display: block; }
+.world-pad { position: absolute; inset: 0; touch-action: none; cursor: pointer; }
+.joy {
+  position: absolute; width: 80px; height: 80px; border-radius: 50%; pointer-events: none; z-index: 4;
+  background: rgba(255, 255, 255, 0.22); box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.55);
+}
+.joy span {
+  position: absolute; left: 25px; top: 25px; width: 30px; height: 30px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+/* top left: the farmer and their level, settings */
+.hud-avatar { position: absolute; left: 12px; top: 8px; width: 50px; height: 54px; z-index: 5; pointer-events: none; }
+.hud-hex {
+  position: absolute; inset: 0; display: grid; place-items: center; overflow: hidden;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: linear-gradient(#f7c14a, #e88f22);
+}
+.hud-hex::after {
+  content: ''; position: absolute; inset: 4px; z-index: -1;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: #ffe7b4;
+}
+.hud-hex svg { position: relative; top: 4px; }
+.hud-level {
+  position: absolute; right: -8px; top: -4px; width: 22px; height: 24px; display: grid; place-items: center;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: #f39c12; color: #fff;
+  font-size: 12px; font-weight: 900; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+}
+.hud-round {
+  position: absolute; z-index: 5; width: 56px; display: flex; flex-direction: column; align-items: center; gap: 1px;
+  color: #fff; font-size: 9.5px; font-weight: 900; letter-spacing: 0.02em; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+.hud-round > svg, .hud-round > img {
+  width: 40px; height: 40px; padding: 7px; border-radius: 50%; box-sizing: border-box;
+  background: radial-gradient(circle at 50% 35%, #f6a64b, #d9731f); box-shadow: 0 0 0 2.5px #fff3d6, 0 3px 6px rgba(0, 0, 0, 0.3);
+}
+.hud-round:active > svg, .hud-round:active > img { transform: scale(0.94); }
+.hud-mission { right: 10px; top: 76px; }
+.hud-mission > svg { background: radial-gradient(circle at 50% 35%, #fff8e6, #f0dcb4); padding: 5px 8px; }
+.hud-shop { right: 10px; top: 136px; }
+
+/* top right: coins and points */
+.hud-pills { position: absolute; right: 10px; top: 8px; z-index: 5; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.hud-pill {
+  position: relative; display: flex; align-items: center; gap: 4px; height: 24px; min-width: 96px; padding: 0 2px 0 26px;
+  border-radius: 7px; background: rgba(40, 30, 20, 0.58); color: #fff; font-size: 12.5px; font-weight: 800;
+}
+.hud-pill img { position: absolute; left: -8px; top: 50%; transform: translateY(-50%); filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3)); }
+.hud-pill b { flex: 1; text-align: right; padding-right: 4px; }
+.hud-pill button {
+  width: 20px; height: 20px; border-radius: 5px; background: #fff; color: #4d8f1f; font-size: 16px; font-weight: 900; line-height: 18px;
+  box-shadow: inset 0 -2px 0 #cfd8c6;
+}
+.hud-pill.is-points button { color: #2a7fd0; }
+
+/* top centre: the next task, like a game's quest card */
+.hud-task {
+  position: absolute; left: 50%; top: 8px; z-index: 5; transform: translateX(-50%); display: flex; align-items: center; gap: 10px;
+  min-width: 190px; max-width: 300px; height: 54px; padding: 4px 16px 4px 4px; border-radius: 12px; text-align: left;
+  background: #fff4dd; box-shadow: 0 0 0 3px #c9824a, 0 4px 10px rgba(0, 0, 0, 0.25); color: #5b3418;
+  animation: pop-x 0.25s ease both;
+}
+.hud-task:active { transform: translateX(-50%) scale(0.97); }
+.hud-task-icon {
+  position: relative; flex-shrink: 0; width: 46px; height: 46px; border-radius: 9px; display: grid; place-items: center;
+  background: #f1d7a8; box-shadow: inset 0 0 0 2px #d9a76a;
+}
+.hud-task-icon small {
+  position: absolute; left: 50%; bottom: -7px; transform: translateX(-50%); display: flex; align-items: center; gap: 2px;
+  padding: 0 5px; height: 14px; border-radius: 7px; background: #5b3418; color: #ffe08a; font-size: 9.5px; font-weight: 800; white-space: nowrap;
+}
+.hud-task-icon small.is-cost { color: #ffb3a7; }
+.hud-task-text { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+.hud-task-text b { font-size: 14px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hud-task-text i { font-style: normal; font-size: 10.5px; font-weight: 600; opacity: 0.75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* bottom left: day and load */
+.hud-status { position: absolute; left: 12px; bottom: 10px; z-index: 5; display: flex; gap: 6px; pointer-events: none; }
+.hud-status span {
+  padding: 4px 10px; border-radius: 100px; background: rgba(40, 30, 20, 0.58); color: #fff; font-size: 11px; font-weight: 800;
+}
+.hud-status span.is-carry { background: rgba(47, 155, 20, 0.85); }
+
+/* bubbles in the world */
+.hud-hint {
+  position: absolute; z-index: 6; transform: translate(-50%, -100%); max-width: 240px; padding: 6px 12px; border-radius: 12px;
+  background: #fff; color: #5b3418; font-size: 11.5px; font-weight: 700; line-height: 1.3; text-align: center; pointer-events: none;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25); animation: pop-up 0.2s ease both;
+}
+.hud-hint::after { content: ''; position: absolute; left: 50%; bottom: -6px; margin-left: -6px; border: 6px solid transparent; border-bottom: 0; border-top-color: #fff; }
+.hud-check {
+  position: absolute; z-index: 6; transform: translate(-50%, -100%); padding: 7px 14px; border-radius: 100px; white-space: nowrap;
+  background: linear-gradient(#ffcf4d, #f39c12); color: #fff; font-size: 12.5px; font-weight: 900; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 0 2.5px #fff, 0 4px 10px rgba(0, 0, 0, 0.3); animation: pop-up 0.2s ease both;
+}
+.hud-check:disabled { background: #b9a88f; }
+.world-night {
+  position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(18, 24, 58, 0.82);
+  color: #ffe08a; font-size: 28px; font-weight: 900; animation: fadein 0.5s ease both;
+}
+@keyframes pop-x { from { opacity: 0; transform: translateX(-50%) scale(0.94); } }
+@keyframes pop-up { from { opacity: 0; transform: translate(-50%, -100%) scale(0.94); } }
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+.world-check { z-index: 12; background: rgba(30, 50, 20, 0.35); }
+/* in the farm world, notices sit under the task card */
+.stage:has(.world) .toast { top: 72px; }

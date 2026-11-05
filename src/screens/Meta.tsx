@@ -67,6 +67,12 @@ export function SettingsModal({ s, dispatch }: Props) {
       onClick: () => dispatch({ type: 'open', modal: { kind: 'welcome' } }),
     },
     {
+      title: 'Farm view',
+      body: s.view === 'world' ? 'The walkable 3D farm. Switch to the classic painted farm (Farm Moja seasons, field rounds).' : 'The classic painted farm. Switch to the walkable 3D farm.',
+      action: s.view === 'world' ? 'Classic' : '3D farm',
+      onClick: () => dispatch({ type: 'view', view: s.view === 'world' ? 'classic' : 'world' }),
+    },
+    {
       title: 'Full screen',
       body: 'On phones, add Lima to your home screen for the best fit.',
       action: 'Toggle',

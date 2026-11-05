@@ -28,6 +28,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [The first session](#the-first-session)
 - [The season](#the-season)
 - [Field rounds](#field-rounds)
+- [The farm world](#the-farm-world)
 - [The six farms](#the-six-farms)
 - [Design review mode](#design-review-mode)
 - [Saving, events and privacy](#saving-events-and-privacy)
@@ -95,6 +96,7 @@ src/
     Journey.tsx            harvest timing → sale → storage → value addition → process → results; rewards; info
     Meta.tsx               How the farm works, Settings
   first/                   the first session (see below)
+  world/                   the farm world (see below): field.ts the work by hand, engine.ts the 3D farm, World.tsx the HUD
   trials/                  the six farms (see below): model.ts holds every number; Trials.tsx the screens (loaded when opened)
   rounds/                  field rounds: checks of every bed on the farm, back to back (see below); loaded only when opened
     trial.ts               a six-farm check: what a farm shows today, from its own plan
@@ -271,6 +273,40 @@ planting or harvesting at the wrong time are there on top of drought, pests and 
 - **Events**: `round_start`, `round_part_viewed`, `round_call` (no names).
 - The Figma map has six beds, one round each. The beds are painted art and always show the same plants; the crop
   name on each pin says what is actually growing.
+
+## The farm world
+
+After the first session the game's home is **a walkable 3D farm**: the farmer, in a straw hat, walks the farm and
+does every farming step by hand. Tap the ground to walk there, drag anywhere for a joystick, or use the arrow keys or
+WASD. The **task card** at the top says what to do next; tap it and the farmer walks there.
+
+![The farm world](docs/farm-world.webp)
+
+- **The six farms are six plots** of 4 × 5 tiles, Farms 1–3 at the back and 4–6 in front, each with a sign. Walking
+  over a farm does its next job on the tiles within reach (two passes cover a farm), with the tool or load it needs:
+  - **land prep**: dig with a hoe, clear with a sickle, or mulch, as the plan says; **tractor hire** and **oxen** are
+    hired at the **Hire** spot by the shed, and plough the farms themselves while the farmer works elsewhere;
+  - **sowing** with the seed sack and **fertilizer at planting** with the bag, both picked up at the shed;
+  - **each day's check**: walk to a farm's sign (a **!** badge) to read it, with the same real photos and calls as the
+    field rounds. A right call turns into work by hand: **cut the weeds**, **water** (fill the can at the pond),
+    **top-dress**, **spray** (the sprayer from the shed), **dig drains** through puddles, **chase the goat out**,
+    **scare the birds off**. The treatment is paid for, and stops most of the damage, only once the work is done;
+  - **harvest**: walk the dry rows, and the cobs stack up on the farmer's back; take them to the **Sell** stall.
+- What a farm shows comes from its plan and its day: wild grass before digging, furrows, sprouts, knee-high and tall
+  maize, dry cobs, stubble; drought-pale soil, yellow hunger, rust, armyworm specks, weeds, puddles, hail, a goat, birds.
+  Problems missed earlier leave the farm yellower.
+- **Sleep** at the farmhouse starts the next day (on the fast clock); **Plan** by the house, or **Mission** on the
+  HUD, opens the plans, progress and results.
+- The HUD: the farmer and their level (top left), settings, coins and points (top right; **+** opens the shop and
+  the rewards), Mission and Shop, the day and what the farmer carries (bottom left).
+- **Settings → Farm view** switches to the classic painted farm (Farm Moja seasons and the everyday field rounds),
+  and back.
+
+Built with [three.js](https://threejs.org) 0.170 from primitives (no model files): static scenery is merged into two
+meshes, the six farms are instanced (one draw call per kind of tile), shadows come from one sun that follows the
+farmer. The world is loaded only after the first session (`src/world/`, about 160 kB gzipped with three.js).
+`src/world/field.ts` holds the field work (which jobs, in which order, which tiles), with no three.js, so the saved
+game can use it.
 
 ## The six farms
 

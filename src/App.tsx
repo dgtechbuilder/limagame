@@ -8,6 +8,7 @@ import { FarmMap } from './components/FarmMap';
 // the field rounds are loaded only when opened, so the first session stays as small as before
 const Rounds = lazy(() => import('./rounds/Rounds').then(m => ({ default: m.Rounds })));
 const Trials = lazy(() => import('./trials/Trials').then(m => ({ default: m.Trials })));
+const World = lazy(() => import('./world/World').then(m => ({ default: m.World })));
 import { TRIAL_SAMPLES } from './trials/samples';
 import { SettingsModal, WelcomeModal } from './screens/Meta';
 import { REVIEW_BASE, SELLING, SOLD, initialState, reviewing, useGame, type GameState, type SeasonResult } from './state';
@@ -70,6 +71,10 @@ const SCREENS: { label: string; group: string; state: Partial<GameState> }[] = [
   { group: 'New features', label: 'Value Addition', state: { ...selling, modal: { kind: 'value' } } },
   { group: 'New features', label: 'Select Process', state: { ...selling, modal: { kind: 'process' } } },
   { group: 'Added', label: 'Settings', state: { modal: { kind: 'settings' } } },
+  { group: 'Farm world', label: 'Farm world · Start', state: { view: 'world' } },
+  { group: 'Farm world', label: 'Farm world · Planting', state: { view: 'world', trial: TRIAL_SAMPLES.worldPlanting, field: TRIAL_SAMPLES.worldPlantingField } },
+  { group: 'Farm world', label: 'Farm world · Growing', state: { view: 'world', trial: TRIAL_SAMPLES.worldGrowing, field: TRIAL_SAMPLES.worldGrowingField } },
+  { group: 'Farm world', label: 'Farm world · Harvest', state: { view: 'world', trial: TRIAL_SAMPLES.worldHarvest, field: TRIAL_SAMPLES.worldHarvestField } },
   { group: 'Six farms', label: 'Six farms · Start', state: { trialsOpen: true } },
   { group: 'Six farms', label: 'Six farms · Plan two farms', state: { trialsOpen: true, trial: TRIAL_SAMPLES.guidedPlan } },
   { group: 'Six farms', label: 'Six farms · Two farms growing', state: { trialsOpen: true, trial: TRIAL_SAMPLES.guidedGrowing } },
@@ -158,16 +163,28 @@ export default function App() {
   return (
     <div className="viewport">
       <div className="stage" style={{ transform: `translate(-50%, -50%) scale(${scale})` }}>
-        {firstSession ? <FirstSession s={s} dispatch={dispatch} /> : s.roundsOpen ? (
-          <Suspense fallback={<FarmMap />}>
-            <Rounds s={s} dispatch={dispatch} />
-          </Suspense>
-        ) : s.trialsOpen ? (
-          <Suspense fallback={<FarmMap />}>
-            <Trials s={s} dispatch={dispatch} />
-          </Suspense>
+        {firstSession ? (
+          <FirstSession s={s} dispatch={dispatch} />
         ) : (
-          <FarmScene s={s} dispatch={dispatch} />
+          <>
+            {/* the farm stays underneath the rounds and the six farms, so it keeps its place */}
+            {s.view === 'world' ? (
+              <Suspense fallback={<div className="abs world" style={{ inset: 0 }} />}>
+                <World s={s} dispatch={dispatch} paused={s.roundsOpen || s.trialsOpen || !!m} />
+              </Suspense>
+            ) : (
+              !s.roundsOpen && !s.trialsOpen && <FarmScene s={s} dispatch={dispatch} />
+            )}
+            {s.roundsOpen ? (
+              <Suspense fallback={<FarmMap />}>
+                <Rounds s={s} dispatch={dispatch} />
+              </Suspense>
+            ) : s.trialsOpen ? (
+              <Suspense fallback={<FarmMap />}>
+                <Trials s={s} dispatch={dispatch} />
+              </Suspense>
+            ) : null}
+          </>
         )}
 
         {m?.kind === 'welcome' && <WelcomeModal s={s} dispatch={dispatch} />}
@@ -201,7 +218,7 @@ export default function App() {
             }}
           >
             {current < 0 && <option value="">—</option>}
-            {['First session', 'Six farms', 'Field rounds', 'Game Design', 'New Design', 'New features', 'Added'].map(g => (
+            {['First session', 'Farm world', 'Six farms', 'Field rounds', 'Game Design', 'New Design', 'New features', 'Added'].map(g => (
               <optgroup key={g} label={g}>
                 {SCREENS.map((sc, i) =>
                   sc.group === g ? (
