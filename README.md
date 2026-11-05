@@ -304,7 +304,7 @@ WASD. The **task card** at the top says what to do next; tap it and the farmer w
 
 Built with [three.js](https://threejs.org) 0.170 from primitives (no model files): static scenery is merged into two
 meshes, the six farms are instanced (one draw call per kind of tile), shadows come from one sun that follows the
-farmer. The world is loaded only after the first session (`src/world/`, about 160 kB gzipped with three.js).
+farmer. The world is loaded only after the first session (`src/world/`, about 150 kB gzipped with three.js).
 `src/world/field.ts` holds the field work (which jobs, in which order, which tiles), with no three.js, so the saved
 game can use it.
 
