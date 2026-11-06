@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type Dispatch, type PointerEvent as RPointerEvent } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useRef, useState, type Dispatch, type PointerEvent as RPointerEvent } from 'react';
 import { img } from '../assets';
 import { FarmerPortrait } from '../first/art';
 import { LOOKS } from '../first/data';
@@ -6,10 +6,49 @@ import { Inspect } from '../rounds/Inspect';
 import { dayNumber, ROUND_POINTS } from '../rounds/farms';
 import { trialRounds } from '../rounds/trial';
 import type { Action, GameState } from '../state';
-import { CHECK_DAYS, DAMAGE, canTreat, causeOf, checkKey, farmName, hazardFor } from '../trials/model';
+import { CHECK_DAYS, DAMAGE, WRONG_FIX_COST, canTreat, causeOf, checkKey, farmName, hazardFor, returnedProblem } from '../trials/model';
 import { fmt } from '../components/ui';
-import { CARRY_NAME, TREAT_JOB, allHarvested, fieldDay, nextTask, signOf, type Place, type Task, type TaskIcon, type TreatJob } from './field';
+import { track } from '../first/track';
+import { FOLLOW_UP, PRESCRIBE, fixOrder } from '../care/data';
+import { voiceFor } from '../care/voice';
+import {
+  CARRY_NAME,
+  TREAT_JOB,
+  allHarvested,
+  careLeft,
+  doneMask,
+  fieldDay,
+  fixLeft,
+  machinePrep,
+  nextTask,
+  setupLeft,
+  signOf,
+  sprayJobs,
+  treatCost,
+  type Place,
+  type Task,
+  type TaskIcon,
+  type TreatJob,
+} from './field';
 import { FarmWorld, PLACES, STAGE_H, STAGE_W } from './engine';
+
+// from Wakala Agent: the screens after a right call, at the shed and at the Hire spot, loaded when first opened
+const Prescribe = lazy(() => import('../care/Prescribe').then(m => ({ default: m.Prescribe })));
+const Spray = lazy(() => import('../care/Spray').then(m => ({ default: m.Spray })));
+const Tractor = lazy(() => import('../tractor/Tractor').then(m => ({ default: m.Tractor })));
+
+/** Design review (?review=1): the farm world opens straight into one of these (GameState.worldDemo). */
+export type WorldDemo = 'check' | 'prescribe' | 'spray' | 'tractor' | 'tractor-summary';
+
+type Care = { kind: 'fix'; farm: number; day: number } | { kind: 'spray'; jobs: { farm: number; hazard: import('../trials/model').TrialHazard }[] } | { kind: 'tractor'; farm: number; demo?: 'summary' };
+
+/** The tractor-hire farm whose before-planting drive is still to do, or -1. */
+function farmToDrive(st: GameState) {
+  const t = st.trial;
+  if (!t || t.phase !== 'growing') return -1;
+  const f = st.field.cycle === t.cycle ? st.field : { ...st.field, marks: {} };
+  return t.plans.findIndex((p, i) => machinePrep(p) && p.land === 'tractor' && setupLeft(f, t, i) === 'prep' && !t.tractor?.[i]);
+}
 
 /* The farm world: the farmer walks the farm and does the work by hand. This is the HUD and the glue; the
    3D farm itself is engine.ts. */
@@ -42,6 +81,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
   const [now, setNow] = useState(Date.now());
   const [stick, setStick] = useState<{ x: number; y: number; dx: number; dy: number } | null>(null);
   const [night, setNight] = useState<string | null>(null);
+  const [care, setCare] = useState<Care | null>(null);
   const [anchors, setAnchors] = useState<{ farmer: { x: number; y: number }; sign: { x: number; y: number; visible: boolean } | null }>({ farmer: { x: 437, y: 160 }, sign: null });
   /** the farm whose check opens when the farmer reaches its sign (after a tap on the task card) */
   const intent = useRef<number | null>(null);
@@ -72,8 +112,17 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
   // the 3D farm
   useEffect(() => {
     const w = new FarmWorld(canvas.current!, {
-      mark: (farm, job, bits) => dispatch({ type: 'fieldMark', farm, job, bits }),
+      mark: (farm, job, bits) => {
+        noteCare(farm, job, bits);
+        dispatch({ type: 'fieldMark', farm, job, bits });
+      },
       carry: item => {
+        // from Wakala Agent: the safety kit and the product before a spray job
+        const st = sRef.current;
+        if (item === 'sprayer' && st.trial) {
+          const jobs = sprayJobs(st.field.cycle === st.trial.cycle ? st.field : { ...st.field, marks: {} }, st.trial, fieldDay(st.trial, dayNumber()));
+          if (jobs.length) return setCare({ kind: 'spray', jobs });
+        }
         dispatch({ type: 'carry', item });
         if (item) say(`Picked up: ${CARRY_NAME[item].toLowerCase()}`);
       },
@@ -118,7 +167,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
   const atSignRef = useRef(-1);
   atSignRef.current = atSign;
 
-  const overlay = paused || !!checking || !!night;
+  const overlay = paused || !!checking || !!night || !!care;
   useEffect(() => {
     const w = eng.current;
     if (!w) return;
@@ -138,6 +187,11 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     const w = eng.current;
     if (!w) return;
     if ('place' in task.target && task.target.place === 'mission') return dispatch({ type: 'trials', open: true });
+    // already standing at the Hire spot: walking there again would not arrive, so open it
+    if ('place' in task.target && task.target.place === 'hire') {
+      const at = w.farmerAt();
+      if (Math.hypot(at.x - PLACES.hire.x, at.z - PLACES.hire.z) < PLACES.hire.r) return onPlace('hire');
+    }
     const p = targetOf(task, w);
     intent.current = 'place' in task.target ? null : task.target.at === 'sign' ? task.target.farm : null;
     // already at the sign: open the check
@@ -154,6 +208,12 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     const d = fieldDay(tr, dayNumber());
     if (p === 'mission') return dispatch({ type: 'trials', open: true });
     if (p === 'hire') {
+      // a tractor-hire farm is driven by the player first (from Wakala Agent); oxen plough by themselves
+      const drive = farmToDrive(st);
+      if (drive >= 0) {
+        track('tractor_open', { farm: drive, stage: 'prep' });
+        return setCare({ kind: 'tractor', farm: drive });
+      }
       dispatch({ type: 'fieldHire' });
       return say('The ploughing has begun: watch it work the farms');
     }
@@ -184,11 +244,131 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     const d = fieldDay(tr, dayNumber());
     if (d < 1 || d > CHECK_DAYS) return;
     const rec = tr.checks[checkKey(farm, d)];
+    if (rec?.right && fixLeft(tr, farm, d)) return setCare({ kind: 'fix', farm, day: d });
     if (rec?.right) return say(`${farmName(farm)} is read for today`);
     const key = `${farm}:${d}`;
     const waited = (Date.now() - (checkedRef.current[key] ?? 0)) / 1000;
     if (rec && waited < CHECK_WAIT_S) return say(`Look again in ${Math.ceil(CHECK_WAIT_S - waited)} seconds`);
     setChecking({ farm, day: d, second: !!rec });
+  }
+
+  /* ---------------- from Wakala Agent: care, the kit, the tractor ---------------- */
+
+  // events for the work by hand after a right call (treatments) and the follow-ups, each logged once
+  const logged = useRef(new Set<string>());
+  function noteCare(farm: number, job: string, bits: number) {
+    if (!/^[tf]\d$/.test(job)) return;
+    const st = sRef.current;
+    const tr = st.trial;
+    if (!tr) return;
+    const day = Number(job.slice(1));
+    const pend = careLeft(st.field.cycle === tr.cycle ? st.field : { ...st.field, marks: {} }, tr, farm, day);
+    if (!pend || pend.key !== job) return;
+    const before = doneMask(st.field, tr.cycle, farm, job);
+    const kind = job[0] === 't' ? 'treatment' : 'follow-up';
+    const info = { farm, day, hazard: pend.hazard, job: pend.job, kind };
+    const once = (what: string) => {
+      const k = `${tr.cycle}:${farm}:${job}:${what}`;
+      if (logged.current.has(k)) return false;
+      logged.current.add(k);
+      return true;
+    };
+    if (!before && once('started')) track('care_started', info);
+    const complete = ((before | bits) & pend.need) === pend.need;
+    if (complete && (kind === 'follow-up' || st.coins >= treatCost(pend.hazard)) && once('done')) track('care_done', info);
+  }
+
+  // a follow-up whose day ended undone: logged once, and its problem is back on that farm the next day
+  useEffect(() => {
+    if (!t?.followUps || t.phase !== 'growing') return;
+    const d = fieldDay(t, today);
+    const late = t.followUps.filter(u => !u.done && !u.missed && u.day < d);
+    if (!late.length) return;
+    late.forEach(u => track('care_missed', { farm: u.farm, day: u.day, hazard: u.hazard, job: u.job }));
+    dispatch({ type: 'followUpMissed', keys: late.map(u => `${u.farm}:${u.day}`) });
+  }, [t, today, dispatch]);
+
+  // design review: open one of the new screens straight away
+  useEffect(() => {
+    const st = sRef.current;
+    const demo = st.worldDemo as WorldDemo | null;
+    const tr = st.trial;
+    if (!demo || !tr) return;
+    const d = fieldDay(tr, dayNumber());
+    const f = st.field.cycle === tr.cycle ? st.field : { ...st.field, marks: {} };
+    if (demo === 'check') setChecking({ farm: 0, day: d, second: false });
+    if (demo === 'prescribe') {
+      const farm = tr.plans.findIndex((_, i) => fixLeft(tr, i, d));
+      if (farm >= 0) setCare({ kind: 'fix', farm, day: d });
+    }
+    if (demo === 'spray') {
+      const jobs = sprayJobs(f, tr, d);
+      if (jobs.length) setCare({ kind: 'spray', jobs });
+    }
+    if (demo === 'tractor' || demo === 'tractor-summary') {
+      const farm = farmToDrive(st);
+      if (farm >= 0) setCare({ kind: 'tractor', farm, demo: demo === 'tractor-summary' ? 'summary' : undefined });
+    }
+  }, [s.worldDemo]);
+
+  function careScreen(c: Care, tr: NonNullable<GameState['trial']>) {
+    if (c.kind === 'fix') {
+      const h = hazardFor(tr, c.farm, c.day);
+      const job = TREAT_JOB[h];
+      const rec = tr.checks[checkKey(c.farm, c.day)];
+      return (
+        <Prescribe
+          key={`${c.farm}:${c.day}`}
+          round={trialRounds(tr, c.day)[c.farm]}
+          hazard={h}
+          farmName={farmName(c.farm)}
+          tag={`${farmName(c.farm)} of ${tr.plans.length} · day ${c.day} of ${CHECK_DAYS}`}
+          options={fixOrder(PRESCRIBE[h] ?? [], `${tr.cycle}:${c.farm}:${c.day}`)}
+          name={name}
+          cost={WRONG_FIX_COST[h] ?? 0}
+          wrongBefore={rec?.wrongFixes ?? 0}
+          then={job ? `${JOB_HINT[job]} (${treatCost(h)} coins)${FOLLOW_UP[h] ? `. ${FOLLOW_UP[h]!.why}` : ''}` : 'deal with it'}
+          onPick={op => dispatch({ type: 'prescribe', farm: c.farm, day: c.day, pick: op.id, right: op.right })}
+          onDone={() => {
+            setCare(null);
+            if (job) say(`Now: ${JOB_HINT[job]}`);
+          }}
+          onLeave={() => setCare(null)}
+        />
+      );
+    }
+    if (c.kind === 'spray')
+      return (
+        <Spray
+          jobs={c.jobs}
+          name={name}
+          onDone={() => {
+            setCare(null);
+            dispatch({ type: 'carry', item: 'sprayer' });
+            say('Picked up: sprayer · kit on');
+          }}
+          onLeave={() => setCare(null)}
+        />
+      );
+    return (
+      <Tractor
+        farm={c.farm}
+        cycle={tr.cycle}
+        best={tr.tractor?.[c.farm] ?? null}
+        name={name}
+        demo={c.demo}
+        onFinish={r => dispatch({ type: 'tractorDone', farm: c.farm, ...r })}
+        onClose={() => {
+          setCare(null);
+          // a finished drive hands the farm to the 3D tractor, which shows the work on the plot
+          if (sRef.current.trial?.tractor?.[c.farm]) {
+            dispatch({ type: 'fieldHire' });
+            const next = farmToDrive(sRef.current);
+            say(next >= 0 ? `Watch the tractor plough ${farmName(c.farm)}. ${farmName(next)} needs the tractor too` : `Watch the tractor plough ${farmName(c.farm)}`);
+          }
+        }}
+      />
+    );
   }
 
   // the check of one farm: the same pictures and calls as the field rounds
@@ -201,9 +381,11 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     const cause = causeOf(h, plan, t.forecast);
     let then = '';
     if (h === 'hail') then = 'Nothing to treat: hail-damaged plants often recover.';
+    else if (job && canTreat(h, plan) && PRESCRIBE[h]) then = 'Next: choose the fix.';
     else if (job && canTreat(h, plan)) then = `Now ${JOB_HINT[job]} (${DAMAGE[h].treat} coins).`;
     else if (DAMAGE[h].treat > 0) then = 'It stays untreated, so the damage goes on.';
-    return { r, after: { right: [cause, h === 'healthy' ? '' : then].filter(Boolean).join(' '), wrong: DAMAGE[h].missed ? `Look again in ${CHECK_WAIT_S} seconds: until it is read right, it costs harvest.` : '' } };
+    const voice = voiceFor(t.cycle, checking.farm, checking.day, h, !!returnedProblem(t, checking.farm, checking.day));
+    return { r, voice, after: { right: [cause, h === 'healthy' ? '' : then].filter(Boolean).join(' '), wrong: DAMAGE[h].missed ? `Look again in ${CHECK_WAIT_S} seconds: until it is read right, it costs harvest.` : '' } };
   }, [checking, t]);
 
   /* ---------------- pointer: tap to walk, drag for the joystick ---------------- */
@@ -251,6 +433,11 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
   const signRec = t && signFarm >= 0 && day >= 1 && day <= CHECK_DAYS ? t.checks[checkKey(signFarm, day)] : undefined;
   const wait = signFarm >= 0 && signRec && !signRec.right ? Math.max(0, CHECK_WAIT_S - Math.floor((now - (checkedAt[`${signFarm}:${day}`] ?? 0)) / 1000)) : 0;
   const showCheck = !!t && t.phase === 'growing' && signFarm >= 0 && day >= 1 && day <= CHECK_DAYS && !signRec?.right && !checking;
+  // Mama Achieng says what she has noticed when the farmer reaches a sign with a check to do
+  const signVoice = useMemo(
+    () => (t && showCheck && !signRec ? voiceFor(t.cycle, signFarm, day, hazardFor(t, signFarm, day), !!returnedProblem(t, signFarm, day)) : null),
+    [t, showCheck, signRec, signFarm, day],
+  );
 
   return (
     <div className="abs world" style={{ inset: 0 }}>
@@ -334,6 +521,11 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         </div>
       )}
 
+      {signVoice && anchors.sign?.visible && !overlay && (
+        <p className="voice-bubble is-sign" role="note" style={{ left: Math.min(STAGE_W - 130, Math.max(130, anchors.sign.x)), top: anchors.sign.y - 40 }}>
+          <b>{signVoice.name}:</b> {signVoice.say}
+        </p>
+      )}
       {showCheck && anchors.sign?.visible && (
         <button type="button" className="hud-check" style={{ left: anchors.sign.x, top: anchors.sign.y }} disabled={wait > 0} onClick={() => openCheck(signFarm)}>
           {wait > 0 ? `Look again in ${wait}s` : `Check ${farmName(signFarm)}`}
@@ -358,15 +550,26 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
             tag={`${farmName(checking.farm)} of ${t.plans.length}`}
             note={`Maize · day ${checking.day} of ${CHECK_DAYS}`}
             after={check.after}
-            continueLabel="Back to the farm"
+            voice={check.voice}
+            continueLabel={t.checks[checkKey(checking.farm, checking.day)]?.right && fixLeft(t, checking.farm, checking.day) ? 'Choose the fix' : 'Back to the farm'}
             onResult={right => {
               const rec = t.checks[checkKey(checking.farm, checking.day)];
               dispatch({ type: 'trialCheck', farm: checking.farm, day: checking.day, right, tries: (rec?.tries ?? 0) + 1, physical: true });
               if (!right) setCheckedAt(c => ({ ...c, [`${checking.farm}:${checking.day}`]: Date.now() }));
             }}
-            onContinue={() => setChecking(null)}
+            onContinue={() => {
+              const c = checking;
+              setChecking(null);
+              if (fixLeft(sRef.current.trial ?? t, c.farm, c.day)) setCare({ kind: 'fix', farm: c.farm, day: c.day });
+            }}
             onLeave={() => setChecking(null)}
           />
+        </div>
+      )}
+
+      {care && t && (
+        <div className="abs world-check" style={{ inset: 0 }}>
+          <Suspense fallback={null}>{careScreen(care, t)}</Suspense>
         </div>
       )}
     </div>
