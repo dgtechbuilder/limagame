@@ -30,6 +30,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [Field rounds](#field-rounds)
 - [The farm world](#the-farm-world)
 - [The six farms](#the-six-farms)
+- [From Wakala Agent](#from-wakala-agent)
 - [Design review mode](#design-review-mode)
 - [Saving, events and privacy](#saving-events-and-privacy)
 - [Performance on low-cost phones](#performance-on-low-cost-phones)
@@ -98,6 +99,11 @@ src/
   first/                   the first session (see below)
   world/                   the farm world (see below): field.ts the work by hand, engine.ts the 3D farm, World.tsx the HUD
   trials/                  the six farms (see below): model.ts holds every number; Trials.tsx the screens (loaded when opened)
+  care/                    from Wakala Agent: the fix after a right call, the safety kit and product, follow-ups (data.ts),
+                           Mama Achieng's lines (voice.ts), and their screens (loaded when opened)
+  tractor/                 from Wakala Agent: the tractor drive before planting: data.ts, sim.ts (no DOM), Tractor.tsx
+  dev/hook.ts              ?dev in dev builds only: state and jump-to-state helpers for the play-tests
+tests/                     Playwright play-tests (npm test)
   rounds/                  field rounds: checks of every bed on the farm, back to back (see below); loaded only when opened
     trial.ts               a six-farm check: what a farm shows today, from its own plan
     photos/                real photos from Wikimedia Commons by situation, credits.json + CREDITS.md (see photos/README.md)
@@ -374,6 +380,84 @@ illustrative until an agronomist reviews them.**
 Points: the field-check points (100, or 50 on a second look) for each farm each day, plus 50 per farm at harvest.
 Events: the checks use the field-round events (`round_start`, `round_part_viewed`, `round_call`).
 
+## From Wakala Agent
+
+[Wakala Agent](https://github.com/dgtechbuilder/wakalarepotest2) is a sister game about a village agent who reads
+farms and helps fix them. Its gameplay now runs inside Lima's farm world, on Lima's own state, clock, save and coins:
+the logic and data were ported, not its HTML.
+
+**What was added**
+
+- **Choose the fix.** After a right call in the farm world, the check leads to *Choose the fix*: three fixes, one
+  right. A wrong one costs coins (the same as the treatment, `WRONG_FIX_COST`), says in one line why it would not
+  work, and the player picks again. The right one leads to the same work by hand as before. The pick is saved on the
+  check (`fix`, `wrongFixes`), so a reload asks for the fix again only if it was not picked.
+- **Safety kit and product.** Picking up the sprayer for a spray job asks for gloves, mask and boots, then which
+  product goes in the sprayer (one question per problem being sprayed). A wrong product says why and costs nothing.
+- **Follow-up care.** Some treatments need doing again on Lima's clock: water again the next day (drought), water the
+  top-dress in (low nitrogen), spray again two days on (armyworm, leaf rust), weed again two days on. A follow-up shows
+  on the task card on its day, always inside the six check days, and costs no coins. A follow-up whose day ends undone
+  is logged, and the problem is back on that farm's next check ("The problem came back").
+- **Mama Achieng**, the farmer's mother, says what she has noticed when the farmer reaches a sign, and about each of
+  the five pictures. Her lines sit beside the captions, never instead of them. From cycle 2 she is sure of the wrong
+  thing on about one check in four (the same check always shows the same line): her guess, never advice.
+- **The tractor drive.** On a farm whose plan says *Tractor hire*, the Hire spot opens the drive before planting:
+  a brief, then the player picks the tractor (compact, standard, large) and the implement (eight, nothing
+  pre-picked), ticks the ready check and drives against the clock around rocks and trunks: tap and hold to steer,
+  arrow keys or WASD, slow or fast, or autopilot (at most 2 stars). The summary scores the job, efficiency, climate
+  and cost saving, and shows what the same work would cost by hand, in shillings, as real-world information. Then
+  the 3D tractor ploughs the plot and the cycle carries on. Oxen still plough by themselves. Farms 1–4 are Wakala's
+  four fields (a slope to plough across, a channel to dig furrows from, clods to harrow, old stalks to turn in);
+  Farms 5 and 6 mix the same lessons. A poor job is scored, never blocked.
+
+**Try it**: `?review=1`, group **From Wakala**: *Mama Achieng in a check*, *Choose the fix*, *Safety kit and
+product*, *Follow-up due*, *The problem came back*, *Tractor brief*, *Tractor summary*. In a real game, plan a farm
+with *Tractor hire* or *Check and treat*, and the moments come up as you play.
+
+**The data tables** (every word and number, for review without touching code)
+
+| File | What is in it |
+| --- | --- |
+| `src/care/data.ts` | `PRESCRIBE` (three fixes and their lessons for drought, armyworm, aphids, nitrogen, weeds, disease, flood, livestock, wildlife), `KIT`, `PRODUCTS`, `FOLLOW_UP` |
+| `src/care/voice.ts` | `SAY`, `REMARK`, `WRONG_GUESS`, how often she guesses wrong and from which cycle |
+| `src/tractor/data.ts` | `TRACTORS`, `IMPL` (all eight), `RELATED` (how much a wrong implement still does), `LAYOUTS` (six fields), `MONEY`, `TRACTOR_REWARD` |
+| `src/trials/model.ts` | `WRONG_FIX_COST`, and the proposed yield effects: `WAKALA_YIELD_EFFECTS` (off), `TRACTOR_Q_FACTOR`, `MISSED_FOLLOW_UP_RETURNS` |
+
+Lines ported from Wakala are marked `// Wakala` in the data; the rest are new, in the same style.
+
+**Money.** Lima's coins stay the only money. Shillings appear only in the tractor summary, to compare, and its
+*Sources* button lists each figure with its source: diesel KSh 228 a litre (EPRA's Nairobi cap for 15 October to
+14 November 2026, via [Techish](https://tech-ish.com/2026/10/14/petrol-rises-to-kes-226-96-in-nairobi-and-kerosene-jumps-kes-28-49/)),
+tractor ploughing KSh 3,000 and harrowing KSh 1,500 an acre ([Beyond Forest](https://www.beyondforest.org/post/ploughing-cost-per-acre-in-kenya-2026-guide-virgin-vs-uncultivated-land-explained)),
+hand ploughing 24 person-days an acre at KSh 400 a day ([FarmBiz Africa](https://farmbizafrica.com/tractors-services-increase-farmer-earnings-lower-production-costs/)).
+**Estimates**, labelled as such in the game: ridging, planting, spraying and harvesting hire; hand-work days for
+everything but ploughing; diesel per acre for each implement; 2.68 kg of CO₂ a litre. One farm is a sixth of an acre.
+
+**Rewards.** A drive pays 1.5 coins per score point and 50 points per star above the farm's best this cycle. A second
+try on the same farm pays coins only for the score above the best so far (`TRACTOR_REWARD.retryPays`), so a drive
+can't be replayed for coins.
+
+**Yield.** Until the agronomist's review (Gate A), how well the tractor ploughed and whether follow-ups were done are
+shown and saved but change no bags: `WAKALA_YIELD_EFFECTS = false`. With it on, a tractor-hire farm's land-prep
+factor is scaled by the drive's job quality (`TRACTOR_Q_FACTOR`), and a problem that came back costs harvest like any
+other. Wrong fixes cost coins now; those coins count in the farm's costs at harvest.
+
+**Events** (with the first-session ones): `prescribe {hazard, pick, right}`, `kit_on`, `product {hazard, pick,
+right}`, `care_started` and `care_done {farm, day, hazard, job, kind}` (treatment or follow-up), `care_missed`,
+`tractor_open`, `tractor_pick {tractor, implement, right}`, `tractor_done {score, stars, job, cov, eff, clim, money,
+saved, hits, secs, auto, reason}`.
+
+**Not ported** (on purpose): Wakala's review screens and its five calls, its seven written rounds, its clock and
+morning and evening windows, the three-misses rule, browser notifications, hold-to-act buttons, the planting and
+harvest tractor stages, the boom-sprayer, delivery and route jobs, gems, hub maps, road walking and its onboarding.
+Wakala's photos were not added yet (Wikimedia could not be reached from the build session).
+
+**Tests.** `npm test` runs the Playwright play-tests in `tests/` against the dev server (run
+`npx playwright install chromium` once): a world check with a wrong then right fix and the work by hand, a
+follow-up done and one missed, a spray job with the kit and product, a tractor drive on autopilot, the first session
+read right and wrong, saving and *Reset progress*, and a tour on a 740 × 340 touch screen that saves screenshots to
+`test-results/tour/`. They run on every pull request (`.github/workflows/tests.yml`).
+
 ## Design review mode
 
 Open **`?review=1`** (or *Settings → Design review*) for a sandbox with a menu of every screen filled with
@@ -388,7 +472,8 @@ player's saved game or events.
   before the first session existed keep their coins and play the first session once.
 - **Events**: one per first-session moment, so drop-off can be measured — `create_shown`, `farmer_created`,
   `walk_start`, `first_move`, `shamba_reached`, `review_start`, `part_viewed`, `spot_found`, `call`,
-  `review_failed`, `review_passed`, `farm_opened`, `session_close`. Each has a
+  `review_failed`, `review_passed`, `farm_opened`, `session_close`, and the farm-world events from Wakala Agent
+  (see [From Wakala Agent](#from-wakala-agent)). Each has a
   timestamp and time since the first event. They are kept on the device (`lima-events`, last 300) and, only
   if `VITE_EVENTS_URL` is set at build time, sent with `navigator.sendBeacon`.
 - **No personal data is sent.** Events never include the farmer's name. There are no accounts, cookies or
@@ -425,6 +510,10 @@ player's saved game or events.
 - **Language**: English with a little Swahili (*Karibu*, *Twende*, shamba, sukuma wiki). Full Swahili is not done.
 - **Messages** shows a reminder to check every bed; there is no inbox yet.
 - The faint 5% pattern texture on the cream panels in Figma is omitted.
+- **From Wakala Agent**, waiting on a decision: the fix lessons, products, follow-up days and Mama Achieng's lines
+  need the agronomist's review; the proposed yield effects stay off until Gate A; only the before-planting tractor
+  stage is played; a retried drive pays coins only above the best (a change from Wakala, where every drive pays);
+  fuel for the drive is free (the plan's hire price covers it); Wakala's photos are still to add.
 
 ---
 
