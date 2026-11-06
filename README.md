@@ -410,6 +410,10 @@ the logic and data were ported, not its HTML.
   four fields (a slope to plough across, a channel to dig furrows from, clods to harrow, old stalks to turn in);
   Farms 5 and 6 mix the same lessons. A poor job is scored, never blocked.
 
+| Choose the fix | The tractor drive's summary |
+| --- | --- |
+| ![Choose the fix: a wrong fix crossed out, the right one ticked](docs/wakala/right-fix.webp) | ![The tractor summary: stars, score, four parts and the shillings](docs/wakala/tractor-summary.webp) |
+
 **Try it**: `?review=1`, group **From Wakala**: *Mama Achieng in a check*, *Choose the fix*, *Safety kit and
 product*, *Follow-up due*, *The problem came back*, *Tractor brief*, *Tractor summary*. In a real game, plan a farm
 with *Tractor hire* or *Check and treat*, and the moments come up as you play.
