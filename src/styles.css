@@ -843,7 +843,7 @@ button.card:active { transform: scale(0.98); }
 }
 .voice-bubble b { color: #a14d1f; font-weight: 800; }
 .voice-bubble.is-top { right: 56px; top: 8px; width: 236px; }
-.voice-bubble.is-side { left: 676px; top: 40px; width: 180px; }
+.voice-bubble.is-side { left: 670px; top: 46px; width: 170px; }
 .voice-bubble.is-sign { transform: translate(-50%, -100%); width: 220px; text-align: center; pointer-events: none; animation: none; }
 .voice-bubble.is-panel { position: static; animation: none; }
 .voice-bubble.is-small { font-size: 10px; padding: 5px 9px; }
