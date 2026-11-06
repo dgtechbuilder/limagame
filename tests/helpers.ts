@@ -59,14 +59,17 @@ export async function tapTask(page: Page, title: RegExp | string) {
   await card.click();
 }
 
+/** Open the first picture, then step through the rest with the guide line's button, and close the last. */
+export async function lookAtAll(page: Page, next: string) {
+  await page.locator('.part-row .part-tile').first().click();
+  const done = page.getByRole('button', { name: 'Done looking' });
+  for (let i = 0; i < 8 && !(await done.isVisible()); i++) await page.getByRole('button', { name: next }).click();
+  await done.click();
+}
+
 /** Look at all five pictures of a check, then make a call. */
 export async function lookAndCall(page: Page, call: { group: string; label: string; single: boolean }) {
-  const tiles = page.locator('.part-row .part-tile');
-  await expect(tiles).toHaveCount(5);
-  for (let i = 0; i < 5; i++) {
-    await tiles.nth(i).click();
-    await page.locator('.zoom').click({ position: { x: 6, y: 6 } });
-  }
+  await lookAtAll(page, 'Next picture');
   await page.getByRole('button', { name: 'Make your call' }).click();
   await page.locator('.calls .call-btn', { hasText: call.group }).first().click();
   if (!call.single) await page.locator('.calls .call-btn', { hasText: call.label }).click();

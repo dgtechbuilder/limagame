@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { boot, state, type Win } from './helpers';
+import { boot, lookAtAll, state, type Win } from './helpers';
 
 /* Regression: the first session, read right first time and with a wrong call, and saving and resetting. None of
    this changed with the Wakala Agent work; these tests keep it that way. */
@@ -17,12 +17,7 @@ async function walkToBed(page: Page) {
 /** Look at every part, spot a problem row, and make a call. */
 async function review(page: Page, shamba: string, right: boolean) {
   const sh = await page.evaluate(id => (window as unknown as Win).__lima.shamba(id), shamba);
-  const tiles = page.locator('.part-row .part-tile');
-  const n = await tiles.count();
-  for (let i = 0; i < n; i++) {
-    await tiles.nth(i).click();
-    await page.locator('.zoom').click({ position: { x: 6, y: 6 } });
-  }
+  await lookAtAll(page, 'Next part');
   await page.getByRole('button', { name: 'Spot the problem' }).click();
   await page.getByRole('button', { name: `Row ${sh.problemRows[0] + 1} from the front` }).click();
   await expect(page.locator('.calls')).toBeVisible();
