@@ -433,9 +433,9 @@ hand ploughing 24 person-days an acre at KSh 400 a day ([FarmBiz Africa](https:/
 **Estimates**, labelled as such in the game: ridging, planting, spraying and harvesting hire; hand-work days for
 everything but ploughing; diesel per acre for each implement; 2.68 kg of CO₂ a litre. One farm is a sixth of an acre.
 
-**Rewards.** A drive pays 1.5 coins per score point and 50 points per star above the farm's best this cycle. A second
-try on the same farm pays coins only for the score above the best so far (`TRACTOR_REWARD.retryPays`), so a drive
-can't be replayed for coins.
+**Rewards.** A drive pays 1.5 coins per score point and 50 points per star above the farm's best this cycle, as in
+Wakala. *Try again* is allowed until the player is done with the drive, so a good drive can be replayed for coins;
+`TRACTOR_REWARD.retryPays = 'improvement'` would pay a retry only for the score above the best (an open decision).
 
 **Yield.** Until the agronomist's review (Gate A), how well the tractor ploughed and whether follow-ups were done are
 shown and saved but change no bags: `WAKALA_YIELD_EFFECTS = false`. With it on, a tractor-hire farm's land-prep
@@ -512,8 +512,9 @@ player's saved game or events.
 - The faint 5% pattern texture on the cream panels in Figma is omitted.
 - **From Wakala Agent**, waiting on a decision: the fix lessons, products, follow-up days and Mama Achieng's lines
   need the agronomist's review; the proposed yield effects stay off until Gate A; only the before-planting tractor
-  stage is played; a retried drive pays coins only above the best (a change from Wakala, where every drive pays);
-  fuel for the drive is free (the plan's hire price covers it); Wakala's photos are still to add.
+  stage is played; every retried drive pays coins in full, as planned, which a player could farm
+  (`retryPays: 'improvement'` closes that); wrong fixes count in the farm's costs at harvest; fuel for the drive is
+  free (the plan's hire price covers it); Wakala's photos are still to add.
 
 ---
 
