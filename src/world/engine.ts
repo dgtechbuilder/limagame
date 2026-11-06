@@ -20,6 +20,9 @@ import {
   signOf,
   tileCenter,
   treatLeft,
+  careLeft,
+  fixLeft,
+  followUpLeft,
   type Carry,
   type Field,
   type Place,
@@ -719,7 +722,12 @@ export class FarmWorld {
       const setupDone = active && growing && !setupLeft(f, t!, farm);
       const h: TrialHazard | null = setupDone && day >= 1 && day <= CHECK_DAYS ? hazardFor(t!, farm, day) : null;
       const rec = h && t ? t.checks[checkKey(farm, day)] : undefined;
-      const pend = h && t ? treatLeft(f, t, farm, day) : null;
+      const pend = h && t ? careLeft(f, t, farm, day) ?? (fixLeft(t, farm, day) ? true : null) : null;
+      // follow-up care due today: the weeds or the dry soil show again until it is done
+      const fu = h && t ? followUpLeft(f, t, farm, day) : null;
+      const fuBits = fu ? this.marks(farm, fu.key) : 0;
+      const fuWeeds = fu?.job === 'weed' ? fu.need & ~fuBits : 0;
+      const fuDry = fu?.job === 'water' ? fu.need & ~fuBits : 0;
       const fixed = !!rec?.treated;
       const showProblem = !!h && h !== 'healthy' && !fixed;
       const treatBits = h ? this.marks(farm, `t${day}`) : 0;
@@ -745,6 +753,7 @@ export class FarmWorld {
         if (isPrep && sown & bit) soil = plan?.land === 'mulch' ? C.mulch : C.soil;
         if (isPrep && fed & bit && day <= 1) soil = '#8a5838';
         if (showProblem && h === 'drought' && !(treatBits & bit)) soil = C.soilDry;
+        if (fuDry & bit) soil = C.soilDry;
         if (h === 'drought' && treatBits & bit) soil = C.soilWet;
         if (h === 'flood') soil = C.soilDark;
         col.set(soil);
@@ -783,6 +792,7 @@ export class FarmWorld {
           if (h === 'hail' && i % 2 === 0) this.hail.setMatrixAt(id, at(c.x, 0, c.z));
           if (h === 'armyworm' && i % 3 === 0) this.pests.setMatrixAt(id, at(c.x, 0.1, c.z));
         }
+        if (fuWeeds & bit) this.weeds.setMatrixAt(id, at(c.x, 0.08, c.z, { ry: i }));
       }
       // the sign's badge: check due, work to do, harvest
       const s = this.signs[farm];
@@ -862,7 +872,7 @@ export class FarmWorld {
     if (setup === 'sow') return carry === 'seeds' ? { job: 'sow', need: FULL, fx: 'seed' } : { hint: 'Get the seed sack from the shed to sow' };
     if (setup === 'setupFeed') return carry === 'fertilizer' ? { job: 'setupFeed', need: FULL, fx: 'fert' } : { hint: 'Get fertilizer from the shed: this farm gets it at planting' };
     if (day > CHECK_DAYS) return { job: 'harvest', need: FULL, fx: 'harvest' };
-    const tr = treatLeft(f, t, farm, day);
+    const tr = careLeft(f, t, farm, day);
     if (!tr) return null;
     if (tr.job === 'weed') return { job: tr.key, need: tr.need, fx: 'weed' };
     if (tr.job === 'drain') return { job: tr.key, need: tr.need, fx: 'drain' };
@@ -1187,16 +1197,28 @@ export class FarmWorld {
     }
   }
 
+  /** Farms the oxen or tractor can plough now. A tractor-hire farm is driven by the player first (the tractor
+      screen, from Wakala Agent); the 3D tractor then shows that work on the plot. Oxen plough by themselves. */
+  private hireFarms(t: Trial, f: Field) {
+    const waiting = t.plans.map((_, i) => i).filter(i => machinePrep(t.plans[i]) && setupLeft(f, t, i) === 'prep');
+    const toDrive = waiting.filter(i => t.plans[i].land === 'tractor' && !t.tractor?.[i]);
+    return { ready: waiting.filter(i => !toDrive.includes(i)), toDrive, any: waiting.length > 0 };
+  }
+
   /** The tractor (or oxen) ploughs every farm whose plan hires it, row by row. */
-  private startHire() {
+  private startHire(atSpot = true) {
     const v = this.view;
     const t = v?.trial;
-    if (!t || t.phase !== 'growing') return this.ev.hint('Nothing to hire now: plan your farms first');
+    if (!t || t.phase !== 'growing') return atSpot ? this.ev.hint('Nothing to hire now: plan your farms first') : undefined;
     const f = this.liveField();
-    const farms = t.plans.map((_, i) => i).filter(i => machinePrep(t.plans[i]) && setupLeft(f, t, i) === 'prep');
-    if (!farms.length) return this.ev.hint('No farm needs ploughing now. Tractor or oxen hire is a land-prep choice in the plan');
+    const { ready, toDrive, any } = this.hireFarms(t, f);
+    if (!any) return atSpot ? this.ev.hint('No farm needs ploughing now. Tractor or oxen hire is a land-prep choice in the plan') : undefined;
+    // at the Hire spot, a tractor farm not yet driven opens the drive (World.tsx); the hire starts after it
+    if (atSpot && toDrive.length) return this.ev.place('hire');
+    const farms = ready;
+    if (!farms.length) return;
     if (this.hire) return;
-    this.ev.place('hire');
+    if (atSpot) this.ev.place('hire');
     const path: THREE.Vector2[] = [];
     const farmOf: number[] = [];
     for (const farm of farms) {
@@ -1225,8 +1247,7 @@ export class FarmWorld {
       const v = this.view;
       const t = v?.trial;
       if (t && t.phase === 'growing' && v.field.hired && v.field.cycle === t.cycle) {
-        const f = this.liveField();
-        if (t.plans.some((p, i) => machinePrep(p) && setupLeft(f, t, i) === 'prep')) this.startHire();
+        if (this.hireFarms(t, this.liveField()).ready.length) this.startHire(false);
       }
       return;
     }

@@ -222,6 +222,27 @@ export const DAMAGE: Record<TrialHazard, { missed: number; caught: number; treat
 export const PEST_HAZARDS: TrialHazard[] = ['armyworm', 'disease'];
 export const canTreat = (h: TrialHazard, p: Plan) => DAMAGE[h].treat > 0 && !(PEST_HAZARDS.includes(h) && p.pest === 'none');
 
+/* ---------------- from Wakala Agent: numbers waiting for the agronomist ---------------- */
+
+/** Coins a wrong fix costs in the farm world (the player is told why it was wrong and picks again). The same as the
+    right treatment costs: the money is spent, the problem stays. */
+export const WRONG_FIX_COST: Partial<Record<TrialHazard, number>> = Object.fromEntries(
+  (Object.keys(DAMAGE) as TrialHazard[]).filter(h => DAMAGE[h].treat > 0).map(h => [h, DAMAGE[h].treat]),
+);
+
+/** Off until the agronomist has reviewed the numbers below (Gate A). While off, how well the tractor ploughed and
+    whether follow-up care was done are shown to the player and saved, but they change no bags at harvest. */
+export const WAKALA_YIELD_EFFECTS = false;
+
+/** Proposed, behind WAKALA_YIELD_EFFECTS: a tractor-hire farm's land-prep factor is multiplied by
+    base + span × Q, where Q (0 to 1) is how well the before-planting drive did the job. Q = 1 keeps the plan's
+    factor; Q = 0 (the wrong implement, or nothing done) takes 12% off it. */
+export const TRACTOR_Q_FACTOR = { base: 0.88, span: 0.12 };
+
+/** Proposed, behind WAKALA_YIELD_EFFECTS: a missed follow-up brings the problem back the next day. With the flag
+    on, that returned problem costs harvest like any other (DAMAGE), unless it is read right and treated again. */
+export const MISSED_FOLLOW_UP_RETURNS = true;
+
 /* ---------------- one cycle ---------------- */
 
 export interface CheckRecord {
@@ -229,6 +250,33 @@ export interface CheckRecord {
   tries: number;
   /** treated after a right call (and coins paid) */
   treated: boolean;
+  /** farm world: the id of the right fix, once the player has picked it (care/data.ts PRESCRIBE) */
+  fix?: string;
+  /** farm world: how many wrong fixes were picked before the right one */
+  wrongFixes?: number;
+}
+
+/** Care that has to be done again a day or two after a treatment (care/data.ts FOLLOW_UP). */
+export interface FollowUp {
+  farm: number;
+  /** the check day it is due on */
+  day: number;
+  /** the work by hand (a TreatJob in world/field.ts: water, spray, weed, feed…) */
+  job: string;
+  /** the problem it follows up */
+  hazard: TrialHazard;
+  done: boolean;
+  /** the day ended with it undone (logged once) */
+  missed?: boolean;
+}
+
+/** The best before-planting tractor drive on a farm this cycle. */
+export interface TractorRecord {
+  stars: number;
+  score: number;
+  /** 0 to 1: how much of the field got the right work */
+  Q: number;
+  tries: number;
 }
 
 export interface FarmResult {
@@ -264,6 +312,10 @@ export interface Trial {
   /** coins spent on treatments, by farm */
   treatments: number[];
   results: FarmResult[] | null;
+  /** farm world: care due again after a treatment (missing in saves from before it existed) */
+  followUps?: FollowUp[];
+  /** farm world: the best tractor drive on each tractor-hire farm, by farm index */
+  tractor?: Record<string, TractorRecord>;
 }
 
 export interface TrialSummary {
@@ -302,8 +354,20 @@ function rand01(seed: string) {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 }
 
+/** A follow-up due the day before that was not done: its problem is back on this farm today. */
+export function returnedProblem(t: Pick<Trial, 'followUps'>, farm: number, day: number): FollowUp | null {
+  return t.followUps?.find(u => u.farm === farm && u.day === day - 1 && !u.done) ?? null;
+}
+
+/** What a farm shows on a day of the cycle: what its plan and luck drew (baseHazard), unless follow-up care was
+    missed the day before, which brings that problem back. */
+export function hazardFor(t: Pick<Trial, 'cycle' | 'forecast' | 'plans' | 'guided' | 'followUps'>, farm: number, day: number): TrialHazard {
+  const back = returnedProblem(t, farm, day);
+  return back ? back.hazard : baseHazard(t, farm, day);
+}
+
 /** What a farm shows on a day of the cycle. The plan's timing shows on fixed days; the rest is drawn from its odds. */
-export function hazardFor(t: Pick<Trial, 'cycle' | 'forecast' | 'plans' | 'guided'>, farm: number, day: number): TrialHazard {
+export function baseHazard(t: Pick<Trial, 'cycle' | 'forecast' | 'plans' | 'guided'>, farm: number, day: number): TrialHazard {
   const p = t.plans[farm];
   if (day === 1 && p.date === 'early') return 'plantEarly';
   if (day === 3 && p.date === 'late') return 'plantLate';
@@ -326,14 +390,22 @@ export function hazardFor(t: Pick<Trial, 'cycle' | 'forecast' | 'plans' | 'guide
 export function harvestFarm(t: Trial, farm: number, lastDay = CHECK_DAYS): FarmResult {
   const p = t.plans[farm];
   const factors = Object.fromEntries(PLAN_STEPS.map(s => [s.key, stepFactor(s.key, p, t.forecast)])) as Record<StepKey, number>;
+  // proposed effects from Wakala Agent, off until the agronomist's review (see WAKALA_YIELD_EFFECTS)
+  const drive = t.tractor?.[farm];
+  if (WAKALA_YIELD_EFFECTS && p.land === 'tractor' && drive) factors.land *= TRACTOR_Q_FACTOR.base + TRACTOR_Q_FACTOR.span * drive.Q;
+  const problemOn = (day: number) => (WAKALA_YIELD_EFFECTS && MISSED_FOLLOW_UP_RETURNS ? hazardFor(t, farm, day) : baseHazard(t, farm, day));
   const problems: FarmResult['problems'] = [];
   let keep = 1;
   for (let day = 1; day <= lastDay; day++) {
-    const h = hazardFor(t, farm, day);
+    const h = problemOn(day);
     const d = DAMAGE[h];
     if (!d.missed) continue;
     const rec = t.checks[checkKey(farm, day)];
-    const caught = !!rec?.right && (rec.treated || !canTreat(h, p)) && (h === 'hail' || canTreat(h, p));
+    // with the effects off, a day whose problem came back is judged by how the player dealt with what they were shown
+    const shown = WAKALA_YIELD_EFFECTS ? null : returnedProblem(t, farm, day);
+    const caught = shown
+      ? !!rec?.right && (rec.treated || !canTreat(shown.hazard, p))
+      : !!rec?.right && (rec.treated || !canTreat(h, p)) && (h === 'hail' || canTreat(h, p));
     const loss = caught ? d.caught : d.missed;
     keep *= 1 - loss;
     problems.push({ hazard: h, day, caught, loss });

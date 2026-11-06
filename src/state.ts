@@ -4,6 +4,7 @@ import {
   CHECK_DAYS,
   COMMON_PLAN,
   DAMAGE,
+  WRONG_FIX_COST,
   canTreat,
   checkKey,
   currentDay,
@@ -21,7 +22,8 @@ import {
   type Trial,
   type TrialSummary,
 } from './trials/model';
-import { carryNeeded, emptyField, treatCost, treatLeft, type Carry, type Field } from './world/field';
+import { FOLLOW_UP } from './care/data';
+import { carryNeeded, emptyField, followUpLeft, treatCost, treatLeft, type Carry, type Field } from './world/field';
 import {
   GROWING_STEPS,
   HARVEST_EFFECT,
@@ -112,6 +114,8 @@ export interface GameState {
   roundsView: RoundsView | null;
   /** design review only: show one situation, as hazard:crop:stage */
   roundsDemo: string | null;
+  /** design review only: open one of the farm world's screens from Wakala Agent (see world/World.tsx WORLD_DEMOS) */
+  worldDemo: string | null;
   // first session
   farmer: { name: string; look: number } | null;
   fs: { phase: FsPhase; at: 'first' | 'lower'; opened: boolean };
@@ -178,6 +182,7 @@ export const initialState: GameState = {
   roundsOpen: false,
   roundsView: null,
   roundsDemo: null,
+  worldDemo: null,
   farmer: null,
   fs: { phase: 'create', at: 'first', opened: false },
   note: null,
@@ -302,6 +307,12 @@ export type Action =
   | { type: 'trialHarvest' }
   | { type: 'trialRecipe'; farm: number }
   | { type: 'roundResult'; id: string; right: boolean; tries: number; day: number }
+  /** farm world, after a right call: the fix the player picked (a wrong one costs coins; they pick again) */
+  | { type: 'prescribe'; farm: number; day: number; pick: string; right: boolean }
+  /** farm world: follow-ups whose day ended undone, by `${farm}:${day}` (they are logged once) */
+  | { type: 'followUpMissed'; keys: string[] }
+  /** farm world: a before-planting tractor drive finished (the drive's coins and points are worked out by the screen) */
+  | { type: 'tractorDone'; farm: number; score: number; stars: number; Q: number; coins: number; points: number }
   | { type: 'fs'; phase: FsPhase; at?: 'first' | 'lower'; opened?: boolean; note?: string };
 
 let toastId = 0;
@@ -631,7 +642,17 @@ function reducer(s: GameState, a: Action): GameState {
           const cost = treatCost(pending.hazard);
           if (s.coins < cost) return { ...s, field: marked, toast: toast(`You need ${cost} coins to treat ${farmName(a.farm)}`) };
           const ck = checkKey(a.farm, day);
-          const trial = { ...t, checks: { ...t.checks, [ck]: { ...t.checks[ck], treated: true } }, treatments: t.treatments.map((n, i) => (i === a.farm ? n + cost : n)) };
+          // the care that has to be done again a day or two later (only inside the six check days)
+          const fu = FOLLOW_UP[pending.hazard];
+          const due = fu && day + fu.afterDays <= CHECK_DAYS ? day + fu.afterDays : 0;
+          const followUps = (t.followUps ?? []).filter(u => !(u.farm === a.farm && u.day === due));
+          if (fu && due) followUps.push({ farm: a.farm, day: due, job: fu.job, hazard: pending.hazard, done: false });
+          const trial: Trial = {
+            ...t,
+            checks: { ...t.checks, [ck]: { ...t.checks[ck], treated: true } },
+            treatments: t.treatments.map((n, i) => (i === a.farm ? n + cost : n)),
+            ...(fu && due ? { followUps } : {}),
+          };
           field = putDown(trial);
           return {
             ...s,
@@ -639,11 +660,60 @@ function reducer(s: GameState, a: Action): GameState {
             coins: s.coins - cost,
             trial,
             ...gainXp(s, 0.03),
-            toast: toast(`${farmName(a.farm)} treated · −${cost} coins · most of the damage stopped`),
+            toast: toast(`${farmName(a.farm)} treated · −${cost} coins · most of the damage stopped${due ? ` · come back on day ${due}` : ''}`),
           };
         }
       }
+      // follow-up care counts once its last tile is done
+      if (/^f\d$/.test(a.job)) {
+        const day = Number(a.job.slice(1));
+        const pending = followUpLeft(f, t, a.farm, day);
+        if (pending && (after & pending.need) === pending.need) {
+          const trial: Trial = { ...t, followUps: (t.followUps ?? []).map(u => (u === pending.follow ? { ...u, done: true } : u)) };
+          field = putDown(trial);
+          return { ...s, field, trial, ...gainXp(s, 0.03), toast: toast(`${farmName(a.farm)}: follow-up done · the problem stays away`) };
+        }
+      }
       return { ...s, field };
+    }
+    case 'prescribe': {
+      const t = s.trial;
+      if (!t || t.phase !== 'growing') return s;
+      const ck = checkKey(a.farm, a.day);
+      const rec = t.checks[ck];
+      if (!rec?.right || rec.fix) return s;
+      if (a.right) return { ...s, trial: { ...t, checks: { ...t.checks, [ck]: { ...rec, fix: a.pick } } }, ...gainXp(s, 0.02) };
+      // a wrong fix: the money is spent and the problem stays (what the player has, if less)
+      const cost = Math.min(s.coins, WRONG_FIX_COST[hazardFor(t, a.farm, a.day)] ?? 0);
+      return {
+        ...s,
+        coins: s.coins - cost,
+        trial: { ...t, checks: { ...t.checks, [ck]: { ...rec, wrongFixes: (rec.wrongFixes ?? 0) + 1 } }, treatments: t.treatments.map((n, i) => (i === a.farm ? n + cost : n)) },
+      };
+    }
+    case 'followUpMissed': {
+      const t = s.trial;
+      if (!t?.followUps) return s;
+      const followUps = t.followUps.map(u => (a.keys.includes(`${u.farm}:${u.day}`) ? { ...u, missed: true } : u));
+      return { ...s, trial: { ...t, followUps } };
+    }
+    case 'tractorDone': {
+      const t = s.trial;
+      if (!t) return s;
+      const before = t.tractor?.[a.farm];
+      const best = {
+        stars: Math.max(before?.stars ?? 0, a.stars),
+        score: Math.max(before?.score ?? 0, a.score),
+        Q: Math.max(before?.Q ?? 0, a.Q),
+        tries: (before?.tries ?? 0) + 1,
+      };
+      return {
+        ...s,
+        coins: s.coins + a.coins,
+        points: s.points + a.points,
+        trial: { ...t, tractor: { ...(t.tractor ?? {}), [a.farm]: best } },
+        ...gainXp(s, 0.05 + 0.05 * a.stars),
+      };
     }
     case 'trialRecipe': {
       const t = s.trial;
@@ -666,7 +736,7 @@ function reducer(s: GameState, a: Action): GameState {
 /* ------------------------------------------------------------------ */
 
 const SAVE_KEY = 'lima-farming-game:v2';
-const TRANSIENT: (keyof GameState)[] = ['modal', 'plotSelected', 'toast', 'roundsOpen', 'roundsView', 'roundsDemo', 'trialsOpen', 'roundsTrial'];
+const TRANSIENT: (keyof GameState)[] = ['modal', 'plotSelected', 'toast', 'roundsOpen', 'roundsView', 'roundsDemo', 'worldDemo', 'trialsOpen', 'roundsTrial'];
 
 /** Design-review links (?review or ?screen) use a throwaway game so they never touch a player's save. */
 export const reviewing = () => {
@@ -689,7 +759,7 @@ function load(): GameState {
     const saved = JSON.parse(raw);
     // Saves from before the farm had one owner may carry a reminder about neighbours.
     if (typeof saved.note === 'string' && /Achieng|neighbour/i.test(saved.note)) saved.note = 'Check every bed on your farm often: open Rounds on the farm.';
-    return { ...initialState, ...saved, modal: null, plotSelected: false, toast: null, roundsOpen: false, roundsView: null, roundsDemo: null, trialsOpen: false, roundsTrial: false, rounds: { ...initialState.rounds, ...(saved.rounds ?? {}) } };
+    return { ...initialState, ...saved, modal: null, plotSelected: false, toast: null, roundsOpen: false, roundsView: null, roundsDemo: null, worldDemo: null, trialsOpen: false, roundsTrial: false, rounds: { ...initialState.rounds, ...(saved.rounds ?? {}) } };
   } catch {
     return initialState;
   }
