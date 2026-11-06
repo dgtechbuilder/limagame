@@ -6,7 +6,7 @@ import { boot, lookAtAll, state, type Win } from './helpers';
 
 async function createFarmer(page: Page) {
   await page.locator('.name-chip', { hasText: 'Wanjiku' }).click();
-  await page.getByRole('button', { name: "Twende! Let's go" }).click();
+  await page.getByRole('button', { name: "Twende! Let's go", exact: true }).click();
 }
 
 async function walkToBed(page: Page) {
@@ -18,7 +18,7 @@ async function walkToBed(page: Page) {
 async function review(page: Page, shamba: string, right: boolean) {
   const sh = await page.evaluate(id => (window as unknown as Win).__lima.shamba(id), shamba);
   await lookAtAll(page, 'Next part');
-  await page.getByRole('button', { name: 'Spot the problem' }).click();
+  await page.getByRole('button', { name: 'Spot the problem', exact: true }).click();
   await page.getByRole('button', { name: `Row ${sh.problemRows[0] + 1} from the front` }).click();
   await expect(page.locator('.calls')).toBeVisible();
   const labels: Record<string, string> = { healthy: 'Healthy', water: 'Needs water', pests: 'Pests', fertiliser: 'Needs fertiliser' };
@@ -31,7 +31,7 @@ test('first session, read right first time', async ({ page }) => {
   await createFarmer(page);
   await walkToBed(page);
   await review(page, 'first', true);
-  await page.getByRole('button', { name: 'Check the next crop' }).click({ timeout: 20_000 });
+  await page.getByRole('button', { name: 'Check the next crop', exact: true }).click({ timeout: 20_000 });
   await expect.poll(async () => (await state(page)).fs.phase).toBe('walk2');
   expect((await state(page)).onboarded).toBe(true);
 });
@@ -41,11 +41,11 @@ test('first session, a wrong call, then the back maize', async ({ page }) => {
   await createFarmer(page);
   await walkToBed(page);
   await review(page, 'first', false);
-  await page.getByRole('button', { name: 'Try the back maize' }).click();
+  await page.getByRole('button', { name: 'Try the back maize', exact: true }).click();
   await expect.poll(async () => (await state(page)).fs.phase).toBe('walkRetry');
   await walkToBed(page);
   await review(page, 'lower', true);
-  await page.getByRole('button', { name: 'Check the next crop' }).click({ timeout: 20_000 });
+  await page.getByRole('button', { name: 'Check the next crop', exact: true }).click({ timeout: 20_000 });
   await expect.poll(async () => (await state(page)).fs.phase).toBe('walk2');
 });
 
@@ -59,9 +59,9 @@ test('the game saves, and Reset progress starts again', async ({ page }) => {
   expect(after.trial.followUps).toEqual(before.trial.followUps);
   expect(after.fs.phase).toBe('done');
 
-  await page.getByRole('button', { name: 'Settings' }).click();
-  await page.getByRole('button', { name: 'Reset' }).click();
-  await page.getByRole('button', { name: 'Yes, erase' }).click();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Reset', exact: true }).click();
+  await page.getByRole('button', { name: 'Yes, erase', exact: true }).click();
   await expect.poll(async () => (await state(page)).fs.phase).toBe('create');
   await boot(page, false);
   expect((await state(page)).farmer).toBeNull();

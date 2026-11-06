@@ -14,8 +14,8 @@ test('a world check: right call, a wrong fix, the right fix, then the work by ha
   await expect(page.locator('.voice-bubble').first()).toContainText('Mama Achieng');
   const call = await page.evaluate(h => (window as unknown as Win).__lima.callFor(h), c.hazard);
   await lookAndCall(page, call);
-  await expect(page.getByRole('button', { name: 'Choose the fix' })).toBeVisible();
-  await page.getByRole('button', { name: 'Choose the fix' }).click();
+  await expect(page.getByRole('button', { name: 'Choose the fix', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Choose the fix', exact: true }).click();
 
   // a wrong fix costs coins and says why
   const fixes = await page.evaluate(h => (window as unknown as Win).__lima.fixes(h), c.hazard);
@@ -29,7 +29,7 @@ test('a world check: right call, a wrong fix, the right fix, then the work by ha
 
   // the right one leads to the work by hand, unchanged
   await page.locator('.care-opt', { hasText: right.label }).click();
-  await page.getByRole('button', { name: 'Back to the farm' }).click();
+  await page.getByRole('button', { name: 'Back to the farm', exact: true }).click();
   await expect(page.locator('.hud-task')).toContainText('Cut the weeds on Farm 1');
   const key = `0:${c.day}`;
   await workFarm(page, 0, async () => !!(await state(page)).trial.checks[key]?.treated);
@@ -63,7 +63,7 @@ test('a missed follow-up: logged, and the problem is back on the next check', as
   // per D5, yield is not changed by the miss yet: the flag is off
   const call = await page.evaluate(h => (window as unknown as Win).__lima.callFor(h), c.hazard);
   await lookAndCall(page, call);
-  await expect(page.getByRole('button', { name: 'Choose the fix' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Choose the fix', exact: true })).toBeVisible();
 });
 
 test('a spray job: the safety kit, then the product', async ({ page }) => {
@@ -80,7 +80,7 @@ test('a spray job: the safety kit, then the product', async ({ page }) => {
   await expect(page.locator('.guide-text')).toContainText(wrong.lesson);
   expect((await state(page)).coins).toBe(coins);
   await page.locator('.care-opt', { hasText: right.name }).click();
-  await page.getByRole('button', { name: 'Pick up the sprayer' }).click();
+  await page.getByRole('button', { name: 'Pick up the sprayer', exact: true }).click();
   await expect.poll(async () => (await state(page)).field.carry).toBe('sprayer');
   await workFarm(page, 0, async () => !!(await state(page)).trial.checks[`0:${c.day}`]?.treated, 120);
   expect(await eventNames(page)).toEqual(expect.arrayContaining(['kit_on', 'product']));

@@ -62,17 +62,27 @@ export async function tapTask(page: Page, title: RegExp | string) {
 /** Open the first picture, then step through the rest with the guide line's button, and close the last. */
 export async function lookAtAll(page: Page, next: string) {
   await page.locator('.part-row .part-tile').first().click();
-  const done = page.getByRole('button', { name: 'Done looking' });
-  for (let i = 0; i < 8 && !(await done.isVisible()); i++) await page.getByRole('button', { name: next }).click();
+  await finishLooking(page, next);
+}
+
+/** With a picture open: step through the rest, then close it. */
+export async function finishLooking(page: Page, next: string) {
+  const done = page.getByRole('button', { name: 'Done looking', exact: true });
+  for (let i = 0; i < 8 && !(await done.isVisible()); i++) await page.getByRole('button', { name: next, exact: true }).click();
   await done.click();
+}
+
+/** On the judge screen: the group, then (if the group has more than one) the call. */
+export async function makeCall(page: Page, call: { group: string; label: string; single: boolean }) {
+  await page.locator('.calls .call-btn', { hasText: call.group }).first().click();
+  if (!call.single) await page.locator('.calls .call-btn', { hasText: call.label }).click();
 }
 
 /** Look at all five pictures of a check, then make a call. */
 export async function lookAndCall(page: Page, call: { group: string; label: string; single: boolean }) {
   await lookAtAll(page, 'Next picture');
-  await page.getByRole('button', { name: 'Make your call' }).click();
-  await page.locator('.calls .call-btn', { hasText: call.group }).first().click();
-  if (!call.single) await page.locator('.calls .call-btn', { hasText: call.label }).click();
+  await page.getByRole('button', { name: 'Make your call', exact: true }).click();
+  await makeCall(page, call);
 }
 
 /** Walk over a farm's tiles until `done` holds (the task card has moved on, a job is marked…). */
