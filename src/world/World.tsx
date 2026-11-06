@@ -327,7 +327,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
           name={name}
           cost={WRONG_FIX_COST[h] ?? 0}
           wrongBefore={rec?.wrongFixes ?? 0}
-          then={job ? `${JOB_HINT[job]} (${treatCost(h)} coins)${FOLLOW_UP[h] ? `. ${FOLLOW_UP[h]!.why}` : ''}` : 'deal with it'}
+          then={job ? `${JOB_HINT[job]} (${treatCost(h)} coins).${FOLLOW_UP[h] ? ` ${FOLLOW_UP[h]!.why}` : ''}` : 'deal with it.'}
           onPick={op => dispatch({ type: 'prescribe', farm: c.farm, day: c.day, pick: op.id, right: op.right })}
           onDone={() => {
             setCare(null);

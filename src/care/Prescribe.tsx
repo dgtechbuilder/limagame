@@ -36,7 +36,7 @@ export function Prescribe({
   cost: number;
   /** wrong fixes already picked for this farm today (from the save) */
   wrongBefore: number;
-  /** what the right fix leads to, e.g. "walk over the weeds to cut them" */
+  /** what the right fix leads to, as a sentence end, e.g. "walk over the weeds to cut them (30 coins)." */
   then: string;
   onPick: (option: FixOption) => void;
   onDone: () => void;
@@ -57,7 +57,7 @@ export function Prescribe({
   let line = `${name}, what will fix ${farmName}? A wrong fix costs ${cost} coins.`;
   if (wrongBefore > 0 && !picked) line = `Pick again, ${name}. A wrong fix costs ${cost} coins.`;
   if (picked && !picked.right) line = `${picked.lesson} −${cost} coins. Pick again.`;
-  if (right) line = `${right.lesson} Now ${then}.`;
+  if (right) line = `${right.lesson} Now ${then}`;
 
   return (
     <div className="abs fs-screen review care-screen" style={{ inset: 0 }}>
