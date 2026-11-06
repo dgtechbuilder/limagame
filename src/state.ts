@@ -328,7 +328,7 @@ const gainXp = (s: GameState, amount: number) => {
 };
 const fmt = (n: number) => n.toLocaleString('en-US');
 
-function reducer(s: GameState, a: Action): GameState {
+export function reducer(s: GameState, a: Action): GameState {
   switch (a.type) {
     case 'open':
       return { ...s, modal: a.modal, plotSelected: false };
