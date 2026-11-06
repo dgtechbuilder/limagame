@@ -308,6 +308,11 @@ farmer. The world is loaded only after the first session (`src/world/`, about 15
 `src/world/field.ts` holds the field work (which jobs, in which order, which tiles), with no three.js, so the saved
 game can use it.
 
+A full guided cycle (dig → sow → fertilize → six days of checks, including a right call becoming weeding and
+scaring off birds → harvest → sell) has been played end to end with no errors. **Not yet human-tested**: watering,
+spraying, digging drains, chasing the goat, hiring the tractor or oxen, a full six-farm cycle, and the daily clock
+(one day per real day). The first session (the village walk) is still the 2D Figma map, not the 3D world.
+
 ## The six farms
 
 The six farms are LIMA's core idea: grow the same maize on up to six farms, each to a **different plan**, and
@@ -413,6 +418,8 @@ player's saved game or events.
 - **The six-farm model** (yields, problem odds, damage, prices) is illustrative and needs agronomist review before any
   pilot. Only maize is planned in it so far; beans, sukuma wiki and tomatoes would each need their own table.
 - **No two plans the same** is enforced; *one change per farm* is suggested, not enforced.
+- **The 3D farm world** needs human play-testing on watering, spraying, drains, the goat, tractor/oxen hire, a
+  full six-farm cycle and the daily (one-day-per-real-day) clock — only a two-farm guided cycle has been run so far.
 - **Art styles**: the farm and UI are the painted Figma art; the first-session crops and the farmer are
   drawn flat in code.
 - **Language**: English with a little Swahili (*Karibu*, *Twende*, shamba, sukuma wiki). Full Swahili is not done.
