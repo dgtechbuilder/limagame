@@ -46,6 +46,8 @@ import {
   makeBird,
   makeChicken,
   makeFarmer,
+  setCharacterStyle,
+  type FarmerLook,
   makePickup,
   makeQuadruped,
   makeTractor,
@@ -92,11 +94,17 @@ export const PLACES: Record<Place, { x: number; z: number; r: number }> = {
 
 const PICKUP_OF: Partial<Record<Place, Exclude<Carry, null>>> = { 'shed-seeds': 'seeds', 'shed-fertilizer': 'fertilizer', 'shed-sprayer': 'sprayer', pond: 'water' };
 
+export interface WorldOptions {
+  /** draw the farmer and the animals in the retro anime style */
+  anime: boolean;
+  graphics: 'auto' | 'high' | 'low';
+}
+
 export interface ViewState {
   trial: Trial | null;
   field: Field;
   today: number;
-  look: { skin: string; outfit: string };
+  look: FarmerLook;
   /** where the task card points, for the green arrow */
   arrowAt: { x: number; z: number } | null;
   /** the farm the task card is about: hints about other farms stay quiet while the farmer passes through */
@@ -192,11 +200,17 @@ export class FarmWorld {
   private obstacles: { x: number; z: number; r: number }[] = [];
   private rects: Rect[] = [];
 
-  constructor(canvas: HTMLCanvasElement, events: WorldEvents) {
+  /** Settings → Graphics: auto adapts to the phone, high keeps shadows, low drops them and draws at 1× */
+  private graphics: WorldOptions['graphics'];
+
+  constructor(canvas: HTMLCanvasElement, events: WorldEvents, opts: WorldOptions = { anime: true, graphics: 'auto' }) {
     this.ev = events;
+    this.graphics = opts.graphics;
+    // the characters are built in the chosen style (the app builds a new farm when it changes)
+    setCharacterStyle(opts.anime);
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     this.renderer.setSize(STAGE_W, STAGE_H, false);
-    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.enabled = opts.graphics !== 'low';
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.scene.background = new THREE.Color(C.grass);
@@ -205,7 +219,8 @@ export class FarmWorld {
     const hemi = new THREE.HemisphereLight('#ffffff', '#8fb83a', 1.55);
     this.scene.add(hemi);
     this.sun = new THREE.DirectionalLight('#fff6e0', 2.2);
-    this.sun.castShadow = true;
+    this.sun.castShadow = opts.graphics !== 'low';
+    if (opts.graphics !== 'auto') this.lowFx = opts.graphics === 'low';
     this.sun.shadow.mapSize.set(2048, 2048);
     const sc = this.sun.shadow.camera;
     sc.left = -18;
@@ -248,13 +263,13 @@ export class FarmWorld {
 
   /** The canvas's drawing size, for a sharp picture at the stage's scale. */
   resize(scale: number) {
-    this.renderer.setPixelRatio(Math.min(2, (window.devicePixelRatio || 1) * Math.max(0.5, scale)));
+    this.renderer.setPixelRatio(this.graphics === 'low' ? 1 : Math.min(2, (window.devicePixelRatio || 1) * Math.max(0.5, scale)));
     this.renderer.setSize(STAGE_W, STAGE_H, false);
   }
 
   private lookKey = '';
   setView(v: ViewState) {
-    const lk = v.look.skin + v.look.outfit;
+    const lk = [v.look.skin, v.look.outfit, v.look.head, v.look.headColor, v.look.trim].join();
     if (lk !== this.lookKey) {
       this.lookKey = lk;
       const old = this.farmer;
@@ -981,7 +996,7 @@ export class FarmWorld {
   private slow = 0;
   private lowFx = false;
   private adapt(dt: number) {
-    if (this.lowFx || this.frames > 400) return;
+    if (this.lowFx || this.graphics !== 'auto' || this.frames > 400) return;
     this.frames++;
     if (this.frames < 30) return;
     this.slow = this.slow * 0.95 + (dt > 0.045 ? 1 : 0) * 0.05;

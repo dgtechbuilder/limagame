@@ -44,7 +44,7 @@ import {
 export type Modal =
   | { kind: 'menu' }
   | { kind: 'welcome' }
-  | { kind: 'settings' }
+  | { kind: 'settings'; tab?: SettingsTab }
   | { kind: 'shop'; tab: ShopTab }
   | { kind: 'steps'; step: StepId }
   | { kind: 'sale' }
@@ -55,6 +55,20 @@ export type Modal =
   | { kind: 'value' }
   | { kind: 'process' }
   | { kind: 'info' };
+
+/** Player settings. They are kept on this device and survive Reset progress. */
+export interface Settings {
+  /** how the people and animals are drawn: retro anime (cel shading, ink outlines, big eyes) or the original look */
+  art: 'anime' | 'original';
+  /** 3D farm quality: auto drops shadows on slow phones; low always does; high never does */
+  graphics: 'auto' | 'high' | 'low';
+  /** stop the bobbing, pulsing and sliding animations */
+  reduceMotion: boolean;
+  /** read the guide's lines and the messages aloud */
+  voice: boolean;
+}
+export type SettingsTab = 'farmer' | 'game' | 'display' | 'help';
+export const DEFAULT_SETTINGS: Settings = { art: 'anime', graphics: 'auto', reduceMotion: false, voice: false };
 
 /** Stage index: 0–5 = the farming step being worked on, 6 = harvested and selling, 7 = season sold. */
 export const SELLING = 6;
@@ -97,6 +111,7 @@ export interface RoundRecord {
 export type RoundsView = 'map' | 'look' | 'judge' | 'right' | 'wrong' | 'summary';
 
 export interface GameState {
+  settings: Settings;
   /** the farm screen: the walkable 3D farm, or the classic painted one */
   view: 'world' | 'classic';
   /** the screen on top was opened from the main menu, so Back goes back to the menu */
@@ -179,6 +194,7 @@ export const freshSeason = {
 };
 
 export const initialState: GameState = {
+  settings: DEFAULT_SETTINGS,
   view: 'world',
   fromMenu: false,
   navSeq: 0,
@@ -306,6 +322,7 @@ export type Action =
   | { type: 'picker'; on: boolean }
   | { type: 'reset'; state: Partial<GameState> }
   | { type: 'farmer'; name: string; look: number }
+  | { type: 'settings'; patch: Partial<Settings> }
   | { type: 'rounds'; open: boolean; view?: RoundsView | null; demo?: string | null; trial?: boolean }
   | { type: 'trials'; open: boolean }
   | { type: 'trialNew' }
@@ -515,6 +532,8 @@ export function reducer(s: GameState, a: Action): GameState {
       return { ...s, ...a.state };
     case 'farmer':
       return { ...s, farmer: { name: a.name, look: a.look } };
+    case 'settings':
+      return { ...s, settings: { ...s.settings, ...a.patch } };
     case 'rounds':
       return {
         ...s,
@@ -644,7 +663,8 @@ export function reducer(s: GameState, a: Action): GameState {
       };
     }
     case 'view':
-      return { ...s, view: a.view, modal: null };
+      // switched from Settings: stay in Settings
+      return { ...s, view: a.view, modal: s.modal?.kind === 'settings' ? s.modal : null };
     case 'carry':
       return s.field.carry === a.item ? s : { ...s, field: { ...s.field, carry: a.item } };
     case 'fieldHire': {
@@ -801,7 +821,7 @@ function load(): GameState {
     const saved = JSON.parse(raw);
     // Saves from before the farm had one owner may carry a reminder about neighbours.
     if (typeof saved.note === 'string' && /Achieng|neighbour/i.test(saved.note)) saved.note = 'Check every bed on your farm often: open Rounds on the farm.';
-    return { ...initialState, ...saved, fromMenu: false, navSeq: 0, rideReq: 0, modal: null, plotSelected: false, toast: null, roundsOpen: false, roundsView: null, roundsDemo: null, worldDemo: null, trialsOpen: false, roundsTrial: false, rounds: { ...initialState.rounds, ...(saved.rounds ?? {}) } };
+    return { ...initialState, ...saved, fromMenu: false, navSeq: 0, rideReq: 0, modal: null, plotSelected: false, toast: null, roundsOpen: false, roundsView: null, roundsDemo: null, worldDemo: null, trialsOpen: false, roundsTrial: false, rounds: { ...initialState.rounds, ...(saved.rounds ?? {}) }, settings: { ...DEFAULT_SETTINGS, ...(saved.settings ?? {}) } };
   } catch {
     return initialState;
   }

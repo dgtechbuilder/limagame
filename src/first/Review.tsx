@@ -5,6 +5,9 @@ import { FarmMap } from '../components/FarmMap';
 import { PhotoPicture } from '../components/PhotoPicture';
 import { photoByKey } from '../rounds/photos';
 import { GoldButton } from '../components/ui';
+import { GuideFace } from '../art/Cast';
+import { useVoice } from '../art/style';
+import { speak } from '../speech';
 import { Field, FIELD_H, FIELD_W, FarmerFigure, PartArt, rowGeometry } from './art';
 import { CALLS, PART_LABELS, say, type Call, type Look, type PartId, type ShambaReview } from './data';
 import { track } from './track';
@@ -17,10 +20,16 @@ type Step = 'look' | 'spot' | 'judge' | 'right' | 'wrong';
 
 /** One-sentence line from the guide, with an optional button. Used on every first-session screen. */
 export function GuideLine({ text, action, style }: { text: ReactNode; action?: { label: string; onClick: () => void; aria?: string }; style?: CSSProperties }) {
+  // Read aloud: the guide says each new line
+  const voice = useVoice();
+  const line = typeof text === 'string' ? text : '';
+  useEffect(() => {
+    if (voice && line) speak(line);
+  }, [voice, line]);
   return (
     <div className="guide-line" style={style}>
       <span className="guide-face">
-        <img src={img.guide} alt="" />
+        <GuideFace />
       </span>
       <p key={String(text)} className="guide-text" role="status">
         {text}

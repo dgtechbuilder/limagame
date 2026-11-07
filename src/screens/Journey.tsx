@@ -5,6 +5,7 @@ import { img } from '../assets';
 import { nextAction } from '../components/FarmScene';
 import { EditIcon, InfoDot } from '../components/Icons';
 import { ModalShell, TextSidebar } from '../components/Modal';
+import { Cast } from '../art/Cast';
 import { Coin, GoldButton, Img, Stars, fmt } from '../components/ui';
 import { GROWING_STEPS, HARVEST_CHOICES, PLAY_GOAL_HOURS, PROCESSES, REWARDS, STEPS, STORAGE_OPTIONS, TIMELINE, TIP, type StepId } from '../data';
 import {
@@ -400,7 +401,7 @@ export function ProcessModal({ s, dispatch }: Props) {
               Confirm and sell
             </GoldButton>
             <div style={box({ left: 228, top: 20, width: 202, height: 225, overflow: 'hidden' })}>
-              <Img src={img.guide} w={148} h={132} alt="Farming guide" style={{ position: 'absolute', left: 50, top: 46 }} />
+              <Cast id="guide" w={148} h={132} alt="Farming guide" backdrop="none" style={{ position: 'absolute', left: 50, top: 46 }} />
               <Tip style={{ position: 'absolute', left: 9, top: 157, width: 185 }} />
               <button
                 type="button"
@@ -629,7 +630,7 @@ export function RewardsModal({ s, dispatch }: Props) {
                 <FarmerPortrait look={LOOKS[s.farmer.look] ?? LOOKS[0]} size={50} />
               </span>
             ) : (
-              <Img src={img.rewardAvatar} w={65} h={54} alt="Ojuok" />
+              <Cast id="ojuok" w={65} h={54} alt="Ojuok" />
             )}
           </div>
           <p style={{ position: 'absolute', left: 88, top: 16, fontSize: 11, fontWeight: 600 }}>{s.farmer?.name ?? 'Ojuok'}</p>
@@ -669,7 +670,7 @@ export function RewardsModal({ s, dispatch }: Props) {
         </div>
       </ModalShell>
       <div className="abs" style={{ left: 711, top: 63, width: 163, height: 182, pointerEvents: 'none', animation: 'pop 0.25s ease both' }}>
-        <Img src={img.guide} w={156} h={145} alt="" style={{ marginLeft: 10 }} />
+        <Cast id="guide" w={156} h={145} backdrop="none" style={{ marginLeft: 10 }} />
         <div className="speech" style={{ left: 22, top: 94, width: 118, height: 82 }}>
           <img src={img.tipBubble} alt="" />
           <span style={{ width: 90, fontSize: 9, padding: '10px 0 0' }}>Keep playing to unlock more rewards</span>

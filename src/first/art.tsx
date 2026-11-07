@@ -5,6 +5,8 @@
 
 import { memo, type ReactNode } from 'react';
 import type { Condition, Crop, Look, PartId } from './data';
+import { AnimeBust, AnimeFigure, lookToon } from '../art/anime';
+import { useAnime } from '../art/style';
 
 /* ------------------------------------------------------------------ */
 /* helpers                                                              */
@@ -546,6 +548,8 @@ function TopDown({ crop, cond, problemRows, rows }: { crop: Crop; cond: Conditio
 
 /** The player's farmer. Feet at (0,0), about 80 units tall. */
 export function FarmerFigure({ look, pose = 'stand', facing = 1 }: { look: Look; pose?: 'stand' | 'walk' | 'cheer'; facing?: 1 | -1 }) {
+  const anime = useAnime();
+  if (anime) return <AnimeFigure look={look} pose={pose} facing={facing} />;
   const arm = pose === 'cheer' ? 'M-9,-52 L-17,-70 M9,-52 L17,-70' : 'M-9,-52 L-13,-34 M9,-52 L13,-34';
   return (
     <g transform={`scale(${facing},1)`} className={`farmer farmer-${pose}`}>
@@ -586,6 +590,8 @@ export function FarmerFigure({ look, pose = 'stand', facing = 1 }: { look: Look;
 
 /** Head-and-shoulders portrait for the HUD and picker. */
 export function FarmerPortrait({ look, size = 48 }: { look: Look; size?: number }) {
+  const anime = useAnime();
+  if (anime) return <AnimeBust t={lookToon(look)} size={size} />;
   return (
     <svg viewBox="-20 -92 40 44" width={size} height={size * 1.1} aria-hidden="true">
       <FarmerFigure look={look} />

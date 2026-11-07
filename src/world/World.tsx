@@ -147,7 +147,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
           mountTractor();
         }
       },
-    });
+    }, { anime: sRef.current.settings.art === 'anime', graphics: sRef.current.settings.graphics });
     eng.current = w;
     // for automated play-tests
     (window as unknown as { __limaWorld?: FarmWorld }).__limaWorld = w;
