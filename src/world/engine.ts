@@ -1063,7 +1063,37 @@ export class FarmWorld {
 
   /* ---------------- the frame ---------------- */
 
+  /** For the performance test: what the last frame drew and what a frame costs on the main thread. */
+  private cpu = { ms: 0, frames: 0, drawn: 0 };
+  perf() {
+    const i = this.renderer.info;
+    return {
+      calls: i.render.calls,
+      triangles: i.render.triangles,
+      geometries: i.memory.geometries,
+      textures: i.memory.textures,
+      programs: i.programs?.length ?? 0,
+      pixelRatio: this.renderer.getPixelRatio(),
+      shadows: this.renderer.shadowMap.enabled,
+      shadowSize: this.sun.shadow.mapSize.x,
+      lowFx: this.lowFx,
+      cpuMs: this.cpu.frames ? this.cpu.ms / this.cpu.frames : 0,
+      frames: this.cpu.frames,
+      drawn: this.cpu.drawn,
+    };
+  }
+  resetPerf() {
+    this.cpu = { ms: 0, frames: 0, drawn: 0 };
+  }
+
   private loop = () => {
+    const t0 = performance.now();
+    this.frame();
+    this.cpu.ms += performance.now() - t0;
+    this.cpu.frames++;
+  };
+
+  private frame() {
     this.raf = requestAnimationFrame(this.loop);
     const dt = Math.min(0.1, this.clock.getDelta());
     if (this.view?.paused) return;
@@ -1094,7 +1124,8 @@ export class FarmWorld {
     }
     this.followCamera(dt);
     this.renderer.render(this.scene, this.camera);
-  };
+    this.cpu.drawn++;
+  }
 
   /** Cheap phones: if frames come slowly, drop the shadows and draw at a lower resolution. */
   private frames = 0;
