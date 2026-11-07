@@ -1,10 +1,11 @@
 /* The farm world's field work: what each of the six farms needs doing by hand, tile by tile.
 
-   A farm is a plot of 4 × 5 tiles. Each job (dig, sow, fertilize, cut weeds, water, spray, harvest…) is done by
+   A farm is a plot of 4 × 5 tiles, in four mini plots A to D: its columns, left to right (plots/data.ts). Each job (dig, sow, fertilize, cut weeds, water, spray, harvest…) is done by
    the farmer walking over the tiles with the right tool or load; the work done is a bit mask per farm and job.
    No pictures or three.js here, so the saved game can use it. */
 
 import { PRESCRIBE, followUpTitle } from '../care/data';
+import { PLOTS_PER_FARM, type PlotKind } from '../plots/data';
 import {
   CHECK_DAYS,
   DAMAGE,
@@ -12,6 +13,7 @@ import {
   checkKey,
   currentDay,
   hazardFor,
+  plotsOf,
   type FollowUp,
   type Plan,
   type Trial,
@@ -38,6 +40,17 @@ export const PLOTS: { x: number; z: number }[] = [
 ];
 export const PLOT_W = COLS * TILE;
 export const PLOT_D = ROWS * TILE;
+
+/** Which mini plot a tile is in: its column. */
+export const plotOfTile = (i: number) => i % COLS;
+/** The tiles of a mini plot. */
+export function plotMask(plot: number) {
+  let m = 0;
+  for (let i = plot; i < TILES; i += COLS) m |= 1 << i;
+  return m;
+}
+/** The plots that have any of these tiles. */
+export const plotsIn = (bits: number) => Array.from({ length: PLOTS_PER_FARM }, (_, p) => p).filter(p => bits & plotMask(p));
 
 export function tileCenter(farm: number, i: number) {
   const p = PLOTS[farm];
@@ -122,11 +135,15 @@ export function popcount(m: number) {
   return n;
 }
 
-/** The tiles a job needs done. */
-export function needOf(job: string, t: Pick<Trial, 'cycle'>, farm: number, day = 0) {
+/** The tiles a job needs done. Fertilizer at planting skips a plot that gets none; spraying skips the check strip. */
+export function needOf(job: string, t: Pick<Trial, 'cycle' | 'plans' | 'plots'>, farm: number, day = 0) {
   if (job === 'weed') return someTiles(`w:${t.cycle}:${farm}:${day}`, 7);
   if (job === 'drain') return someTiles(`p:${t.cycle}:${farm}:${day}`, 5);
   if (job === 'goat' || job === 'birds') return 1;
+  if (job === 'setupFeed' || job === 'spray') {
+    const rows = plotsOf(t, farm);
+    return rows.reduce((m, r, p) => ((job === 'setupFeed' ? r.fert === 'none' : r.sprayer === 'none') ? m : m | plotMask(p)), 0);
+  }
   return FULL;
 }
 
@@ -137,16 +154,36 @@ export const isDone = (f: Field, t: Pick<Trial, 'cycle'>, farm: number, job: str
 /** Land prep with oxen or a tractor is hired, not walked. */
 export const machinePrep = (p: Plan) => p.land === 'ox' || p.land === 'tractor';
 
-/** The setup jobs of a farm, in order: prepare the land, sow, then fertilizer at planting (if the plan has any). */
-export function setupJobs(p: Plan): string[] {
+/** The setup jobs of a farm, in order: prepare the land, sow, then fertilizer at planting (if any plot gets some). */
+export function setupJobs(t: Pick<Trial, 'cycle' | 'plans' | 'plots'>, farm: number): string[] {
   const jobs = ['prep', 'sow'];
-  if (p.fert !== 'none') jobs.push('setupFeed');
+  if (needOf('setupFeed', t, farm)) jobs.push('setupFeed');
   return jobs;
 }
 
 /** The first setup job a farm still needs, or null once it is planted. */
 export function setupLeft(f: Field, t: Trial, farm: number): string | null {
-  for (const job of setupJobs(t.plans[farm])) if (!isDone(f, t, farm, job)) return job;
+  for (const job of setupJobs(t, farm)) if (!isDone(f, t, farm, job, needOf(job, t, farm))) return job;
+  return null;
+}
+
+/** A spray treatment or follow-up has been done on this farm this cycle (its plots keep their sprayers after it). */
+export function sprayDone(f: Field, t: Trial, farm: number): boolean {
+  for (let day = 1; day <= CHECK_DAYS; day++) {
+    if (TREAT_JOB[hazardFor(t, farm, day)] === 'spray' && t.checks[checkKey(farm, day)]?.treated) return true;
+    if (t.followUps?.some(u => u.farm === farm && u.day === day && u.job === 'spray' && u.done)) return true;
+    if (doneMask(f, t.cycle, farm, `t${day}`) && TREAT_JOB[hazardFor(t, farm, day)] === 'spray') return true;
+  }
+  return false;
+}
+
+/** Why a plot's input can no longer be changed (it is in the ground), or null. */
+export function plotLocked(f: Field, t: Trial, farm: number, plot: number, kind: PlotKind): string | null {
+  if (t.phase !== 'growing') return null;
+  const m = plotMask(plot);
+  if (kind === 'seed' && doneMask(f, t.cycle, farm, 'sow') & m) return 'Sown';
+  if (kind === 'fert' && doneMask(f, t.cycle, farm, 'setupFeed') & m) return 'Spread';
+  if (kind === 'sprayer' && plotsOf(t, farm)[plot].sprayer && sprayDone(f, t, farm)) return 'In use';
   return null;
 }
 
@@ -169,7 +206,7 @@ export function treatLeft(f: Field, t: Trial, farm: number, day: number): { job:
   const job = TREAT_JOB[h];
   if (!job || !canTreat(h, t.plans[farm])) return null;
   if (PRESCRIBE[h] && !rec.fix) return null;
-  const need = needOf(job, t, farm, day);
+  const need = needOf(job, t, farm, day) || FULL;
   const key = `t${day}`;
   if (isDone(f, t, farm, key, need)) return null;
   return { job, key, need, hazard: h };
@@ -181,7 +218,7 @@ export function followUpLeft(f: Field, t: Trial, farm: number, day: number): { j
   const u = t.followUps?.find(x => x.farm === farm && x.day === day && !x.done);
   if (!u) return null;
   const job = u.job as TreatJob;
-  const need = needOf(job, t, farm, 100 + day);
+  const need = needOf(job, t, farm, 100 + day) || FULL;
   const key = `f${day}`;
   if (isDone(f, t, farm, key, need)) return null;
   return { job, key, need, hazard: u.hazard, follow: u };

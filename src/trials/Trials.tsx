@@ -6,25 +6,30 @@ import { GoldButton, Stars, fmt } from '../components/ui';
 import { say } from '../first/data';
 import { GuideLine } from '../first/Review';
 import { dayNumber } from '../rounds/farms';
+import { PlotBoard, plotsLine } from '../plots/PlotBoard';
+import { OPTIONS, PLOT_LETTERS, seedOf } from '../plots/data';
 import type { Action, GameState } from '../state';
 import {
   CHECK_DAYS,
+  FARM_STEPS,
   FORECASTS,
-  PLAN_STEPS,
   WATER_NEED,
   checkKey,
   currentDay,
   differences,
   explain,
+  farmCost,
   farmName,
   hazardFor,
   lower,
   optionOf,
-  planCost,
   planProblem,
+  plotLessons,
+  plotsOf,
   samePlan,
   stageOfDay,
   stepOf,
+  trialCost,
   type StepKey,
   type Trial,
   type TrialHazard,
@@ -126,10 +131,13 @@ function Intro({ s, dispatch, t }: Props & { s: GameState }) {
 function PlanBoard({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) {
   const [pick, setPick] = useState<{ farm: number; key: StepKey } | null>(null);
   const [planting, setPlanting] = useState(false);
+  const [board, setBoard] = useState<number | null>(null);
   const k = tr.plans.length;
-  const total = tr.plans.reduce((n, p) => n + planCost(p), 0);
-  const problem = planProblem(tr.plans, s.coins);
-  const twinOf = (i: number) => tr.plans.findIndex((q, j) => j < i && samePlan(q, tr.plans[i]));
+  const total = trialCost(tr);
+  const problem = planProblem(tr, s.coins);
+  // two farms with the same plan and the same plots teach nothing new
+  const plotKey = (i: number) => JSON.stringify(plotsOf(tr, i).map(r => [r.seed, r.fert, r.sprayer]));
+  const twinOf = (i: number) => tr.plans.findIndex((q, j) => j < i && samePlan(q, tr.plans[i]) && plotKey(j) === plotKey(i));
   const changed = tr.guided ? differences(tr.plans[0], tr.plans[1]) : [];
 
   let line: string;
@@ -161,16 +169,16 @@ function PlanBoard({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) 
       <div className="fs-panel tr-panel">
         <div className="tr-grid" style={{ gridTemplateColumns: `104px repeat(${k}, minmax(0, 1fr))` }}>
           <div className="tr-head tr-corner">Your plans</div>
-          {tr.plans.map((p, i) => {
+          {tr.plans.map((_, i) => {
             const twin = twinOf(i);
             return (
               <div key={i} className={`tr-head${twin >= 0 ? ' is-twin' : ''}`}>
                 <b>{farmName(i)}</b>
-                <small>{twin >= 0 ? `Same as ${farmName(twin)}` : tr.guided && i === 0 ? 'A common way' : `${fmt(planCost(p))} coins`}</small>
+                <small>{twin >= 0 ? `Same as ${farmName(twin)}` : tr.guided && i === 0 ? 'A common way' : `${fmt(farmCost(tr, i))} coins`}</small>
               </div>
             );
           })}
-          {PLAN_STEPS.map(step => (
+          {FARM_STEPS.map(step => (
             <Row key={step.key} label={step.label}>
               {tr.plans.map((p, i) => {
                 const locked = tr.guided && i === 0;
@@ -190,6 +198,23 @@ function PlanBoard({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) 
               })}
             </Row>
           ))}
+          <Row label="Plots A–D">
+            {tr.plans.map((_, i) => (
+              <button
+                type="button"
+                key={i}
+                className="tr-cell tr-plots"
+                onClick={() => setBoard(i)}
+                aria-label={`${farmName(i)}, plots: ${plotsLine(plotsOf(tr, i), 'seed')}. Tap to choose each plot's seed, fertilizer and sprayer`}
+              >
+                {plotsOf(tr, i).map((r, p) => (
+                  <span key={p} className="tr-plot-chip" style={{ background: seedOf(r.seed).color }} title={`${PLOT_LETTERS[p]}: ${seedOf(r.seed).label}, ${OPTIONS.fert.find(x => x.id === r.fert)?.label}`}>
+                    {PLOT_LETTERS[p]}
+                  </span>
+                ))}
+              </button>
+            ))}
+          </Row>
         </div>
         <div className="tr-foot">
           <span>
@@ -204,6 +229,17 @@ function PlanBoard({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) 
       </div>
 
       <GuideLine text={line} action={{ label: tr.guided ? 'Plant both farms' : `Plant all ${k} farms`, onClick: plant }} />
+
+      {board !== null && (
+        <div className="abs ending" style={{ inset: 0 }} onClick={() => setBoard(null)} role="dialog" aria-label="Plots A to D">
+          <div className="fs-panel pb-panel is-over" onClick={e => e.stopPropagation()}>
+            <PlotBoard tr={tr} farm={board} kinds={['seed', 'fert', 'sprayer']} coins={s.coins} dispatch={dispatch} onFarm={setBoard} />
+            <button type="button" className="pb-close" onClick={() => setBoard(null)}>
+              Done
+            </button>
+          </div>
+        </div>
+      )}
 
       {pick && <Picker s={s} tr={tr} farm={pick.farm} stepKey={pick.key} dispatch={dispatch} onClose={() => setPick(null)} />}
 
@@ -384,15 +420,20 @@ function Compare({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) {
   const results = tr.results ?? [];
   const why = explain(tr, results);
   const [keep, setKeep] = useState(why.best);
+  const [byPlot, setByPlot] = useState(false);
+  const lessons = plotLessons(tr);
   const k = tr.plans.length;
   const maxBags = Math.max(6, ...results.map(r => r.bags));
   const income = results.reduce((n, r) => n + r.income, 0);
-  const differing = PLAN_STEPS.filter(step => tr.plans.some(p => String(p[step.key]) !== String(tr.plans[0][step.key])));
+  const differing = FARM_STEPS.filter(step => tr.plans.some(p => String(p[step.key]) !== String(tr.plans[0][step.key])));
   const kept = s.recipe && samePlan(s.recipe, tr.plans[keep]);
 
   return (
     <>
       <div className="fs-panel tr-panel tr-compare">
+        {byPlot ? (
+          <PlotResults tr={tr} />
+        ) : (
         <div className="tr-grid" style={{ gridTemplateColumns: `86px repeat(${k}, minmax(0, 1fr))` }}>
           <div className="tr-head tr-corner">Harvest</div>
           {results.map((_, i) => (
@@ -432,11 +473,28 @@ function Compare({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) {
             </Row>
           ))}
         </div>
+        )}
         <aside className="tr-why">
+          <div className="tr-tabs" role="tablist" aria-label="Results">
+            <button type="button" role="tab" aria-selected={!byPlot} className={!byPlot ? 'is-on' : ''} onClick={() => setByPlot(false)}>
+              By farm
+            </button>
+            <button type="button" role="tab" aria-selected={byPlot} className={byPlot ? 'is-on' : ''} onClick={() => setByPlot(true)}>
+              By plot
+            </button>
+          </div>
           <p className="tr-why-title">Lima AI</p>
-          {why.lines.map(l => (
-            <p key={l}>{l}</p>
-          ))}
+          {byPlot ? (
+            <div className="tr-lessons">
+              {lessons.map(l => (
+                <p key={l.topic}>
+                  <b>{l.topic}.</b> {cap(l.line.replace(/^[^,]+, /, ''))}
+                </p>
+              ))}
+            </div>
+          ) : (
+            why.lines.map(l => <p key={l}>{l}</p>)
+          )}
           <GoldButton font={10} height={30} style={{ width: '100%', marginTop: 'auto' }} selected={!!kept} onClick={() => dispatch({ type: 'trialRecipe', farm: keep })}>
             {kept ? `${farmName(keep)}'s plan is your recipe` : `Keep ${farmName(keep)}'s plan as my recipe`}
           </GoldButton>
@@ -451,5 +509,49 @@ function Compare({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) {
         action={{ label: 'Plan the next cycle', onClick: () => dispatch({ type: 'trialNew' }) }}
       />
     </>
+  );
+}
+
+const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
+
+/** Every plot's harvest, farm by farm: what each seed, fertilizer, sprayer and machine grew under the same weather. */
+function PlotResults({ tr }: { tr: Trial }) {
+  const results = tr.results ?? [];
+  const all = results.flatMap(r => r.plots ?? []);
+  const max = Math.max(1, ...all.map(p => p.bags));
+  return (
+    <div className="tr-grid pt-grid" style={{ gridTemplateColumns: `64px repeat(4, minmax(0, 1fr))` }} aria-label="Harvest by plot">
+      <div className="tr-head tr-corner">By plot</div>
+      {PLOT_LETTERS.map(l => (
+        <div key={l} className="tr-head">
+          <b>Plot {l}</b>
+        </div>
+      ))}
+      {results.map((r, i) => (
+        <Row key={i} label={<b>{farmName(i)}</b>}>
+          {(r.plots ?? []).map((p, j) => {
+            const best = (r.plots ?? []).every(q => q.bags <= p.bags);
+            const inp = p.inputs;
+            const fert = OPTIONS.fert.find(x => x.id === inp.fert)?.label;
+            const spray = inp.sprayer && inp.sprayer !== 'none' ? OPTIONS.sprayer.find(x => x.id === inp.sprayer)?.label : '';
+            const tags = [seedOf(inp.seed).label, fert, spray, inp.tractor ? `${inp.tractor} tractor` : ''].filter(Boolean);
+            return (
+              <div key={j} className={`pt-cell${best ? ' is-best' : ''}`} title={tags.join(' · ')}>
+                <span className="pt-bar" style={{ width: `${Math.max(4, (p.bags / max) * 100)}%` }} />
+                <b>
+                  {p.bags} {p.bags === 1 ? 'bag' : 'bags'}
+                  {inp.tractor && <i className="pt-tractor"> · {inp.tractor} tractor</i>}
+                </b>
+                <small>{seedOf(inp.seed).label}</small>
+                <small>
+                  {fert}
+                  {spray ? ` · ${spray}` : ''}
+                </small>
+              </div>
+            );
+          })}
+        </Row>
+      ))}
+    </div>
   );
 }
