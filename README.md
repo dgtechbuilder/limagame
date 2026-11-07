@@ -31,6 +31,9 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [The farm world](#the-farm-world)
 - [The six farms](#the-six-farms)
 - [From Wakala Agent](#from-wakala-agent)
+- [Navigation and the main menu](#navigation-and-the-main-menu)
+- [Settings](#settings)
+- [Character art: retro anime](#character-art-retro-anime)
 - [Design review mode](#design-review-mode)
 - [Saving, events and privacy](#saving-events-and-privacy)
 - [Performance on low-cost phones](#performance-on-low-cost-phones)
@@ -89,13 +92,19 @@ src/
   assets.ts                image paths (art exported from Figma into public/assets)
   styles.css               design tokens (colours, gold button, panels) and component styles
   components/
+    Nav.tsx                Back / Menu / Farm buttons shared by every screen (NavBar, NavContext)
     FarmMap.tsx            the Figma farm map: the ground of the whole game (1× and 2×)
     FarmScene.tsx          farm screen: HUD, Next Task, field bubbles, selected plot
     Modal.tsx, ui.tsx, Icons.tsx   modal frames, buttons, chips, inline SVG icons
   screens/
+    MainMenu.tsx           the main menu
     Catalog.tsx            Shop and Farming Steps
     Journey.tsx            harvest timing → sale → storage → value addition → process → results; rewards; info
-    Meta.tsx               How the farm works, Settings
+    Meta.tsx               How the farm works
+    Settings.tsx           the Settings page: My farmer, Game, Display, Help & data
+  art/                     retro anime characters: anime.tsx (SVG kit: farmer, guide, shopkeeper, Ojuok),
+                           Cast.tsx (anime or original picture), style.ts (style and read-aloud contexts)
+  speech.ts                Read aloud: the phone's own voice (speechSynthesis)
   first/                   the first session (see below)
   world/                   the farm world (see below): field.ts the work by hand, engine.ts the 3D farm, World.tsx the HUD
   trials/                  the six farms (see below): model.ts holds every number; Trials.tsx the screens (loaded when opened)
@@ -301,6 +310,13 @@ WASD. The **task card** at the top says what to do next; tap it and the farmer w
 - What a farm shows comes from its plan and its day: wild grass before digging, furrows, sprouts, knee-high and tall
   maize, dry cobs, stubble; drought-pale soil, yellow hunger, rust, armyworm specks, weeds, puddles, hail, a goat, birds.
   Problems missed earlier leave the farm yellower.
+- **The tractor** waits by the shed. Tap **TRACTOR** (left edge) to walk to it and hop on, **GET OFF** to step down. On
+  the seat the farmer works a swath **three times as wide** (`TRACTOR_EDGE` in `src/tractor/data.ts`) and drives a
+  little faster, so one pass down a farm does what takes two on foot: about **3× the ground in the same time**
+  (`tests/tractor-sim.spec.ts` checks the numbers). The tractor does the big jobs (plough, sow, fertilize at planting,
+  harvest); weeds, puddles, watering, spraying, top-dressing and animals stay on foot. Finishing a big job mostly from
+  the seat pays **+30 bonus points** once per farm and job (`TRACTOR_BONUS`). The hired tractor (a *Tractor hire* plan)
+  now ploughs a whole farm in one pass too.
 - **Sleep** at the farmhouse starts the next day (on the fast clock); **Plan** by the house, or **Mission** on the
   HUD, opens the plans, progress and results.
 - The HUD: the farmer and their level (top left), settings, coins and points (top right; **+** opens the shop and
@@ -462,6 +478,53 @@ follow-up done and one missed, a spray job with the kit and product, a tractor d
 read right and wrong, saving and *Reset progress*, and a tour on a 740 × 340 touch screen that saves screenshots to
 `test-results/tour/`. They run on every pull request (`.github/workflows/tests.yml`).
 
+## Navigation and the main menu
+
+Every screen has at least two or three ways to move, and one of them is always the main menu:
+
+| Screen | Back | Menu | Farm |
+| --- | --- | --- | --- |
+| Shop, Farming Steps, Rewards, Sale, Storage… | one step (to the menu if it was opened from there) | ☰ | ⌂ |
+| Mission (six farms), Field rounds, a farm check, Choose the fix, the safety kit | one step | ☰ | ⌂ |
+| Settings | close (to the menu if it was opened from there) | ☰ | ⌂ (not in the first session) |
+| The tractor drive | the previous step | ☰ (the clock waits while it is open) | ⌂ |
+| First session | one step where that is safe | ☰ | Settings instead (the farm is not open yet) |
+
+The **main menu** (`src/screens/MainMenu.tsx`, the **MENU** button on the farm) lists My farm, Mission, Field rounds,
+Tractor, Shop, Rewards, Farming steps and Settings. A screen opened from the menu goes back to the menu on *Back*;
+*Farm* closes everything. The shared buttons are `NavBar` in `src/components/Nav.tsx`; `ModalShell` adds them to every
+modal. `tests/nav.spec.ts` plays them.
+
+## Settings
+
+*Settings* (the **SETTINGS** button on the farm, the main menu, or the top bar in the first session) is a full page with
+four sections. Every control works at once and is saved on the device; *Reset progress* keeps them.
+
+| Section | Controls |
+| --- | --- |
+| **My farmer** | rename the farmer; change the look (the farm, the rounds and the HUD all follow) |
+| **Game** | *Character style*: Retro anime or Original · *Farm view*: 3D farm or Classic · *Read aloud*: speaks the guide's lines and the game's messages with the phone's voice (a Kenyan English voice when the phone has one), with a Test button |
+| **Display** | *Graphics*: Auto (drops shadows by itself on slow phones), High, Low (no shadows, 1× resolution) · *Reduce motion*: ends every animation and transition at once · *Full screen* |
+| **Help & data** | How the farm works · Design review · Reset progress (asks twice) |
+
+The settings live in `GameState.settings` (`src/state.ts`). The 3D farm is rebuilt when the character style or the
+graphics change. `tests/settings.spec.ts` plays every section.
+
+## Character art: retro anime
+
+The characters are drawn in a **retro anime** style by default: flat cel colours with one hard, slightly purple
+shadow tone, a purple-black ink outline, tall eyes with two highlights, hatched blush, screentone dots in the shadows
+and an 80s cut-stripe sun behind the cast. It is one SVG kit in `src/art/anime.tsx`, so there is nothing extra to
+download:
+
+- **The player's farmer**, in all four looks (headwrap, cap, hi-top, headwrap), full length in the first session and
+  the field rounds, and as a bust on the HUD, the look picker and the rewards hub.
+- **The farming guide**, **the shopkeeper** and **Ojuok** (the rewards hub), replacing the Figma pictures.
+- **The 3D farm**: the farmer and the animals use toon shading (three hard light steps) and an inverted-hull ink outline
+  (`src/world/toon.ts`); the farmer gets a bigger head with a painted anime face and the look's headwear.
+
+*Settings → Game → Character style → Original* brings back the original pictures and models.
+
 ## Design review mode
 
 Open **`?review=1`** (or *Settings → Design review*) for a sandbox with a menu of every screen filled with
@@ -490,7 +553,8 @@ player's saved game or events.
 - The farm map is **86 KB** at 1× and **194 KB** at 2× (phones with sharp screens pick 2×).
 - All first-session crop art is SVG drawn in code: no images to download.
 - Checked with the CPU slowed 6×: taps respond in 0.3–0.6 s and the crop-recovery animation holds ~60 fps.
-- Animations respect *reduce motion*.
+- Animations respect *reduce motion*, from the phone or from *Settings → Display*.
+- *Settings → Display → Graphics → Low* turns off shadows and draws the 3D farm at 1× for the oldest phones.
 
 ## Assumptions and open decisions
 

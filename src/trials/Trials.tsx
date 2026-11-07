@@ -1,4 +1,5 @@
 import { useState, type Dispatch, type ReactNode } from 'react';
+import { NavBar } from '../components/Nav';
 import { img } from '../assets';
 import { FarmMap } from '../components/FarmMap';
 import { GoldButton, Stars, fmt } from '../components/ui';
@@ -83,9 +84,7 @@ export function Trials({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
         </span>
       </div>
       {tr && <span className="rr-roundtag">Maize · {FORECASTS[tr.forecast].label.split(':')[0]}</span>}
-      <button type="button" className="rr-exit" onClick={close}>
-        My farm
-      </button>
+      <NavBar horizontal onBack={close} style={{ right: 6, top: 4 }} />
       {body}
     </div>
   );

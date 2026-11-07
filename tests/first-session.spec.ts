@@ -60,6 +60,7 @@ test('the game saves, and Reset progress starts again', async ({ page }) => {
   expect(after.fs.phase).toBe('done');
 
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Help & data', exact: true }).click();
   await page.getByRole('button', { name: 'Reset', exact: true }).click();
   await page.getByRole('button', { name: 'Yes, erase', exact: true }).click();
   await expect.poll(async () => (await state(page)).fs.phase).toBe('create');

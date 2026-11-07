@@ -30,7 +30,9 @@ import {
   type TaskIcon,
   type TreatJob,
 } from './field';
-import { FarmWorld, PLACES, STAGE_H, STAGE_W } from './engine';
+import { FarmWorld, PLACES, STAGE_H, STAGE_W, TRACTOR_BOARD } from './engine';
+import { useNav } from '../components/Nav';
+import { TRACTOR_BONUS, TRACTOR_EDGE } from '../tractor/data';
 
 // from Wakala Agent: the screens after a right call, at the shed and at the Hire spot, loaded when first opened
 const Prescribe = lazy(() => import('../care/Prescribe').then(m => ({ default: m.Prescribe })));
@@ -82,7 +84,10 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
   const [stick, setStick] = useState<{ x: number; y: number; dx: number; dy: number } | null>(null);
   const [night, setNight] = useState<string | null>(null);
   const [care, setCare] = useState<Care | null>(null);
-  const [anchors, setAnchors] = useState<{ farmer: { x: number; y: number }; sign: { x: number; y: number; visible: boolean } | null }>({ farmer: { x: 437, y: 160 }, sign: null });
+  const [anchors, setAnchors] = useState<{ farmer: { x: number; y: number }; sign: { x: number; y: number; visible: boolean } | null; riding: boolean; nearTractor: boolean }>({ farmer: { x: 437, y: 160 }, sign: null, riding: false, nearTractor: false });
+  /** the farmer is walking to the tractor to hop on */
+  const rideIntent = useRef(false);
+  const nav = useNav();
   /** the farm whose check opens when the farmer reaches its sign (after a tap on the task card) */
   const intent = useRef<number | null>(null);
 
@@ -112,9 +117,9 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
   // the 3D farm
   useEffect(() => {
     const w = new FarmWorld(canvas.current!, {
-      mark: (farm, job, bits) => {
+      mark: (farm, job, bits, tractor) => {
         noteCare(farm, job, bits);
-        dispatch({ type: 'fieldMark', farm, job, bits });
+        dispatch({ type: 'fieldMark', farm, job, bits, tractor });
       },
       carry: item => {
         // from Wakala Agent: the safety kit and the product before a spray job
@@ -135,8 +140,14 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         }
       },
       hint: say,
-      arrived: () => undefined,
-    });
+      arrived: () => {
+        // walked to the tractor from the HUD or the menu: hop on
+        if (rideIntent.current) {
+          rideIntent.current = false;
+          mountTractor();
+        }
+      },
+    }, { anime: sRef.current.settings.art === 'anime', graphics: sRef.current.settings.graphics });
     eng.current = w;
     // for automated play-tests
     (window as unknown as { __limaWorld?: FarmWorld }).__limaWorld = w;
@@ -154,7 +165,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     const tick = window.setInterval(() => {
       const f = w.farmerScreen();
       const sg = eng.current && atSignRef.current >= 0 ? signOf(atSignRef.current) : null;
-      setAnchors({ farmer: f, sign: sg ? w.project(sg.x, 2.5, sg.z) : null });
+      setAnchors({ farmer: f, sign: sg ? w.project(sg.x, 2.5, sg.z) : null, riding: w.isRiding(), nearTractor: w.nearTractor() });
     }, 120);
     return () => {
       window.removeEventListener('resize', fit);
@@ -182,6 +193,50 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     if (target.at === 'sign') return signOf(target.farm);
     return w.nextTile(target.farm);
   }
+
+  /* ---------------- the tractor seat: 3× the ground on the big jobs, and bonus points ---------------- */
+
+  function mountTractor() {
+    const w = eng.current;
+    if (!w) return;
+    const r = w.mount();
+    if (r === 'busy') return say('The tractor is busy ploughing: wait for it to finish');
+    if (r === 'far') return;
+    track('tractor_ride', { stage: 'seat' });
+    say(`On the tractor: ploughs, plants, fertilizes and harvests ${TRACTOR_EDGE}× the ground, +${TRACTOR_BONUS.perJob} points a farm`);
+  }
+
+  /** The Tractor button: hop on, get off, or walk to the tractor first. */
+  const toggleRide = () => {
+    const w = eng.current;
+    if (!w) return;
+    if (w.isRiding()) {
+      w.dismount();
+      return say('You got off. Small jobs (weeds, water, spray) are done on foot');
+    }
+    if (w.nearTractor()) return mountTractor();
+    rideIntent.current = true;
+    w.walkTo(TRACTOR_BOARD.x, TRACTOR_BOARD.z);
+    say('Walking to the tractor');
+  };
+
+  // "Tractor" in the main menu: back on the farm, walk to the tractor and hop on
+  const rideSeen = useRef(s.rideReq);
+  useEffect(() => {
+    if (s.rideReq === rideSeen.current) return;
+    rideSeen.current = s.rideReq;
+    if (!eng.current?.isRiding()) toggleRide();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s.rideReq]);
+
+  // "Farm" in any screen's navigation closes the screens this world keeps to itself (a check, the kit, the tractor drive)
+  const navSeen = useRef(s.navSeq);
+  useEffect(() => {
+    if (s.navSeq === navSeen.current) return;
+    navSeen.current = s.navSeq;
+    setChecking(null);
+    setCare(null);
+  }, [s.navSeq]);
 
   const goToTask = () => {
     const w = eng.current;
@@ -450,6 +505,9 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         </div>
       )}
 
+      {/* the HUD gives way to the full-screen rounds and six-farms screens, which have their own navigation */}
+      {!(s.roundsOpen || s.trialsOpen) && (
+        <>
       {/* the farmer and their level */}
       <div className="hud-avatar">
         <span className="hud-hex">
@@ -460,6 +518,20 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       <button type="button" className="hud-round" style={{ left: 14, top: 66 }} onClick={() => dispatch({ type: 'open', modal: { kind: 'settings' } })} aria-label="Settings">
         <GearIcon />
         <span>SETTINGS</span>
+      </button>
+      <button type="button" className="hud-round hud-menu" onClick={nav.menu} aria-label="Main menu">
+        <MenuIcon />
+        <span>MENU</span>
+      </button>
+      <button
+        type="button"
+        className={`hud-round hud-tractor${anchors.riding ? ' is-on' : ''}`}
+        onClick={toggleRide}
+        aria-pressed={anchors.riding}
+        aria-label={anchors.riding ? 'Get off the tractor' : anchors.nearTractor ? 'Drive the tractor' : 'Walk to the tractor'}
+      >
+        <TractorBtnIcon />
+        <span>{anchors.riding ? 'GET OFF' : 'TRACTOR'}</span>
       </button>
 
       {/* coins and points */}
@@ -512,8 +584,11 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
             Cycle {t.cycle} · {day > CHECK_DAYS ? 'harvest' : `day ${day} of ${CHECK_DAYS}`}
           </span>
         )}
+        {anchors.riding && <span className="is-carry">On the tractor · {TRACTOR_EDGE}× the ground</span>}
         {s.field.carry && <span className="is-carry">Carrying: {CARRY_NAME[s.field.carry].toLowerCase()}</span>}
       </div>
+        </>
+      )}
 
       {hint && (
         <div key={hint.id} className="hud-hint" style={{ left: Math.min(STAGE_W - 120, Math.max(120, anchors.farmer.x)), top: Math.max(56, anchors.farmer.y - 34) }}>
@@ -589,6 +664,30 @@ function GearIcon() {
         <circle r={7.5} />
       </g>
       <circle r={3.2} fill="#e98a2e" />
+    </svg>
+  );
+}
+
+function MenuIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width={26} height={26} aria-hidden="true">
+      <g fill="#fff">
+        <rect x={3} y={5} width={18} height={3.2} rx={1.6} />
+        <rect x={3} y={10.4} width={18} height={3.2} rx={1.6} />
+        <rect x={3} y={15.8} width={18} height={3.2} rx={1.6} />
+      </g>
+    </svg>
+  );
+}
+
+function TractorBtnIcon() {
+  return (
+    <svg viewBox="0 0 40 36" width={26} height={26} aria-hidden="true">
+      <rect x={4} y={14} width={24} height={11} rx={2} fill="#fff" />
+      <rect x={17} y={5} width={12} height={11} rx={1.5} fill="#fff" />
+      <rect x={20} y={7} width={6} height={6} fill="#d9731f" />
+      <circle cx={11} cy={28} r={7} fill="#fff" stroke="#8a4a14" strokeWidth={2} />
+      <circle cx={31} cy={30} r={5} fill="#fff" stroke="#8a4a14" strokeWidth={2} />
     </svg>
   );
 }

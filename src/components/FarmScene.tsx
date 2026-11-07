@@ -3,6 +3,7 @@ import { img } from '../assets';
 import { STEP_META, STEPS } from '../data';
 import { SELLING, SOLD, daysToHarvest, stepIndex, today, type Action, type GameState, type Modal } from '../state';
 import { FarmerPortrait } from '../first/art';
+import { useAnime } from '../art/style';
 import { FarmMap } from './FarmMap';
 import { LOOKS } from '../first/data';
 import { GoArrow, MailIcon, SettingsIcon, TimerIcon } from './Icons';
@@ -43,6 +44,7 @@ export function nextAction(s: GameState): { label: string; short: string; icon: 
  * All coordinates are on the 874 × 402 landscape stage, measured from the Figma frames.
  */
 export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
+  const anime = useAnime();
   const busy = s.modal !== null; // the Figma modal frames hide the field HUD
   const open = (modal: Modal) => dispatch({ type: 'open', modal });
   const now = nextAction(s);
@@ -102,9 +104,9 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
         aria-label="Season results"
         onClick={() => open({ kind: 'outcome' })}
       >
-        {s.farmer ? (
+        {s.farmer || anime ? (
           <span style={{ display: 'grid', placeItems: 'center', width: 53, height: 45, borderRadius: 10, background: '#cfe6b0', overflow: 'hidden' }}>
-            <FarmerPortrait look={LOOKS[s.farmer.look] ?? LOOKS[0]} size={44} />
+            <FarmerPortrait look={LOOKS[s.farmer?.look ?? 0] ?? LOOKS[0]} size={44} />
           </span>
         ) : (
           <Img src={img.avatar} w={53} h={45} style={{ borderRadius: 10, objectFit: 'cover' }} />
@@ -149,6 +151,21 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
         onClick={() => open({ kind: 'settings' })}
       >
         <SettingsIcon size={20} />
+      </button>
+      <button
+        type="button"
+        className="peach-btn small inset-dark abs"
+        style={{ left: busy ? 6 : 741, top: busy ? 85 : 77, width: 28, height: 28 }}
+        aria-label="Main menu"
+        onClick={() => open({ kind: 'menu' })}
+      >
+        <svg viewBox="0 0 24 24" width={20} height={20} aria-hidden="true">
+          <g fill="#fff">
+            <rect x={3} y={5} width={18} height={3.2} rx={1.6} />
+            <rect x={3} y={10.4} width={18} height={3.2} rx={1.6} />
+            <rect x={3} y={15.8} width={18} height={3.2} rx={1.6} />
+          </g>
+        </svg>
       </button>
       <button
         type="button"

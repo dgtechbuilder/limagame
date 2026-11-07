@@ -2,6 +2,7 @@ import { useEffect, type CSSProperties, type ReactNode } from 'react';
 import { img } from '../assets';
 import { CheckBadge } from './Icons';
 import { Img } from './ui';
+import { NavBar } from './Nav';
 
 const FRAMES = {
   /** 518 × 346 frame: Shop, Farming Steps, Storage, Value Addition, Select Process, Harvest Info */
@@ -22,6 +23,7 @@ export function ModalShell({
   titleSize = 14,
   close,
   onClose,
+  isMenu,
   children,
 }: {
   frame: FrameKind;
@@ -32,6 +34,8 @@ export function ModalShell({
   /** close button top-left, in stage coordinates */
   close: [number, number];
   onClose: () => void;
+  /** the main menu itself: it has no Menu button */
+  isMenu?: boolean;
   children: ReactNode;
 }) {
   const f = FRAMES[frame];
@@ -52,6 +56,8 @@ export function ModalShell({
       <div className="abs" style={{ inset: 0, pointerEvents: 'none', animation: 'pop 0.2s ease both' }}>
         <div style={{ pointerEvents: 'auto' }}>{children}</div>
       </div>
+      {/* Back, Menu and Farm on every screen */}
+      <NavBar onBack={onClose} hideMenu={isMenu} style={{ left: 8, top: 262 }} />
       <button
         type="button"
         className="close-btn"

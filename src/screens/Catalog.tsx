@@ -2,6 +2,7 @@ import { useState, type Dispatch } from 'react';
 import { img } from '../assets';
 import { InfoDot, EditIcon } from '../components/Icons';
 import { IconSidebar, ModalShell } from '../components/Modal';
+import { Cast } from '../art/Cast';
 import { GoldButton, Img, Partner, PriceChip } from '../components/ui';
 import { SHOP_TABS, STEP_META, STEPS, TASK_USES_ITEM, type ShopTab, type StepId } from '../data';
 import { stepIndex, tasksDone, type Action, type GameState } from '../state';
@@ -29,7 +30,7 @@ export function ShopModal({ s, tab, dispatch }: { s: GameState; tab: ShopTab; di
 
       {/* Shopkeeper with a speech bubble that changes per section */}
       <div className="panel" style={{ left: 215, top: 78, width: 197, height: 254, borderRadius: '16px 0 0 16px' }}>
-        <img src={img.shopkeeper} alt="Shopkeeper" style={{ width: 197, height: 254 }} />
+        <Cast id="shopkeeper" w={197} h={254} alt="Shopkeeper" backdrop="panel" />
         <div className="speech" style={{ left: 72, top: 149, width: 125, height: 91 }}>
           <img src={img.bubble} alt="" />
           <span style={{ width: 98, fontSize: 9, padding: '10px 0 0' }}>{def.speech}</span>

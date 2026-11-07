@@ -3,7 +3,7 @@
    implement marks cells as it passes, and every score is counted from the grid. Before-planting jobs only for now:
    no grain tank or trailer. */
 
-import { FARM_ACRES, IMPL, LAYOUTS, MONEY, TRACTORS, TRACTOR_REWARD, fitOf, type FarmLayout, type ImplId, type Implement, type Obstacle, type TractorKind } from './data';
+import { FARM_ACRES, IMPL, LAYOUTS, MONEY, TRACTORS, TRACTOR_BONUS, TRACTOR_REWARD, fitOf, type FarmLayout, type ImplId, type Implement, type Obstacle, type TractorKind } from './data';
 
 export const FW = 580;
 export const FH = 370;
@@ -496,8 +496,11 @@ export function finishJob(job: Job, reason: JobResult['reason']): JobResult {
 /** Coins and points for a finished drive, against the farm's best this cycle (TRACTOR_REWARD). */
 export function rewardFor(r: Pick<JobResult, 'score' | 'stars'>, best: { score: number; stars: number } | null) {
   const paidFor = TRACTOR_REWARD.retryPays === 'full' || !best ? r.score : Math.max(0, r.score - best.score);
+  // using a tractor at all earns extra points the first time on a farm each cycle
+  const bonus = best ? 0 : TRACTOR_BONUS.perDrive;
   return {
     coins: Math.round(TRACTOR_REWARD.coinsPerScore * paidFor),
-    points: TRACTOR_REWARD.pointsPerStar * Math.max(0, r.stars - (best?.stars ?? 0)),
+    points: TRACTOR_REWARD.pointsPerStar * Math.max(0, r.stars - (best?.stars ?? 0)) + bonus,
+    bonus,
   };
 }

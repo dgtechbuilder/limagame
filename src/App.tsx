@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { FarmScene } from './components/FarmScene';
 import { ShopModal, StepsModal } from './screens/Catalog';
 import { InfoModal, OutcomeModal, ProcessModal, RewardsModal, SaleModal, StorageModal, TimingModal, ValueModal } from './screens/Journey';
@@ -10,7 +10,12 @@ const Rounds = lazy(() => import('./rounds/Rounds').then(m => ({ default: m.Roun
 const Trials = lazy(() => import('./trials/Trials').then(m => ({ default: m.Trials })));
 const World = lazy(() => import('./world/World').then(m => ({ default: m.World })));
 import { TRIAL_SAMPLES, wakalaCase } from './trials/samples';
-import { SettingsModal, WelcomeModal } from './screens/Meta';
+import { WelcomeModal } from './screens/Meta';
+import { SettingsPage } from './screens/Settings';
+import { ArtContext, VoiceContext } from './art/style';
+import { speak, stopSpeaking } from './speech';
+import { MainMenu } from './screens/MainMenu';
+import { NavBar, NavContext } from './components/Nav';
 import { REVIEW_BASE, SELLING, SOLD, initialState, reviewing, useGame, type GameState, type SeasonResult } from './state';
 
 const STAGE_W = 874;
@@ -76,7 +81,10 @@ const SCREENS: { label: string; group: string; state: Partial<GameState> }[] = [
   { group: 'New features', label: 'Rewards & Discounts Hub', state: { points: 2350, playSeconds: 22500, modal: { kind: 'rewards' } } },
   { group: 'New features', label: 'Value Addition', state: { ...selling, modal: { kind: 'value' } } },
   { group: 'New features', label: 'Select Process', state: { ...selling, modal: { kind: 'process' } } },
-  { group: 'Added', label: 'Settings', state: { modal: { kind: 'settings' } } },
+  { group: 'Added', label: 'Settings · My farmer', state: { modal: { kind: 'settings', tab: 'farmer' } } },
+  { group: 'Added', label: 'Settings · Game', state: { modal: { kind: 'settings', tab: 'game' } } },
+  { group: 'Added', label: 'Settings · Display', state: { modal: { kind: 'settings', tab: 'display' } } },
+  { group: 'Added', label: 'Settings · Help & data', state: { modal: { kind: 'settings', tab: 'help' } } },
   { group: 'Farm world', label: 'Farm world · Start', state: { view: 'world' } },
   { group: 'Farm world', label: 'Farm world · Planting', state: { view: 'world', trial: TRIAL_SAMPLES.worldPlanting, field: TRIAL_SAMPLES.worldPlantingField } },
   { group: 'Farm world', label: 'Farm world · Growing', state: { view: 'world', trial: TRIAL_SAMPLES.worldGrowing, field: TRIAL_SAMPLES.worldGrowingField } },
@@ -161,6 +169,15 @@ export default function App() {
     return () => window.clearInterval(id);
   }, [dispatch]);
 
+  // Read aloud: speak each new message
+  const voiceOn = s.settings.voice;
+  useEffect(() => {
+    if (s.toast && voiceOn) speak(s.toast.text);
+  }, [s.toast, voiceOn]);
+  useEffect(() => {
+    if (!voiceOn) stopSpeaking();
+  }, [voiceOn]);
+
   useEffect(() => {
     if (!s.toast) return;
     setToastVisible(true);
@@ -169,6 +186,10 @@ export default function App() {
   }, [s.toast]);
 
   const m = s.modal;
+  const nav = useMemo(
+    () => ({ menu: () => dispatch({ type: 'open', modal: { kind: 'menu' as const } }), home: () => dispatch({ type: 'home' }), settings: () => dispatch({ type: 'open', modal: { kind: 'settings' as const } }), menuOpen: s.modal?.kind === 'menu' }),
+    [dispatch, s.modal?.kind],
+  );
   const firstSession = s.fs.phase !== 'done';
   const current = SCREENS.findIndex(x =>
     firstSession
@@ -181,16 +202,34 @@ export default function App() {
   );
 
   return (
+    <NavContext.Provider value={nav}>
+    <ArtContext.Provider value={s.settings.art}>
+    <VoiceContext.Provider value={s.settings.voice}>
     <div className="viewport">
-      <div className="stage" style={{ transform: `translate(-50%, -50%) scale(${scale})` }}>
+      <div className={`stage${s.settings.reduceMotion ? ' reduce-motion' : ''}`} style={{ transform: `translate(-50%, -50%) scale(${scale})` }}>
         {firstSession ? (
-          <FirstSession s={s} dispatch={dispatch} />
+          <>
+            <FirstSession s={s} dispatch={dispatch} />
+            {/* before the farm opens: Back one step (where that is safe), the main menu, and Settings */}
+            {!m && (
+              <NavBar
+                horizontal
+                hideHome
+                showSettings
+                style={{ right: 6, top: 4 }}
+                onBack={
+                  s.fs.phase === 'walk1' ? () => dispatch({ type: 'fs', phase: 'create' }) : s.fs.phase === 'review1' ? () => dispatch({ type: 'fs', phase: 'walk1' }) : undefined
+                }
+              />
+            )}
+          </>
         ) : (
           <>
             {/* the farm stays underneath the rounds and the six farms, so it keeps its place */}
             {s.view === 'world' ? (
               <Suspense fallback={<div className="abs world" style={{ inset: 0 }} />}>
-                <World s={s} dispatch={dispatch} paused={s.roundsOpen || s.trialsOpen || !!m} />
+                {/* a new farm is built when the character style or the graphics change */}
+                <World key={`${s.settings.art}-${s.settings.graphics}`} s={s} dispatch={dispatch} paused={s.roundsOpen || s.trialsOpen || !!m} />
               </Suspense>
             ) : (
               !s.roundsOpen && !s.trialsOpen && <FarmScene s={s} dispatch={dispatch} />
@@ -207,8 +246,9 @@ export default function App() {
           </>
         )}
 
+        {m?.kind === 'menu' && <MainMenu s={s} dispatch={dispatch} />}
         {m?.kind === 'welcome' && <WelcomeModal s={s} dispatch={dispatch} />}
-        {m?.kind === 'settings' && <SettingsModal s={s} dispatch={dispatch} />}
+        {m?.kind === 'settings' && <SettingsPage s={s} dispatch={dispatch} tab={m.tab} />}
         {m?.kind === 'shop' && <ShopModal s={s} tab={m.tab} dispatch={dispatch} />}
         {m?.kind === 'steps' && <StepsModal s={s} step={m.step} dispatch={dispatch} />}
         {m?.kind === 'sale' && <SaleModal s={s} dispatch={dispatch} />}
@@ -255,5 +295,8 @@ export default function App() {
       )}
       <div className="rotate-hint">Rotate your phone to landscape to play Lima Farming Game.</div>
     </div>
+    </VoiceContext.Provider>
+    </ArtContext.Provider>
+    </NavContext.Provider>
   );
 }

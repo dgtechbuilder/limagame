@@ -2,6 +2,8 @@
    Static scenery is merged into a few meshes with vertex colours, so the whole farm draws in a handful of calls. */
 
 import * as THREE from 'three';
+import type { Look } from '../first/data';
+import { addOutlines, makeFace, toonMat } from './toon';
 
 export type Part = { geo: THREE.BufferGeometry; color: THREE.ColorRepresentation; m?: THREE.Matrix4 };
 
@@ -504,7 +506,15 @@ export interface Farmer {
   cobs: THREE.Group;
 }
 
-const lam = (color: THREE.ColorRepresentation, map?: THREE.Texture) => new THREE.MeshLambertMaterial(map ? { color, map } : { color });
+/** Characters drawn in the retro anime style (Settings → Character style): toon shading and ink outlines.
+   Set by the farm before it builds its models. */
+let ANIME = false;
+export function setCharacterStyle(anime: boolean) {
+  ANIME = anime;
+}
+
+const lam = (color: THREE.ColorRepresentation, map?: THREE.Texture) =>
+  ANIME ? toonMat(color, map) : new THREE.MeshLambertMaterial(map ? { color, map } : { color });
 
 function mesh(geo: THREE.BufferGeometry, mat: THREE.Material, m: THREE.Matrix4, shadow = true) {
   const o = new THREE.Mesh(geo, mat);
@@ -513,14 +523,17 @@ function mesh(geo: THREE.BufferGeometry, mat: THREE.Material, m: THREE.Matrix4, 
   return o;
 }
 
-export function makeFarmer(look: { skin: string; outfit: string }): Farmer {
+export type FarmerLook = Pick<Look, 'skin' | 'outfit'> & Partial<Look>;
+
+export function makeFarmer(look: FarmerLook): Farmer {
   const root = new THREE.Group();
   const body = new THREE.Group();
   root.add(body);
   const skin = lam(look.skin);
-  const shirt = lam('#ffffff', plaid(look.outfit));
-  const jeans = lam('#3b6fd1');
-  const boot = lam('#5a3a22');
+  // retro anime: flat cel colours (the outfit and trim of the chosen look); original: the red check shirt and jeans
+  const shirt = ANIME ? lam(look.outfit) : lam('#ffffff', plaid(look.outfit));
+  const jeans = lam(ANIME ? '#34416b' : '#3b6fd1');
+  const boot = lam(ANIME ? '#3a2418' : '#5a3a22');
   const hatM = lam('#f3dfa6');
   const band = lam('#c0392b');
 
@@ -546,12 +559,15 @@ export function makeFarmer(look: { skin: string; outfit: string }): Farmer {
   };
   const armL = arm(-0.34);
   const armR = arm(0.34);
-  body.add(mesh(G.sphere, skin, at(0, 1.42, 0, { s: 0.46 })));
-  body.add(mesh(G.sphere, lam('#2a1d14'), at(-0.08, 1.45, 0.21, { s: 0.06 }), false));
-  body.add(mesh(G.sphere, lam('#2a1d14'), at(0.08, 1.45, 0.21, { s: 0.06 }), false));
-  body.add(mesh(G.cyl, hatM, at(0, 1.6, 0, { sx: 0.95, sy: 0.04, sz: 0.95 })));
-  body.add(mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.24, 14), hatM, at(0, 1.72, 0)));
-  body.add(mesh(new THREE.CylinderGeometry(0.255, 0.255, 0.06, 14), band, at(0, 1.64, 0)));
+  if (ANIME) animeHead(body, look, skin);
+  else {
+    body.add(mesh(G.sphere, skin, at(0, 1.42, 0, { s: 0.46 })));
+    body.add(mesh(G.sphere, lam('#2a1d14'), at(-0.08, 1.45, 0.21, { s: 0.06 }), false));
+    body.add(mesh(G.sphere, lam('#2a1d14'), at(0.08, 1.45, 0.21, { s: 0.06 }), false));
+    body.add(mesh(G.cyl, hatM, at(0, 1.6, 0, { sx: 0.95, sy: 0.04, sz: 0.95 })));
+    body.add(mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.24, 14), hatM, at(0, 1.72, 0)));
+    body.add(mesh(new THREE.CylinderGeometry(0.255, 0.255, 0.06, 14), band, at(0, 1.64, 0)));
+  }
 
   // tools held in the right hand
   const hand = new THREE.Group();
@@ -610,15 +626,51 @@ export function makeFarmer(look: { skin: string; outfit: string }): Farmer {
     cobs.add(c);
   }
   root.traverse(o => {
-    if ((o as THREE.Mesh).isMesh) (o as THREE.Mesh).castShadow = true;
+    if ((o as THREE.Mesh).isMesh && !o.userData.noOutline) (o as THREE.Mesh).castShadow = true;
   });
+  if (ANIME) addOutlines(root, 0.034);
   return { root, body, legL, legR, armL, armR, hand, back, tools, loads, cobs };
+}
+
+const HALF_SPHERE = new THREE.SphereGeometry(0.5, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+
+/** The anime farmer's head: a bigger head with a painted face, and the look's headwrap, cap or hi-top hair. */
+function animeHead(body: THREE.Group, look: FarmerLook, skin: THREE.Material) {
+  const full: Look = { trim: '#f2c14e', head: 'none', headColor: '#1d1410', ...look };
+  const Y = 1.46;
+  const R = 0.25;
+  body.add(mesh(G.cyl, skin, at(0, 1.24, 0, { sx: 0.13, sy: 0.14, sz: 0.13 })));
+  body.add(mesh(G.sphere, skin, at(0, Y, 0, { s: R * 2 })));
+  const face = makeFace(full, R);
+  face.position.set(0, Y, 0);
+  face.castShadow = false;
+  body.add(face);
+  const hc = lam(full.headColor);
+  if (full.head === 'wrap') {
+    body.add(mesh(HALF_SPHERE, hc, at(0, Y + 0.1, -0.01, { sx: 0.56, sy: 0.56, sz: 0.56 })));
+    body.add(mesh(new THREE.CylinderGeometry(0.282, 0.282, 0.05, 18), lam(full.trim), at(0, Y + 0.14, -0.01)));
+    body.add(mesh(G.sphere, hc, at(0.1, Y + 0.33, -0.04, { sx: 0.22, sy: 0.18, sz: 0.2 })));
+  } else if (full.head === 'cap') {
+    body.add(mesh(G.sphere, lam('#1d1410'), at(0, Y + 0.01, -0.03, { s: 0.52 })));
+    body.add(mesh(HALF_SPHERE, hc, at(0, Y + 0.09, 0, { sx: 0.54, sy: 0.5, sz: 0.54 })));
+    body.add(mesh(G.box, hc, at(0, Y + 0.1, 0.28, { sx: 0.36, sy: 0.03, sz: 0.22, rx: 0.12 })));
+    body.add(mesh(G.sphere, lam(full.trim), at(-0.08, Y + 0.24, 0.19, { s: 0.07 })));
+  } else {
+    // a 90s hi-top with spiky anime points on top
+    const hair = lam(full.headColor);
+    body.add(mesh(G.sphere, hair, at(0, Y + 0.01, -0.03, { s: 0.52 })));
+    body.add(mesh(new THREE.CylinderGeometry(0.24, 0.255, 0.3, 14), hair, at(0, Y + 0.25, -0.01)));
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * Math.PI * 2;
+      body.add(mesh(G.cone6, hair, at(Math.sin(a) * 0.15, Y + 0.44, Math.cos(a) * 0.15 - 0.01, { sx: 0.1, sy: 0.14, sz: 0.1, rx: Math.cos(a) * 0.35, rz: -Math.sin(a) * 0.35 })));
+    }
+  }
 }
 
 /** A four-legged animal (cow, goat, ox): a body, a head, four legs. */
 export function makeQuadruped(kind: 'cow' | 'goat' | 'ox') {
   const g = new THREE.Group();
-  const hide = kind === 'cow' ? new THREE.MeshLambertMaterial({ map: cowHide() }) : lam(kind === 'goat' ? '#eae4da' : '#8a5a34');
+  const hide = kind === 'cow' ? (ANIME ? toonMat('#ffffff', cowHide()) : new THREE.MeshLambertMaterial({ map: cowHide() })) : lam(kind === 'goat' ? '#eae4da' : '#8a5a34');
   const dark = lam(kind === 'cow' ? '#26221f' : kind === 'goat' ? '#5b524a' : '#5c3a20');
   const pink = lam('#f2a7a0');
   const s = kind === 'goat' ? 0.55 : 1;
@@ -660,6 +712,7 @@ export function makeQuadruped(kind: 'cow' | 'goat' | 'ox') {
   g.traverse(o => {
     if ((o as THREE.Mesh).isMesh) (o as THREE.Mesh).castShadow = true;
   });
+  if (ANIME) addOutlines(g, 0.045);
   return { root: g, head, legs };
 }
 
@@ -675,6 +728,7 @@ export function makeChicken() {
   g.add(head);
   g.add(mesh(G.box, lam('#f2a33a'), at(-0.06, 0.06, 0, { sx: 0.03, sy: 0.12, sz: 0.03 })));
   g.add(mesh(G.box, lam('#f2a33a'), at(0.06, 0.06, 0, { sx: 0.03, sy: 0.12, sz: 0.03 })));
+  if (ANIME) addOutlines(g, 0.026);
   return { root: g, head };
 }
 

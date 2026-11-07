@@ -1,8 +1,9 @@
-import { useState, type Dispatch } from 'react';
+import type { Dispatch } from 'react';
 import { img } from '../assets';
 import { ModalShell } from '../components/Modal';
-import { GoldButton, Img } from '../components/ui';
-import { clearSave, initialState, type Action, type GameState } from '../state';
+import { GoldButton } from '../components/ui';
+import { Cast } from '../art/Cast';
+import type { Action, GameState } from '../state';
 
 type Props = { s: GameState; dispatch: Dispatch<Action> };
 
@@ -24,7 +25,7 @@ export function WelcomeModal({ dispatch }: Props) {
       dispatch({ type: 'close' });
     }}>
       <div className="panel" style={{ left: 215, top: 78, width: 197, height: 254, borderRadius: '16px 0 0 16px', background: '#f1dcbd' }}>
-        <Img src={img.guide} w={197} h={183} alt="Your farming guide" style={{ position: 'absolute', bottom: 0, objectFit: 'cover', objectPosition: 'top' }} />
+        <Cast id="guide" w={197} h={183} alt="Your farming guide" style={{ position: 'absolute', bottom: 0 }} imgStyle={{ objectFit: 'cover', objectPosition: 'top' }} />
         <div className="speech" style={{ left: 8, top: 8, width: 130, height: 80 }}>
           <img src={img.tipBubble} alt="" />
           <span style={{ width: 104, fontSize: 9, padding: '12px 0 0' }}>Karibu! Let's grow maize on Farm Moja.</span>
@@ -46,82 +47,6 @@ export function WelcomeModal({ dispatch }: Props) {
         <GoldButton font={10} height={26} style={{ position: 'absolute', left: 16, right: 16, bottom: 14 }} onClick={start}>
           Start farming
         </GoldButton>
-      </div>
-    </ModalShell>
-  );
-}
-
-/** Settings: replay intro, full screen, design-review picker and reset. */
-export function SettingsModal({ s, dispatch }: Props) {
-  const [confirmReset, setConfirmReset] = useState(false);
-  const fullScreen = () => {
-    const el = document.documentElement;
-    const p = document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen?.();
-    Promise.resolve(p).catch(() => dispatch({ type: 'toast', text: 'Full screen is not available here. Add the game to your home screen instead.' }));
-  };
-  const rows: { title: string; body: string; action: string; onClick: () => void; danger?: boolean }[] = [
-    {
-      title: 'How the farm works',
-      body: 'A quick guide to seasons, selling and rewards.',
-      action: 'Open',
-      onClick: () => dispatch({ type: 'open', modal: { kind: 'welcome' } }),
-    },
-    {
-      title: 'Farm view',
-      body: s.view === 'world' ? 'The walkable 3D farm. Switch to the classic painted farm (Farm Moja seasons, field rounds).' : 'The classic painted farm. Switch to the walkable 3D farm.',
-      action: s.view === 'world' ? 'Classic' : '3D farm',
-      onClick: () => dispatch({ type: 'view', view: s.view === 'world' ? 'classic' : 'world' }),
-    },
-    {
-      title: 'Full screen',
-      body: 'On phones, add Lima to your home screen for the best fit.',
-      action: 'Toggle',
-      onClick: fullScreen,
-    },
-    {
-      title: 'Design review',
-      body: 'Opens a sandbox with a menu of every Figma screen. Your game is not changed.',
-      action: 'Open',
-      onClick: () => {
-        window.location.search = '?review=1';
-      },
-    },
-    {
-      title: 'Reset progress',
-      body: confirmReset ? 'This erases your farmer, seasons, coins and points on this device.' : 'Start again with a new farmer.',
-      action: confirmReset ? 'Yes, erase' : 'Reset',
-      danger: true,
-      onClick: () => {
-        if (!confirmReset) return setConfirmReset(true);
-        clearSave();
-        dispatch({ type: 'reset', state: { ...initialState, modal: null, toast: null } });
-      },
-    },
-  ];
-  return (
-    <ModalShell frame="shop" x={178} y={28} title="Settings" close={[633, 56]} onClose={() => dispatch({ type: 'close' })}>
-      <div className="panel" style={{ left: 213, top: 78, width: 446, height: 254, padding: '12px 18px' }}>
-        <p className="section-title">
-          Season {s.season} · Day {s.day} · Level {s.level} <span style={{ fontWeight: 400, opacity: 0.75 }}>· progress saves on this device</span>
-        </p>
-        <div style={{ display: 'flex', flexDirection: 'column', marginTop: 8 }}>
-          {rows.map((r, i) => (
-            <div key={r.title} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '9px 0', borderTop: i ? '0.5px solid var(--brown-20)' : undefined }}>
-              <div>
-                <p style={{ fontSize: 11, fontWeight: 600 }}>{r.title}</p>
-                <p style={{ fontSize: 8, opacity: 0.8, marginTop: 2 }}>{r.body}</p>
-              </div>
-              <GoldButton
-                font={9}
-                height={22}
-                style={{ width: 96, flexShrink: 0, ...(r.danger && confirmReset ? { background: '#c0392b', borderColor: '#8e2a1f' } : {}) }}
-                onClick={r.onClick}
-              >
-                {r.action}
-              </GoldButton>
-            </div>
-          ))}
-        </div>
       </div>
     </ModalShell>
   );

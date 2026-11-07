@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch } from 'react';
+import { NavBar } from '../components/Nav';
 import { FarmMap } from '../components/FarmMap';
 import { GoldButton } from '../components/ui';
 import type { Action, GameState, RoundsView } from '../state';
@@ -27,7 +28,7 @@ interface Result {
   looks: number;
 }
 
-const topLine = { top: 8, bottom: 'auto', left: 172, right: 172 } as const;
+const topLine = { top: 8, bottom: 'auto', left: 172, right: 190 } as const;
 
 /** Walks the farmer along the shortest route to a stand point, at a steady pace. */
 function useWalker() {
@@ -345,9 +346,7 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
         <FarmerPortrait look={look} size={34} />
         <span>{name}</span>
       </div>
-      <button type="button" className="rr-exit" onClick={() => dispatch({ type: 'rounds', open: false })}>
-        {trial ? 'Six farms' : 'My farm'}
-      </button>
+      <NavBar horizontal onBack={() => dispatch({ type: 'rounds', open: false })} backLabel={trial ? 'Six farms' : 'Back'} style={{ right: 6, top: 4 }} />
 
       <p className="rr-cycle">
         {trial

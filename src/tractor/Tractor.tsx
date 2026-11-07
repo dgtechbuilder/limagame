@@ -5,7 +5,8 @@ import { fmt } from '../components/ui';
 import { SPEAKER } from '../care/voice';
 import { track } from '../first/track';
 import { farmName } from '../trials/model';
-import { FARM_ACRES, IMPL, IMPL_ORDER, MONEY, OBS_NAME, TRACTORS, TRACTOR_REWARD, type ImplId, type MoneyFigure, type TractorKind } from './data';
+import { NavBar, useNav } from '../components/Nav';
+import { FARM_ACRES, IMPL, IMPL_ORDER, MONEY, OBS_NAME, TRACTORS, TRACTOR_BONUS, TRACTOR_EDGE, TRACTOR_REWARD, type ImplId, type MoneyFigure, type TractorKind } from './data';
 import { CELL, FH, FW, GW, createJob, finishJob, pct, rewardFor, setupJob, stepJob, tankOf, type Controls, type Job, type JobResult } from './sim';
 
 /* From Wakala Agent: the tractor drive before planting. Brief → tractor → implement → ready → drive → summary,
@@ -49,13 +50,17 @@ export function Tractor({ farm, cycle, best, name, demo, onFinish, onClose }: Tr
   const [auto, setAuto] = useState(false);
   const [stats, setStats] = useState({ cov: 0, left: 0, fuel: 0, over: 0, hits: 0, acr: -1 });
   const [msg, setMsg] = useState<{ text: string; id: number } | null>(null);
-  const [result, setResult] = useState<{ r: JobResult; coins: number; points: number } | null>(null);
+  const [result, setResult] = useState<{ r: JobResult; coins: number; points: number; bonus: number } | null>(null);
   const [sources, setSources] = useState(false);
   const canvas = useRef<HTMLCanvasElement>(null);
   const layers = useRef<{ bg: HTMLCanvasElement; work: HTMLCanvasElement } | null>(null);
   const ctl = useRef<Controls>({ target: null, hold: false, keys: {}, fast: false, auto: false });
   const bestRef = useRef(best);
   bestRef.current = best;
+  // the main menu is open on top of a drive: the clock waits
+  const nav = useNav();
+  const menuOpen = useRef(false);
+  menuOpen.current = nav.menuOpen;
   const lay = job.lay;
   const tr = tractor ? TRACTORS.find(x => x.id === tractor)! : null;
   const right = IMPL[job.right];
@@ -126,6 +131,11 @@ export function Tractor({ farm, cycle, best, name, demo, onFinish, onClose }: Tr
     let last = performance.now();
     let statT = 0;
     const frame = (now: number) => {
+      if (menuOpen.current) {
+        last = now;
+        raf = requestAnimationFrame(frame);
+        return;
+      }
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       const C = ctl.current;
@@ -261,6 +271,8 @@ export function Tractor({ farm, cycle, best, name, demo, onFinish, onClose }: Tr
 
   /* ---------------- the side panel ---------------- */
 
+  // Back goes one step back: the brief and the summary leave; the drive itself has no Back (Farm leaves it)
+  const back = phase === 'drive' ? undefined : phase === 'tractor' ? () => setPhase('brief') : phase === 'implement' ? () => setPhase('tractor') : phase === 'ready' ? () => setPhase('implement') : onClose;
   const at = STEPS.findIndex(s => s[0] === phase);
   const steps = (
     <div className="tc-steps" aria-label="Steps">
@@ -288,6 +300,9 @@ export function Tractor({ farm, cycle, best, name, demo, onFinish, onClose }: Tr
           <li>Time limit: {job.limit} seconds</li>
           <li>Field: {acresText}, with rocks and fallen trunks</li>
           <li>You choose the tractor and the implement. The wrong one does a poor job.</li>
+          <li>
+            A tractor works {TRACTOR_EDGE}× the ground of a farmer on foot, and earns +{TRACTOR_BONUS.perDrive} bonus points.
+          </li>
         </ul>
         <div className="tc-row">
           <button type="button" className="tc-btn is-soft" onClick={onClose}>
@@ -493,6 +508,10 @@ export function Tractor({ farm, cycle, best, name, demo, onFinish, onClose }: Tr
           <b>{SPEAKER.name}:</b> {why}
           {said}
         </p>
+        <p className="tc-bonus">
+          {res.bonus > 0 && <b>Tractor bonus +{res.bonus} · </b>}
+          {TRACTOR_EDGE}× faster than walking
+        </p>
         <Bar label="Job done" v={pct(r.Q)} note={`${pct(r.cov)}% covered${wrong ? ' · wrong implement' : ''}${r.hits ? ` · ${r.hits} hit${r.hits > 1 ? 's' : ''}` : ''}`} />
         <Bar label="Efficiency" v={r.eff} note={`${r.secs}s of ${job.limit}s · overlap ${pct(r.over)}%`} />
         <Bar label="Climate" v={r.clim} note={`${r.usedL.toFixed(2)} L diesel · ${r.co2.toFixed(1)} kg CO₂${(tr?.soil ?? 0) >= 15 ? ' · heavy tractor' : ''}`} />
@@ -538,6 +557,7 @@ export function Tractor({ farm, cycle, best, name, demo, onFinish, onClose }: Tr
         onPointerCancel={() => (ctl.current.hold = false)}
       />
       {over}
+      <NavBar horizontal onBack={back} onHome={phase === 'done' ? onClose : undefined} style={{ left: 6, top: 4 }} />
       {msg && (
         <p key={msg.id} className="tc-msg" role="status">
           {msg.text}

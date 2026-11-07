@@ -11,7 +11,7 @@ export const ROUND_POINTS = { first: 100, second: 50 };
 /** A bed on the farm map. Its crop changes only every 21 days. */
 export interface Farm {
   id: string;
-  /** 1 to 7: the order of the rounds */
+  /** 1 to 6: the order of the rounds */
   n: number;
   /** which bed on the painted map this is */
   bed: BedId;

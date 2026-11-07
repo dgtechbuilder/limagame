@@ -3,6 +3,7 @@
    this engine draws it and reports what the farmer did. */
 
 import * as THREE from 'three';
+import { RIDE_SPEED, TRACTOR_EDGE, TRACTOR_JOBS } from '../tractor/data';
 import { CHECK_DAYS, checkKey, harvestFarm, hazardFor, type Trial, type TrialHazard } from '../trials/model';
 import {
   FULL,
@@ -11,6 +12,7 @@ import {
   PLOT_W,
   TILE,
   TILES,
+  WORK_REACH,
   fieldDay,
   isDone,
   machinePrep,
@@ -44,6 +46,8 @@ import {
   makeBird,
   makeChicken,
   makeFarmer,
+  setCharacterStyle,
+  type FarmerLook,
   makePickup,
   makeQuadruped,
   makeTractor,
@@ -67,8 +71,12 @@ import {
   type Part,
 } from './models';
 
-/** How far from the farmer a tile gets worked: two passes cover a farm's four columns. */
-export const WORK_REACH = 1.3;
+export { WORK_REACH };
+/** On the tractor the swath is TRACTOR_EDGE times as wide, so one pass down a farm works all four columns. */
+export const TRACTOR_REACH = WORK_REACH * TRACTOR_EDGE;
+/** Where the tractor waits, and a spot beside it to walk to (clear of the Hire spot, which opens the hire screen). */
+const TRACTOR_HOME = { x: -17.4, z: 6.4 };
+export const TRACTOR_BOARD = { x: -17.4, z: 8.6 };
 
 export const STAGE_W = 874;
 export const STAGE_H = 402;
@@ -86,11 +94,17 @@ export const PLACES: Record<Place, { x: number; z: number; r: number }> = {
 
 const PICKUP_OF: Partial<Record<Place, Exclude<Carry, null>>> = { 'shed-seeds': 'seeds', 'shed-fertilizer': 'fertilizer', 'shed-sprayer': 'sprayer', pond: 'water' };
 
+export interface WorldOptions {
+  /** draw the farmer and the animals in the retro anime style */
+  anime: boolean;
+  graphics: 'auto' | 'high' | 'low';
+}
+
 export interface ViewState {
   trial: Trial | null;
   field: Field;
   today: number;
-  look: { skin: string; outfit: string };
+  look: FarmerLook;
   /** where the task card points, for the green arrow */
   arrowAt: { x: number; z: number } | null;
   /** the farm the task card is about: hints about other farms stay quiet while the farmer passes through */
@@ -99,7 +113,8 @@ export interface ViewState {
 }
 
 export interface WorldEvents {
-  mark: (farm: number, job: string, bits: number) => void;
+  /** `tractor`: the tiles were done from the tractor seat */
+  mark: (farm: number, job: string, bits: number, tractor?: boolean) => void;
   carry: (item: Carry) => void;
   place: (p: Place) => void;
   /** the farmer is at a farm's sign (or left it: -1) */
@@ -146,6 +161,8 @@ export class FarmWorld {
   private pending = new Map<string, number>();
   /** walking speed multiplier (automated play-tests run faster) */
   speedScale = 1;
+  /** the farmer is on the tractor: a wider swath on the big jobs, a little faster, and bonus points */
+  private riding = false;
 
   // the field, drawn as instances: 6 farms × 20 tiles
   private base!: THREE.InstancedMesh;
@@ -183,11 +200,17 @@ export class FarmWorld {
   private obstacles: { x: number; z: number; r: number }[] = [];
   private rects: Rect[] = [];
 
-  constructor(canvas: HTMLCanvasElement, events: WorldEvents) {
+  /** Settings → Graphics: auto adapts to the phone, high keeps shadows, low drops them and draws at 1× */
+  private graphics: WorldOptions['graphics'];
+
+  constructor(canvas: HTMLCanvasElement, events: WorldEvents, opts: WorldOptions = { anime: true, graphics: 'auto' }) {
     this.ev = events;
+    this.graphics = opts.graphics;
+    // the characters are built in the chosen style (the app builds a new farm when it changes)
+    setCharacterStyle(opts.anime);
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     this.renderer.setSize(STAGE_W, STAGE_H, false);
-    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.enabled = opts.graphics !== 'low';
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.scene.background = new THREE.Color(C.grass);
@@ -196,7 +219,8 @@ export class FarmWorld {
     const hemi = new THREE.HemisphereLight('#ffffff', '#8fb83a', 1.55);
     this.scene.add(hemi);
     this.sun = new THREE.DirectionalLight('#fff6e0', 2.2);
-    this.sun.castShadow = true;
+    this.sun.castShadow = opts.graphics !== 'low';
+    if (opts.graphics !== 'auto') this.lowFx = opts.graphics === 'low';
     this.sun.shadow.mapSize.set(2048, 2048);
     const sc = this.sun.shadow.camera;
     sc.left = -18;
@@ -239,13 +263,13 @@ export class FarmWorld {
 
   /** The canvas's drawing size, for a sharp picture at the stage's scale. */
   resize(scale: number) {
-    this.renderer.setPixelRatio(Math.min(2, (window.devicePixelRatio || 1) * Math.max(0.5, scale)));
+    this.renderer.setPixelRatio(this.graphics === 'low' ? 1 : Math.min(2, (window.devicePixelRatio || 1) * Math.max(0.5, scale)));
     this.renderer.setSize(STAGE_W, STAGE_H, false);
   }
 
   private lookKey = '';
   setView(v: ViewState) {
-    const lk = v.look.skin + v.look.outfit;
+    const lk = [v.look.skin, v.look.outfit, v.look.head, v.look.headColor, v.look.trim].join();
     if (lk !== this.lookKey) {
       this.lookKey = lk;
       const old = this.farmer;
@@ -532,7 +556,7 @@ export class FarmWorld {
       this.pickups[p] = g;
     }
     // the tractor waits beside the hire spot
-    this.tractor.position.set(-17.4, 0, 6.4);
+    this.tractor.position.set(TRACTOR_HOME.x, 0, TRACTOR_HOME.z);
     this.tractor.rotation.y = Math.PI / 2;
     this.scene.add(this.tractor);
     this.obstacles.push({ x: -17.4, z: 6.4, r: 1.3 });
@@ -866,7 +890,7 @@ export class FarmWorld {
     const carry = v.field.carry;
     const setup = setupLeft(f, t, farm);
     if (setup === 'prep') {
-      if (machinePrep(plan)) return { hint: `${plan.land === 'tractor' ? 'Hire the tractor' : 'Hire the oxen'} at the Hire spot to plough Farm ${farm + 1}` };
+      if (machinePrep(plan) && !(this.riding && plan.land === 'tractor')) return { hint: `${plan.land === 'tractor' ? 'Hire the tractor' : 'Hire the oxen'} at the Hire spot to plough Farm ${farm + 1}` };
       return { job: 'prep', need: FULL, fx: plan.land === 'slash' ? 'clear' : plan.land === 'mulch' ? 'mulch' : 'dig' };
     }
     if (setup === 'sow') return carry === 'seeds' ? { job: 'sow', need: FULL, fx: 'seed' } : { hint: 'Get the seed sack from the shed to sow' };
@@ -900,13 +924,24 @@ export class FarmWorld {
       }
       return;
     }
+    // the tractor does the big jobs; small jobs (weeds, puddles, water, spray, top-dress, animals) stay on foot
+    const byTractor = this.riding && (TRACTOR_JOBS as readonly string[]).includes(j.job);
+    if (this.riding && !byTractor) {
+      const now = performance.now();
+      if (v.focus === farm && now - this.lastHint > 5000) {
+        this.lastHint = now;
+        this.ev.hint('This is a job for a farmer on foot: tap Get off');
+      }
+      return;
+    }
+    const reach = byTractor ? TRACTOR_REACH : WORK_REACH;
     let bits = 0;
     const done = this.marks(farm, j.job);
     for (let i = 0; i < TILES; i++) {
       const bit = 1 << i;
       if (!(j.need & bit) || done & bit) continue;
       const c = tileCenter(farm, i);
-      if (Math.hypot(c.x - x, c.z - z) < WORK_REACH) {
+      if (Math.hypot(c.x - x, c.z - z) < reach) {
         bits |= bit;
         this.burst(j.fx, c.x, c.z, j.fx === 'harvest' ? 3 : 6);
       }
@@ -917,7 +952,7 @@ export class FarmWorld {
     this.work = 0.45;
     this.workFx = j.fx;
     this.dirty = true;
-    this.ev.mark(farm, j.job, bits);
+    this.ev.mark(farm, j.job, bits, byTractor);
     void dt;
   }
 
@@ -930,6 +965,7 @@ export class FarmWorld {
     this.adapt(dt);
     const time = this.clock.elapsedTime;
     this.move(dt);
+    this.rideTractor(dt);
     this.doWork(dt);
     this.places();
     this.animateFarmer(dt, time);
@@ -960,7 +996,7 @@ export class FarmWorld {
   private slow = 0;
   private lowFx = false;
   private adapt(dt: number) {
-    if (this.lowFx || this.frames > 400) return;
+    if (this.lowFx || this.graphics !== 'auto' || this.frames > 400) return;
     this.frames++;
     if (this.frames < 30) return;
     this.slow = this.slow * 0.95 + (dt > 0.045 ? 1 : 0) * 0.05;
@@ -992,7 +1028,7 @@ export class FarmWorld {
         this.ev.arrived?.();
       }
     }
-    const speed = 4.6 * this.speedScale;
+    const speed = 4.6 * this.speedScale * (this.riding ? RIDE_SPEED : 1);
     if (dir.lengthSq() > 0) {
       const len = Math.min(1, dir.length());
       dir.normalize();
@@ -1045,7 +1081,9 @@ export class FarmWorld {
         const item = PICKUP_OF[now];
         if (item) {
           if (this.view?.field.carry !== item) this.ev.carry(item);
-        } else if (now === 'hire') this.startHire();
+        } else if (now === 'hire') {
+          if (!this.riding) this.startHire();
+        }
         else this.ev.place(now);
       }
     }
@@ -1061,6 +1099,52 @@ export class FarmWorld {
       this.atSign = sign;
       this.ev.sign(sign);
     }
+  }
+
+  /* ---------------- the tractor seat ---------------- */
+
+  isRiding() {
+    return this.riding;
+  }
+
+  /** The parked tractor is close enough to hop on (and is not busy ploughing). */
+  nearTractor() {
+    return !this.hire && !this.riding && Math.hypot(this.pos.x - this.tractor.position.x, this.pos.y - this.tractor.position.z) < 3.4;
+  }
+
+  mount(): 'ok' | 'busy' | 'far' {
+    if (this.riding) return 'ok';
+    if (this.hire) return 'busy';
+    if (!this.nearTractor()) return 'far';
+    this.riding = true;
+    this.target = null;
+    this.pos.set(this.tractor.position.x, this.tractor.position.z);
+    this.heading = this.tractor.rotation.y;
+    return 'ok';
+  }
+
+  /** Get off beside the tractor, which stays where it was left. */
+  dismount() {
+    if (!this.riding) return;
+    this.riding = false;
+    this.target = null;
+    this.pos.x += Math.cos(this.heading) * 1.7;
+    this.pos.y -= Math.sin(this.heading) * 1.7;
+    this.collide(this.pos);
+    this.farmer.root.visible = true;
+  }
+
+  private rideTractor(dt: number) {
+    if (!this.riding) return;
+    const T = this.tractor;
+    T.visible = true;
+    T.position.set(this.pos.x, 0, this.pos.y);
+    let d = this.heading - T.rotation.y;
+    while (d > Math.PI) d -= Math.PI * 2;
+    while (d < -Math.PI) d += Math.PI * 2;
+    T.rotation.y += d * Math.min(1, dt * 8);
+    // the farmer sits inside the cab
+    this.farmer.root.visible = false;
   }
 
   private animateFarmer(dt: number, time: number) {
@@ -1210,6 +1294,7 @@ export class FarmWorld {
     const v = this.view;
     const t = v?.trial;
     if (!t || t.phase !== 'growing') return atSpot ? this.ev.hint('Nothing to hire now: plan your farms first') : undefined;
+    if (this.riding) return atSpot ? this.ev.hint('Get off the tractor first: the hire tractor is the one you are sitting on') : undefined;
     const f = this.liveField();
     const { ready, toDrive, any } = this.hireFarms(t, f);
     if (!any) return atSpot ? this.ev.hint('No farm needs ploughing now. Tractor or oxen hire is a land-prep choice in the plan') : undefined;
@@ -1223,6 +1308,12 @@ export class FarmWorld {
     const farmOf: number[] = [];
     for (const farm of farms) {
       const p = PLOTS[farm];
+      if (t.plans[farm].land === 'tractor') {
+        // the tractor's swath is three times a farmer's: one pass down the middle works all four columns
+        path.push(new THREE.Vector2(p.x, p.z - PLOT_D / 2 - 0.6), new THREE.Vector2(p.x, p.z + PLOT_D / 2 + 0.6));
+        farmOf.push(farm, farm);
+        continue;
+      }
       for (let pass = 0; pass < 2; pass++) {
         const x = p.x + (pass ? 0.6 : -0.6) * TILE;
         const zs = pass ? [p.z + PLOT_D / 2 + 0.6, p.z - PLOT_D / 2 - 0.6] : [p.z - PLOT_D / 2 - 0.6, p.z + PLOT_D / 2 + 0.6];
@@ -1230,7 +1321,7 @@ export class FarmWorld {
         farmOf.push(farm, farm);
       }
     }
-    const home = new THREE.Vector2(-17.4, 6.4);
+    const home = new THREE.Vector2(TRACTOR_HOME.x, TRACTOR_HOME.z);
     path.push(home);
     farmOf.push(-1);
     this.hire = { farms, path, i: 0, farmOf, home };
@@ -1259,7 +1350,7 @@ export class FarmWorld {
     const goal = h.path[h.i];
     const at2 = new THREE.Vector2(veh.position.x, veh.position.z);
     const d = new THREE.Vector2().subVectors(goal, at2);
-    const step = (veh === this.oxen ? 2.6 : 4.2) * dt;
+    const step = (veh === this.oxen ? 2.6 : 4.6 * RIDE_SPEED) * dt;
     if (d.length() <= step) {
       veh.position.set(goal.x, 0, goal.y);
       h.i++;
@@ -1267,7 +1358,7 @@ export class FarmWorld {
         this.hire = null;
         this.oxen.visible = false;
         this.tractor.visible = true;
-        this.tractor.position.set(-17.4, 0, 6.4);
+        this.tractor.position.set(TRACTOR_HOME.x, 0, TRACTOR_HOME.z);
         this.tractor.rotation.y = Math.PI / 2;
       }
       return;
@@ -1281,7 +1372,7 @@ export class FarmWorld {
       const done = this.marks(farm, 'prep');
       for (let i = 0; i < TILES; i++) {
         const c = tileCenter(farm, i);
-        if (!(done & (1 << i)) && Math.hypot(c.x - veh.position.x, c.z - veh.position.z) < 1.25) bits |= 1 << i;
+        if (!(done & (1 << i)) && Math.hypot(c.x - veh.position.x, c.z - veh.position.z) < (veh === this.oxen ? 1.25 : TRACTOR_REACH)) bits |= 1 << i;
       }
       if (bits) {
         this.pending.set(`${farm}:prep`, (this.pending.get(`${farm}:prep`) ?? 0) | bits);

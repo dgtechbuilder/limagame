@@ -18,6 +18,7 @@ type Win = Window & {
     events: () => { name: string; [k: string]: unknown }[];
     clearEvents: () => void;
     tractorClock: (scale: number) => void;
+    plots: { x: number; z: number }[];
   };
   __limaWorld?: {
     speedScale: number;
@@ -25,6 +26,10 @@ type Win = Window & {
     spawn: (x: number, z: number) => void;
     nextTile: (farm: number) => { x: number; z: number };
     farmerAt: () => { x: number; z: number };
+    isRiding: () => boolean;
+    nearTractor: () => boolean;
+    mount: () => string;
+    dismount: () => void;
   };
 };
 
