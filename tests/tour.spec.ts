@@ -109,7 +109,17 @@ test('tour of the Wakala moments on a phone-sized screen', async ({ page }) => {
 
   // plots A to D: the tractor's type and tool, then a plot of its own
   await scenario(page, 'plots');
-  await page.evaluate(() => (window as unknown as Win).__limaWorld!.spawn(-17.4, 8.6));
+  // the hired tractor from the last moment finishes its job and comes home first
+  await expect
+    .poll(
+      async () => {
+        await page.evaluate(() => (window as unknown as Win).__limaWorld!.spawn(-17.4, 8.6));
+        await page.waitForTimeout(300);
+        return page.locator('.hud-tractor').getAttribute('aria-label');
+      },
+      { timeout: 120_000, intervals: [2000] },
+    )
+    .toBe('Drive the tractor');
   await page.locator('.hud-tractor').click();
   await expect(page.locator('.tp-card').first()).toBeVisible();
   await page.locator('.tp-card', { hasText: 'Compact' }).click();
