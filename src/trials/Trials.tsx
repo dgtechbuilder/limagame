@@ -2,6 +2,9 @@ import { useState, type Dispatch, type ReactNode } from 'react';
 import { NavBar } from '../components/Nav';
 import { img } from '../assets';
 import { FarmMap } from '../components/FarmMap';
+import { ClimateTag } from '../climate/Tag';
+import { optionDelta } from '../climate/model';
+import { hasSolar } from '../climate/track';
 import { GoldButton, Stars, fmt } from '../components/ui';
 import { say } from '../first/data';
 import { GuideLine } from '../first/Review';
@@ -265,6 +268,7 @@ function Picker({ s, tr, farm, stepKey, dispatch, onClose }: { s: GameState; tr:
               >
                 <b>{op.label}</b>
                 <span>{op.does}</span>
+                <ClimateTag d={optionDelta(stepKey, op.id, tr.forecast, hasSolar(s))} />
                 <i>{op.cost ? `${fmt(op.cost)} coins` : 'Free'}</i>
               </button>
             </li>

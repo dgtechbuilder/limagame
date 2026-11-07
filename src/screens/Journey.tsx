@@ -6,6 +6,8 @@ import { nextAction } from '../components/FarmScene';
 import { EditIcon, InfoDot } from '../components/Icons';
 import { ModalShell, TextSidebar } from '../components/Modal';
 import { Cast } from '../art/Cast';
+import { PROCESS_CO2, STORAGE_CO2 } from '../climate/model';
+import { hasSolar } from '../climate/track';
 import { Coin, GoldButton, Img, Stars, fmt } from '../components/ui';
 import { GROWING_STEPS, HARVEST_CHOICES, PLAY_GOAL_HOURS, PROCESSES, REWARDS, STEPS, STORAGE_OPTIONS, TIMELINE, TIP, type StepId } from '../data';
 import {
@@ -190,6 +192,8 @@ export function StorageModal({ s, dispatch }: Props) {
                       <Row size={8} label="Time to market">{o.time}</Row>
                       <span className="hair" />
                       <Row size={8} label="Bags lost">≈ {q.lost}</Row>
+                      <span className="hair" />
+                      <Row size={8} label="CO₂e">{STORAGE_CO2[o.id] ? `${o.id === 'cold' && hasSolar(s) ? 0.4 : STORAGE_CO2[o.id]} kg/bag` : 'None'}</Row>
                     </div>
                     <GoldButton
                       style={{ width: '100%', height: 20, opacity: on ? 1 : 0.85 }}
@@ -331,6 +335,8 @@ export function ValueModal({ s, dispatch }: Props) {
                   <p style={{ fontSize: 8, textAlign: 'center', lineHeight: 1.45, minHeight: 23, opacity: 0.85 }}>{p.blurb}</p>
                   <div style={{ width: '100%', background: 'rgba(255,255,255,0.2)', borderRadius: 4, padding: 4, display: 'flex', flexDirection: 'column', gap: 4 }}>
                     <Row size={8} label="Price boost">+{p.profitIncrease}%</Row>
+                    <span className="hair" />
+                    <Row size={8} label="CO₂e">{PROCESS_CO2[p.id] ? `${p.id === 'processing' && hasSolar(s) ? 0.2 : PROCESS_CO2[p.id]} kg/bag` : 'None (sun)'}</Row>
                     <span className="hair" />
                     <Row size={8} label="Cost">
                       <Coin size={14} /> {p.cost}

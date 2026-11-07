@@ -24,6 +24,7 @@ export function MainMenu({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
         { label: 'Field rounds', note: 'Check every bed', run: () => dispatch({ type: 'rounds', open: true }) },
         { label: 'Tractor', note: 'Drive: 3× the ground, bonus points', run: () => dispatch({ type: 'ride' }) },
         { label: 'Shop', note: 'Seeds, fertilizer, tools', run: () => open({ kind: 'shop', tab: 'food' }) },
+        { label: 'Climate', note: 'Emissions, water, soil, credits', run: () => open({ kind: 'climate' }) },
         { label: 'Rewards', note: 'Points for real discounts', run: () => open({ kind: 'rewards' }) },
         { label: 'Farming steps', note: 'The classic maize season', run: () => open({ kind: 'steps', step: 'landprep' }) },
         { label: 'Settings', note: 'Farm view, full screen', run: () => open({ kind: 'settings' }) },

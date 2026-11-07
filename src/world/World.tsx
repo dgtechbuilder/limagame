@@ -32,6 +32,8 @@ import {
 } from './field';
 import { FarmWorld, PLACES, STAGE_H, STAGE_W, TRACTOR_BOARD } from './engine';
 import { useNav } from '../components/Nav';
+import { ClimateIcon } from '../components/Icons';
+import { rating } from '../climate/model';
 import { TRACTOR_BONUS, TRACTOR_EDGE } from '../tractor/data';
 
 // from Wakala Agent: the screens after a right call, at the shed and at the Hire spot, loaded when first opened
@@ -92,6 +94,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
   const intent = useRef<number | null>(null);
 
   const t = s.trial;
+  const grade = rating(s.climate.total);
   const look = LOOKS[s.farmer?.look ?? 0];
   const name = s.farmer?.name ?? 'Farmer';
   const day = fieldDay(t, today);
@@ -551,6 +554,11 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
           </button>
         </span>
       </div>
+      <button type="button" className="hud-round hud-climate" onClick={() => dispatch({ type: 'open', modal: { kind: 'climate' } })} aria-label={`Climate: emissions, water, soil and credits${grade ? ` (rating ${grade.grade})` : ''}`}>
+        <ClimateIcon />
+        <span>CLIMATE</span>
+        {grade && <i className="hud-badge" aria-hidden="true">{grade.grade}</i>}
+      </button>
       <button type="button" className="hud-round hud-mission" onClick={() => dispatch({ type: 'trials', open: true })} aria-label="Mission: plan, progress and results of your farms">
         <ClipboardIcon />
         <span>MISSION</span>
