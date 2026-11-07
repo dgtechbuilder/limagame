@@ -9,7 +9,7 @@ import { FarmMap } from './components/FarmMap';
 const Rounds = lazy(() => import('./rounds/Rounds').then(m => ({ default: m.Rounds })));
 const Trials = lazy(() => import('./trials/Trials').then(m => ({ default: m.Trials })));
 const World = lazy(() => import('./world/World').then(m => ({ default: m.World })));
-import { TRIAL_SAMPLES } from './trials/samples';
+import { TRIAL_SAMPLES, wakalaCase } from './trials/samples';
 import { SettingsModal, WelcomeModal } from './screens/Meta';
 import { REVIEW_BASE, SELLING, SOLD, initialState, reviewing, useGame, type GameState, type SeasonResult } from './state';
 
@@ -40,6 +40,12 @@ const sampleResult: SeasonResult = {
   days: 66,
 };
 const at = (stage: number): Partial<GameState> => ({ ...grown, stage, doneTasks: grown.doneTasks });
+
+/** From Wakala Agent: a farm-world moment, opened on one of its new screens. */
+const wakala = (kind: Parameters<typeof wakalaCase>[0], worldDemo: string | null): Partial<GameState> => {
+  const c = wakalaCase(kind);
+  return { view: 'world', trial: c.trial, field: c.field, worldDemo };
+};
 
 const SCREENS: { label: string; group: string; state: Partial<GameState> }[] = [
   { group: 'Game Design', label: 'Game', state: {} },
@@ -75,6 +81,13 @@ const SCREENS: { label: string; group: string; state: Partial<GameState> }[] = [
   { group: 'Farm world', label: 'Farm world · Planting', state: { view: 'world', trial: TRIAL_SAMPLES.worldPlanting, field: TRIAL_SAMPLES.worldPlantingField } },
   { group: 'Farm world', label: 'Farm world · Growing', state: { view: 'world', trial: TRIAL_SAMPLES.worldGrowing, field: TRIAL_SAMPLES.worldGrowingField } },
   { group: 'Farm world', label: 'Farm world · Harvest', state: { view: 'world', trial: TRIAL_SAMPLES.worldHarvest, field: TRIAL_SAMPLES.worldHarvestField } },
+  { group: 'From Wakala', label: 'Wakala · Mama Achieng in a check', state: wakala('voice', 'check') },
+  { group: 'From Wakala', label: 'Wakala · Choose the fix', state: wakala('fix', 'prescribe') },
+  { group: 'From Wakala', label: 'Wakala · Safety kit and product', state: wakala('spray', 'spray') },
+  { group: 'From Wakala', label: 'Wakala · Follow-up due', state: wakala('followUp', null) },
+  { group: 'From Wakala', label: 'Wakala · The problem came back', state: wakala('cameBack', 'check') },
+  { group: 'From Wakala', label: 'Wakala · Tractor brief', state: wakala('tractor', 'tractor') },
+  { group: 'From Wakala', label: 'Wakala · Tractor summary', state: wakala('tractor', 'tractor-summary') },
   { group: 'Six farms', label: 'Six farms · Start', state: { trialsOpen: true } },
   { group: 'Six farms', label: 'Six farms · Plan two farms', state: { trialsOpen: true, trial: TRIAL_SAMPLES.guidedPlan } },
   { group: 'Six farms', label: 'Six farms · Two farms growing', state: { trialsOpen: true, trial: TRIAL_SAMPLES.guidedGrowing } },
@@ -132,6 +145,13 @@ export default function App() {
     if (hit) dispatch({ type: 'reset', state: { ...hit.state } });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Play-tests: ?dev in a dev build exposes the state and jump-to-state helpers as window.__lima (never in production)
+  const live = useRef(s);
+  live.current = s;
+  useEffect(() => {
+    if (import.meta.env.DEV && new URLSearchParams(window.location.search).has('dev')) void import('./dev/hook').then(m => m.install(() => live.current, dispatch));
+  }, [dispatch]);
 
   // Count play time while the tab is visible (drives the rewards goal).
   useEffect(() => {
@@ -218,7 +238,7 @@ export default function App() {
             }}
           >
             {current < 0 && <option value="">—</option>}
-            {['First session', 'Farm world', 'Six farms', 'Field rounds', 'Game Design', 'New Design', 'New features', 'Added'].map(g => (
+            {['First session', 'Farm world', 'From Wakala', 'Six farms', 'Field rounds', 'Game Design', 'New Design', 'New features', 'Added'].map(g => (
               <optgroup key={g} label={g}>
                 {SCREENS.map((sc, i) =>
                   sc.group === g ? (

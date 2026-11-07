@@ -44,6 +44,7 @@ export function Inspect({
   tag,
   note,
   after,
+  voice,
 }: {
   round: Round;
   /** replaces "Round n of 6" (the six farms say "Farm 2 of 6") */
@@ -52,6 +53,8 @@ export function Inspect({
   note?: string;
   /** a line beside the result: why it happened and what was done about it */
   after?: { right: string; wrong: string };
+  /** someone on the farm who says what they have noticed (her guess, never advice): shown beside the captions */
+  voice?: { name: string; say: string; remarks: Partial<Record<RoundPart, string>> };
   name: string;
   look: Look;
   /** a second look, after the 30-second wait: the picture that held the clue is highlighted */
@@ -263,7 +266,18 @@ export function Inspect({
             <RoundPicture round={round} part={zoom} credit />
             <span className="zoom-label">{ROUND_PART_LABELS[zoom]}</span>
           </div>
+          {voice?.remarks[zoom] && (
+            <p className="voice-bubble is-side" role="note" onClick={e => e.stopPropagation()}>
+              <b>{voice.name}:</b> {voice.remarks[zoom]}
+            </p>
+          )}
         </div>
+      )}
+
+      {voice && (step === 'look' || step === 'judge') && !zoom && (
+        <p className="voice-bubble is-top" role="note">
+          <b>{voice.name}:</b> {voice.say}
+        </p>
       )}
 
       <GuideLine text={line} action={action} />

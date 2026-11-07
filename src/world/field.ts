@@ -4,6 +4,7 @@
    the farmer walking over the tiles with the right tool or load; the work done is a bit mask per farm and job.
    No pictures or three.js here, so the saved game can use it. */
 
+import { PRESCRIBE, followUpTitle } from '../care/data';
 import {
   CHECK_DAYS,
   DAMAGE,
@@ -11,6 +12,7 @@ import {
   checkKey,
   currentDay,
   hazardFor,
+  type FollowUp,
   type Plan,
   type Trial,
   type TrialHazard,
@@ -142,7 +144,17 @@ export function setupLeft(f: Field, t: Trial, farm: number): string | null {
   return null;
 }
 
-/** The treatment a farm is waiting for today: read right, treatable, and not yet done by hand. */
+/** A farm read right today whose fix has not been picked yet (the farm world asks for the fix before the work). */
+export function fixLeft(t: Trial, farm: number, day: number): TrialHazard | null {
+  if (day < 1 || day > CHECK_DAYS) return null;
+  const rec = t.checks[checkKey(farm, day)];
+  if (!rec?.right || rec.treated || rec.fix) return null;
+  const h = hazardFor(t, farm, day);
+  if (!TREAT_JOB[h] || !canTreat(h, t.plans[farm]) || !PRESCRIBE[h]) return null;
+  return h;
+}
+
+/** The treatment a farm is waiting for today: read right, the fix picked, treatable, and not yet done by hand. */
 export function treatLeft(f: Field, t: Trial, farm: number, day: number): { job: TreatJob; key: string; need: number; hazard: TrialHazard } | null {
   if (day < 1 || day > CHECK_DAYS) return null;
   const rec = t.checks[checkKey(farm, day)];
@@ -150,11 +162,27 @@ export function treatLeft(f: Field, t: Trial, farm: number, day: number): { job:
   const h = hazardFor(t, farm, day);
   const job = TREAT_JOB[h];
   if (!job || !canTreat(h, t.plans[farm])) return null;
+  if (PRESCRIBE[h] && !rec.fix) return null;
   const need = needOf(job, t, farm, day);
   const key = `t${day}`;
   if (isDone(f, t, farm, key, need)) return null;
   return { job, key, need, hazard: h };
 }
+
+/** The follow-up care a farm is due today and has not done yet. Its work is marked under `f${day}`. */
+export function followUpLeft(f: Field, t: Trial, farm: number, day: number): { job: TreatJob; key: string; need: number; hazard: TrialHazard; follow: FollowUp } | null {
+  if (day < 1 || day > CHECK_DAYS) return null;
+  const u = t.followUps?.find(x => x.farm === farm && x.day === day && !x.done);
+  if (!u) return null;
+  const job = u.job as TreatJob;
+  const need = needOf(job, t, farm, 100 + day);
+  const key = `f${day}`;
+  if (isDone(f, t, farm, key, need)) return null;
+  return { job, key, need, hazard: u.hazard, follow: u };
+}
+
+/** The work by hand a farm is waiting for today: its treatment first, then its follow-up. */
+export const careLeft = (f: Field, t: Trial, farm: number, day: number) => treatLeft(f, t, farm, day) ?? followUpLeft(f, t, farm, day);
 
 export const treatCost = (h: TrialHazard) => DAMAGE[h].treat;
 
@@ -165,8 +193,22 @@ export function carryNeeded(f: Field, t: Trial, day: number): boolean {
     const setup = setupLeft(f, t, farm);
     if (setup) return JOB_CARRY[setup] === f.carry;
     const tr = treatLeft(f, t, farm, day);
-    return !!tr && JOB_CARRY[tr.job] === f.carry;
+    const fu = followUpLeft(f, t, farm, day);
+    return (!!tr && JOB_CARRY[tr.job] === f.carry) || (!!fu && JOB_CARRY[fu.job] === f.carry);
   });
+}
+
+/** The spray jobs waiting today, by farm: what the safety kit and product questions at the shed are for. */
+export function sprayJobs(f: Field, t: Trial, day: number): { farm: number; hazard: TrialHazard }[] {
+  const out: { farm: number; hazard: TrialHazard }[] = [];
+  t.plans.forEach((_, farm) => {
+    if (setupLeft(f, t, farm)) return;
+    const tr = treatLeft(f, t, farm, day);
+    if (tr?.job === 'spray') out.push({ farm, hazard: tr.hazard });
+    const fu = followUpLeft(f, t, farm, day);
+    if (fu?.job === 'spray') out.push({ farm, hazard: fu.hazard });
+  });
+  return out;
 }
 
 /** The day the farms are on, or 0 when no farms are growing. */
@@ -235,6 +277,10 @@ export function nextTask(f: Field, t: Trial | null, today: number, coins: number
     if (left >= 0) return { title: `Harvest ${name(left)}`, note: 'The cobs are dry', icon: 'corn', target: { farm: left, at: 'plot' } };
     return { title: 'Collect Corn', note: 'Sell at the market', icon: 'corn', target: { place: 'market' } };
   }
+  // a farm read right whose fix is still to be picked
+  for (let i = 0; i < t.plans.length; i++) {
+    if (fixLeft(t, i, day)) return { title: `Choose the fix for ${name(i)}`, note: 'At its sign', icon: 'check', target: { farm: i, at: 'sign' } };
+  }
   // today's checks, and the work a right call asks for
   for (let i = 0; i < t.plans.length; i++) {
     const tr = treatLeft(f, t, i, day);
@@ -244,6 +290,15 @@ export function nextTask(f: Field, t: Trial | null, today: number, coins: number
       const item = JOB_CARRY[tr.job];
       if (item && coins >= treatCost(tr.hazard)) return needCarry(f, item, then);
       return then;
+    }
+  }
+  // follow-up care due today (no coins: the work is what counts)
+  for (let i = 0; i < t.plans.length; i++) {
+    const fu = followUpLeft(f, t, i, day);
+    if (fu) {
+      const then: Task = { title: followUpTitle(fu.hazard, name(i)), note: 'Follow-up care', icon: JOB_WORDS[fu.job].icon, target: { farm: i, at: 'plot' } };
+      const item = JOB_CARRY[fu.job];
+      return item ? needCarry(f, item, then) : then;
     }
   }
   const unchecked = t.plans.findIndex((_, i) => !t.checks[checkKey(i, day)]);
