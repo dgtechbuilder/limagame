@@ -31,8 +31,8 @@ async function startCost(page: Page) {
       fcpMs: Math.round(fcp),
       domReadyMs: Math.round(nav.domContentLoadedEventEnd),
       jsFiles: js.length,
-      jsKB: Math.round(js.reduce((n, r) => n + (r.encodedBodySize || r.transferSize || 0), 0) / 1024),
-      allKB: Math.round(res.reduce((n, r) => n + (r.encodedBodySize || r.transferSize || 0), 0) / 1024),
+      jsKB: Math.round(js.reduce((n, r) => n + (r.decodedBodySize || 0), 0) / 1024),
+      allKB: Math.round(res.reduce((n, r) => n + (r.decodedBodySize || 0), 0) / 1024),
     };
   });
 }
@@ -87,7 +87,12 @@ test('the farm world on a phone: frame cost and draw calls', async ({ page }) =>
   const heap = await page.evaluate(() => (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize ?? 0);
   console.log(`PERF heap ${JSON.stringify({ heapMB: Math.round(heap / 1e5) / 10 })}`);
 
-  expect(walk.calls as number).toBeLessThan(400);
-  expect(walk.triangles as number).toBeLessThan(600_000);
+  // a phone gets the lighter picture: at most 1.5× pixels and a smaller shadow map, and only the tiles that show
+  expect(walk.level as number).toBeGreaterThanOrEqual(1);
+  expect(walk.pixelRatio as number).toBeLessThanOrEqual(1.5);
+  expect(walk.calls as number).toBeLessThan(200);
+  expect(walk.triangles as number).toBeLessThan(250_000);
+  // a still farm is drawn about 30 times a second, not 60 (here, in software, both are far slower)
+  expect(idle.drawn as number).toBeLessThanOrEqual(6 * 32);
   expect(idle.frames as number).toBeGreaterThan(0);
 });

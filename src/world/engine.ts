@@ -77,6 +77,25 @@ import {
 export { WORK_REACH };
 /** On the tractor the swath is TRACTOR_EDGE times as wide, so one pass down a farm works all four columns. */
 export const TRACTOR_REACH = WORK_REACH * TRACTOR_EDGE;
+
+/** What each graphics level draws: the largest pixel ratio, the shadow map's size (0 = no shadows), soft shadow edges. */
+const QUALITY = [
+  { ratio: 2, shadow: 2048, soft: true },
+  { ratio: 1.5, shadow: 1024, soft: false },
+  { ratio: 1, shadow: 0, soft: false },
+] as const;
+/** A still farm on a phone is drawn about 30 times a second. */
+const IDLE_FRAME_MS = 31;
+
+/** A phone or a small, low-memory device: it gets the lighter picture on Auto graphics. */
+function phoneLike() {
+  try {
+    const nav = navigator as Navigator & { deviceMemory?: number };
+    return window.matchMedia('(pointer: coarse)').matches || Math.min(screen.width, screen.height) < 600 || (nav.deviceMemory ?? 8) <= 4 || (navigator.hardwareConcurrency || 8) <= 4;
+  } catch {
+    return false;
+  }
+}
 /** Where the tractor waits, and a spot beside it to walk to (clear of the Hire spot, which opens the hire screen). */
 const TRACTOR_HOME = { x: -17.4, z: 6.4 };
 export const TRACTOR_BOARD = { x: -17.4, z: 8.6 };
@@ -209,18 +228,19 @@ export class FarmWorld {
   private obstacles: { x: number; z: number; r: number }[] = [];
   private rects: Rect[] = [];
 
-  /** Settings → Graphics: auto adapts to the phone, high keeps shadows, low drops them and draws at 1× */
-  private graphics: WorldOptions['graphics'];
 
   constructor(canvas: HTMLCanvasElement, events: WorldEvents, opts: WorldOptions = { anime: true, graphics: 'auto' }) {
     this.ev = events;
-    this.graphics = opts.graphics;
     // the characters are built in the chosen style (the app builds a new farm when it changes)
     setCharacterStyle(opts.anime);
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+    // how much to draw: the sharpest on a computer, a lighter picture on a phone, the least on Low (see QUALITY)
+    this.level = opts.graphics === 'low' ? 2 : opts.graphics === 'high' || !phoneLike() ? 0 : 1;
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: this.level < 2, powerPreference: this.level === 0 ? 'high-performance' : 'default' });
     this.renderer.setSize(STAGE_W, STAGE_H, false);
-    this.renderer.shadowMap.enabled = opts.graphics !== 'low';
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.enabled = QUALITY[this.level].shadow > 0;
+    this.renderer.shadowMap.type = QUALITY[this.level].soft ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
+    // on a phone the shadows are redrawn every other frame (nothing on the farm moves fast enough to show it)
+    this.renderer.shadowMap.autoUpdate = this.level === 0;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.scene.background = new THREE.Color(C.grass);
     this.scene.fog = new THREE.Fog(C.grass, 30, 60);
@@ -228,9 +248,10 @@ export class FarmWorld {
     const hemi = new THREE.HemisphereLight('#ffffff', '#8fb83a', 1.55);
     this.scene.add(hemi);
     this.sun = new THREE.DirectionalLight('#fff6e0', 2.2);
-    this.sun.castShadow = opts.graphics !== 'low';
-    if (opts.graphics !== 'auto') this.lowFx = opts.graphics === 'low';
-    this.sun.shadow.mapSize.set(2048, 2048);
+    this.sun.castShadow = QUALITY[this.level].shadow > 0;
+    if (opts.graphics !== 'auto') this.lowFx = true;
+    const size = QUALITY[this.level].shadow || 512;
+    this.sun.shadow.mapSize.set(size, size);
     const sc = this.sun.shadow.camera;
     sc.left = -18;
     sc.right = 18;
@@ -263,18 +284,31 @@ export class FarmWorld {
     cancelAnimationFrame(this.raf);
     window.removeEventListener('keydown', this.onKey);
     window.removeEventListener('keyup', this.onKey);
-    this.renderer.dispose();
+    // free the GPU memory too: the farm is rebuilt when the art style or graphics change
+    const mats = new Set<THREE.Material>();
     this.scene.traverse(o => {
       const m = o as THREE.Mesh;
-      if (m.isMesh) m.geometry.dispose();
+      if (m.isMesh || (o as THREE.Sprite).isSprite) {
+        m.geometry?.dispose();
+        (Array.isArray(m.material) ? m.material : [m.material]).forEach(x => x && mats.add(x));
+      }
     });
+    mats.forEach(x => {
+      const map = (x as THREE.MeshBasicMaterial).map;
+      map?.dispose();
+      x.dispose();
+    });
+    this.sun.shadow.map?.dispose();
+    this.renderer.dispose();
   }
 
   /** The canvas's drawing size, for a sharp picture at the stage's scale. */
   resize(scale: number) {
-    this.renderer.setPixelRatio(this.graphics === 'low' ? 1 : Math.min(2, (window.devicePixelRatio || 1) * Math.max(0.5, scale)));
+    this.stageScale = scale;
+    this.renderer.setPixelRatio(Math.min(QUALITY[this.level].ratio, (window.devicePixelRatio || 1) * Math.max(0.5, scale)));
     this.renderer.setSize(STAGE_W, STAGE_H, false);
   }
+  private stageScale = 1;
 
   private lookKey = '';
   setView(v: ViewState) {
@@ -590,6 +624,9 @@ export class FarmWorld {
     const lam = (color: string) => new THREE.MeshLambertMaterial({ color });
     const inst = (geo: THREE.BufferGeometry, mat: THREE.Material, count: number, shadow = true) => {
       const m = new THREE.InstancedMesh(geo, mat, count);
+      // the count changes as tiles show and hide, so a bounding sphere computed once would go stale: the field is
+      // always in view anyway
+      m.frustumCulled = false;
       m.castShadow = shadow;
       m.receiveShadow = true;
       m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -758,8 +795,16 @@ export class FarmWorld {
     const growing = t?.phase === 'growing';
     const done = t?.phase === 'done';
     const col = new THREE.Color();
-    const hide = at(0, -20, 0, { s: 0.0001 });
     const meshes = [this.mound, this.wild, ...Object.values(this.plants), this.weeds, this.puddles, this.hail, this.pests];
+    // only what shows is drawn: each instanced mesh is packed from the start and its count set to what it holds (a
+    // hidden instance would still cost its triangles, in the picture and again in the shadows)
+    const used = new Map<THREE.InstancedMesh, number>(meshes.map(m => [m, 0]));
+    const put = (m: THREE.InstancedMesh, matrix: THREE.Matrix4, color?: THREE.Color) => {
+      const k = used.get(m)!;
+      m.setMatrixAt(k, matrix);
+      if (color) m.setColorAt(k, color);
+      used.set(m, k + 1);
+    };
     for (let farm = 0; farm < PLOTS.length; farm++) {
       const active = !!t && farm < t.plans.length && t.phase !== 'plan';
       const plan = t?.plans[farm];
@@ -780,25 +825,23 @@ export class FarmWorld {
       const showProblem = !!h && h !== 'healthy' && !fixed;
       const treatBits = h ? this.marks(farm, `t${day}`) : 0;
       // how the farm has fared so far: problems missed earlier make it yellower and shorter
-      const lost = !t || farm >= t.plans.length ? 0 : growing && day > 1 ? harvestFarm(t, farm, Math.min(day - 1, CHECK_DAYS)).lost : done ? t.results?.[farm]?.lost ?? 0 : 0;
+      const lost = !t || farm >= t.plans.length ? 0 : growing && day > 1 ? this.grown(t, farm, day).lost : done ? t.results?.[farm]?.lost ?? 0 : 0;
       const weedMask = h === 'weeds' ? needOf('weed', t!, farm, day) : 0;
       const puddleMask = h === 'flood' ? needOf('drain', t!, farm, day) : 0;
       const gaps = plan?.date === 'early' ? someTiles(`gap:${t?.cycle}:${farm}`, 5) : 0;
       // each mini plot grows with its own seed, fertilizer and machines: taller or shorter, greener or paler
-      const growth = active && t ? plotGrowth(t, farm) : [1, 1, 1, 1];
+      const growth = active && t ? this.grown(t, farm, day).plots : [1, 1, 1, 1];
       this.plotLabels[farm].forEach(sp => (sp.visible = active));
 
       col.set(active && prep ? '#7a4224' : '#93cf33');
       this.base.setColorAt(farm, col);
 
       for (let i = 0; i < TILES; i++) {
-        const id = farm * TILES + i;
         const c = tileCenter(farm, i);
         const bit = 1 << i;
-        for (const m of meshes) m.setMatrixAt(id, hide);
         const isPrep = !!(prep & bit);
         // the soil
-        this.mound.setMatrixAt(id, at(c.x, 0.06, c.z, { sx: TILE * 0.82, sy: 0.16, sz: TILE * 0.94 }));
+        const moundAt = at(c.x, 0.06, c.z, { sx: TILE * 0.82, sy: 0.16, sz: TILE * 0.94 });
         let soil = C.grassDark;
         if (isPrep) soil = plan?.land === 'mulch' ? C.mulch : plan?.land === 'slash' ? '#8f6a3c' : C.soilTilled;
         if (isPrep && sown & bit) soil = plan?.land === 'mulch' ? C.mulch : C.soil;
@@ -808,8 +851,8 @@ export class FarmWorld {
         if (h === 'drought' && treatBits & bit) soil = C.soilWet;
         if (h === 'flood') soil = C.soilDark;
         col.set(soil);
-        this.mound.setColorAt(id, col);
-        if (!isPrep) this.wild.setMatrixAt(id, at(c.x, 0.12, c.z, { ry: i * 1.3 }));
+        put(this.mound, moundAt, col);
+        if (!isPrep) put(this.wild, at(c.x, 0.12, c.z, { ry: i * 1.3 }));
         // the crop
         if (!active || !(sown & bit) || gaps & bit) continue;
         let stage: keyof FarmWorld['plants'] = day <= 2 ? 'sprout' : day <= 4 ? 'young' : day <= CHECK_DAYS ? 'tall' : 'ripe';
@@ -839,17 +882,15 @@ export class FarmWorld {
           if (g < 0.62 && tint === '#ffffff') tint = '#e6eb9a';
         }
         if (lost > 0.08 && tint === '#ffffff' && stage !== 'stubble') tint = lost > 0.25 ? '#dcd27a' : '#eef0a8';
-        const m = at(c.x, 0.06, c.z, { sy, ry: (i % 2) * 0.4 });
-        this.plants[stage].setMatrixAt(id, m);
         col.set(tint);
-        this.plants[stage].setColorAt(id, col);
+        put(this.plants[stage], at(c.x, 0.06, c.z, { sy, ry: (i % 2) * 0.4 }), col);
+        const weedy = (showProblem && !(treatBits & bit) && weedMask & bit) || fuWeeds & bit;
+        if (weedy) put(this.weeds, at(c.x, 0.08, c.z, { ry: i }));
         if (showProblem && !(treatBits & bit)) {
-          if (weedMask & bit) this.weeds.setMatrixAt(id, at(c.x, 0.08, c.z, { ry: i }));
-          if (puddleMask & bit) this.puddles.setMatrixAt(id, at(c.x, 0, c.z));
-          if (h === 'hail' && i % 2 === 0) this.hail.setMatrixAt(id, at(c.x, 0, c.z));
-          if (h === 'armyworm' && i % 3 === 0) this.pests.setMatrixAt(id, at(c.x, 0.1, c.z));
+          if (puddleMask & bit) put(this.puddles, at(c.x, 0, c.z));
+          if (h === 'hail' && i % 2 === 0) put(this.hail, at(c.x, 0, c.z));
+          if (h === 'armyworm' && i % 3 === 0) put(this.pests, at(c.x, 0.1, c.z));
         }
-        if (fuWeeds & bit) this.weeds.setMatrixAt(id, at(c.x, 0.08, c.z, { ry: i }));
       }
       // the sign's badge: check due, work to do, harvest
       const s = this.signs[farm];
@@ -865,6 +906,10 @@ export class FarmWorld {
       if (badge) s.badge.material.map = this.badgeTex[badge];
       s.badge.material.needsUpdate = true;
     }
+    for (const m of meshes) {
+      m.count = used.get(m)!;
+      m.visible = m.count > 0;
+    }
     for (const m of [this.base, this.plotLines, ...meshes]) {
       m.instanceMatrix.needsUpdate = true;
       if (m.instanceColor) m.instanceColor.needsUpdate = true;
@@ -875,6 +920,20 @@ export class FarmWorld {
     const cobs = growing && day > CHECK_DAYS && t ? t.plans.reduce((n, _, i) => n + this.popMarks(i, 'harvest'), 0) : 0;
     const show = Math.min(12, Math.ceil(cobs / 3));
     this.farmer.cobs.children.forEach((c, i) => (c.visible = i < show));
+  }
+
+  /** How a farm has fared so far and how its plots grow: worked out once per trial and day (the field is redrawn
+      many times a second while the farmer works, and these do not change with the work). */
+  private grownCache: { t: Trial | null; day: number; farms: Map<number, { lost: number; plots: number[] }> } = { t: null, day: -1, farms: new Map() };
+  private grown(t: Trial, farm: number, day: number) {
+    const c = this.grownCache;
+    if (c.t !== t || c.day !== day) this.grownCache = { t, day, farms: new Map() };
+    let r = this.grownCache.farms.get(farm);
+    if (!r) {
+      r = { lost: day > 1 ? harvestFarm(t, farm, Math.min(day - 1, CHECK_DAYS)).lost : 0, plots: plotGrowth(t, farm) };
+      this.grownCache.farms.set(farm, r);
+    }
+    return r;
   }
 
   private popMarks(farm: number, job: string) {
@@ -1077,6 +1136,7 @@ export class FarmWorld {
       shadows: this.renderer.shadowMap.enabled,
       shadowSize: this.sun.shadow.mapSize.x,
       lowFx: this.lowFx,
+      level: this.level,
       cpuMs: this.cpu.frames ? this.cpu.ms / this.cpu.frames : 0,
       frames: this.cpu.frames,
       drawn: this.cpu.drawn,
@@ -1087,17 +1147,24 @@ export class FarmWorld {
   }
 
   private loop = () => {
+    this.raf = requestAnimationFrame(this.loop);
+    if (this.view?.paused) return;
     const t0 = performance.now();
+    // on a phone, a still farm is drawn 30 times a second instead of 60 (cooler phone, longer battery)
+    if (this.level > 0 && !this.busy && t0 - this.lastDraw < IDLE_FRAME_MS) return;
+    this.adapt(t0);
+    this.lastDraw = t0;
     this.frame();
     this.cpu.ms += performance.now() - t0;
     this.cpu.frames++;
   };
+  private lastDraw = 0;
+  /** something moves this frame (the farmer, the tractor, dust, a tap ring): draw every frame */
+  private busy = true;
+  private shadowTick = 0;
 
   private frame() {
-    this.raf = requestAnimationFrame(this.loop);
     const dt = Math.min(0.1, this.clock.getDelta());
-    if (this.view?.paused) return;
-    this.adapt(dt);
     const time = this.clock.elapsedTime;
     this.move(dt);
     this.rideTractor(dt);
@@ -1123,30 +1190,53 @@ export class FarmWorld {
       (this.ring.material as THREE.MeshBasicMaterial).opacity = this.ringLife * 1.5;
     }
     this.followCamera(dt);
+    if (!this.renderer.shadowMap.autoUpdate) this.renderer.shadowMap.needsUpdate = this.shadowTick++ % 2 === 0;
     this.renderer.render(this.scene, this.camera);
     this.cpu.drawn++;
+    this.busy = this.walking > 0.01 || this.work > 0 || !!this.hire || this.ringLife > 0 || this.pData.some(d => d.life > 0);
   }
 
-  /** Cheap phones: if frames come slowly, drop the shadows and draw at a lower resolution. */
-  private frames = 0;
-  private slow = 0;
+  /** Auto graphics: while things move, if frames come slowly for a few seconds, draw less: first a computer's
+      setting drops to a phone's, then the shadows go and the picture is drawn at 1×. Checked in the first minute. */
+  private level = 0;
   private lowFx = false;
-  private adapt(dt: number) {
-    if (this.lowFx || this.graphics !== 'auto' || this.frames > 400) return;
-    this.frames++;
-    if (this.frames < 30) return;
-    this.slow = this.slow * 0.95 + (dt > 0.045 ? 1 : 0) * 0.05;
-    if (this.frames > 90 && this.slow > 0.6) {
+  private gaps: number[] = [];
+  private checkedFor = 0;
+  private adapt(now: number) {
+    if (this.lowFx || this.level >= 2) return;
+    const gap = now - this.lastDraw;
+    if (!this.busy || this.lastDraw === 0 || gap > 500) return;
+    this.checkedFor += gap;
+    if (this.checkedFor > 60_000) {
       this.lowFx = true;
-      this.renderer.shadowMap.enabled = false;
-      this.sun.castShadow = false;
-      this.renderer.setPixelRatio(1);
-      this.renderer.setSize(STAGE_W, STAGE_H, false);
-      this.scene.traverse(o => {
-        const m = o as THREE.Mesh;
-        if (m.isMesh && m.material) (Array.isArray(m.material) ? m.material : [m.material]).forEach(x => (x.needsUpdate = true));
-      });
+      return;
     }
+    this.gaps.push(gap);
+    if (this.gaps.length < 90) return;
+    const avg = this.gaps.reduce((a, b) => a + b, 0) / this.gaps.length;
+    this.gaps = [];
+    // under about 25 frames a second
+    if (avg > 40) this.setLevel(this.level + 1);
+  }
+
+  private setLevel(level: number) {
+    this.level = Math.min(2, level);
+    const q = QUALITY[this.level];
+    const sh = this.renderer.shadowMap;
+    sh.enabled = q.shadow > 0;
+    sh.type = q.soft ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
+    sh.autoUpdate = this.level === 0;
+    this.sun.castShadow = q.shadow > 0;
+    if (q.shadow) {
+      this.sun.shadow.mapSize.set(q.shadow, q.shadow);
+      this.sun.shadow.map?.dispose();
+      this.sun.shadow.map = null;
+    }
+    this.resize(this.stageScale);
+    this.scene.traverse(o => {
+      const m = o as THREE.Mesh;
+      if (m.isMesh && m.material) (Array.isArray(m.material) ? m.material : [m.material]).forEach(x => (x.needsUpdate = true));
+    });
   }
 
   private move(dt: number) {

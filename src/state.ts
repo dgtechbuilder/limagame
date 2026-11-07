@@ -1,4 +1,4 @@
-import { useEffect, useReducer } from 'react';
+import { useEffect, useReducer, useRef } from 'react';
 import { FARMS, ROUND_POINTS, dayNumber } from './rounds/farms';
 import {
   CHECK_DAYS,
@@ -897,17 +897,51 @@ export function clearSave() {
   }
 }
 
+function save(state: GameState) {
+  try {
+    const copy: Partial<GameState> = { ...state };
+    TRANSIENT.forEach(k => delete copy[k]);
+    window.localStorage.setItem(SAVE_KEY, JSON.stringify(copy));
+  } catch {
+    /* private mode or storage blocked: play continues without saving */
+  }
+}
+
+/** The game's state, saved to the phone. Saving waits for a short pause (the farm world changes the state many times a
+    second while the farmer works), and happens at once when the game is hidden or closed. */
 export function useGame() {
   const [state, dispatch] = useReducer(reducer, undefined, load);
+  const latest = useRef(state);
+  // the state as last saved (or loaded): only a change is written
+  const saved = useRef(state);
+  const timer = useRef<number | undefined>(undefined);
+  latest.current = state;
+  const flush = () => {
+    window.clearTimeout(timer.current);
+    if (latest.current === saved.current) return;
+    saved.current = latest.current;
+    save(latest.current);
+  };
+  useEffect(() => {
+    if (reviewing() || state === saved.current) return;
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(flush, SAVE_DELAY_MS);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
   useEffect(() => {
     if (reviewing()) return;
-    try {
-      const copy: Partial<GameState> = { ...state };
-      TRANSIENT.forEach(k => delete copy[k]);
-      window.localStorage.setItem(SAVE_KEY, JSON.stringify(copy));
-    } catch {
-      /* private mode or storage blocked: play continues without saving */
-    }
-  }, [state]);
+    const now = flush;
+    const hidden = () => document.visibilityState === 'hidden' && now();
+    document.addEventListener('visibilitychange', hidden);
+    window.addEventListener('pagehide', now);
+    return () => {
+      document.removeEventListener('visibilitychange', hidden);
+      window.removeEventListener('pagehide', now);
+      now();
+    };
+  }, []);
   return [state, dispatch] as const;
 }
+
+/** How long saving waits for the state to settle. */
+const SAVE_DELAY_MS = 600;
