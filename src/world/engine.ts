@@ -3,9 +3,11 @@
    this engine draws it and reports what the farmer did. */
 
 import * as THREE from 'three';
-import { RIDE_SPEED, TRACTOR_EDGE, TRACTOR_JOBS } from '../tractor/data';
-import { CHECK_DAYS, checkKey, harvestFarm, hazardFor, type Trial, type TrialHazard } from '../trials/model';
+import { RIDE_SPEED, TRACTOR_EDGE, type ImplId } from '../tractor/data';
+import { JOB_INFO, PLOT_LETTERS, TOOL_JOB, TRACTOR_PLOT, plotName, sprayerOf, toolName, tractorBlock, type PlotJob, type TractorId } from '../plots/data';
+import { CHECK_DAYS, checkKey, farmName, harvestFarm, hazardFor, plotGrowth, plotsOf, type Trial, type TrialHazard } from '../trials/model';
 import {
+  COLS,
   FULL,
   PLOTS,
   PLOT_D,
@@ -24,6 +26,7 @@ import {
   treatLeft,
   careLeft,
   fixLeft,
+  plotMask,
   followUpLeft,
   type Carry,
   type Field,
@@ -114,7 +117,7 @@ export interface ViewState {
 
 export interface WorldEvents {
   /** `tractor`: the tiles were done from the tractor seat */
-  mark: (farm: number, job: string, bits: number, tractor?: boolean) => void;
+  mark: (farm: number, job: string, bits: number, tractor?: boolean, rig?: { tractor: TractorId; tool: ImplId; job: PlotJob }) => void;
   carry: (item: Carry) => void;
   place: (p: Place) => void;
   /** the farmer is at a farm's sign (or left it: -1) */
@@ -163,6 +166,12 @@ export class FarmWorld {
   speedScale = 1;
   /** the farmer is on the tractor: a wider swath on the big jobs, a little faster, and bonus points */
   private riding = false;
+  /** the tractor type and tool chosen at the tractor (plots/data.ts): the tool decides the job */
+  private rig: { tractor: TractorId; tool: ImplId } | null = null;
+  /** plots the tractor has claimed here before the state caught up, as `${cycle}:${farm}:${tractor or job:tool}` → plot */
+  private claims = new Map<string, number>();
+  private plotLines!: THREE.InstancedMesh;
+  private plotLabels: THREE.Sprite[][] = [];
 
   // the field, drawn as instances: 6 farms × 20 tiles
   private base!: THREE.InstancedMesh;
@@ -599,6 +608,21 @@ export class FarmWorld {
     this.puddles = inst(puddleTile(), new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.85 }), n, false);
     this.hail = inst(hailTile(), vcMaterial(), n, false);
     this.pests = inst(pestTile(), vcMaterial(), n, false);
+    // the four mini plots of each farm: pale lines between them, and their letters A to D at the front
+    this.plotLines = inst(G.box, lam('#f6ecc4'), PLOTS.length * (COLS - 1), false);
+    PLOTS.forEach((p, f) => {
+      for (let c = 0; c < COLS - 1; c++) this.plotLines.setMatrixAt(f * (COLS - 1) + c, at(p.x + (c + 0.5 - (COLS - 1) / 2) * TILE, 0.05, p.z, { sx: 0.07, sy: 0.05, sz: PLOT_D + 0.2 }));
+      const row: THREE.Sprite[] = [];
+      for (let c = 0; c < COLS; c++) {
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: badgeTexture(PLOT_LETTERS[c], '#7a4a22'), depthTest: false }));
+        sp.scale.set(0.42, 0.42, 1);
+        sp.position.set(p.x + (c - (COLS - 1) / 2) * TILE, 0.35, p.z + PLOT_D / 2 + 0.32);
+        sp.renderOrder = 4;
+        this.scene.add(sp);
+        row.push(sp);
+      }
+      this.plotLabels.push(row);
+    });
     // a sign at each farm
     for (let f = 0; f < PLOTS.length; f++) {
       const s = signOf(f);
@@ -760,6 +784,9 @@ export class FarmWorld {
       const weedMask = h === 'weeds' ? needOf('weed', t!, farm, day) : 0;
       const puddleMask = h === 'flood' ? needOf('drain', t!, farm, day) : 0;
       const gaps = plan?.date === 'early' ? someTiles(`gap:${t?.cycle}:${farm}`, 5) : 0;
+      // each mini plot grows with its own seed, fertilizer and machines: taller or shorter, greener or paler
+      const growth = active && t ? plotGrowth(t, farm) : [1, 1, 1, 1];
+      this.plotLabels[farm].forEach(sp => (sp.visible = active));
 
       col.set(active && prep ? '#7a4224' : '#93cf33');
       this.base.setColorAt(farm, col);
@@ -805,6 +832,12 @@ export class FarmWorld {
           }
         }
         if (h === 'plantLate') sy *= 0.8;
+        // the plots part ways as the crop grows
+        const g = growth[i % COLS];
+        if (stage !== 'sprout' && stage !== 'stubble') {
+          sy *= 0.7 + 0.3 * Math.min(1, g);
+          if (g < 0.62 && tint === '#ffffff') tint = '#e6eb9a';
+        }
         if (lost > 0.08 && tint === '#ffffff' && stage !== 'stubble') tint = lost > 0.25 ? '#dcd27a' : '#eef0a8';
         const m = at(c.x, 0.06, c.z, { sy, ry: (i % 2) * 0.4 });
         this.plants[stage].setMatrixAt(id, m);
@@ -832,7 +865,7 @@ export class FarmWorld {
       if (badge) s.badge.material.map = this.badgeTex[badge];
       s.badge.material.needsUpdate = true;
     }
-    for (const m of [this.base, ...meshes]) {
+    for (const m of [this.base, this.plotLines, ...meshes]) {
       m.instanceMatrix.needsUpdate = true;
       if (m.instanceColor) m.instanceColor.needsUpdate = true;
     }
@@ -890,11 +923,11 @@ export class FarmWorld {
     const carry = v.field.carry;
     const setup = setupLeft(f, t, farm);
     if (setup === 'prep') {
-      if (machinePrep(plan) && !(this.riding && plan.land === 'tractor')) return { hint: `${plan.land === 'tractor' ? 'Hire the tractor' : 'Hire the oxen'} at the Hire spot to plough Farm ${farm + 1}` };
+      if (machinePrep(plan)) return { hint: `${plan.land === 'tractor' ? 'Hire the tractor' : 'Hire the oxen'} at the Hire spot to plough Farm ${farm + 1}` };
       return { job: 'prep', need: FULL, fx: plan.land === 'slash' ? 'clear' : plan.land === 'mulch' ? 'mulch' : 'dig' };
     }
     if (setup === 'sow') return carry === 'seeds' ? { job: 'sow', need: FULL, fx: 'seed' } : { hint: 'Get the seed sack from the shed to sow' };
-    if (setup === 'setupFeed') return carry === 'fertilizer' ? { job: 'setupFeed', need: FULL, fx: 'fert' } : { hint: 'Get fertilizer from the shed: this farm gets it at planting' };
+    if (setup === 'setupFeed') return carry === 'fertilizer' ? { job: 'setupFeed', need: needOf('setupFeed', t, farm), fx: 'fert' } : { hint: 'Get fertilizer from the shed: this farm gets it at planting' };
     if (day > CHECK_DAYS) return { job: 'harvest', need: FULL, fx: 'harvest' };
     const tr = careLeft(f, t, farm, day);
     if (!tr) return null;
@@ -913,6 +946,8 @@ export class FarmWorld {
     const z = this.pos.y;
     const farm = PLOTS.findIndex(p => Math.abs(x - p.x) <= PLOT_W / 2 + 0.3 && Math.abs(z - p.z) <= PLOT_D / 2 + 0.3);
     if (farm < 0) return;
+    // on the tractor, the tool decides the job, and only the plot under the tractor is worked
+    if (this.riding) return this.rideWork(farm);
     const j = this.jobAt(farm);
     if (!j) return;
     if ('hint' in j) {
@@ -924,17 +959,7 @@ export class FarmWorld {
       }
       return;
     }
-    // the tractor does the big jobs; small jobs (weeds, puddles, water, spray, top-dress, animals) stay on foot
-    const byTractor = this.riding && (TRACTOR_JOBS as readonly string[]).includes(j.job);
-    if (this.riding && !byTractor) {
-      const now = performance.now();
-      if (v.focus === farm && now - this.lastHint > 5000) {
-        this.lastHint = now;
-        this.ev.hint('This is a job for a farmer on foot: tap Get off');
-      }
-      return;
-    }
-    const reach = byTractor ? TRACTOR_REACH : WORK_REACH;
+    const reach = WORK_REACH;
     let bits = 0;
     const done = this.marks(farm, j.job);
     for (let i = 0; i < TILES; i++) {
@@ -952,8 +977,88 @@ export class FarmWorld {
     this.work = 0.45;
     this.workFx = j.fx;
     this.dirty = true;
-    this.ev.mark(farm, j.job, bits, byTractor);
+    this.ev.mark(farm, j.job, bits, false);
     void dt;
+  }
+
+  private rideHint(text: string) {
+    const now = performance.now();
+    if (now - this.lastHint < 4000) return;
+    this.lastHint = now;
+    this.ev.hint(text);
+  }
+
+  /** The tractor at work: the tool decides the job; it works the plot under it, if that plot may be worked with this
+      tractor type and tool (each one plot per farm). */
+  private rideWork(farm: number) {
+    const v = this.view!;
+    const t = v.trial;
+    const rig = this.rig;
+    if (!t || t.phase !== 'growing' || !rig || farm >= t.plans.length) return;
+    const f = this.liveField();
+    const day = fieldDay(t, v.today);
+    const job = TOOL_JOB[rig.tool];
+    const tool = toolName(rig.tool).toLowerCase();
+    const plot = Math.max(0, Math.min(COLS - 1, Math.round((this.pos.x - PLOTS[farm].x) / TILE + (COLS - 1) / 2)));
+    const setup = setupLeft(f, t, farm);
+    let key: string | null = null;
+    let need = 0;
+    if (job === 'prep' || job === 'sow' || job === 'setupFeed') {
+      if (setup === job) {
+        key = job;
+        need = needOf(job, t, farm);
+      } else if (setup) return this.rideHint(`${farmName(farm)} needs to ${JOB_INFO[setup as PlotJob].name.toLowerCase()} first: the ${tool} is for later`);
+      else return this.rideHint(`${farmName(farm)} is planted: nothing for the ${tool} here now`);
+    } else if (job === 'harvest') {
+      if (setup || day <= CHECK_DAYS) return this.rideHint(`The maize on ${farmName(farm)} is not ready to harvest yet`);
+      key = 'harvest';
+      need = FULL;
+    } else {
+      const c = day >= 1 && day <= CHECK_DAYS ? careLeft(f, t, farm, day) : null;
+      if (c?.job !== 'spray') return this.rideHint(`Nothing to spray on ${farmName(farm)} today`);
+      key = c.key;
+      need = c.need;
+    }
+    const pm = plotMask(plot);
+    if (!(need & pm)) return this.rideHint(job === 'setupFeed' ? `${plotName(plot)} gets no fertilizer: it is the control plot` : job === 'spray' ? `${plotName(plot)} is the unsprayed check strip` : `${plotName(plot)} needs no ${tool} work`);
+    const rows = plotsOf(t, farm).map(r => ({ ...r, tools: { ...(r.tools ?? {}) } }));
+    // what this ride has claimed already, before the state caught up
+    for (const [k, p] of this.claims) {
+      const [cy, fm, what, tl] = k.split(':');
+      if (Number(cy) !== t.cycle || Number(fm) !== farm) continue;
+      if (what === 'tractor') rows[p].tractor = tl as TractorId;
+      else rows[p].tools![what as PlotJob] = tl as ImplId;
+    }
+    let block = tractorBlock(rows, plot, rig.tractor, rig.tool);
+    const sp = rows[plot].sprayer;
+    if (!block && job === 'spray' && sp && sp !== 'boom') block = `${plotName(plot)} is sprayed with the ${sprayerOf(sp).name.toLowerCase()}: the boom sprayer has its own plot`;
+    if (block) return this.rideHint(block);
+    const done = this.marks(farm, key);
+    let bits = 0;
+    for (let i = 0; i < TILES; i++) {
+      const bit = 1 << i;
+      if (!(need & pm & bit) || done & bit) continue;
+      const c = tileCenter(farm, i);
+      if (Math.abs(c.z - this.pos.y) < TILE * 1.6) {
+        bits |= bit;
+        this.burst(this.fxOf(job), c.x, c.z, job === 'harvest' ? 3 : 6);
+      }
+    }
+    if (!bits) return;
+    this.claims.set(`${t.cycle}:${farm}:tractor:${rig.tractor}`, plot);
+    this.claims.set(`${t.cycle}:${farm}:${job}:${rig.tool}`, plot);
+    const k = `${farm}:${key}`;
+    this.pending.set(k, (this.pending.get(k) ?? 0) | bits);
+    this.work = 0.45;
+    this.workFx = this.fxOf(job);
+    this.dirty = true;
+    this.ev.mark(farm, key, bits, true, { tractor: rig.tractor, tool: rig.tool, job });
+  }
+
+  private fxOf(job: PlotJob): Fx {
+    const plan = this.view?.trial?.plans[0];
+    void plan;
+    return ({ prep: 'dig', sow: 'seed', setupFeed: 'fert', spray: 'spray', harvest: 'harvest' } as const)[job];
   }
 
   /* ---------------- the frame ---------------- */
@@ -1028,7 +1133,7 @@ export class FarmWorld {
         this.ev.arrived?.();
       }
     }
-    const speed = 4.6 * this.speedScale * (this.riding ? RIDE_SPEED : 1);
+    const speed = 4.6 * this.speedScale * (this.riding ? RIDE_SPEED * (this.rig ? TRACTOR_PLOT[this.rig.tractor].speed : 1) : 1);
     if (dir.lengthSq() > 0) {
       const len = Math.min(1, dir.length());
       dir.normalize();
@@ -1112,7 +1217,18 @@ export class FarmWorld {
     return !this.hire && !this.riding && Math.hypot(this.pos.x - this.tractor.position.x, this.pos.y - this.tractor.position.z) < 3.4;
   }
 
-  mount(): 'ok' | 'busy' | 'far' {
+  /** The tractor type and tool on the tractor now (null on foot). */
+  getRig() {
+    return this.riding ? this.rig : null;
+  }
+
+  /** The tractor is out on a hired job. */
+  isBusy() {
+    return !!this.hire;
+  }
+
+  mount(rig?: { tractor: TractorId; tool: ImplId }): 'ok' | 'busy' | 'far' {
+    if (rig) this.rig = rig;
     if (this.riding) return 'ok';
     if (this.hire) return 'busy';
     if (!this.nearTractor()) return 'far';

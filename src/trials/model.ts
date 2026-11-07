@@ -5,15 +5,41 @@
    problem costs when it is caught or missed) is in the tables below, so an agronomist can review and tune them
    without touching any code. The numbers are illustrative until that review is done. */
 
+import {
+  FERTS,
+  MISFIT_COST,
+  PLOT_SHARE,
+  SEEDS,
+  TRACTOR_LAND_FACTOR,
+  TRACTOR_PLOT,
+  defaultPlots,
+  fertOf,
+  legacyPlots,
+  plotCost,
+  plotName,
+  prepNeed,
+  seedOf,
+  sprayerOf,
+  toolFit,
+  toolName,
+  type FertId,
+  type PlotJob,
+  type PlotRecord,
+  type SeedId,
+} from '../plots/data';
+import type { ImplId } from '../tractor/data';
+
 /* ---------------- the plan ---------------- */
 
 export type StepKey = 'land' | 'seed' | 'date' | 'fert' | 'pest' | 'water' | 'harvest';
 
 export interface Plan {
   land: 'slash' | 'hoe' | 'ox' | 'tractor' | 'mulch';
-  seed: 'saved' | 'certified' | 'intercrop' | 'dense';
+  /** each plot's own seed is in Trial.plots; this one only sets the farm's odds (new plans keep 'certified') */
+  seed: SeedId;
   date: 'early' | 'rains' | 'late';
-  fert: 'none' | 'manure' | 'basal' | 'basalTop' | 'double';
+  /** each plot's own fertilizer is in Trial.plots; this one only sets the farm's odds (new plans keep 'basal') */
+  fert: FertId;
   pest: 'none' | 'scout' | 'spray';
   /** litres per m² per week on top of the rain */
   water: 0 | 10 | 20 | 30 | 40 | 50;
@@ -60,12 +86,8 @@ export const PLAN_STEPS: PlanStep[] = [
   {
     key: 'seed',
     label: 'Planting',
-    options: [
-      o('saved', 'Saved seed', 'Plant grain kept from the last harvest.', 10, 0.75),
-      o('certified', 'Certified seed', 'Plant certified seed in rows, 75 cm apart and 25 cm between plants.', 90, 1),
-      o('intercrop', 'Seed + beans', 'Certified seed in rows, with a row of beans between the maize rows.', 130, 0.95),
-      o('dense', 'Close spacing', 'Certified seed planted twice as close, to fit more plants in.', 120, 0.9),
-    ],
+    // chosen for each plot (plots/data.ts SEEDS)
+    options: SEEDS.map(x => o(x.id, x.label, x.does, x.cost, x.factor.normal)),
   },
   {
     key: 'date',
@@ -79,13 +101,8 @@ export const PLAN_STEPS: PlanStep[] = [
   {
     key: 'fert',
     label: 'Fertilizer',
-    options: [
-      o('none', 'None', 'No fertilizer or manure.', 0, 0.55),
-      o('manure', 'Manure only', 'Dig farmyard manure into the planting holes.', 60, 0.72),
-      o('basal', 'At planting only', 'Planting fertilizer in each hole, nothing later.', 150, 0.75),
-      o('basalTop', 'Planting + top-dress', 'Planting fertilizer, then a top-dress when the maize is knee high.', 250, 1),
-      o('double', 'Double dose', 'Twice the planting fertilizer and twice the top-dress.', 480, 0.95),
-    ],
+    // chosen for each plot (plots/data.ts FERTS)
+    options: FERTS.map(x => o(x.id, x.label, x.does, x.cost, x.factor)),
   },
   {
     key: 'pest',
@@ -112,6 +129,10 @@ export const PLAN_STEPS: PlanStep[] = [
   },
 ];
 
+/** The steps planned for a whole farm. Seed and fertilizer are chosen for each of its four plots instead. */
+export const FARM_STEP_KEYS: StepKey[] = ['land', 'date', 'pest', 'water', 'harvest'];
+export const FARM_STEPS = PLAN_STEPS.filter(s => FARM_STEP_KEYS.includes(s.key));
+
 export const stepOf = (key: StepKey) => PLAN_STEPS.find(s => s.key === key)!;
 export const optionOf = (key: StepKey, plan: Plan) => stepOf(key).options.find(x => x.id === String(plan[key]))!;
 /** A choice's words inside a sentence: only the first letter lowered, so units like L stay as they are. */
@@ -119,11 +140,26 @@ export const lower = (text: string) => text.charAt(0).toLowerCase() + text.slice
 export const setChoice = (plan: Plan, key: StepKey, id: string): Plan => ({ ...plan, [key]: key === 'water' ? Number(id) : id }) as Plan;
 
 /** A common way to grow maize, used for Farm 1 in the first, guided cycle. */
-export const COMMON_PLAN: Plan = { land: 'hoe', seed: 'saved', date: 'rains', fert: 'basal', pest: 'none', water: 0, harvest: 'ready' };
+export const COMMON_PLAN: Plan = { land: 'hoe', seed: 'certified', date: 'rains', fert: 'basal', pest: 'none', water: 0, harvest: 'ready' };
 
-export const planCost = (p: Plan) => PLAN_STEPS.reduce((n, s) => n + optionOf(s.key, p).cost, 0);
-export const samePlan = (a: Plan, b: Plan) => PLAN_STEPS.every(s => String(a[s.key]) === String(b[s.key]));
-export const differences = (a: Plan, b: Plan) => PLAN_STEPS.filter(s => String(a[s.key]) !== String(b[s.key])).map(s => s.key);
+/** What a farm's farm-wide steps cost (its plots' seed and fertilizer are on top: see farmCost). */
+export const planCost = (p: Plan) => FARM_STEPS.reduce((n, s) => n + optionOf(s.key, p).cost, 0);
+export const samePlan = (a: Plan, b: Plan) => FARM_STEPS.every(s => String(a[s.key]) === String(b[s.key]));
+export const differences = (a: Plan, b: Plan) => FARM_STEPS.filter(s => String(a[s.key]) !== String(b[s.key])).map(s => s.key);
+
+/** A farm's plan for odds and recipes: seed and fertilizer live on its plots, so they are kept neutral here. */
+export const farmPlan = (p: Plan): Plan => ({ ...p, seed: 'certified', fert: 'basal' });
+
+/* ---------------- the four plots of a farm ---------------- */
+
+/** A farm's four plots (saves from before plots: all four follow the farm plan). */
+export const plotsOf = (t: Pick<Trial, 'plots' | 'plans'>, farm: number): PlotRecord[] => t.plots?.[farm] ?? legacyPlots(t.plans[farm].seed, t.plans[farm].fert);
+
+/** Seed and fertilizer for a farm's four plots. */
+export const plotsCost = (rows: PlotRecord[]) => rows.reduce((n, r) => n + plotCost('seed', r.seed) + plotCost('fert', r.fert), 0);
+/** Everything a farm costs to plant: its farm-wide steps and its plots' seed and fertilizer. */
+export const farmCost = (t: Pick<Trial, 'plots' | 'plans'>, farm: number) => planCost(t.plans[farm]) + plotsCost(plotsOf(t, farm));
+export const trialCost = (t: Pick<Trial, 'plots' | 'plans'>) => t.plans.reduce((n, _, i) => n + farmCost(t, i), 0);
 
 /* ---------------- the season's rain ---------------- */
 
@@ -279,6 +315,19 @@ export interface TractorRecord {
   tries: number;
 }
 
+/** One plot's harvest. */
+export interface PlotResult {
+  bags: number;
+  beans: number;
+  quality: number;
+  income: number;
+  /** what the plot's own inputs did to its yield (1 = no change) */
+  factors: { land: number; seed: number; fert: number; tools: number };
+  /** share of the plot's yield lost to problems */
+  lost: number;
+  inputs: PlotRecord;
+}
+
 export interface FarmResult {
   bags: number;
   beans: number;
@@ -292,6 +341,10 @@ export interface FarmResult {
   lost: number;
   /** problems that cost yield, worst first */
   problems: { hazard: TrialHazard; day: number; caught: boolean; loss: number }[];
+  /** the four plots, A to D (missing in results from before plots) */
+  plots?: PlotResult[];
+  /** what the plots' own inputs did to the farm's yield, together (1 = as planned) */
+  plotFactor?: number;
 }
 
 export interface Trial {
@@ -316,6 +369,10 @@ export interface Trial {
   followUps?: FollowUp[];
   /** farm world: the best tractor drive on each tractor-hire farm, by farm index */
   tractor?: Record<string, TractorRecord>;
+  /** each farm's four plots A to D: seed, fertilizer, sprayer, tractor and tools (missing in saves from before plots) */
+  plots?: PlotRecord[][];
+  /** coins spent on tractor fuel, by farm */
+  fuel?: number[];
 }
 
 export interface TrialSummary {
@@ -386,43 +443,180 @@ export function baseHazard(t: Pick<Trial, 'cycle' | 'forecast' | 'plans' | 'guid
   return 'healthy';
 }
 
-/** What a farm's harvest comes to, from its plan, its problems and how well they were caught. */
-export function harvestFarm(t: Trial, farm: number, lastDay = CHECK_DAYS): FarmResult {
+/** The day's problems on a farm and how well each was caught (the same for all four plots; what each plot loses
+    differs with its seed, fertilizer and sprayer: plotLoss). */
+function farmProblems(t: Trial, farm: number, lastDay: number) {
   const p = t.plans[farm];
-  const factors = Object.fromEntries(PLAN_STEPS.map(s => [s.key, stepFactor(s.key, p, t.forecast)])) as Record<StepKey, number>;
-  // proposed effects from Wakala Agent, off until the agronomist's review (see WAKALA_YIELD_EFFECTS)
-  const drive = t.tractor?.[farm];
-  if (WAKALA_YIELD_EFFECTS && p.land === 'tractor' && drive) factors.land *= TRACTOR_Q_FACTOR.base + TRACTOR_Q_FACTOR.span * drive.Q;
   const problemOn = (day: number) => (WAKALA_YIELD_EFFECTS && MISSED_FOLLOW_UP_RETURNS ? hazardFor(t, farm, day) : baseHazard(t, farm, day));
-  const problems: FarmResult['problems'] = [];
-  let keep = 1;
+  const out: { hazard: TrialHazard; day: number; caught: boolean; treated: boolean }[] = [];
   for (let day = 1; day <= lastDay; day++) {
     const h = problemOn(day);
-    const d = DAMAGE[h];
-    if (!d.missed) continue;
+    if (!DAMAGE[h].missed) continue;
     const rec = t.checks[checkKey(farm, day)];
     // with the effects off, a day whose problem came back is judged by how the player dealt with what they were shown
     const shown = WAKALA_YIELD_EFFECTS ? null : returnedProblem(t, farm, day);
     const caught = shown
       ? !!rec?.right && (rec.treated || !canTreat(shown.hazard, p))
       : !!rec?.right && (rec.treated || !canTreat(h, p)) && (h === 'hail' || canTreat(h, p));
-    const loss = caught ? d.caught : d.missed;
-    keep *= 1 - loss;
-    problems.push({ hazard: h, day, caught, loss });
+    out.push({ hazard: h, day, caught, treated: !!rec?.treated });
   }
-  const yieldShare = Object.values(factors).reduce((a, b) => a * b, 1) * keep;
-  const bags = Math.round(POTENTIAL_BAGS * yieldShare * 10) / 10;
-  const beans = p.seed === 'intercrop' ? Math.round(BEANS_BAGS * keep * 10) / 10 : 0;
-  const lost = 1 - keep;
-  let quality = 5 - Math.round(lost * 10);
-  if (p.harvest === 'early') quality = Math.min(quality, 3);
-  if (p.harvest === 'late') quality -= 1;
-  if (p.seed === 'saved') quality -= 1;
-  quality = Math.max(1, Math.min(5, quality));
-  const income = Math.round(bags * PRICE_BY_QUALITY[quality] + beans * BEANS_PRICE);
-  const costs = planCost(p) + (t.treatments[farm] ?? 0);
-  problems.sort((a, b) => b.loss - a.loss);
-  return { bags, beans, quality, income, costs, profit: income - costs, factors, lost, problems };
+  return out;
+}
+
+/** What one problem costs one plot: the farm's loss, changed by the plot's seed, fertilizer and sprayer. */
+export function plotLoss(h: TrialHazard, caught: boolean, treated: boolean, r: PlotRecord): number {
+  const d = DAMAGE[h];
+  let loss = caught ? d.caught : d.missed;
+  // a pest or disease treated by spraying: each plot is saved as well as its sprayer covers it
+  if ((h === 'armyworm' || h === 'disease') && caught && treated && r.sprayer) {
+    const cover = sprayerOf(r.sprayer).cover[h];
+    loss = d.caught + (d.missed - d.caught) * (1 - cover);
+  }
+  const seed = seedOf(r.seed);
+  if (h === 'drought') loss *= seed.drought;
+  if (h === 'disease') loss *= seed.rust;
+  if (h === 'nitrogen') loss *= fertOf(r.fert).hunger;
+  return Math.min(0.6, loss);
+}
+
+/** What a plot's tools and tractor did to its yield: a tool that does not suit the job takes some off, and heavy
+    tractors pack the soil. */
+export function toolsFactor(r: PlotRecord, farm: number): number {
+  let k = 1;
+  for (const [job, tool] of Object.entries(r.tools ?? {}) as [PlotJob, NonNullable<PlotRecord['tools']>[PlotJob]][]) {
+    if (tool) k *= 1 - MISFIT_COST[job] * (1 - toolFit(job, tool, farm));
+  }
+  if (r.tractor) k *= TRACTOR_PLOT[r.tractor].compaction;
+  if (r.sprayer && r.tools?.spray === 'sprayer') k *= sprayerOf('boom').damage;
+  return k;
+}
+
+const round1 = (x: number) => Math.round(x * 10) / 10;
+
+/** What the farm plan and the farm's problems give each plot (the same for all four plots). */
+function farmContext(t: Trial, farm: number, lastDay: number) {
+  const p = t.plans[farm];
+  const factors = Object.fromEntries(PLAN_STEPS.map(s => [s.key, stepFactor(s.key, p, t.forecast)])) as Record<StepKey, number>;
+  // proposed effects from Wakala Agent, off until the agronomist's review (see WAKALA_YIELD_EFFECTS)
+  const drive = t.tractor?.[farm];
+  if (WAKALA_YIELD_EFFECTS && p.land === 'tractor' && drive) factors.land *= TRACTOR_Q_FACTOR.base + TRACTOR_Q_FACTOR.span * drive.Q;
+  const farmShare = FARM_STEP_KEYS.reduce((n, k) => n * factors[k], 1);
+  return { p, factors, farmShare, found: farmProblems(t, farm, lastDay) };
+}
+
+/** One plot's harvest from its inputs, before rounding. */
+function growPlot(t: Trial, farm: number, r: PlotRecord, ctx: ReturnType<typeof farmContext>) {
+  const seed = seedOf(r.seed);
+  // land turned by the tractor from the seat gets the tractor's land prep instead of the plan's
+  const land = r.tractor && r.tools?.prep ? TRACTOR_LAND_FACTOR / ctx.factors.land : 1;
+  const own = { land, seed: seed.factor[t.forecast], fert: fertOf(r.fert).factor, tools: toolsFactor(r, farm) };
+  const keep = ctx.found.reduce((n, q) => n * (1 - plotLoss(q.hazard, q.caught, q.treated, r)), 1);
+  const bags = POTENTIAL_BAGS * PLOT_SHARE * ctx.farmShare * own.land * own.seed * own.fert * own.tools * keep;
+  return { bags, keep, own, seed };
+}
+
+/** How each plot of a farm is growing so far, as a share of the best possible plot (1 = as good as it gets), for the
+    crop's height and colour on the field. Problems seen so far count. */
+export function plotGrowth(t: Trial, farm: number, lastDay = CHECK_DAYS): number[] {
+  if (farm >= t.plans.length) return [1, 1, 1, 1];
+  const ctx = farmContext(t, farm, lastDay);
+  return plotsOf(t, farm).map(r => {
+    const g = growPlot(t, farm, r, ctx);
+    return Math.max(0.2, Math.min(1.2, (g.own.land * g.own.seed * g.own.fert * g.own.tools * g.keep) / 1.05));
+  });
+}
+
+/** What a farm's harvest comes to: its four plots, each from the farm plan, its own inputs, and the farm's
+    problems as that plot suffered them. */
+export function harvestFarm(t: Trial, farm: number, lastDay = CHECK_DAYS): FarmResult {
+  const ctx = farmContext(t, farm, lastDay);
+  const { p, factors, found } = ctx;
+  const rows = plotsOf(t, farm);
+  const plots: PlotResult[] = rows.map(r => {
+    const g = growPlot(t, farm, r, ctx);
+    const bags = round1(g.bags);
+    const beans = g.seed.beans ? round1(BEANS_BAGS * PLOT_SHARE * g.keep) : 0;
+    const lost = 1 - g.keep;
+    let quality = 5 - Math.round(lost * 10) + g.seed.quality;
+    if (p.harvest === 'early') quality = Math.min(quality, 3);
+    if (p.harvest === 'late') quality -= 1;
+    quality = Math.max(1, Math.min(5, quality));
+    return { bags, beans, quality, income: Math.round(bags * PRICE_BY_QUALITY[quality] + beans * BEANS_PRICE), factors: g.own, lost, inputs: r };
+  });
+  const bags = round1(plots.reduce((n, x) => n + x.bags, 0));
+  const beans = round1(plots.reduce((n, x) => n + x.beans, 0));
+  const income = plots.reduce((n, x) => n + x.income, 0);
+  const quality = bags > 0 ? Math.max(1, Math.min(5, Math.round(plots.reduce((n, x) => n + x.quality * x.bags, 0) / bags))) : 1;
+  const lost = plots.reduce((n, x) => n + x.lost, 0) / plots.length;
+  // the plots' own inputs together, and the farm-level seed and fertilizer as their average (for the comparison)
+  const geo = (f: (x: PlotResult) => number) => Math.exp(plots.reduce((n, x) => n + Math.log(Math.max(1e-6, f(x))), 0) / plots.length);
+  const plotFactor = geo(x => x.factors.land * x.factors.seed * x.factors.fert * x.factors.tools);
+  const out = { ...factors, seed: geo(x => x.factors.seed), fert: geo(x => x.factors.fert) };
+  const costs = farmCost(t, farm) + (t.treatments[farm] ?? 0) + (t.fuel?.[farm] ?? 0);
+  const problems = found
+    .map(q => ({ hazard: q.hazard, day: q.day, caught: q.caught, loss: plots.reduce((n, x) => n + plotLoss(q.hazard, q.caught, q.treated, x.inputs), 0) / plots.length }))
+    .sort((a, b) => b.loss - a.loss);
+  return { bags, beans, quality, income, costs, profit: income - costs, factors: out, lost, problems, plots, plotFactor };
+}
+
+/* ---------------- what the plots showed ---------------- */
+
+export interface PlotLesson {
+  topic: 'Seed' | 'Fertilizer' | 'Tractor' | 'Land tool' | 'Sprayer';
+  line: string;
+  /** each choice tried, best first: its name and how much more (or less) a plot grew with it than with the reference */
+  options: { name: string; change: number; plots: number }[];
+}
+
+/** Lower the first letter, unless the word is an abbreviation (DAP, CAN). */
+const soft = (x: string) => (/^[A-Z]{2}/.test(x) ? x : x.charAt(0).toLowerCase() + x.slice(1));
+
+/** Lima AI: what the player's plots showed, other things equal. For every plot, its harvest is set against the same
+    plot (same farm, weather, problems and care) with just one input changed to a reference: long-season hybrid
+    seed, no fertilizer, no tractor, no spray. The changes are averaged over the plots that had each choice. */
+export function plotLessons(t: Trial): PlotLesson[] {
+  const topics: { topic: PlotLesson['topic']; ref: string; refName: string; get: (r: PlotRecord) => string | undefined; set: (r: PlotRecord) => PlotRecord; name: (k: string) => string }[] = [
+    { topic: 'Seed', ref: 'certified', refName: 'long-season hybrid', get: r => r.seed, set: r => ({ ...r, seed: 'certified' }), name: k => seedOf(k as SeedId).label.toLowerCase() },
+    { topic: 'Fertilizer', ref: 'none', refName: 'no fertilizer', get: r => r.fert, set: r => ({ ...r, fert: 'none' }), name: k => (k === 'none' ? 'no fertilizer' : soft(fertOf(k as FertId).label)) },
+    { topic: 'Tractor', ref: 'hand', refName: 'work by hand', get: r => r.tractor ?? 'hand', set: r => ({ ...r, tractor: undefined, tools: undefined }), name: k => (k === 'hand' ? 'by hand' : `${k} tractor`) },
+    {
+      topic: 'Land tool',
+      ref: 'right',
+      refName: 'the tool each farm needed',
+      get: r => (r.tools?.prep ? r.tools.prep : undefined),
+      set: r => r,
+      name: k => toolName(k as ImplId).toLowerCase(),
+    },
+    { topic: 'Sprayer', ref: 'none', refName: 'no spray', get: r => r.sprayer, set: r => ({ ...r, sprayer: 'none' }), name: k => sprayerOf(k as never).label.toLowerCase() },
+  ];
+  const out: PlotLesson[] = [];
+  const ctxs = t.plans.map((_, farm) => farmContext(t, farm, CHECK_DAYS));
+  for (const tp of topics) {
+    const by = new Map<string, number[]>();
+    t.plans.forEach((_, farm) => {
+      plotsOf(t, farm).forEach(r => {
+        const k = tp.get(r);
+        if (k === undefined) return;
+        const real = growPlot(t, farm, r, ctxs[farm]).bags;
+        const swap = tp.topic === 'Land tool' ? { ...r, tools: { ...r.tools, prep: prepNeed(farm).tool } } : tp.set(r);
+        const ref = growPlot(t, farm, swap, ctxs[farm]).bags;
+        by.set(k, [...(by.get(k) ?? []), ref > 0 ? real / ref - 1 : 0]);
+      });
+    });
+    if (by.size < 2 && tp.topic !== 'Land tool') continue;
+    if (!by.size) continue;
+    const options = [...by.entries()]
+      .map(([k, v]) => ({ k, name: tp.name(k), change: v.reduce((x, y) => x + y, 0) / v.length, plots: v.length }))
+      .sort((x, y) => y.change - x.change);
+    const pc = (x: number) => (Math.abs(x) < 0.005 ? '±0%' : `${x > 0 ? '+' : '−'}${Math.round(Math.abs(x) * 100)}%`);
+    if (tp.topic === 'Sprayer' && options.every(o => Math.abs(o.change) < 0.005)) {
+      out.push({ topic: tp.topic, line: 'Sprayers made no difference this cycle: no plot needed spraying.', options: [] });
+      continue;
+    }
+    const body = options.map(o => `${o.name} ${o.k === tp.ref ? '(the yardstick)' : pc(o.change)}`).join(', ');
+    out.push({ topic: tp.topic, line: `${tp.topic}, against ${tp.refName} on the same plot: ${body}.`, options: options.map(({ name, change, plots }) => ({ name, change, plots })) });
+  }
+  return out;
 }
 
 /* ---------------- why one farm beat another ---------------- */
@@ -462,10 +656,11 @@ export function explain(t: Trial, results: FarmResult[]): { best: number; worst:
   }
   lines.push(`${farmName(best)} grew ${B.bags} bags of maize; ${farmName(worst)} grew ${W.bags}. That is ${bagsText(gap)} more.`);
   // split the gap between the steps (and the problems) by their share of the difference in log-yield
-  const parts: { what: string; ln: number }[] = PLAN_STEPS.map(s => ({
+  const parts: { what: string; ln: number }[] = FARM_STEPS.map(s => ({
     what: s.key,
     ln: Math.log(B.factors[s.key]) - Math.log(W.factors[s.key]),
   }));
+  parts.push({ what: 'plots', ln: Math.log(B.plotFactor ?? B.factors.seed * B.factors.fert) - Math.log(W.plotFactor ?? W.factors.seed * W.factors.fert) });
   parts.push({ what: 'problems', ln: Math.log(1 - B.lost) - Math.log(1 - W.lost) });
   const lnGap = parts.reduce((n, x) => n + x.ln, 0);
   const pb = t.plans[best];
@@ -476,7 +671,9 @@ export function explain(t: Trial, results: FarmResult[]): { best: number; worst:
     .sort((a, b) => b.bags - a.bags)
     .slice(0, 2);
   for (const x of top) {
-    if (x.what === 'problems') {
+    if (x.what === 'plots') {
+      lines.push(`Plots: the seeds, fertilizer and machines on ${farmName(best)}'s four plots gave ${bagsText(x.bags)} more than ${farmName(worst)}'s.`);
+    } else if (x.what === 'problems') {
       const worstProblems = [...new Set(W.problems.filter(q => q.loss >= 0.05).map(q => HAZARD_WORDS[q.hazard]))].slice(0, 2);
       lines.push(
         `Problems: ${farmName(worst)} lost ${pct(W.lost)} of its crop${worstProblems.length ? ` (${worstProblems.join(' and ')})` : ''}, ${farmName(best)} ${pct(B.lost)}. That is ${bagsText(x.bags)}.`,
@@ -496,8 +693,24 @@ export function explain(t: Trial, results: FarmResult[]): { best: number; worst:
   return { best, worst, lines };
 }
 
-/** Why a farm shows this problem, from its own plan (shown after a call, so the player links the sign to the cause). */
-export function causeOf(h: TrialHazard, p: Plan, f: Forecast): string {
+/** Why a farm shows this problem, from its own plan and its plots (shown after a call, so the player links the sign
+    to the cause). */
+export function causeOf(h: TrialHazard, p: Plan, f: Forecast, rows?: PlotRecord[]): string {
+  const plotWith = (test: (r: PlotRecord) => boolean) => (rows ?? []).map((r, i) => (test(r) ? plotName(i) : '')).filter(Boolean);
+  if (rows && h === 'nitrogen') {
+    const bare = plotWith(r => r.fert === 'none' || r.fert === 'manure');
+    const fed = plotWith(r => r.fert === 'basalTop' || r.fert === 'double');
+    return [bare.length ? `${bare.join(' and ')} got no fertilizer or only manure, so ${bare.length > 1 ? 'they are' : 'it is'} hungriest.` : 'The plants are short of food this week.', fed.length ? `${fed.join(' and ')} had a CAN top-dress and hardly suffer${fed.length > 1 ? '' : 's'}.` : ''].filter(Boolean).join(' ');
+  }
+  if (rows && h === 'drought') {
+    const dt = plotWith(r => r.seed === 'dt');
+    const base = causeOf(h, p, f);
+    return dt.length ? `${base} The drought-tolerant seed on ${dt.join(' and ')} copes best.` : base;
+  }
+  if (rows && h === 'disease' && p.pest !== 'none') {
+    const close = plotWith(r => r.seed === 'dense' || r.seed === 'saved');
+    return close.length ? `${close.join(' and ')} (close spacing or saved seed) catch rust worst.` : '';
+  }
   const total = waterTotal(p, f);
   switch (h) {
     case 'drought':
@@ -541,7 +754,7 @@ export function causeOf(h: TrialHazard, p: Plan, f: Forecast): string {
 /** One change per farm, each on a different step, so every farm tests one thing against Farm 1. */
 export function suggestPlans(base: Plan, count: number, salt = 0): Plan[] {
   const out: Plan[] = [base];
-  const steps = PLAN_STEPS.map(s => s.key);
+  const steps = FARM_STEP_KEYS;
   let k = salt;
   for (let i = 1; i < count; i++) {
     let plan = base;
@@ -562,12 +775,14 @@ export function suggestPlans(base: Plan, count: number, salt = 0): Plan[] {
 }
 
 /** What stops the farms being planted, or null when they can be. */
-export function planProblem(plans: Plan[], coins: number): string | null {
+export function planProblem(t: Pick<Trial, 'plans' | 'plots'>, coins: number): string | null {
+  const plans = t.plans;
   for (let i = 1; i < plans.length; i++) {
-    const twin = plans.findIndex((q, j) => j < i && samePlan(q, plans[i]));
-    if (twin >= 0) return `${farmName(i)} has the same plan as ${farmName(twin)}. Change at least one thing.`;
+    const key = (k: number) => JSON.stringify(plotsOf(t, k).map(r => [r.seed, r.fert, r.sprayer]));
+    const twin = plans.findIndex((q, j) => j < i && samePlan(q, plans[i]) && key(j) === key(i));
+    if (twin >= 0) return `${farmName(i)} has the same plan and plots as ${farmName(twin)}. Change at least one thing.`;
   }
-  const cost = plans.reduce((n, p) => n + planCost(p), 0);
+  const cost = trialCost(t);
   if (cost > coins) return `These plans cost ${cost.toLocaleString('en-US')} coins and you have ${coins.toLocaleString('en-US')}.`;
   return null;
 }
@@ -578,7 +793,8 @@ export function newTrial(cycle: number, guided: boolean, base: Plan): Trial {
     cycle,
     guided,
     forecast: guided ? 'normal' : forecasts[(cycle - 1) % forecasts.length],
-    plans: guided ? [COMMON_PLAN, COMMON_PLAN] : Array.from({ length: 6 }, () => base),
+    plans: guided ? [COMMON_PLAN, COMMON_PLAN] : Array.from({ length: 6 }, () => farmPlan(base)),
+    plots: Array.from({ length: guided ? 2 : 6 }, () => defaultPlots()),
     phase: 'plan',
     clock: guided ? 'fast' : 'daily',
     planted: null,
