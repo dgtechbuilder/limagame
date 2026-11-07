@@ -1,6 +1,6 @@
 /* Sample cycles for design review (?screen=Six farms · …). They never touch a saved game. */
 
-import { FULL, emptyField, type Field } from '../world/field';
+import { FULL, emptyField, needOf, type Field } from '../world/field';
 import {
   CHECK_DAYS,
   COMMON_PLAN,
@@ -35,7 +35,7 @@ function play(t: Trial, upto: number, miss: [number, number][] = []): Trial {
 
 const finish = (t: Trial): Trial => ({ ...t, phase: 'done', results: t.plans.map((_, i) => harvestFarm(t, i)) });
 
-const guidedPlan: Trial = { ...newTrial(1, true, COMMON_PLAN), plans: [COMMON_PLAN, setChoice(COMMON_PLAN, 'fert', 'basalTop')] };
+const guidedPlan: Trial = { ...newTrial(1, true, COMMON_PLAN), plans: [COMMON_PLAN, setChoice(COMMON_PLAN, 'pest', 'scout')] };
 const guidedGrowing = play({ ...guidedPlan, phase: 'growing', clock: 'fast', planted: 0, day: 4 }, 3);
 const guidedDone = finish(play({ ...guidedGrowing, day: CHECK_DAYS + 1 }, CHECK_DAYS));
 
@@ -54,7 +54,8 @@ function fieldOf(t: Trial, opts: { setup?: number[]; harvested?: number[]; carry
   for (const i of setup) {
     f.marks[`${i}:prep`] = FULL;
     f.marks[`${i}:sow`] = FULL;
-    if (t.plans[i].fert !== 'none') f.marks[`${i}:setupFeed`] = FULL;
+    const feed = needOf('setupFeed', t, i);
+    if (feed) f.marks[`${i}:setupFeed`] = feed;
     // earlier days' treatments are done
     for (let d = 1; d < t.day; d++) f.marks[`${i}:t${d}`] = FULL;
   }
@@ -88,10 +89,16 @@ function findCase(plans: Plan[], want: TrialHazard, minDay = 2): { trial: Trial;
   throw new Error(`No cycle shows ${want}`);
 }
 
-export type WakalaCase = 'fix' | 'spray' | 'followUp' | 'cameBack' | 'tractor' | 'voice';
+export type WakalaCase = 'fix' | 'spray' | 'followUp' | 'cameBack' | 'tractor' | 'voice' | 'plots';
 
 /** A cycle set up for one of the new moments in the farm world: the trial, its field, the day and Farm 1's problem. */
 export function wakalaCase(kind: WakalaCase): { trial: Trial; field: Field; day: number; hazard: TrialHazard } {
+  if (kind === 'plots') {
+    // two farms dug by hand, nothing done yet: the tractor and the plot board on a fresh field
+    const plans = [COMMON_PLAN, { ...COMMON_PLAN, pest: 'scout' } as Plan];
+    const trial: Trial = { ...newTrial(2, false, plans[0]), plans, plots: newTrial(2, true, plans[0]).plots, treatments: [0, 0], phase: 'growing', clock: 'fast', planted: 0, day: 1 };
+    return { trial, field: emptyField(2), day: 1, hazard: hazardFor(trial, 0, 1) };
+  }
   if (kind === 'tractor') {
     const plans = [{ ...COMMON_PLAN, land: 'tractor' } as Plan, { ...OTHER_PLAN, land: 'ox' } as Plan];
     const trial: Trial = { ...newTrial(2, false, plans[0]), plans, treatments: [0, 0], phase: 'growing', clock: 'fast', planted: 0, day: 1 };

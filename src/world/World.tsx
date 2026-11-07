@@ -6,7 +6,7 @@ import { Inspect } from '../rounds/Inspect';
 import { dayNumber, ROUND_POINTS } from '../rounds/farms';
 import { trialRounds } from '../rounds/trial';
 import type { Action, GameState } from '../state';
-import { CHECK_DAYS, DAMAGE, WRONG_FIX_COST, canTreat, causeOf, checkKey, farmName, hazardFor, returnedProblem } from '../trials/model';
+import { CHECK_DAYS, DAMAGE, WRONG_FIX_COST, canTreat, causeOf, checkKey, farmName, hazardFor, plotsOf, returnedProblem } from '../trials/model';
 import { fmt } from '../components/ui';
 import { track } from '../first/track';
 import { FOLLOW_UP, PRESCRIBE, fixOrder } from '../care/data';
@@ -32,17 +32,24 @@ import {
 } from './field';
 import { FarmWorld, PLACES, STAGE_H, STAGE_W, TRACTOR_BOARD } from './engine';
 import { useNav } from '../components/Nav';
-import { TRACTOR_BONUS, TRACTOR_EDGE } from '../tractor/data';
+import { TRACTOR_BONUS } from '../tractor/data';
+import { JOB_INFO, KIND_WORDS, TOOL_JOB, toolName, tractorName, type PlotKind } from '../plots/data';
+import type { Rig } from '../plots/TractorPick';
 
 // from Wakala Agent: the screens after a right call, at the shed and at the Hire spot, loaded when first opened
 const Prescribe = lazy(() => import('../care/Prescribe').then(m => ({ default: m.Prescribe })));
 const Spray = lazy(() => import('../care/Spray').then(m => ({ default: m.Spray })));
 const Tractor = lazy(() => import('../tractor/Tractor').then(m => ({ default: m.Tractor })));
+const PlotScreen = lazy(() => import('../plots/PlotBoard').then(m => ({ default: m.PlotScreen })));
+const TractorPick = lazy(() => import('../plots/TractorPick').then(m => ({ default: m.TractorPick })));
 
 /** Design review (?review=1): the farm world opens straight into one of these (GameState.worldDemo). */
-export type WorldDemo = 'check' | 'prescribe' | 'spray' | 'tractor' | 'tractor-summary';
+export type WorldDemo = 'check' | 'prescribe' | 'spray' | 'tractor' | 'tractor-summary' | 'rig' | 'board';
 
-type Care = { kind: 'fix'; farm: number; day: number } | { kind: 'spray'; jobs: { farm: number; hazard: import('../trials/model').TrialHazard }[] } | { kind: 'tractor'; farm: number; demo?: 'summary' };
+type Care = { kind: 'fix'; farm: number; day: number } | { kind: 'spray'; jobs: { farm: number; hazard: import('../trials/model').TrialHazard }[] } | { kind: 'tractor'; farm: number; demo?: 'summary' }
+  // the plot board at a shed (then the item is picked up), and the tractor's type and tool
+  | { kind: 'board'; farm: number; kinds: PlotKind[]; then: 'seeds' | 'fertilizer' | 'sprayer' }
+  | { kind: 'rig' };
 
 /** The tractor-hire farm whose before-planting drive is still to do, or -1. */
 function farmToDrive(st: GameState) {
@@ -84,6 +91,8 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
   const [stick, setStick] = useState<{ x: number; y: number; dx: number; dy: number } | null>(null);
   const [night, setNight] = useState<string | null>(null);
   const [care, setCare] = useState<Care | null>(null);
+  /** the tractor type and tool on the tractor now */
+  const [rig, setRig] = useState<Rig | null>(null);
   const [anchors, setAnchors] = useState<{ farmer: { x: number; y: number }; sign: { x: number; y: number; visible: boolean } | null; riding: boolean; nearTractor: boolean }>({ farmer: { x: 437, y: 160 }, sign: null, riding: false, nearTractor: false });
   /** the farmer is walking to the tractor to hop on */
   const rideIntent = useRef(false);
@@ -117,9 +126,9 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
   // the 3D farm
   useEffect(() => {
     const w = new FarmWorld(canvas.current!, {
-      mark: (farm, job, bits, tractor) => {
+      mark: (farm, job, bits, tractor, rig) => {
         noteCare(farm, job, bits);
-        dispatch({ type: 'fieldMark', farm, job, bits, tractor });
+        dispatch({ type: 'fieldMark', farm, job, bits, tractor, rig });
       },
       carry: item => {
         // from Wakala Agent: the safety kit and the product before a spray job
@@ -127,6 +136,13 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         if (item === 'sprayer' && st.trial) {
           const jobs = sprayJobs(st.field.cycle === st.trial.cycle ? st.field : { ...st.field, marks: {} }, st.trial, fieldDay(st.trial, dayNumber()));
           if (jobs.length) return setCare({ kind: 'spray', jobs });
+        }
+        // at the seed or fertilizer shed: first, which plot of the farm gets which (once, before any of it is in the ground)
+        if ((item === 'seeds' || item === 'fertilizer') && st.trial?.phase === 'growing') {
+          const f = st.field.cycle === st.trial.cycle ? st.field : { ...st.field, marks: {} };
+          const job = item === 'seeds' ? 'sow' : 'setupFeed';
+          const farm = st.trial.plans.findIndex((_, i) => setupLeft(f, st.trial!, i) === job);
+          if (farm >= 0 && !doneMask(f, st.trial.cycle, farm, job)) return setCare({ kind: 'board', farm, kinds: [item === 'seeds' ? 'seed' : 'fert'], then: item });
         }
         dispatch({ type: 'carry', item });
         if (item) say(`Picked up: ${CARRY_NAME[item].toLowerCase()}`);
@@ -194,16 +210,29 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     return w.nextTile(target.farm);
   }
 
-  /* ---------------- the tractor seat: 3× the ground on the big jobs, and bonus points ---------------- */
+  /* ---------------- the tractor seat: a type and a tool, one plot each, and bonus points ---------------- */
 
+  /** At the tractor: pick its type and tool first (while the farms grow), then hop on. */
   function mountTractor() {
     const w = eng.current;
     if (!w) return;
-    const r = w.mount();
+    if (w.isBusy()) return say('The tractor is busy ploughing: wait for it to finish');
+    if (sRef.current.trial?.phase === 'growing') return setCare({ kind: 'rig' });
+    ride(null);
+  }
+
+  function ride(rig: Rig | null) {
+    const w = eng.current;
+    if (!w) return;
+    const r = w.mount(rig ?? undefined);
     if (r === 'busy') return say('The tractor is busy ploughing: wait for it to finish');
     if (r === 'far') return;
-    track('tractor_ride', { stage: 'seat' });
-    say(`On the tractor: ploughs, plants, fertilizes and harvests ${TRACTOR_EDGE}× the ground, +${TRACTOR_BONUS.perJob} points a farm`);
+    setRig(rig);
+    track('tractor_ride', { stage: 'seat', ...(rig ?? {}) });
+    if (rig) {
+      const j = TOOL_JOB[rig.tool];
+      say(`${tractorName(rig.tractor)} tractor with the ${toolName(rig.tool).toLowerCase()}: drive onto a plot to ${JOB_INFO[j].name.toLowerCase()} it. +${TRACTOR_BONUS.perPlot} points a plot`);
+    } else say('On the tractor');
   }
 
   /** The Tractor button: hop on, get off, or walk to the tractor first. */
@@ -360,6 +389,8 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       const jobs = sprayJobs(f, tr, d);
       if (jobs.length) setCare({ kind: 'spray', jobs });
     }
+    if (demo === 'rig') setCare({ kind: 'rig' });
+    if (demo === 'board') setCare({ kind: 'board', farm: 0, kinds: ['seed'], then: 'seeds' });
     if (demo === 'tractor' || demo === 'tractor-summary') {
       const farm = farmToDrive(st);
       if (farm >= 0) setCare({ kind: 'tractor', farm, demo: demo === 'tractor-summary' ? 'summary' : undefined });
@@ -397,10 +428,43 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         <Spray
           jobs={c.jobs}
           name={name}
-          onDone={() => {
+          onDone={() => setCare({ kind: 'board', farm: c.jobs[0]?.farm ?? 0, kinds: ['sprayer'], then: 'sprayer' })}
+          onLeave={() => setCare(null)}
+        />
+      );
+    if (c.kind === 'board') {
+      const f = s.field.cycle === tr.cycle ? s.field : undefined;
+      const k = c.kinds[0];
+      const pick = () => {
+        setCare(null);
+        dispatch({ type: 'carry', item: c.then });
+        say(c.then === 'sprayer' ? 'Picked up: sprayer · kit on' : `Picked up: ${CARRY_NAME[c.then].toLowerCase()}`);
+      };
+      return (
+        <PlotScreen
+          tr={tr}
+          farm={c.farm}
+          kinds={c.kinds}
+          field={f}
+          coins={s.coins}
+          dispatch={dispatch}
+          tag={`The shed · ${KIND_WORDS[k].title.toLowerCase()}`}
+          line={`${KIND_WORDS[k].rule} Tap a plot to see every choice.`}
+          done={{ label: c.then === 'sprayer' ? 'Pick up the sprayer' : c.then === 'seeds' ? 'Take the seed' : 'Take the fertilizer', onClick: pick }}
+          onLeave={() => setCare(null)}
+        />
+      );
+    }
+    if (c.kind === 'rig')
+      return (
+        <TractorPick
+          tr={tr}
+          field={s.field.cycle === tr.cycle ? s.field : { ...s.field, marks: {} }}
+          day={day}
+          rig={rig}
+          onGo={r => {
             setCare(null);
-            dispatch({ type: 'carry', item: 'sprayer' });
-            say('Picked up: sprayer · kit on');
+            ride(r);
           }}
           onLeave={() => setCare(null)}
         />
@@ -433,7 +497,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     const h = hazardFor(t, checking.farm, checking.day);
     const plan = t.plans[checking.farm];
     const job = TREAT_JOB[h];
-    const cause = causeOf(h, plan, t.forecast);
+    const cause = causeOf(h, plan, t.forecast, plotsOf(t, checking.farm));
     let then = '';
     if (h === 'hail') then = 'Nothing to treat: hail-damaged plants often recover.';
     else if (job && canTreat(h, plan) && PRESCRIBE[h]) then = 'Next: choose the fix.';
@@ -533,6 +597,11 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         <TractorBtnIcon />
         <span>{anchors.riding ? 'GET OFF' : 'TRACTOR'}</span>
       </button>
+      {anchors.riding && t?.phase === 'growing' && (
+        <button type="button" className="hud-rig" onClick={() => setCare({ kind: 'rig' })} aria-label="Change the tractor or tool">
+          Change tool
+        </button>
+      )}
 
       {/* coins and points */}
       <div className="hud-pills">
@@ -584,7 +653,11 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
             Cycle {t.cycle} · {day > CHECK_DAYS ? 'harvest' : `day ${day} of ${CHECK_DAYS}`}
           </span>
         )}
-        {anchors.riding && <span className="is-carry">On the tractor · {TRACTOR_EDGE}× the ground</span>}
+        {anchors.riding && (
+          <span className="is-carry">
+            On the tractor{rig ? ` · ${tractorName(rig.tractor)} · ${toolName(rig.tool)}` : ''}
+          </span>
+        )}
         {s.field.carry && <span className="is-carry">Carrying: {CARRY_NAME[s.field.carry].toLowerCase()}</span>}
       </div>
         </>

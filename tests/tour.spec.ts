@@ -106,4 +106,38 @@ test('tour of the Wakala moments on a phone-sized screen', async ({ page }) => {
   await page.waitForTimeout(2500);
   await settle(page);
   await page.screenshot({ path: shot('16-3d-tractor-ploughs') });
+
+  // plots A to D: the tractor's type and tool, then a plot of its own
+  await scenario(page, 'plots');
+  await page.evaluate(() => (window as unknown as Win).__limaWorld!.spawn(-17.4, 8.6));
+  await page.locator('.hud-tractor').click();
+  await expect(page.locator('.tp-card').first()).toBeVisible();
+  await page.locator('.tp-card', { hasText: 'Compact' }).click();
+  await settle(page);
+  await page.screenshot({ path: shot('17-tractor-type') });
+  await page.getByRole('button', { name: 'Next: the tool', exact: true }).click();
+  await page.locator('.tp-tool', { hasText: 'Disc plough' }).click();
+  await settle(page);
+  await page.screenshot({ path: shot('18-tractor-tool') });
+  await page.getByRole('button', { name: 'Start the engine', exact: true }).click();
+  const farm1 = await page.evaluate(() => (window as unknown as Win).__lima.plots[0]);
+  await page.evaluate(([x, z]) => (window as unknown as Win).__limaWorld!.walkTo(x, z), [farm1.x - 1.8, farm1.z - 3.9]);
+  await page.waitForTimeout(4000);
+  await page.evaluate(([x, z]) => (window as unknown as Win).__limaWorld!.walkTo(x, z), [farm1.x - 1.8, farm1.z + 3.9]);
+  await page.waitForTimeout(4000);
+  await settle(page);
+  await page.screenshot({ path: shot('19-tractor-plot-a') });
+  await page.locator('.hud-tractor').click();
+
+  // the seed shed: a seed for each plot
+  await page.evaluate(F => {
+    const d = (window as unknown as Win).__lima as unknown as { dispatch: (a: unknown) => void };
+    d.dispatch({ type: 'fieldMark', farm: 0, job: 'prep', bits: F });
+    d.dispatch({ type: 'fieldMark', farm: 1, job: 'prep', bits: F });
+  }, (1 << 20) - 1);
+  await tapTask(page, 'Get seeds');
+  await expect(page.locator('.pb-grid')).toBeVisible({ timeout: 60_000 });
+  await page.locator('.pb-grid .pb-cell').nth(1).click();
+  await settle(page);
+  await page.screenshot({ path: shot('20-seed-board') });
 });

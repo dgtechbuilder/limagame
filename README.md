@@ -31,6 +31,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [The farm world](#the-farm-world)
 - [The six farms](#the-six-farms)
 - [From Wakala Agent](#from-wakala-agent)
+- [Plots A to D](#plots-a-to-d)
 - [Navigation and the main menu](#navigation-and-the-main-menu)
 - [Settings](#settings)
 - [Character art: retro anime](#character-art-retro-anime)
@@ -110,6 +111,8 @@ src/
   trials/                  the six farms (see below): model.ts holds every number; Trials.tsx the screens (loaded when opened)
   care/                    from Wakala Agent: the fix after a right call, the safety kit and product, follow-ups (data.ts),
                            Mama Achieng's lines (voice.ts), and their screens (loaded when opened)
+  plots/                   plots A to D: data.ts (seeds, fertilizers, sprayers, tractor types and tools, with what each
+                           does and costs); PlotBoard.tsx (a seed, fertilizer and sprayer per plot); TractorPick.tsx
   tractor/                 from Wakala Agent: the tractor drive before planting: data.ts, sim.ts (no DOM), Tractor.tsx
   dev/hook.ts              ?dev in dev builds only: state and jump-to-state helpers for the play-tests
 tests/                     Playwright play-tests (npm test)
@@ -310,13 +313,11 @@ WASD. The **task card** at the top says what to do next; tap it and the farmer w
 - What a farm shows comes from its plan and its day: wild grass before digging, furrows, sprouts, knee-high and tall
   maize, dry cobs, stubble; drought-pale soil, yellow hunger, rust, armyworm specks, weeds, puddles, hail, a goat, birds.
   Problems missed earlier leave the farm yellower.
-- **The tractor** waits by the shed. Tap **TRACTOR** (left edge) to walk to it and hop on, **GET OFF** to step down. On
-  the seat the farmer works a swath **three times as wide** (`TRACTOR_EDGE` in `src/tractor/data.ts`) and drives a
-  little faster, so one pass down a farm does what takes two on foot: about **3× the ground in the same time**
-  (`tests/tractor-sim.spec.ts` checks the numbers). The tractor does the big jobs (plough, sow, fertilize at planting,
-  harvest); weeds, puddles, watering, spraying, top-dressing and animals stay on foot. Finishing a big job mostly from
-  the seat pays **+30 bonus points** once per farm and job (`TRACTOR_BONUS`). The hired tractor (a *Tractor hire* plan)
-  now ploughs a whole farm in one pass too.
+- **The tractor** waits by the shed. Tap **TRACTOR** (left edge) to walk to it; there the farmer picks its type and
+  tool, then hops on (**GET OFF** to step down, **Change tool** to swap). The tool decides the job, and the tractor works
+  the plot (A to D) under it: see [Plots A to D](#plots-a-to-d). It drives a little faster than walking and does a
+  whole plot in one pass. A plot finished from the seat pays **+10 bonus points** once per plot and job
+  (`TRACTOR_BONUS`). The hired tractor (a *Tractor hire* plan) ploughs a whole farm in one pass.
 - **Sleep** at the farmhouse starts the next day (on the fast clock); **Plan** by the house, or **Mission** on the
   HUD, opens the plans, progress and results.
 - The HUD: the farmer and their level (top left), settings, coins and points (top right; **+** opens the shop and
@@ -475,8 +476,38 @@ Wakala's photos were not added yet (Wikimedia could not be reached from the buil
 **Tests.** `npm test` runs the Playwright play-tests in `tests/` against the dev server (run
 `npx playwright install chromium` once): a world check with a wrong then right fix and the work by hand, a
 follow-up done and one missed, a spray job with the kit and product, a tractor drive on autopilot, the first session
-read right and wrong, saving and *Reset progress*, and a tour on a 740 × 340 touch screen that saves screenshots to
+read right and wrong, saving and *Reset progress*, the tractor's type and tool on its own plot, the plot board at the
+seed shed and in the plan, the results by plot, and a tour on a 740 × 340 touch screen that saves screenshots to
 `test-results/tour/`. They run on every pull request (`.github/workflows/tests.yml`).
+
+## Plots A to D
+
+Every farm is split into four mini plots, A to D (its four columns of tiles). Each plot is a small on-farm trial: it gets
+its own seed, fertilizer, sprayer and machine, while the weather, the farm plan and the care stay the same across the
+farm, so the harvest shows what each choice did. The plan is in `docs/plot-trials-plan.md`; every word and number is in
+`src/plots/data.ts`, for an agronomist's review.
+
+- **One of each per farm.** A seed, a fertilizer, a sprayer, a tractor type and a tool each go on one plot of a farm.
+  Choosing one already on another plot swaps the two, so every farm always compares four seeds and four fertilizers
+  (one plot gets none, as the control) and four sprayers (one plot is an unsprayed check strip). Three tractor types
+  means at least one plot is worked by hand.
+- **The plot board** shows a farm's four plots and every choice with what it is, when it is the right one and what it
+  costs. It opens in the plan (the *Plots A–D* row, per farm), at the seed and fertilizer sheds before the first plot
+  of a farm is sown or spread, and after the safety kit and product before a spray. A plot already sown or spread keeps
+  its input; a change while the farms grow pays or refunds the difference.
+- **The tractor can be used at any point.** At the tractor the farmer picks its type (compact, standard, large: fuel,
+  speed, how much it packs the soil) and its tool (plough, harrow, ridger, planter, seed drill, fertilizer spreader,
+  boom sprayer, maize or bean harvester), with what each tool is for and which farms need that job today. The tool
+  decides the job. Driving onto a plot works that plot only; the first plot a type works on a farm is its plot for the
+  cycle, and a tool used on one plot cannot be used on another plot of that farm. Fuel is paid per plot and job; a
+  plot finished from the seat pays 10 points. *Change tool* swaps the type or tool without getting off.
+- **Growth on the field.** The crop on each plot grows taller or shorter, greener or paler, with its inputs.
+- **Results by plot.** The results have a *By plot* view: every plot's harvest, and Lima AI's lessons, each a fair
+  comparison: every plot's harvest against the same plot with one input changed to a yardstick (long-season hybrid,
+  no fertilizer, work by hand, the tool the farm needed, no spray), averaged over the plots with each choice.
+- **Proposed numbers.** Seeds and fertilizers change yield as proposed in the plan (drought-tolerant seed in a dry
+  season, DAP and CAN against no fertilizer, a large tractor's soil packing, the wrong tool for the ground). They are
+  game estimates until reviewed. The farm plan keeps land prep, date, pest control, water and harvest.
 
 ## Navigation and the main menu
 

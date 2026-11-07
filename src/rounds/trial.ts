@@ -4,13 +4,14 @@
 import { FARMS, checkFor, type Round } from './data';
 import {
   DAMAGE,
-  PLAN_STEPS,
+  FARM_STEPS,
   canTreat,
   causeOf,
   farmName,
   hazardFor,
   lower,
   optionOf,
+  plotsOf,
   stageOfDay,
   type Trial,
   type TrialHazard,
@@ -20,7 +21,7 @@ import {
 const OUTSIDE: TrialHazard[] = ['hail', 'livestock'];
 
 export const planLine = (t: Trial, farm: number) =>
-  'Plan: ' + PLAN_STEPS.map(s => lower(optionOf(s.key, t.plans[farm]).label)).join(' · ');
+  'Plan: ' + FARM_STEPS.map(s => lower(optionOf(s.key, t.plans[farm]).label)).join(' · ') + ' · 4 plots';
 
 export interface TrialRound extends Round {
   farmIndex: number;
@@ -42,7 +43,7 @@ export function trialRounds(t: Trial, day: number): TrialRound[] {
     });
     const outside = OUTSIDE.includes(h) || (h === 'flood' && !causeOf(h, plan, t.forecast).startsWith('This farm'));
     const diary = outside ? round.diary : planLine(t, i);
-    const cause = causeOf(h, plan, t.forecast);
+    const cause = causeOf(h, plan, t.forecast, plotsOf(t, i));
     const d = DAMAGE[h];
     let treated = '';
     if (h === 'hail') treated = 'Nothing to treat: hail-damaged plants often recover.';

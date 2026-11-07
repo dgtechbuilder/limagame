@@ -13,8 +13,9 @@ import {
   harvestFarm,
   hazardFor,
   newTrial,
-  planCost,
   planProblem,
+  plotsOf,
+  trialCost,
   setChoice,
   suggestPlans,
   type Plan,
@@ -23,8 +24,9 @@ import {
   type TrialSummary,
 } from './trials/model';
 import { FOLLOW_UP } from './care/data';
-import { FULL, TILES, carryNeeded, emptyField, followUpLeft, popcount, treatCost, treatLeft, type Carry, type Field } from './world/field';
-import { TRACTOR_BONUS, TRACTOR_JOBS } from './tractor/data';
+import { carryNeeded, emptyField, followUpLeft, plotLocked, plotMask, plotsIn, treatCost, treatLeft, type Carry, type Field } from './world/field';
+import { TRACTOR_BONUS, type ImplId } from './tractor/data';
+import { TRACTOR_PLOT, plotCost, plotName, setPlotInput, tractorBlock, type PlotJob, type PlotKind, type TractorId } from './plots/data';
 import {
   GROWING_STEPS,
   HARVEST_EFFECT,
@@ -331,7 +333,18 @@ export type Action =
   | { type: 'trialPlant'; clock: Trial['clock'] }
   | { type: 'trialCheck'; farm: number; day: number; right: boolean; tries: number; physical?: boolean }
   | { type: 'view'; view: GameState['view'] }
-  | { type: 'fieldMark'; farm: number; job: string; bits: number; /** the tiles were done from the tractor seat */ tractor?: boolean }
+  | {
+      type: 'fieldMark';
+      farm: number;
+      job: string;
+      bits: number;
+      /** the tiles were done from the tractor seat */
+      tractor?: boolean;
+      /** the tractor type and tool that did them (one plot at a time: plots/data.ts tractorBlock) */
+      rig?: { tractor: TractorId; tool: ImplId; job: PlotJob };
+    }
+  /** put a seed, fertilizer or sprayer on a plot of a farm (another plot with it swaps) */
+  | { type: 'plotSet'; farm: number; plot: number; kind: PlotKind; value: string }
   | { type: 'carry'; item: Carry }
   | { type: 'fieldHire' }
   | { type: 'trialNextDay' }
@@ -597,9 +610,9 @@ export function reducer(s: GameState, a: Action): GameState {
     case 'trialPlant': {
       const t = s.trial;
       if (!t || t.phase !== 'plan') return s;
-      const problem = planProblem(t.plans, s.coins);
+      const problem = planProblem(t, s.coins);
       if (problem) return { ...s, toast: toast(problem) };
-      const cost = t.plans.reduce((n, p) => n + planCost(p), 0);
+      const cost = trialCost(t);
       return {
         ...s,
         coins: s.coins - cost,
@@ -674,22 +687,48 @@ export function reducer(s: GameState, a: Action): GameState {
       return { ...s, field: { ...f, hired: true } };
     }
     case 'fieldMark': {
-      const t = s.trial;
-      if (!t || t.phase !== 'growing') return s;
-      const f = s.field.cycle === t.cycle ? s.field : emptyField(t.cycle);
+      if (!s.trial || s.trial.phase !== 'growing') return s;
+      const t0 = s.trial;
+      const f = s.field.cycle === t0.cycle ? s.field : emptyField(t0.cycle);
       const key = `${a.farm}:${a.job}`;
       const before = f.marks[key] ?? 0;
-      const after = before | a.bits;
+      // the tractor works one plot at a time, and only a plot its type and tool may work (each one plot per farm)
+      let t = s.trial;
+      let fuel = 0;
+      let bits = a.bits;
+      if (a.rig) {
+        const plot = plotsIn(bits)[0];
+        if (plot === undefined) return s;
+        bits &= plotMask(plot);
+        const rows = plotsOf(t, a.farm);
+        if (tractorBlock(rows, plot, a.rig.tractor, a.rig.tool)) return s;
+        const here = rows[plot];
+        if (!here.tractor || !here.tools?.[a.rig.job]) {
+          fuel = Math.min(s.coins, TRACTOR_PLOT[a.rig.tractor].fuel);
+          let next = rows.map((r, i) => (i === plot ? { ...r, tractor: a.rig!.tractor, tools: { ...(r.tools ?? {}), [a.rig!.job]: a.rig!.tool } } : r));
+          if (a.rig.job === 'spray' && here.sprayer !== 'boom') next = setPlotInput(next, 'sprayer', plot, 'boom');
+          const plots = t.plans.map((_, i) => (i === a.farm ? next : plotsOf(t!, i)));
+          const spent = t.plans.map((_, i) => (t!.fuel?.[i] ?? 0) + (i === a.farm ? fuel : 0));
+          t = { ...t, plots, fuel: spent };
+        }
+      }
+      const after = before | bits;
       if (after === before) return s;
+      // what the tractor claimed is saved, and its fuel paid, along with the work
+      const s1: GameState = t === s.trial ? s : { ...s, trial: t, coins: s.coins - fuel };
       let marked: Field = { ...f, marks: { ...f.marks, [key]: after } };
       // extra points for using a tractor: a big job (plough, plant, fertilize, harvest) finished mostly from the seat
       let bonus = 0;
-      if (a.tractor && (TRACTOR_JOBS as readonly string[]).includes(a.job)) {
-        const seat = (f.byTractor?.[key] ?? 0) | a.bits;
+      if (a.tractor && a.rig) {
+        // the tractor's plot finished from the seat: bonus points, once per plot and job
+        const plot = plotsIn(bits)[0];
+        const pm = plotMask(plot);
+        const seat = (f.byTractor?.[key] ?? 0) | bits;
+        const bk = `${key}:${plot}`;
         marked = { ...marked, byTractor: { ...(f.byTractor ?? {}), [key]: seat } };
-        if (after === FULL && popcount(seat) * 2 >= TILES && !(f.bonus ?? []).includes(key)) {
-          bonus = TRACTOR_BONUS.perJob;
-          marked = { ...marked, bonus: [...(f.bonus ?? []), key] };
+        if ((after & pm) === pm && (seat & pm) === pm && !(f.bonus ?? []).includes(bk)) {
+          bonus = TRACTOR_BONUS.perPlot;
+          marked = { ...marked, bonus: [...(f.bonus ?? []), bk] };
         }
       }
       // put down what is carried once no job left today needs it
@@ -701,7 +740,7 @@ export function reducer(s: GameState, a: Action): GameState {
         const pending = treatLeft(f, t, a.farm, day);
         if (pending && (after & pending.need) === pending.need) {
           const cost = treatCost(pending.hazard);
-          if (s.coins < cost) return { ...s, field: marked, toast: toast(`You need ${cost} coins to treat ${farmName(a.farm)}`) };
+          if (s1.coins < cost) return { ...s1, field: marked, toast: toast(`You need ${cost} coins to treat ${farmName(a.farm)}`) };
           const ck = checkKey(a.farm, day);
           // the care that has to be done again a day or two later (only inside the six check days)
           const fu = FOLLOW_UP[pending.hazard];
@@ -716,11 +755,11 @@ export function reducer(s: GameState, a: Action): GameState {
           };
           field = putDown(trial);
           return {
-            ...s,
+            ...s1,
             field,
-            coins: s.coins - cost,
+            coins: s1.coins - cost,
             trial,
-            ...gainXp(s, 0.03),
+            ...gainXp(s1, 0.03),
             toast: toast(`${farmName(a.farm)} treated · −${cost} coins · most of the damage stopped${due ? ` · come back on day ${due}` : ''}`),
           };
         }
@@ -732,11 +771,34 @@ export function reducer(s: GameState, a: Action): GameState {
         if (pending && (after & pending.need) === pending.need) {
           const trial: Trial = { ...t, followUps: (t.followUps ?? []).map(u => (u === pending.follow ? { ...u, done: true } : u)) };
           field = putDown(trial);
-          return { ...s, field, trial, ...gainXp(s, 0.03), toast: toast(`${farmName(a.farm)}: follow-up done · the problem stays away`) };
+          return { ...s1, field, trial, ...gainXp(s1, 0.03), toast: toast(`${farmName(a.farm)}: follow-up done · the problem stays away`) };
         }
       }
-      if (bonus) return { ...s, field, points: s.points + bonus, ...gainXp(s, 0.02), toast: toast(`Tractor bonus · +${bonus} points · ${farmName(a.farm)} done in a third of the time`) };
-      return { ...s, field };
+      if (bonus) return { ...s1, field, points: s1.points + bonus, ...gainXp(s1, 0.02), toast: toast(`Tractor bonus · +${bonus} points · ${farmName(a.farm)} ${plotName(plotsIn(bits)[0])} done from the seat${fuel ? ` · −${fuel} coins of fuel` : ''}`) };
+      if (fuel && a.rig) {
+        const plot = plotsIn(bits)[0];
+        return { ...s1, field, toast: toast(`${farmName(a.farm)} ${plotName(plot)} is the ${a.rig.tractor} tractor's plot now · −${fuel} coins of fuel`) };
+      }
+      return { ...s1, field };
+    }
+    case 'plotSet': {
+      const t = s.trial;
+      if (!t || t.phase === 'done') return s;
+      const rows = plotsOf(t, a.farm);
+      const next = setPlotInput(rows, a.kind, a.plot, a.value);
+      if (rows[a.plot][a.kind] === next[a.plot][a.kind]) return s;
+      // a plot already sown, spread or sprayed keeps what it has
+      if (t.phase === 'growing') {
+        const f = s.field.cycle === t.cycle ? s.field : emptyField(t.cycle);
+        const moved = next.map((r, i) => (r[a.kind] !== rows[i][a.kind] ? i : -1)).filter(i => i >= 0);
+        const stuck = moved.find(i => plotLocked(f, t, a.farm, i, a.kind));
+        if (stuck !== undefined) return { ...s, toast: toast(`${farmName(a.farm)} ${plotName(stuck)} is already ${plotLocked(f, t, a.farm, stuck, a.kind)!.toLowerCase()}: it keeps its ${a.kind === 'fert' ? 'fertilizer' : a.kind}`) };
+      }
+      const plots = t.plans.map((_, i) => (i === a.farm ? next : plotsOf(t, i)));
+      // once the farms are paid for, a change of seed or fertilizer is paid (or refunded) at once
+      const delta = t.phase === 'growing' && a.kind !== 'sprayer' ? next.reduce((n, r, i) => n + plotCost(a.kind, r[a.kind] as string) - plotCost(a.kind, rows[i][a.kind] as string), 0) : 0;
+      if (delta > s.coins) return { ...s, toast: toast(`That costs ${delta} coins more and you have ${s.coins}`) };
+      return { ...s, coins: s.coins - delta, trial: { ...t, plots } };
     }
     case 'prescribe': {
       const t = s.trial;
