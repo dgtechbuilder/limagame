@@ -142,7 +142,9 @@ export const FACTORS = {
 const N = FACTORS.nitrogen.value;
 const FARM_ACRES = 1 / 6;
 /** litres of diesel an acre for each job a tractor can do (the tractor drive's implements: plough + harrow, planter, harvester) */
-export const TRACTOR_LPA: Record<string, number> = { prep: 13, sow: 4, setupFeed: 4, harvest: 10 };
+export const TRACTOR_LPA: Record<string, number> = { prep: 13, sow: 4, setupFeed: 4, spray: 3, harvest: 10 };
+/** how much diesel each tractor type burns next to the standard one: its fuel cost a plot (6, 9, 14) over the standard's 9 */
+export const TRACTOR_FUEL: Record<string, number> = { compact: 6 / 9, standard: 1, large: 14 / 9 };
 
 /* ---------------- the six farms: a plan's inputs, at planting ---------------- */
 
@@ -157,6 +159,10 @@ const LAND: Record<Plan['land'], Delta> = {
 const SEED: Record<Plan['seed'], Delta> = {
   saved: {},
   certified: { emit: { seed: 2 } },
+  // drought-tolerant hybrid: bought seed like any hybrid, grows a shorter season so it needs less water
+  dt: { emit: { seed: 2 } },
+  // open-pollinated: bought once, then re-sown for 2 to 3 seasons, so less new seed is made and carried
+  opv: { emit: { seed: 1.2 } },
   intercrop: { emit: { seed: 2.5 }, stored: 15, soil: 2 },
   dense: { emit: { seed: 3 } },
 };
@@ -202,8 +208,8 @@ export function planDelta(p: Plan, f: Forecast, solar: boolean): Delta {
 }
 
 /** Diesel for a tractor job on one farm, for the share of its tiles done from the seat. */
-export function tractorWork(job: string, share: number): Delta {
-  const l = FARM_ACRES * (TRACTOR_LPA[job] ?? 0) * share;
+export function tractorWork(job: string, share: number, type = 'standard'): Delta {
+  const l = FARM_ACRES * (TRACTOR_LPA[job] ?? 0) * share * (TRACTOR_FUEL[type] ?? 1);
   return l > 0 ? { diesel: l, emit: { fuel: l * FACTORS.diesel.value }, pollution: l * 0.5 } : {};
 }
 

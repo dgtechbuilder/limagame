@@ -242,7 +242,7 @@ function DisplayTab({ s, dispatch, set }: Props & { set: (p: Partial<Settings>) 
     const p = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.();
     Promise.resolve(p).catch(() => dispatch({ type: 'toast', text: 'Full screen is not available here. Add the game to your home screen instead.' }));
   };
-  const gfx = { auto: 'Shadows and a sharp picture, dropped by itself if your phone slows down.', high: 'Always shadows and the sharpest picture. Uses more battery.', low: 'No shadows, a softer picture. Smoothest on older phones and saves battery.' };
+  const gfx = { auto: 'Shadows and a picture sized to your phone, made lighter by itself if it slows down.', high: 'Always shadows and the sharpest picture. Uses more battery.', low: 'No shadows, a softer picture. Smoothest on older phones and saves battery.' };
   return (
     <div className="set-rows">
       <Row title="Graphics" body={gfx[st.graphics]}>

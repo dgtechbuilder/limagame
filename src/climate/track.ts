@@ -2,7 +2,7 @@
    planted, a tile ploughed from the tractor seat, a treatment done, a harvest sold) and record its climate effect.
    Kept out of the main reducer so the farming rules stay readable; the numbers are in model.ts. */
 
-import { FULL, TILES, TREAT_JOB, popcount } from '../world/field';
+import { TILES, TREAT_JOB, plotsIn, popcount } from '../world/field';
 import { checkKey, farmName, hazardFor, optionOf, type Trial } from '../trials/model';
 import { toast, SELLING, SOLD, type Action, type GameState } from '../state';
 import {
@@ -85,12 +85,15 @@ export function trackClimate(prev: GameState, s: GameState, a: Action): GameStat
       if (!t) break;
       const key = `${a.farm}:${a.job}`;
       const before = prev.field.cycle === s.field.cycle ? (prev.field.marks[key] ?? 0) : 0;
-      const after = s.field.marks[key] ?? 0;
-      // a tractor job finished: diesel for the share done from the seat
-      if (a.job in TRACTOR_LPA && before !== FULL && after === FULL) {
-        const share = popcount(s.field.byTractor?.[key] ?? 0) / TILES;
-        const words: Record<string, string> = { prep: 'ploughed', sow: 'sown', setupFeed: 'fertilized', harvest: 'harvested' };
-        if (share > 0) log(`${farmName(a.farm)} ${words[a.job]} · ${Math.round(share * 100)}% from the tractor seat`, 'tractor', tractorWork(a.job, share));
+      // a tractor worked a plot: diesel for the tiles it covered, scaled by the type of tractor (fuel use is in plots/data)
+      if (a.tractor && a.job in TRACTOR_LPA) {
+        const newly = popcount((s.field.marks[key] ?? 0) & ~before);
+        if (newly > 0) {
+          const type = a.rig?.tractor ?? 'standard';
+          const words: Record<string, string> = { prep: 'ploughed', sow: 'sown', setupFeed: 'fertilized', spray: 'sprayed', harvest: 'harvested' };
+          const plots = plotsIn((s.field.marks[key] ?? 0) & ~before).map(p => String.fromCharCode(65 + p)).join('');
+          log(`${farmName(a.farm)} ${words[a.job]} · plot${plots.length > 1 ? 's' : ''} ${plots} by ${type} tractor`, 'tractor', tractorWork(a.job, newly / TILES, type));
+        }
       }
       // a treatment finished by hand
       const tr = /^t(\d)$/.exec(a.job);

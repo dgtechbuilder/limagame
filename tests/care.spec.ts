@@ -81,6 +81,10 @@ test('a spray job: the safety kit, then the product', async ({ page }) => {
   expect((await state(page)).coins).toBe(coins);
   await page.locator('.care-opt', { hasText: right.name }).click();
   await page.getByRole('button', { name: 'Pick up the sprayer', exact: true }).click();
+  // which sprayer goes on which plot (one plot stays unsprayed as a check), then the sprayer is picked up
+  await expect(page.locator('.pb-grid')).toBeVisible();
+  await expect(page.locator('.pb-grid .pb-cell', { hasText: 'Check strip' })).toHaveCount(1);
+  await page.getByRole('button', { name: 'Pick up the sprayer', exact: true }).click();
   await expect.poll(async () => (await state(page)).field.carry).toBe('sprayer');
   await workFarm(page, 0, async () => !!(await state(page)).trial.checks[`0:${c.day}`]?.treated, 120);
   expect(await eventNames(page)).toEqual(expect.arrayContaining(['kit_on', 'product']));

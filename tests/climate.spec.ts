@@ -68,17 +68,21 @@ test('six farms: planting records each plan; tractor work and drives burn diesel
   expect(c.total.fertN).toBeGreaterThanOrEqual(7);
   expect(c.co2By.fertilizer).toBeGreaterThanOrEqual(70);
 
-  // ploughing Farm 2 from the tractor seat: diesel for the whole farm
-  await act(page, { type: 'fieldMark', farm: 1, job: 'prep', bits: (1 << 20) - 1, tractor: true });
+  // ploughing Farm 2 from the tractor seat, one mini plot at a time: a compact tractor on plot A, a large one on plot B
+  const mask = (plot: number) => { let m = 0; for (let i = plot; i < 20; i += 4) m |= 1 << i; return m; };
+  await act(page, { type: 'fieldMark', farm: 1, job: 'prep', bits: mask(0), tractor: true, rig: { tractor: 'compact', tool: 'plough', job: 'prep' } });
+  await act(page, { type: 'fieldMark', farm: 1, job: 'prep', bits: mask(1), tractor: true, rig: { tractor: 'large', tool: 'harrow', job: 'prep' } });
   c = await climate(page);
-  expect(c.total.diesel).toBeCloseTo(13 / 6, 3);
-  expect(c.co2By.fuel).toBeCloseTo((13 / 6) * 2.68, 3);
+  // a plot is a quarter of the farm; a compact tractor burns 6/9 of the standard's diesel, a large one 14/9
+  const litres = (13 / 6) * 0.25 * (6 / 9 + 14 / 9);
+  expect(c.total.diesel).toBeCloseTo(litres, 3);
+  expect(c.co2By.fuel).toBeCloseTo(litres * 2.68, 3);
 
   // a tractor drive: the diesel it really burned, and a credit for a clean drive
   const credits = c.credits;
   await act(page, { type: 'tractorDone', farm: 1, score: 80, stars: 3, Q: 0.9, coins: 0, points: 0, diesel: 1.5, co2: 4.02, clim: 85 });
   c = await climate(page);
-  expect(c.total.diesel).toBeCloseTo(13 / 6 + 1.5, 3);
+  expect(c.total.diesel).toBeCloseTo(litres + 1.5, 3);
   expect(c.drives.n).toBe(1);
   expect(c.credits).toBeCloseTo(credits + 1, 5);
 
