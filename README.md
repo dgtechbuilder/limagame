@@ -587,6 +587,31 @@ player's saved game or events.
 - Animations respect *reduce motion*, from the phone or from *Settings → Display*.
 - *Settings → Display → Graphics → Low* turns off shadows and draws the 3D farm at 1× for the oldest phones.
 
+**The 3D farm on a phone** (`tests/perf.spec.ts` measures it on a 740 × 340 phone screen at 3× and prints the numbers):
+
+- Only the tiles that show are drawn: each kind of tile (crop stages, weeds, puddles…) is an instanced mesh packed
+  with what is on the field and its count set to that, instead of all 120 tiles with the hidden ones moved away. A
+  two-farm cycle went from about **515,000 triangles a frame to 61,000** (shadows included); the software renderer
+  in the test drew **3× as many frames**.
+- *Auto* graphics on a phone (a touch screen, a small screen, or 4 GB of memory or 4 cores or fewer) draws at up to
+  1.5× pixels (2× on a computer), with a 1,024 shadow map and plain shadow edges (2,048 and soft on a computer), the
+  shadows redrawn every other frame. *High* keeps the computer's picture on any device.
+- A still farm is drawn about 30 times a second on a phone (60 while anything moves): a cooler phone and a longer
+  battery. Nothing is drawn under a full-screen page.
+- If frames still come slowly while the farmer moves (under about 25 a second, in the first minute), *Auto* steps
+  down by itself: a computer to the phone picture, a phone to no shadows at 1×.
+- Every shader is built while the farm opens, not on the first walk; a farm rebuilt (new art style or graphics)
+  frees the old one's GPU memory.
+- How a farm has fared and how its plots grow is worked out once per day, not on every tile the farmer works.
+- The HUD re-renders only when the farmer or a sign moved on screen; the game is saved after a short pause (and at
+  once when the phone hides the game), not on every tile.
+- Design review's sample screens are a separate chunk: players do not build them at start (about 25 ms on a
+  computer, several times that on a phone). The farm world is fetched in the background a few seconds after the
+  game opens, so it is ready when the farm does. The Poppins font no longer holds up the first picture.
+- A service worker (`public/sw.js`, published game only) keeps the game on the phone: a second visit opens without
+  downloading it again, and the game plays on a weak signal. The page is fetched fresh when there is a connection,
+  so an update shows at once.
+
 ## Assumptions and open decisions
 
 - **Game balance** (task counts, yields, prices, point costs) is illustrative, not agronomic data.

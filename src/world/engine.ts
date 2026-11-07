@@ -277,6 +277,12 @@ export class FarmWorld {
 
     window.addEventListener('keydown', this.onKey);
     window.addEventListener('keyup', this.onKey);
+    // build every shader now, while the farm opens, not in the middle of the first walk (a stall on a phone)
+    try {
+      this.renderer.compile(this.scene, this.camera);
+    } catch {
+      /* compiled on first use instead */
+    }
     this.loop();
   }
 
