@@ -36,7 +36,7 @@ export interface TractorProps {
   name: string;
   /** design review: open on the summary of an autopilot drive */
   demo?: 'summary';
-  onFinish: (r: { score: number; stars: number; Q: number; coins: number; points: number }) => void;
+  onFinish: (r: { score: number; stars: number; Q: number; coins: number; points: number; diesel: number; co2: number; clim: number }) => void;
   onClose: () => void;
 }
 
@@ -208,7 +208,7 @@ export function Tractor({ farm, cycle, best, name, demo, onFinish, onClose }: Tr
         auto: r.usedAuto,
         reason: r.reason,
       });
-      onFinish({ score: r.score, stars: r.stars, Q: r.Q, coins: pay.coins, points: pay.points });
+      onFinish({ score: r.score, stars: r.stars, Q: r.Q, coins: pay.coins, points: pay.points, diesel: r.usedL, co2: r.co2, clim: r.clim });
     }
     // furrows: show the water running down them
     const wet = j.wOrder;

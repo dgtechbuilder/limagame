@@ -4,9 +4,10 @@ import { STEP_META, STEPS } from '../data';
 import { SELLING, SOLD, daysToHarvest, stepIndex, today, type Action, type GameState, type Modal } from '../state';
 import { FarmerPortrait } from '../first/art';
 import { useAnime } from '../art/style';
+import { rating } from '../climate/model';
 import { FarmMap } from './FarmMap';
 import { LOOKS } from '../first/data';
-import { GoArrow, MailIcon, SettingsIcon, TimerIcon } from './Icons';
+import { ClimateIcon, GoArrow, MailIcon, SettingsIcon, TimerIcon } from './Icons';
 import { Img, fmt } from './ui';
 import { CHECK_DAYS, checkKey, currentDay } from '../trials/model';
 import { dayNumber } from '../rounds/farms';
@@ -45,6 +46,7 @@ export function nextAction(s: GameState): { label: string; short: string; icon: 
  */
 export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
   const anime = useAnime();
+  const grade = rating(s.climate.total);
   const busy = s.modal !== null; // the Figma modal frames hide the field HUD
   const open = (modal: Modal) => dispatch({ type: 'open', modal });
   const now = nextAction(s);
@@ -238,6 +240,21 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
               <Img src={img.maizeMini} w={28} h={28} />
             </span>
             <span className="label" style={{ fontSize: 14 }}>Rounds</span>
+          </button>
+
+          {/* Climate, beside Rounds (the farm map) */}
+          <button
+            type="button"
+            className="abs"
+            style={{ left: 715, top: 238, width: 56, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}
+            onClick={() => open({ kind: 'climate' })}
+            aria-label={`Climate: emissions, water, soil and credits${grade ? ` (rating ${grade.grade})` : ''}`}
+          >
+            <span className="peach-btn" style={{ width: 56, height: 48.66, position: 'relative' }}>
+              <ClimateIcon size={30} />
+              {grade && <span className="tr-badge">{grade.grade}</span>}
+            </span>
+            <span className="label" style={{ fontSize: 14 }}>Climate</span>
           </button>
 
           <button

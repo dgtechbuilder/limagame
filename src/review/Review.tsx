@@ -1,6 +1,7 @@
 import { useEffect, type Dispatch } from 'react';
 import { REVIEW_BASE, SELLING, SOLD, initialState, type Action, type GameState, type SeasonResult } from '../state';
 import { TRIAL_SAMPLES, wakalaCase } from '../trials/samples';
+import { CLIMATE_SAMPLE } from '../climate/sample';
 
 /* Design review (?review=1): a picker of every screen with sample data, and ?screen=<label> to open one. Loaded only in
    review, so players never pay for building the samples. */
@@ -108,6 +109,12 @@ const SCREENS: { label: string; group: string; state: Partial<GameState> }[] = [
   { group: 'Field rounds', label: 'Rounds · Right call', state: { roundsOpen: true, roundsView: 'right' } },
   { group: 'Field rounds', label: 'Rounds · Wrong call', state: { roundsOpen: true, roundsView: 'wrong' } },
   { group: 'Field rounds', label: 'Rounds · Summary', state: { roundsOpen: true, roundsView: 'summary' } },
+  { group: 'Climate', label: 'Climate · Overview', state: { climate: CLIMATE_SAMPLE, modal: { kind: 'climate', tab: 'overview' } } },
+  { group: 'Climate', label: 'Climate · Emissions', state: { climate: CLIMATE_SAMPLE, modal: { kind: 'climate', tab: 'emissions' } } },
+  { group: 'Climate', label: 'Climate · Water & soil', state: { climate: CLIMATE_SAMPLE, modal: { kind: 'climate', tab: 'water' } } },
+  { group: 'Climate', label: 'Climate · Shocks', state: { climate: CLIMATE_SAMPLE, modal: { kind: 'climate', tab: 'shocks' } } },
+  { group: 'Climate', label: 'Climate · Activity', state: { climate: CLIMATE_SAMPLE, modal: { kind: 'climate', tab: 'activity' } } },
+  { group: 'Climate', label: 'Climate · New game', state: { modal: { kind: 'climate', tab: 'overview' } } },
 ];
 
 export function ReviewPicker({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {

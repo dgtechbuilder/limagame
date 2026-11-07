@@ -3,6 +3,9 @@ import { img } from '../assets';
 import { InfoDot, EditIcon } from '../components/Icons';
 import { IconSidebar, ModalShell } from '../components/Modal';
 import { Cast } from '../art/Cast';
+import { ClimateTag } from '../climate/Tag';
+import { TASK_CLIMATE, waterTask } from '../climate/model';
+import { hasSolar } from '../climate/track';
 import { GoldButton, Img, Partner, PriceChip } from '../components/ui';
 import { SHOP_TABS, STEP_META, STEPS, TASK_USES_ITEM, type ShopTab, type StepId } from '../data';
 import { stepIndex, tasksDone, type Action, type GameState } from '../state';
@@ -224,6 +227,7 @@ function TaskGrid({ s, step, status, dispatch }: { s: GameState; step: StepId; s
             <span style={{ fontSize: def.nameFont, fontWeight: 700, lineHeight: 1.15, maxWidth: step === 'landprep' ? 66 : 120, textAlign: 'center' }}>
               {t.name}
             </span>
+            {TASK_CLIMATE[t.id] && <ClimateTag short d={TASK_CLIMATE[t.id]} style={{ position: 'absolute', left: 0, right: 0, top: 2, justifyContent: 'center' }} />}
             <TaskChip s={s} taskId={t.id} price={t.price} done={done} status={status} width={110} />
           </button>
         );
@@ -290,6 +294,7 @@ function WaterBody({ s, status, dispatch }: { s: GameState; status: StepStatus; 
             >
               <Img src={t.icon} w={t.iconSize[0]} h={t.iconSize[1]} />
               <span style={{ fontSize: 10, fontWeight: 700 }}>{t.name}</span>
+              <ClimateTag short d={waterTask(litres * 1000, hasSolar(s))} style={{ position: 'absolute', left: 0, right: 0, top: 3, justifyContent: 'center' }} />
               <TaskChip s={s} taskId={t.id} price={t.price} done={done} status={status} width={70} />
             </button>
           );

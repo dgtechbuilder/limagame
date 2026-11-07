@@ -208,7 +208,7 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
     setCheckedAt(prev => ({ ...prev, [r.id]: Date.now() }));
     setEarned(e => e + paid);
     if (trial) dispatch({ type: 'trialCheck', farm: (r as TrialRound).farmIndex, day: tDay, right, tries: looks });
-    else dispatch({ type: 'roundResult', id: r.id, right, tries: looks, day: today });
+    else dispatch({ type: 'roundResult', id: r.id, right, tries: looks, day: today, hazard: r.hazard });
   };
 
   const onContinue = () => {

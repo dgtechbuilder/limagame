@@ -13,6 +13,7 @@ const World = lazy(() => import('./world/World').then(m => ({ default: m.World }
 const ReviewPicker = lazy(() => import('./review/Review').then(m => ({ default: m.ReviewPicker })));
 import { WelcomeModal } from './screens/Meta';
 import { SettingsPage } from './screens/Settings';
+import { ClimatePage } from './screens/Climate';
 import { ArtContext, VoiceContext } from './art/style';
 import { speak, stopSpeaking } from './speech';
 import { MainMenu } from './screens/MainMenu';
@@ -141,6 +142,7 @@ export default function App() {
         {m?.kind === 'menu' && <MainMenu s={s} dispatch={dispatch} />}
         {m?.kind === 'welcome' && <WelcomeModal s={s} dispatch={dispatch} />}
         {m?.kind === 'settings' && <SettingsPage s={s} dispatch={dispatch} tab={m.tab} />}
+        {m?.kind === 'climate' && <ClimatePage s={s} dispatch={dispatch} tab={m.tab} />}
         {m?.kind === 'shop' && <ShopModal s={s} tab={m.tab} dispatch={dispatch} />}
         {m?.kind === 'steps' && <StepsModal s={s} step={m.step} dispatch={dispatch} />}
         {m?.kind === 'sale' && <SaleModal s={s} dispatch={dispatch} />}

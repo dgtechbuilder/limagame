@@ -27,6 +27,8 @@ import { FOLLOW_UP } from './care/data';
 import { carryNeeded, emptyField, followUpLeft, plotLocked, plotMask, plotsIn, treatCost, treatLeft, type Carry, type Field } from './world/field';
 import { TRACTOR_BONUS, type ImplId } from './tractor/data';
 import { TRACTOR_PLOT, plotCost, plotName, setPlotInput, tractorBlock, type PlotJob, type PlotKind, type TractorId } from './plots/data';
+import { initialClimate, type ClimateState } from './climate/model';
+import { trackClimate } from './climate/track';
 import {
   GROWING_STEPS,
   HARVEST_EFFECT,
@@ -45,6 +47,7 @@ import {
 
 export type Modal =
   | { kind: 'menu' }
+  | { kind: 'climate'; tab?: ClimateTab }
   | { kind: 'welcome' }
   | { kind: 'settings'; tab?: SettingsTab }
   | { kind: 'shop'; tab: ShopTab }
@@ -70,6 +73,7 @@ export interface Settings {
   voice: boolean;
 }
 export type SettingsTab = 'farmer' | 'game' | 'display' | 'help';
+export type ClimateTab = 'overview' | 'emissions' | 'water' | 'shocks' | 'activity';
 export const DEFAULT_SETTINGS: Settings = { art: 'anime', graphics: 'auto', reduceMotion: false, voice: false };
 
 /** Stage index: 0–5 = the farming step being worked on, 6 = harvested and selling, 7 = season sold. */
@@ -114,6 +118,8 @@ export type RoundsView = 'map' | 'look' | 'judge' | 'right' | 'wrong' | 'summary
 
 export interface GameState {
   settings: Settings;
+  /** climate tracking: emissions, carbon stored, water, pollution, soil, credits (src/climate/model.ts) */
+  climate: ClimateState;
   /** the farm screen: the walkable 3D farm, or the classic painted one */
   view: 'world' | 'classic';
   /** the screen on top was opened from the main menu, so Back goes back to the menu */
@@ -197,6 +203,7 @@ export const freshSeason = {
 
 export const initialState: GameState = {
   settings: DEFAULT_SETTINGS,
+  climate: initialClimate,
   view: 'world',
   fromMenu: false,
   navSeq: 0,
@@ -351,17 +358,17 @@ export type Action =
   | { type: 'trialClock'; clock: Trial['clock'] }
   | { type: 'trialHarvest' }
   | { type: 'trialRecipe'; farm: number }
-  | { type: 'roundResult'; id: string; right: boolean; tries: number; day: number }
+  | { type: 'roundResult'; id: string; right: boolean; tries: number; day: number; hazard?: string }
   /** farm world, after a right call: the fix the player picked (a wrong one costs coins; they pick again) */
   | { type: 'prescribe'; farm: number; day: number; pick: string; right: boolean }
   /** farm world: follow-ups whose day ended undone, by `${farm}:${day}` (they are logged once) */
   | { type: 'followUpMissed'; keys: string[] }
   /** farm world: a before-planting tractor drive finished (the drive's coins and points are worked out by the screen) */
-  | { type: 'tractorDone'; farm: number; score: number; stars: number; Q: number; coins: number; points: number }
+  | { type: 'tractorDone'; farm: number; score: number; stars: number; Q: number; coins: number; points: number; diesel?: number; co2?: number; clim?: number }
   | { type: 'fs'; phase: FsPhase; at?: 'first' | 'lower'; opened?: boolean; note?: string };
 
 let toastId = 0;
-const toast = (text: string) => ({ id: ++toastId, text });
+export const toast = (text: string) => ({ id: ++toastId, text });
 const gainXp = (s: GameState, amount: number) => {
   let xp = s.xp + amount;
   let level = s.level;
@@ -373,7 +380,13 @@ const gainXp = (s: GameState, amount: number) => {
 };
 const fmt = (n: number) => n.toLocaleString('en-US');
 
+/** Every action, then the climate it changed (src/climate/track.ts). */
 export function reducer(s: GameState, a: Action): GameState {
+  const next = play(s, a);
+  return next === s ? s : trackClimate(s, next, a);
+}
+
+function play(s: GameState, a: Action): GameState {
   switch (a.type) {
     case 'open':
       return { ...s, modal: a.modal, fromMenu: s.modal?.kind === 'menu' && a.modal.kind !== 'menu', plotSelected: false };
@@ -883,7 +896,7 @@ function load(): GameState {
     const saved = JSON.parse(raw);
     // Saves from before the farm had one owner may carry a reminder about neighbours.
     if (typeof saved.note === 'string' && /Achieng|neighbour/i.test(saved.note)) saved.note = 'Check every bed on your farm often: open Rounds on the farm.';
-    return { ...initialState, ...saved, fromMenu: false, navSeq: 0, rideReq: 0, modal: null, plotSelected: false, toast: null, roundsOpen: false, roundsView: null, roundsDemo: null, worldDemo: null, trialsOpen: false, roundsTrial: false, rounds: { ...initialState.rounds, ...(saved.rounds ?? {}) }, settings: { ...DEFAULT_SETTINGS, ...(saved.settings ?? {}) } };
+    return { ...initialState, ...saved, fromMenu: false, navSeq: 0, rideReq: 0, modal: null, plotSelected: false, toast: null, roundsOpen: false, roundsView: null, roundsDemo: null, worldDemo: null, trialsOpen: false, roundsTrial: false, rounds: { ...initialState.rounds, ...(saved.rounds ?? {}) }, settings: { ...DEFAULT_SETTINGS, ...(saved.settings ?? {}) }, climate: { ...initialClimate, ...(saved.climate ?? {}) } };
   } catch {
     return initialState;
   }
