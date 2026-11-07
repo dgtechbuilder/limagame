@@ -56,7 +56,7 @@ export function TractorPick({ tr, field, day, rig, onGo, onLeave }: { tr: Trial;
     line = firstDue ? `Pick the tool. Due now: ${JOB_INFO[firstDue].name.toLowerCase()} on ${farmsText(due[firstDue]!)}.` : 'Pick the tool for the job you want to do. Nothing is due on the farms right now.';
   } else {
     const j = TOOL_JOB[tool];
-    line = due[j] ? `${toolName(tool)}: ${JOB_INFO[j].name.toLowerCase()} on ${farmsText(due[j]!)}. Drive onto a plot to work it.` : `${toolName(tool)}: there is no ${JOB_INFO[j].name.toLowerCase()} job right now. You can still drive, or pick another tool.`;
+    line = due[j] ? `${toolName(tool)}: ${JOB_INFO[j].name.toLowerCase()} on ${farmsText(due[j]!)}. Drive onto a plot to work it.` : `${toolName(tool)} (${JOB_INFO[j].name.toLowerCase()}): no farm is waiting for this job right now. You can still drive, or pick another tool.`;
   }
 
   return (
