@@ -181,7 +181,9 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     const tick = window.setInterval(() => {
       const f = w.farmerScreen();
       const sg = eng.current && atSignRef.current >= 0 ? signOf(atSignRef.current) : null;
-      setAnchors({ farmer: f, sign: sg ? w.project(sg.x, 2.5, sg.z) : null, riding: w.isRiding(), nearTractor: w.nearTractor() });
+      const next = { farmer: f, sign: sg ? w.project(sg.x, 2.5, sg.z) : null, riding: w.isRiding(), nearTractor: w.nearTractor() };
+      // the HUD follows the farmer: re-render only when something on it would move or change
+      setAnchors(a => (sameAnchors(a, next) ? a : next));
     }, 120);
     return () => {
       window.removeEventListener('resize', fit);
@@ -724,6 +726,14 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
   );
 }
 
+
+type Anchors = { farmer: { x: number; y: number }; sign: { x: number; y: number; visible: boolean } | null; riding: boolean; nearTractor: boolean };
+const near = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.abs(a.x - b.x) < 1 && Math.abs(a.y - b.y) < 1;
+function sameAnchors(a: Anchors, b: Anchors) {
+  if (a.riding !== b.riding || a.nearTractor !== b.nearTractor || !near(a.farmer, b.farmer)) return false;
+  if (!a.sign || !b.sign) return a.sign === b.sign;
+  return a.sign.visible === b.sign.visible && near(a.sign, b.sign);
+}
 
 /* ---------------- icons ---------------- */
 
