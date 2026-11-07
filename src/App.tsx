@@ -10,8 +10,10 @@ const Rounds = lazy(() => import('./rounds/Rounds').then(m => ({ default: m.Roun
 const Trials = lazy(() => import('./trials/Trials').then(m => ({ default: m.Trials })));
 const World = lazy(() => import('./world/World').then(m => ({ default: m.World })));
 import { TRIAL_SAMPLES, wakalaCase } from './trials/samples';
+import { CLIMATE_SAMPLE } from './climate/sample';
 import { WelcomeModal } from './screens/Meta';
 import { SettingsPage } from './screens/Settings';
+import { ClimatePage } from './screens/Climate';
 import { ArtContext, VoiceContext } from './art/style';
 import { speak, stopSpeaking } from './speech';
 import { MainMenu } from './screens/MainMenu';
@@ -81,6 +83,12 @@ const SCREENS: { label: string; group: string; state: Partial<GameState> }[] = [
   { group: 'New features', label: 'Rewards & Discounts Hub', state: { points: 2350, playSeconds: 22500, modal: { kind: 'rewards' } } },
   { group: 'New features', label: 'Value Addition', state: { ...selling, modal: { kind: 'value' } } },
   { group: 'New features', label: 'Select Process', state: { ...selling, modal: { kind: 'process' } } },
+  { group: 'Climate', label: 'Climate · Overview', state: { climate: CLIMATE_SAMPLE, modal: { kind: 'climate', tab: 'overview' } } },
+  { group: 'Climate', label: 'Climate · Emissions', state: { climate: CLIMATE_SAMPLE, modal: { kind: 'climate', tab: 'emissions' } } },
+  { group: 'Climate', label: 'Climate · Water & soil', state: { climate: CLIMATE_SAMPLE, modal: { kind: 'climate', tab: 'water' } } },
+  { group: 'Climate', label: 'Climate · Shocks', state: { climate: CLIMATE_SAMPLE, modal: { kind: 'climate', tab: 'shocks' } } },
+  { group: 'Climate', label: 'Climate · Activity', state: { climate: CLIMATE_SAMPLE, modal: { kind: 'climate', tab: 'activity' } } },
+  { group: 'Climate', label: 'Climate · New game', state: { modal: { kind: 'climate', tab: 'overview' } } },
   { group: 'Added', label: 'Settings · My farmer', state: { modal: { kind: 'settings', tab: 'farmer' } } },
   { group: 'Added', label: 'Settings · Game', state: { modal: { kind: 'settings', tab: 'game' } } },
   { group: 'Added', label: 'Settings · Display', state: { modal: { kind: 'settings', tab: 'display' } } },
@@ -249,6 +257,7 @@ export default function App() {
         {m?.kind === 'menu' && <MainMenu s={s} dispatch={dispatch} />}
         {m?.kind === 'welcome' && <WelcomeModal s={s} dispatch={dispatch} />}
         {m?.kind === 'settings' && <SettingsPage s={s} dispatch={dispatch} tab={m.tab} />}
+        {m?.kind === 'climate' && <ClimatePage s={s} dispatch={dispatch} tab={m.tab} />}
         {m?.kind === 'shop' && <ShopModal s={s} tab={m.tab} dispatch={dispatch} />}
         {m?.kind === 'steps' && <StepsModal s={s} step={m.step} dispatch={dispatch} />}
         {m?.kind === 'sale' && <SaleModal s={s} dispatch={dispatch} />}

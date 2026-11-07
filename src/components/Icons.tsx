@@ -89,3 +89,16 @@ export function StarIcon({ size = 10, filled = true }: IconProps & { filled?: bo
     </svg>
   );
 }
+
+/** The Climate button: the earth with a leaf. */
+export function ClimateIcon({ size = 26 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 26 26" width={size} height={size} aria-hidden="true">
+      <circle cx={12} cy={14} r={10} fill="#4fb3e8" stroke="#fff" strokeWidth={1.4} />
+      <path d="M5 9.5c2.5.5 3.5 2 3 4s1 3 2.5 3.5-.5 3.5-1.5 4.5M14 4.5c-.5 2 1 3 3 3s3 1.5 2.5 3.5" fill="#6cc04a" stroke="#3f8f2c" strokeWidth={0.8} />
+      <path d="M8 8.5c1.5 1 2 2.5 1.6 4.2-.4 1.8.8 2.6 2 3.1 1.3.6.8 2.6-.4 4.4L6.4 18C4.6 15 4.6 11.4 8 8.5ZM14.2 5c-.3 1.6.9 2.5 2.6 2.6 1.9.1 2.9 1.4 2.5 3.4l2.4.6c-.4-3.4-3.2-6.3-7.5-6.6Z" fill="#6cc04a" />
+      <path d="M19 2.5c3.5-.5 5.5 1.5 5 5-3.5.5-5.5-1.5-5-5Z" fill="#9be05e" stroke="#2f7a24" strokeWidth={0.9} />
+      <path d="M19.4 7.2l3-3" stroke="#2f7a24" strokeWidth={0.8} strokeLinecap="round" />
+    </svg>
+  );
+}

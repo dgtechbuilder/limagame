@@ -33,6 +33,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [From Wakala Agent](#from-wakala-agent)
 - [Navigation and the main menu](#navigation-and-the-main-menu)
 - [Settings](#settings)
+- [Climate tracking](#climate-tracking)
 - [Character art: retro anime](#character-art-retro-anime)
 - [Design review mode](#design-review-mode)
 - [Saving, events and privacy](#saving-events-and-privacy)
@@ -102,9 +103,12 @@ src/
     Journey.tsx            harvest timing → sale → storage → value addition → process → results; rewards; info
     Meta.tsx               How the farm works
     Settings.tsx           the Settings page: My farmer, Game, Display, Help & data
+    Climate.tsx            the Climate page: Overview, Emissions, Water & soil, Climate shocks, Activity
   art/                     retro anime characters: anime.tsx (SVG kit: farmer, guide, shopkeeper, Ojuok),
                            Cast.tsx (anime or original picture), style.ts (style and read-aloud contexts)
   speech.ts                Read aloud: the phone's own voice (speechSynthesis)
+  climate/                 climate tracking: model.ts (every factor, the ledger, rating, levels), track.ts (which
+                           actions record what), Tag.tsx (climate tags on choices), sample.ts (design review)
   first/                   the first session (see below)
   world/                   the farm world (see below): field.ts the work by hand, engine.ts the 3D farm, World.tsx the HUD
   trials/                  the six farms (see below): model.ts holds every number; Trials.tsx the screens (loaded when opened)
@@ -509,6 +513,43 @@ four sections. Every control works at once and is saved on the device; *Reset pr
 
 The settings live in `GameState.settings` (`src/state.ts`). The 3D farm is rebuilt when the character style or the
 graphics change. `tests/settings.spec.ts` plays every section.
+
+## Climate tracking
+
+Every job in the game now records what it does to the climate, the water and the land. The **CLIMATE** button
+(beside MISSION on the 3D farm, beside Rounds on the classic farm, and in the main menu) opens the **Climate page**.
+
+**What is tracked**
+
+| Measure | What feeds it |
+| --- | --- |
+| **Emissions** (kg CO₂e), by source | fertilizer (making nitrogen + the N₂O it gives off), diesel (tractor work and drives), chemicals (sprays), water pumping, seed, storage & milling, transport to market, manure |
+| **Carbon stored** (kg CO₂) | mulch (no dig), manure, beans between the maize (they fix nitrogen) |
+| **Water used** (litres, on top of the rain) | the plan's watering, emergency watering, Farm Moja's water tasks |
+| **Pollution** | sprays and herbicide, synthetic nitrogen runoff, over-watering that washes fertilizer away, exhaust, wrong fixes (glyphosate on maize) |
+| **Soil health** | up with mulch, manure, beans, hand weeding, drains; down with bare soil, tractor compaction, a double dose, heavy chemicals |
+| **Efficiency** | kg CO₂e per 90 kg bag, kg of food per 1,000 L of water, the tractor drives' climate score |
+| **Food lost** | bags spoiled in storage, yield lost to problems |
+| **Climate shocks** | drought, flood and hail met on the farms, and how many were read right in time (adaptation) |
+| **Climate credits** | 1 credit for every 10 kg CO₂ stored or kept out of the air (a real carbon credit is 1,000 kg), plus extras for checking before spraying, weeding by hand and clean tractor drives |
+
+**Where it is recorded** (`src/climate/track.ts`): Farm Moja's tasks; the six farms' plans when planted; tractor
+work from the seat in the farm world (by the share of tiles driven); each tractor drive (the diesel it actually burned);
+treatments, follow-ups and wrong fixes; a contractor's diesel for tractor-hire farms nobody ploughed; harvests (food grown
+and lost); and the trip to market (storage, milling, transport). A harvest closes a season in the history.
+
+**The page** has five sections: *Overview* (a climate rating A–E, the climate level and credits, eight key figures and
+the biggest source with what to change), *Emissions* (by source and by season), *Water & soil*, *Climate shocks* and
+*Activity* (every recorded job, newest first).
+
+**In the game**: the climate effect shows beside each choice: on the six farms' plan options, the Farm Moja task
+cards, and the storage and processing cards. The HUD button carries the climate rating once there is a harvest.
+Climate levels (Seedling, Grower, Steward, Champion, Climate hero) pay 100 to 500 points once each. Redeeming the
+*solar power discount* in Rewards switches pumping, cold storage and milling to solar.
+
+All factors are in one table in `src/climate/model.ts` (`FACTORS` and the plan, task and market tables), like the six
+farms' numbers: illustrative estimates for learning until an agronomist reviews them; the N₂O share cites the IPCC
+2006 guidelines. `tests/climate.spec.ts` plays the tracking and the page.
 
 ## Character art: retro anime
 
