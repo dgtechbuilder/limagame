@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { NavBar } from '../components/Nav';
 import { img } from '../assets';
 import { FarmMap } from '../components/FarmMap';
 import { CheckBadge } from '../components/Icons';
@@ -144,9 +145,7 @@ export function Inspect({
         {second ? ' · second look' : ''}
       </span>
       <span className="rr-roundtag rr-cropnote">{note ?? `${CROP_NAME[round.crop]} · ${STAGE_LABELS[round.stage]} · day ${round.day + 1} of ${CYCLE_DAYS}`}</span>
-      <button type="button" className="close-btn" style={{ left: 826, top: 4, width: 36, height: 36 }} aria-label="Back to my farm" onClick={onLeave}>
-        <img src={img.close} alt="" style={{ width: 36, height: 36 }} />
-      </button>
+      <NavBar horizontal onBack={onLeave} style={{ right: 6, top: 4 }} />
 
       <ol className="review-steps" aria-label="Check steps">
         {steps.map(([, label], i) => (

@@ -23,7 +23,8 @@ import {
   type TrialSummary,
 } from './trials/model';
 import { FOLLOW_UP } from './care/data';
-import { carryNeeded, emptyField, followUpLeft, treatCost, treatLeft, type Carry, type Field } from './world/field';
+import { FULL, TILES, carryNeeded, emptyField, followUpLeft, popcount, treatCost, treatLeft, type Carry, type Field } from './world/field';
+import { TRACTOR_BONUS, TRACTOR_JOBS } from './tractor/data';
 import {
   GROWING_STEPS,
   HARVEST_EFFECT,
@@ -41,6 +42,7 @@ import {
 } from './data';
 
 export type Modal =
+  | { kind: 'menu' }
   | { kind: 'welcome' }
   | { kind: 'settings' }
   | { kind: 'shop'; tab: ShopTab }
@@ -97,6 +99,12 @@ export type RoundsView = 'map' | 'look' | 'judge' | 'right' | 'wrong' | 'summary
 export interface GameState {
   /** the farm screen: the walkable 3D farm, or the classic painted one */
   view: 'world' | 'classic';
+  /** the screen on top was opened from the main menu, so Back goes back to the menu */
+  fromMenu: boolean;
+  /** counts every "back to the farm", so screens the farm world keeps to itself (the tractor, a check) close too */
+  navSeq: number;
+  /** counts the menu's "Tractor" taps, which the farm world answers by walking to the tractor */
+  rideReq: number;
   /** field work done by hand in the farm world, for the current cycle */
   field: Field;
   // the six farms: one crop grown to a different plan on each farm, compared at harvest
@@ -172,6 +180,9 @@ export const freshSeason = {
 
 export const initialState: GameState = {
   view: 'world',
+  fromMenu: false,
+  navSeq: 0,
+  rideReq: 0,
   field: emptyField(),
   trial: null,
   trialHistory: [],
@@ -269,6 +280,10 @@ export const today = () => new Date().toISOString().slice(0, 10);
 export type Action =
   | { type: 'open'; modal: Modal }
   | { type: 'close' }
+  /** back to the farm from anywhere: closes every screen on top of it */
+  | { type: 'home' }
+  /** back to the farm and walk to the tractor (the farm world picks this up) */
+  | { type: 'ride' }
   | { type: 'selectPlot'; on: boolean }
   | { type: 'onboarded' }
   | { type: 'buy'; id: string; price: number; name: string }
@@ -299,7 +314,7 @@ export type Action =
   | { type: 'trialPlant'; clock: Trial['clock'] }
   | { type: 'trialCheck'; farm: number; day: number; right: boolean; tries: number; physical?: boolean }
   | { type: 'view'; view: GameState['view'] }
-  | { type: 'fieldMark'; farm: number; job: string; bits: number }
+  | { type: 'fieldMark'; farm: number; job: string; bits: number; /** the tiles were done from the tractor seat */ tractor?: boolean }
   | { type: 'carry'; item: Carry }
   | { type: 'fieldHire' }
   | { type: 'trialNextDay' }
@@ -331,9 +346,14 @@ const fmt = (n: number) => n.toLocaleString('en-US');
 export function reducer(s: GameState, a: Action): GameState {
   switch (a.type) {
     case 'open':
-      return { ...s, modal: a.modal, plotSelected: false };
+      return { ...s, modal: a.modal, fromMenu: s.modal?.kind === 'menu' && a.modal.kind !== 'menu', plotSelected: false };
     case 'close':
-      return { ...s, modal: null };
+      // a screen opened from the main menu goes back to the menu
+      return s.fromMenu && s.modal && s.modal.kind !== 'menu' ? { ...s, modal: { kind: 'menu' }, fromMenu: false } : { ...s, modal: null, fromMenu: false };
+    case 'ride':
+      return { ...s, modal: null, fromMenu: false, plotSelected: false, roundsOpen: false, roundsTrial: false, roundsView: null, roundsDemo: null, trialsOpen: false, worldDemo: null, navSeq: s.navSeq + 1, rideReq: s.rideReq + 1, toast: s.view === 'world' ? s.toast : toast('The tractor is on the 3D farm: switch the farm view in Settings') };
+    case 'home':
+      return { ...s, modal: null, fromMenu: false, plotSelected: false, roundsOpen: false, roundsTrial: false, roundsView: null, roundsDemo: null, trialsOpen: false, worldDemo: null, navSeq: s.navSeq + 1 };
     case 'selectPlot':
       return { ...s, plotSelected: a.on };
     case 'onboarded':
@@ -506,7 +526,9 @@ export function reducer(s: GameState, a: Action): GameState {
         roundsDemo: a.open ? (a.demo ?? null) : null,
         // the crops stay for 21 real days from the first time the rounds are opened
         rounds: a.open && s.rounds.start === null ? { ...s.rounds, start: dayNumber() } : s.rounds,
-        modal: null,
+        // closed again after being opened from the main menu: back to the menu
+        modal: !a.open && s.fromMenu && !s.roundsTrial ? { kind: 'menu' } : null,
+        fromMenu: a.open ? s.modal?.kind === 'menu' || (s.fromMenu && !!a.trial) : !!s.fromMenu && s.roundsTrial,
         plotSelected: false,
       };
     case 'roundResult': {
@@ -527,7 +549,16 @@ export function reducer(s: GameState, a: Action): GameState {
       };
     }
     case 'trials':
-      return { ...s, trialsOpen: a.open, roundsOpen: false, roundsTrial: false, modal: null, plotSelected: false };
+      return {
+        ...s,
+        trialsOpen: a.open,
+        roundsOpen: false,
+        roundsTrial: false,
+        // closed again after being opened from the main menu: back to the menu
+        modal: !a.open && s.fromMenu ? { kind: 'menu' } : null,
+        fromMenu: a.open ? s.modal?.kind === 'menu' || s.fromMenu : false,
+        plotSelected: false,
+      };
     case 'trialNew': {
       if (s.trial && s.trial.phase !== 'done') return s;
       const guided = s.trialHistory.length === 0;
@@ -630,7 +661,17 @@ export function reducer(s: GameState, a: Action): GameState {
       const before = f.marks[key] ?? 0;
       const after = before | a.bits;
       if (after === before) return s;
-      const marked = { ...f, marks: { ...f.marks, [key]: after } };
+      let marked: Field = { ...f, marks: { ...f.marks, [key]: after } };
+      // extra points for using a tractor: a big job (plough, plant, fertilize, harvest) finished mostly from the seat
+      let bonus = 0;
+      if (a.tractor && (TRACTOR_JOBS as readonly string[]).includes(a.job)) {
+        const seat = (f.byTractor?.[key] ?? 0) | a.bits;
+        marked = { ...marked, byTractor: { ...(f.byTractor ?? {}), [key]: seat } };
+        if (after === FULL && popcount(seat) * 2 >= TILES && !(f.bonus ?? []).includes(key)) {
+          bonus = TRACTOR_BONUS.perJob;
+          marked = { ...marked, bonus: [...(f.bonus ?? []), key] };
+        }
+      }
       // put down what is carried once no job left today needs it
       const putDown = (tr: Trial) => (carryNeeded(marked, tr, currentDay(tr, dayNumber())) ? marked : { ...marked, carry: null });
       let field = putDown(t);
@@ -674,6 +715,7 @@ export function reducer(s: GameState, a: Action): GameState {
           return { ...s, field, trial, ...gainXp(s, 0.03), toast: toast(`${farmName(a.farm)}: follow-up done · the problem stays away`) };
         }
       }
+      if (bonus) return { ...s, field, points: s.points + bonus, ...gainXp(s, 0.02), toast: toast(`Tractor bonus · +${bonus} points · ${farmName(a.farm)} done in a third of the time`) };
       return { ...s, field };
     }
     case 'prescribe': {
@@ -736,7 +778,7 @@ export function reducer(s: GameState, a: Action): GameState {
 /* ------------------------------------------------------------------ */
 
 const SAVE_KEY = 'lima-farming-game:v2';
-const TRANSIENT: (keyof GameState)[] = ['modal', 'plotSelected', 'toast', 'roundsOpen', 'roundsView', 'roundsDemo', 'worldDemo', 'trialsOpen', 'roundsTrial'];
+const TRANSIENT: (keyof GameState)[] = ['fromMenu', 'navSeq', 'rideReq', 'modal', 'plotSelected', 'toast', 'roundsOpen', 'roundsView', 'roundsDemo', 'worldDemo', 'trialsOpen', 'roundsTrial'];
 
 /** Design-review links (?review or ?screen) use a throwaway game so they never touch a player's save. */
 export const reviewing = () => {
@@ -759,7 +801,7 @@ function load(): GameState {
     const saved = JSON.parse(raw);
     // Saves from before the farm had one owner may carry a reminder about neighbours.
     if (typeof saved.note === 'string' && /Achieng|neighbour/i.test(saved.note)) saved.note = 'Check every bed on your farm often: open Rounds on the farm.';
-    return { ...initialState, ...saved, modal: null, plotSelected: false, toast: null, roundsOpen: false, roundsView: null, roundsDemo: null, worldDemo: null, trialsOpen: false, roundsTrial: false, rounds: { ...initialState.rounds, ...(saved.rounds ?? {}) } };
+    return { ...initialState, ...saved, fromMenu: false, navSeq: 0, rideReq: 0, modal: null, plotSelected: false, toast: null, roundsOpen: false, roundsView: null, roundsDemo: null, worldDemo: null, trialsOpen: false, roundsTrial: false, rounds: { ...initialState.rounds, ...(saved.rounds ?? {}) } };
   } catch {
     return initialState;
   }

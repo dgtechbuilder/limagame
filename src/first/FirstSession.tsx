@@ -69,7 +69,7 @@ export function FirstSession({ s, dispatch }: { s: GameState; dispatch: Dispatch
       <span>{name}</span>
     </div>
   );
-  const topLine = { top: 8, bottom: 'auto', left: 172, right: 172 } as const;
+  const topLine = { top: 8, bottom: 'auto', left: 172, right: 190 } as const;
 
   if (phase === 'walk1')
     return (

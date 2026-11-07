@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { FarmScene } from './components/FarmScene';
 import { ShopModal, StepsModal } from './screens/Catalog';
 import { InfoModal, OutcomeModal, ProcessModal, RewardsModal, SaleModal, StorageModal, TimingModal, ValueModal } from './screens/Journey';
@@ -11,6 +11,8 @@ const Trials = lazy(() => import('./trials/Trials').then(m => ({ default: m.Tria
 const World = lazy(() => import('./world/World').then(m => ({ default: m.World })));
 import { TRIAL_SAMPLES, wakalaCase } from './trials/samples';
 import { SettingsModal, WelcomeModal } from './screens/Meta';
+import { MainMenu } from './screens/MainMenu';
+import { NavBar, NavContext } from './components/Nav';
 import { REVIEW_BASE, SELLING, SOLD, initialState, reviewing, useGame, type GameState, type SeasonResult } from './state';
 
 const STAGE_W = 874;
@@ -169,6 +171,10 @@ export default function App() {
   }, [s.toast]);
 
   const m = s.modal;
+  const nav = useMemo(
+    () => ({ menu: () => dispatch({ type: 'open', modal: { kind: 'menu' as const } }), home: () => dispatch({ type: 'home' }), settings: () => dispatch({ type: 'open', modal: { kind: 'settings' as const } }), menuOpen: s.modal?.kind === 'menu' }),
+    [dispatch, s.modal?.kind],
+  );
   const firstSession = s.fs.phase !== 'done';
   const current = SCREENS.findIndex(x =>
     firstSession
@@ -181,10 +187,25 @@ export default function App() {
   );
 
   return (
+    <NavContext.Provider value={nav}>
     <div className="viewport">
       <div className="stage" style={{ transform: `translate(-50%, -50%) scale(${scale})` }}>
         {firstSession ? (
-          <FirstSession s={s} dispatch={dispatch} />
+          <>
+            <FirstSession s={s} dispatch={dispatch} />
+            {/* before the farm opens: Back one step (where that is safe), the main menu, and Settings */}
+            {!m && (
+              <NavBar
+                horizontal
+                hideHome
+                showSettings
+                style={{ right: 6, top: 4 }}
+                onBack={
+                  s.fs.phase === 'walk1' ? () => dispatch({ type: 'fs', phase: 'create' }) : s.fs.phase === 'review1' ? () => dispatch({ type: 'fs', phase: 'walk1' }) : undefined
+                }
+              />
+            )}
+          </>
         ) : (
           <>
             {/* the farm stays underneath the rounds and the six farms, so it keeps its place */}
@@ -207,6 +228,7 @@ export default function App() {
           </>
         )}
 
+        {m?.kind === 'menu' && <MainMenu s={s} dispatch={dispatch} />}
         {m?.kind === 'welcome' && <WelcomeModal s={s} dispatch={dispatch} />}
         {m?.kind === 'settings' && <SettingsModal s={s} dispatch={dispatch} />}
         {m?.kind === 'shop' && <ShopModal s={s} tab={m.tab} dispatch={dispatch} />}
@@ -255,5 +277,6 @@ export default function App() {
       )}
       <div className="rotate-hint">Rotate your phone to landscape to play Lima Farming Game.</div>
     </div>
+    </NavContext.Provider>
   );
 }

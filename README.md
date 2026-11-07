@@ -31,6 +31,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [The farm world](#the-farm-world)
 - [The six farms](#the-six-farms)
 - [From Wakala Agent](#from-wakala-agent)
+- [Navigation and the main menu](#navigation-and-the-main-menu)
 - [Design review mode](#design-review-mode)
 - [Saving, events and privacy](#saving-events-and-privacy)
 - [Performance on low-cost phones](#performance-on-low-cost-phones)
@@ -89,10 +90,12 @@ src/
   assets.ts                image paths (art exported from Figma into public/assets)
   styles.css               design tokens (colours, gold button, panels) and component styles
   components/
+    Nav.tsx                Back / Menu / Farm buttons shared by every screen (NavBar, NavContext)
     FarmMap.tsx            the Figma farm map: the ground of the whole game (1× and 2×)
     FarmScene.tsx          farm screen: HUD, Next Task, field bubbles, selected plot
     Modal.tsx, ui.tsx, Icons.tsx   modal frames, buttons, chips, inline SVG icons
   screens/
+    MainMenu.tsx           the main menu
     Catalog.tsx            Shop and Farming Steps
     Journey.tsx            harvest timing → sale → storage → value addition → process → results; rewards; info
     Meta.tsx               How the farm works, Settings
@@ -301,6 +304,13 @@ WASD. The **task card** at the top says what to do next; tap it and the farmer w
 - What a farm shows comes from its plan and its day: wild grass before digging, furrows, sprouts, knee-high and tall
   maize, dry cobs, stubble; drought-pale soil, yellow hunger, rust, armyworm specks, weeds, puddles, hail, a goat, birds.
   Problems missed earlier leave the farm yellower.
+- **The tractor** waits by the shed. Tap **TRACTOR** (left edge) to walk to it and hop on, **GET OFF** to step down. On
+  the seat the farmer works a swath **three times as wide** (`TRACTOR_EDGE` in `src/tractor/data.ts`) and drives a
+  little faster, so one pass down a farm does what takes two on foot: about **3× the ground in the same time**
+  (`tests/tractor-sim.spec.ts` checks the numbers). The tractor does the big jobs (plough, sow, fertilize at planting,
+  harvest); weeds, puddles, watering, spraying, top-dressing and animals stay on foot. Finishing a big job mostly from
+  the seat pays **+30 bonus points** once per farm and job (`TRACTOR_BONUS`). The hired tractor (a *Tractor hire* plan)
+  now ploughs a whole farm in one pass too.
 - **Sleep** at the farmhouse starts the next day (on the fast clock); **Plan** by the house, or **Mission** on the
   HUD, opens the plans, progress and results.
 - The HUD: the farmer and their level (top left), settings, coins and points (top right; **+** opens the shop and
@@ -461,6 +471,22 @@ Wakala's photos were not added yet (Wikimedia could not be reached from the buil
 follow-up done and one missed, a spray job with the kit and product, a tractor drive on autopilot, the first session
 read right and wrong, saving and *Reset progress*, and a tour on a 740 × 340 touch screen that saves screenshots to
 `test-results/tour/`. They run on every pull request (`.github/workflows/tests.yml`).
+
+## Navigation and the main menu
+
+Every screen has at least two or three ways to move, and one of them is always the main menu:
+
+| Screen | Back | Menu | Farm |
+| --- | --- | --- | --- |
+| Shop, Farming Steps, Settings, Rewards, Sale, Storage… | one step (to the menu if it was opened from there) | ☰ | ⌂ |
+| Mission (six farms), Field rounds, a farm check, Choose the fix, the safety kit | one step | ☰ | ⌂ |
+| The tractor drive | the previous step | ☰ (the clock waits while it is open) | ⌂ |
+| First session | one step where that is safe | ☰ | Settings instead (the farm is not open yet) |
+
+The **main menu** (`src/screens/MainMenu.tsx`, the **MENU** button on the farm) lists My farm, Mission, Field rounds,
+Tractor, Shop, Rewards, Farming steps and Settings. A screen opened from the menu goes back to the menu on *Back*;
+*Farm* closes everything. The shared buttons are `NavBar` in `src/components/Nav.tsx`; `ModalShell` adds them to every
+modal. `tests/nav.spec.ts` plays them.
 
 ## Design review mode
 

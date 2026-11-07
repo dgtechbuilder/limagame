@@ -153,6 +153,21 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
       <button
         type="button"
         className="peach-btn small inset-dark abs"
+        style={{ left: busy ? 6 : 741, top: busy ? 85 : 77, width: 28, height: 28 }}
+        aria-label="Main menu"
+        onClick={() => open({ kind: 'menu' })}
+      >
+        <svg viewBox="0 0 24 24" width={20} height={20} aria-hidden="true">
+          <g fill="#fff">
+            <rect x={3} y={5} width={18} height={3.2} rx={1.6} />
+            <rect x={3} y={10.4} width={18} height={3.2} rx={1.6} />
+            <rect x={3} y={15.8} width={18} height={3.2} rx={1.6} />
+          </g>
+        </svg>
+      </button>
+      <button
+        type="button"
+        className="peach-btn small inset-dark abs"
         style={{ left: busy ? 72 : 807, top: busy ? 85 : 77, width: 28, height: 28 }}
         aria-label="Messages"
         onClick={() => dispatch({ type: 'toast', text: s.note ?? 'No messages yet' })}

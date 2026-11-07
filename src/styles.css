@@ -949,7 +949,7 @@ button.card:active { transform: scale(0.98); }
 .tc-scorebar .tc-bar { grid-column: 2; grid-row: 1; }
 .tc-scorebar b { grid-column: 3; grid-row: 1; text-align: right; }
 .tc-scorebar em { grid-column: 1 / -1; font-style: normal; font-size: 9px; font-weight: 600; opacity: 0.75; }
-.tc-side.is-done { gap: 5px; }
+.tc-side.is-done { gap: 3px; }
 .tc-side > .tc-btn { flex: 0 0 auto; }
 .tc-ksh, .tc-lesson { margin: 0; font-size: 10px; line-height: 1.3; }
 .tc-lesson { padding: 5px 8px; border-radius: 8px; background: #fff3c4; font-weight: 600; }
@@ -959,3 +959,26 @@ button.card:active { transform: scale(0.98); }
 .tc-sources .tc-btn { flex: 0 0 auto; align-self: flex-start; padding: 4px 24px; }
 .tc-side.is-done .tc-steps { display: none; }
 .tc-side.is-done .tc-lesson { font-size: 9.5px; padding: 4px 8px; }
+
+
+/* ---------- navigation on every screen: Back, Menu, Farm ---------- */
+.navbar { position: absolute; z-index: 30; display: flex; flex-direction: column; gap: 5px; }
+.navbar.is-row { flex-direction: row; }
+.nav-btn {
+  display: flex; align-items: center; justify-content: flex-start; gap: 6px; min-width: 74px; height: 28px; padding: 0 10px 0 8px;
+  border-radius: 100px; background: rgba(40, 30, 20, 0.72); color: #fff; font-size: 11px; font-weight: 800;
+  box-shadow: 0 0 0 1.5px rgba(255, 243, 214, 0.9), 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+.nav-btn i { font-style: normal; font-size: 15px; line-height: 1; width: 14px; text-align: center; }
+.navbar.is-row { gap: 4px; }
+.navbar.is-row .nav-btn { min-width: 0; height: 26px; gap: 3px; padding: 0 8px 0 6px; font-size: 10px; }
+.navbar.is-row .nav-btn i { font-size: 12px; width: 12px; }
+.nav-btn:hover { background: rgba(60, 45, 30, 0.85); }
+.nav-btn:active { transform: scale(0.96); }
+.menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; margin-top: 10px; }
+.menu-item { display: flex; flex-direction: column; gap: 2px; }
+.menu-item small { font-size: 8px; opacity: 0.75; padding-left: 4px; }
+.tc-bonus { font-size: 9px; font-weight: 600; color: #2f6a1a; background: #e8f5dc; border-radius: 8px; padding: 2px 8px; margin: 0; white-space: nowrap; }
+.hud-menu { left: 14px; top: 130px; }
+.hud-tractor { left: 14px; top: 194px; }
+.hud-tractor.is-on > svg { background: radial-gradient(circle at 50% 35%, #7bd24a, #3f9a1c); }

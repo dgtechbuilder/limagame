@@ -21,6 +21,8 @@ import {
 export const COLS = 4;
 export const ROWS = 5;
 export const TILES = COLS * ROWS;
+/** How far from the farmer a tile gets worked: two passes cover a farm's four columns. */
+export const WORK_REACH = 1.3;
 export const FULL = (1 << TILES) - 1;
 /** world units per tile */
 export const TILE = 1.2;
@@ -64,6 +66,10 @@ export interface Field {
   carry: Carry;
   /** the tractor or oxen have been hired this cycle */
   hired: boolean;
+  /** tiles done from the tractor seat, by `${farm}:${job}` (the tractor bonus counts these) */
+  byTractor?: Record<string, number>;
+  /** the farm jobs whose tractor bonus has been paid this cycle, as `${farm}:${job}` */
+  bonus?: string[];
 }
 
 export const emptyField = (cycle = 0): Field => ({ cycle, marks: {}, carry: null, hired: false });

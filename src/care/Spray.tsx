@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { NavBar } from '../components/Nav';
 import { img } from '../assets';
 import { FarmMap } from '../components/FarmMap';
 import { GuideLine } from '../first/Review';
@@ -57,9 +58,7 @@ export function Spray({ jobs, name, onDone, onLeave }: { jobs: { farm: number; h
         </span>
       </div>
       <span className="rr-roundtag">The shed · sprayer</span>
-      <button type="button" className="close-btn" style={{ left: 826, top: 4, width: 36, height: 36 }} aria-label="Back to my farm" onClick={onLeave}>
-        <img src={img.close} alt="" style={{ width: 36, height: 36 }} />
-      </button>
+      <NavBar horizontal onBack={onLeave} style={{ right: 6, top: 4 }} />
       <ol className="review-steps" aria-label="Spray steps">
         <li className={kitOn ? 'is-done' : 'is-now'}>Safety kit</li>
         <li className={ready ? 'is-done' : kitOn ? 'is-now' : ''}>Product</li>

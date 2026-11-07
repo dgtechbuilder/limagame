@@ -46,6 +46,23 @@ export const MONEY = {
 /** One farm in Lima is a sixth of an acre. */
 export const FARM_ACRES = 1 / 6;
 
+/* ---------------- how much better a tractor is than walking ---------------- */
+
+/** A tractor works a swath this many times as wide as a farmer on foot, so the same ground takes a third of the time. */
+export const TRACTOR_EDGE = 3;
+/** A tractor also drives a little faster than the farmer walks (the farmer's pace is 1). */
+export const RIDE_SPEED = 1.4;
+/** The big jobs a tractor does in the farm world: plough, plant, spread fertilizer at planting, harvest. Small jobs
+    (weeds, puddles, watering, spraying, top-dressing, animals) stay on foot. */
+export const TRACTOR_JOBS = ['prep', 'sow', 'setupFeed', 'harvest'] as const;
+/** Extra points for using a tractor, on top of everything the work already pays. */
+export const TRACTOR_BONUS = {
+  /** a farm-world job (plough, plant, fertilize, harvest) done mostly from the tractor seat, once per farm and job */
+  perJob: 30,
+  /** the first scored drive on a farm each cycle */
+  perDrive: 25,
+};
+
 /* ---------------- rewards, in Lima's scale ---------------- */
 
 export const TRACTOR_REWARD = {

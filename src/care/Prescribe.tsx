@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { NavBar } from '../components/Nav';
 import { img } from '../assets';
 import { FarmMap } from '../components/FarmMap';
 import { GuideLine } from '../first/Review';
@@ -70,9 +71,7 @@ export function Prescribe({
       </div>
       <span className="rr-roundtag">{tag}</span>
       <span className="rr-roundtag rr-cropnote">Read right: {HAZARD_WORDS[hazard]}</span>
-      <button type="button" className="close-btn" style={{ left: 826, top: 4, width: 36, height: 36 }} aria-label="Back to my farm" onClick={right ? onDone : onLeave}>
-        <img src={img.close} alt="" style={{ width: 36, height: 36 }} />
-      </button>
+      <NavBar horizontal onBack={right ? onDone : onLeave} style={{ right: 6, top: 4 }} />
 
       <div className="fs-panel" style={{ left: 24, top: 78, width: 826, height: 246 }}>
         <div className="clue-art">
