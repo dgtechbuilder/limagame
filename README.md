@@ -48,6 +48,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 | When | What happens |
 | --- | --- |
 | **0:00** | Names a farmer (or taps *Wanjiku*, *Otieno* or *Chebet*) and picks a look. No menus or text walls first. |
+| **0:05** | **The story so far**, three short pages: they bought this farm, last season's harvest failed and lost money, and this season they start by learning from each mistake. |
 | **0:10** | Walks across their farm to the maize. The rest of the farm is under mist. |
 | **0:25** | Checks the maize by looking: spots the rows with fall armyworm and makes the right call. This is the moment the game is built around. |
 | **~2:00** | The whole farm opens. Their sukuma wiki needs the same kind of check, with fewer hints. |
@@ -154,19 +155,32 @@ A new player never sees the farm screen first. Everything happens on their own f
 
 1. **Create the farmer** — name plus one of four looks, saved immediately. The name is used in every line
    from then on, and the farmer's portrait replaces the HUD avatar.
-2. **Walk to the maize** — on the Figma map: in along the dirt path, up the grass to the front maize bed.
+2. **The story so far** — three pages, each with a picture drawn in the first session's own art
+   ([`src/first/Story.tsx`](src/first/Story.tsx); the words are `STORY` in [`src/first/data.ts`](src/first/data.ts)):
+   - *A farm of my own*: the farmer saved from a job in town and bought this farm. The plan was to plant maize and
+     sukuma wiki, come back at harvest, and sell.
+   - *The harvest that failed*: caterpillars ate the maize before anyone looked closely, and the sukuma wiki at
+     the back dried out. Spent KSh 38,000, earned KSh 14,500, lost KSh 23,500. A real photo of fall armyworm
+     (credited) shows the damage up close.
+   - *What went wrong*: three mistakes, each crossed out with what to do instead. These are the lessons the game
+     teaches next: check every bed often (the maize check), water by the soil (the sukuma wiki check), and plan
+     when to harvest, store and sell (the season). **Start with my maize** begins the walk.
+
+   *Skip story* goes straight to the walk; *Previous* steps back a page; the top Back button goes from the story
+   to creating the farmer, and from the walk back to the story. Events: `story_page`, `story_done`, `story_skipped`.
+3. **Walk to the maize** — on the Figma map: in along the dirt path, up the grass to the front maize bed.
    The first tap or drag moves the farmer; a pulsing ring shows where to tap. About 10–15 seconds.
-3. **First check (the aha moment)** — four steps, the template for every check in Lima:
+4. **First check (the aha moment)** — four steps, the template for every check in Lima:
    - **Look** at four pictures (the crop, pests & disease, soil & water, layout). Tap to zoom; the next one glows.
    - **Spot** the rows that look wrong in the field.
    - **Judge**: healthy · needs water · pests · needs fertiliser.
    - **Result**. Right: the damaged rows light up, the farmer cheers by name and the maize recovers, ending on
      *"You can read your crops now, so check every one of them often."* Wrong: the missed clue is circled and
      the player walks round to the **back maize bed** to try again.
-4. **The whole farm opens** — the mist lifts on screen and the crops are labelled. The farmer's **sukuma
+5. **The whole farm opens** — the mist lifts on screen and the crops are labelled. The farmer's **sukuma
    wiki** (the greens on the left of the map) needs a check with fewer hints. Its problem is subtler: no
    holes, just limp, dull leaves and cracked soil at the back.
-5. **Into the field rounds** — *"Your tomatoes need a check too: healthy crops mean good food for your
+6. **Into the field rounds** — *"Your tomatoes need a check too: healthy crops mean good food for your
    family."* **Check all my crops** opens the [field rounds](#field-rounds), where the player checks every
    bed on the farm. From then on the farm screen's **Rounds** button brings them back.
 

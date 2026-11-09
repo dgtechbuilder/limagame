@@ -428,6 +428,50 @@ button.card:active { transform: scale(0.98); }
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25); animation: pop 0.25s ease both;
 }
 
+/* the story so far: three pages before the first walk */
+.story-card { display: block; }
+.story-title { left: 0; right: 0; top: 19px; margin: 0; text-align: center; font-size: 14px; }
+.story-skip {
+  position: absolute; right: 16px; top: 12px; padding: 4px 10px; min-height: 30px;
+  font-size: 11px; font-weight: 600; color: var(--brown-70); text-decoration: underline;
+}
+.story-art {
+  position: absolute; left: 24px; top: 46px; width: 300px; height: 220px;
+  border-radius: 12px; overflow: hidden; box-shadow: 0 0 0 2px var(--brown-20); animation: pop 0.3s ease both;
+}
+.story-art svg { display: block; }
+.story-zoom {
+  position: absolute; left: 192px; top: 6px; width: 96px; height: 96px; border-radius: 100px; overflow: hidden;
+  border: 4px solid #8a5a30; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); background: #6b4528;
+}
+.story-zoom img { position: absolute; width: 250px; height: auto; max-width: none; left: -74px; top: -36px; }
+.story-credit {
+  position: absolute; right: 6px; bottom: 4px; padding: 1px 6px; border-radius: 6px;
+  background: rgba(0, 0, 0, 0.5); color: #fff; font-size: 8px; font-weight: 500;
+}
+.story-text { position: absolute; left: 346px; right: 26px; top: 46px; bottom: 74px; animation: fade 0.35s ease both; }
+.story-text p { margin: 0 0 8px; font-size: 13px; font-weight: 500; line-height: 1.4; }
+.story-ledger { margin: 10px 0 0; padding: 8px 12px; border-radius: 10px; background: #fff8ec; border: 1.5px solid var(--brown-20); }
+.story-ledger div { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; font-size: 12px; }
+.story-ledger dt { font-weight: 500; }
+.story-ledger dd { margin: 0; font-weight: 700; white-space: nowrap; }
+.story-ledger .is-in dd { color: var(--green-text); }
+.story-ledger .is-out dd { color: #a0522d; }
+.story-ledger .is-lost { margin-top: 4px; padding-top: 6px; border-top: 1.5px dashed var(--brown-20); font-size: 14px; }
+.story-ledger .is-lost dt, .story-ledger .is-lost dd { font-weight: 800; color: #c0392b; }
+.story-mistakes { margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 7px; }
+.story-mistakes li { display: flex; align-items: center; gap: 10px; padding: 5px 10px 5px 6px; border-radius: 10px; background: #fff8ec; border: 1.5px solid var(--brown-20); }
+.story-mistakes li > span:last-child { display: flex; flex-direction: column; gap: 1px; }
+.story-icon { flex-shrink: 0; width: 34px; height: 34px; border-radius: 100px; display: grid; place-items: center; background: #f1dcbd; }
+.story-mistakes s { font-size: 11px; font-weight: 500; color: var(--brown-70); text-decoration-color: #c0392b; }
+.story-mistakes b { font-size: 12px; font-weight: 700; color: var(--green-text); }
+.story-foot { position: absolute; left: 346px; right: 26px; bottom: 20px; display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+.story-dots { display: flex; gap: 6px; margin-right: auto; }
+.story-dots span { width: 9px; height: 9px; border-radius: 100px; background: var(--brown-20); transition: background 0.2s ease, width 0.2s ease; }
+.story-dots span.is-done { background: var(--gold-soft); }
+.story-dots span.is-on { width: 22px; background: var(--gold); }
+.story-back { padding: 0 14px; height: 40px; border-radius: 100px; font-size: 13px; font-weight: 700; color: var(--brown); border: 1.5px solid var(--brown-20); background: #fff8ec; }
+
 /* review */
 .review-steps {
   position: absolute; left: 0; right: 0; top: 54px; margin: 0; padding: 0; list-style: none;

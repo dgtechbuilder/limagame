@@ -111,7 +111,7 @@ export default function App() {
                 showSettings
                 style={{ right: 6, top: 4 }}
                 onBack={
-                  s.fs.phase === 'walk1' ? () => dispatch({ type: 'fs', phase: 'create' }) : s.fs.phase === 'review1' ? () => dispatch({ type: 'fs', phase: 'walk1' }) : undefined
+                  s.fs.phase === 'story' ? () => dispatch({ type: 'fs', phase: 'create' }) : s.fs.phase === 'walk1' ? () => dispatch({ type: 'fs', phase: 'story' }) : s.fs.phase === 'review1' ? () => dispatch({ type: 'fs', phase: 'walk1' }) : undefined
                 }
               />
             )}

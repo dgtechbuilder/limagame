@@ -40,6 +40,7 @@ const wakala = (kind: Parameters<typeof wakalaCase>[0], worldDemo: string | null
 const SCREENS: { label: string; group: string; state: Partial<GameState> }[] = [
   { group: 'Game Design', label: 'Game', state: {} },
   { group: 'First session', label: '1 · Create the farmer', state: { onboarded: false, farmer: null, fs: { phase: 'create', at: 'first', opened: false } } },
+  { group: 'First session', label: '1b · The story so far', state: { onboarded: false, fs: { phase: 'story', at: 'first', opened: false } } },
   { group: 'First session', label: '2 · Walk to the shamba', state: { onboarded: false, fs: { phase: 'walk1', at: 'first', opened: false } } },
   { group: 'First session', label: '3 · First review', state: { onboarded: false, fs: { phase: 'review1', at: 'first', opened: false } } },
   { group: 'First session', label: '3b · Walk to the back shamba', state: { onboarded: false, fs: { phase: 'walkRetry', at: 'first', opened: false } } },
