@@ -5,16 +5,27 @@ import { FarmMap } from '../components/FarmMap';
 import { GuideLine } from '../first/Review';
 import { CHECK_DAYS, farmName, plotsOf, type Trial } from '../trials/model';
 import { TRACTORS, IMPL, type ImplId } from '../tractor/data';
-import { careLeft, isDone, setupLeft, type Field } from '../world/field';
-import { JOB_INFO, TOOL_JOB, TOOL_USE, TRACTOR_PLOT, plotName, prepNeed, toolName, tractorName, type PlotJob, type TractorId } from './data';
+import { careLeft, isDone, plotCareLeft, setupLeft, type Field } from '../world/field';
+import { CARE, JOB_INFO, TOOL_USE, TRACTOR_PLOT, plotName, prepNeed, toolJobs, toolName, tractorName, type PlotJob, type TractorId } from './data';
 
-/* At the tractor: before the engine starts, the farmer picks the tractor type and the tool for the job. Each one works
-   one plot of a farm (Plots A to D), so a cycle's harvest compares tractors, tools and hand work side by side.
-   Every card says what it is for, what it costs in fuel and where it has been used. */
+/* At the tractor: before the engine starts, the farmer picks the tractor type and the tool for the job. There are four
+   tractor types for a farm's four plots (A to D): each type works one plot of a farm, so a cycle's harvest compares
+   them side by side. In a staggered cycle the plots are at different stages, so the same day can need a plough on
+   one plot, the cultivator on another and the sprayer on a third. Every card says what it is for, what it costs in
+   fuel and where it has been used. */
 
 export type Rig = { tractor: TractorId; tool: ImplId };
 
-const JOB_ORDER: PlotJob[] = ['prep', 'sow', 'setupFeed', 'spray', 'harvest'];
+/** The tool picker's groups, in the order of a plot's season. */
+const GROUPS: { jobs: PlotJob[]; name: string; when: string }[] = [
+  { jobs: ['prep'], name: JOB_INFO.prep.name, when: JOB_INFO.prep.when },
+  { jobs: ['sow'], name: JOB_INFO.sow.name, when: JOB_INFO.sow.when },
+  { jobs: ['setupFeed', 'topdress'], name: 'Fertilize and top-dress', when: 'at planting, and the day after on DAP + CAN plots' },
+  { jobs: ['weeding'], name: JOB_INFO.weeding.name, when: JOB_INFO.weeding.when },
+  { jobs: ['spray'], name: JOB_INFO.spray.name, when: JOB_INFO.spray.when },
+  { jobs: ['harvest'], name: JOB_INFO.harvest.name, when: JOB_INFO.harvest.when },
+];
+const JOB_ORDER: PlotJob[] = GROUPS.flatMap(g => g.jobs);
 
 /** The jobs some farm needs done today, and on which farms. */
 export function jobsDue(field: Field, tr: Trial | null, day: number): Partial<Record<PlotJob, number[]>> {
@@ -22,13 +33,15 @@ export function jobsDue(field: Field, tr: Trial | null, day: number): Partial<Re
   if (!tr || tr.phase !== 'growing') return out;
   const add = (j: PlotJob, farm: number) => (out[j] = [...(out[j] ?? []), farm]);
   tr.plans.forEach((_, i) => {
-    const setup = setupLeft(field, tr, i);
-    if (setup) return add(setup as PlotJob, i);
     if (day > CHECK_DAYS) {
       if (!isDone(field, tr, i, 'harvest')) add('harvest', i);
       return;
     }
-    if (day >= 1 && careLeft(field, tr, i, day)?.job === 'spray') add('spray', i);
+    const setup = setupLeft(field, tr, i, day);
+    if (setup) add(setup as PlotJob, i);
+    const care = new Set<PlotJob>(plotCareLeft(field, tr, i, day).map(c => CARE[c.job].job));
+    if (!setup && day >= 1 && careLeft(field, tr, i, day)?.job === 'spray') care.add('spray');
+    care.forEach(j => add(j, i));
   });
   return out;
 }
@@ -40,23 +53,27 @@ export function TractorPick({ tr, field, day, rig, onGo, onLeave }: { tr: Trial;
   const firstDue = JOB_ORDER.find(j => due[j]);
   const [step, setStep] = useState<'tractor' | 'tool'>('tractor');
   const [tractor, setTractor] = useState<TractorId | null>(rig?.tractor ?? null);
-  const [tool, setTool] = useState<ImplId | null>(rig && (!firstDue || TOOL_JOB[rig.tool] === firstDue) ? rig.tool : null);
+  const [tool, setTool] = useState<ImplId | null>(rig && (!firstDue || toolJobs(rig.tool).includes(firstDue)) ? rig.tool : null);
+  /** the farms waiting for a tool's jobs */
+  const dueFor = (jobs: PlotJob[]) => [...new Set(jobs.flatMap(j => due[j] ?? []))].sort((a, b) => a - b);
   const plots = tr.plans.map((_, i) => plotsOf(tr, i));
 
   /** where a tractor type works: "Farm 1 Plot A" … */
   const worksOf = (k: TractorId) => plots.flatMap((rows, f) => rows.map((r, p) => (r.tractor === k ? `${farmName(f)} ${plotName(p)}` : '')).filter(Boolean));
-  const usedOf = (k: ImplId) => plots.flatMap((rows, f) => rows.map((r, p) => (r.tools?.[TOOL_JOB[k]] === k ? `${farmName(f)} ${plotName(p)}` : '')).filter(Boolean));
+  const usedOf = (k: ImplId) => plots.flatMap((rows, f) => rows.map((r, p) => (toolJobs(k).some(j => r.tools?.[j] === k) ? `${farmName(f)} ${plotName(p)}` : '')).filter(Boolean));
 
   let line: string;
   if (step === 'tractor') {
     line = tractor
       ? `The ${tractorName(tractor).toLowerCase()} tractor: ${TRACTOR_PLOT[tractor].teach} Next, pick the tool.`
-      : 'Pick a tractor. Each type works one plot of a farm, and one plot stays by hand, so the harvest shows what each one did.';
+      : 'Pick a tractor. Four types for the four plots: each works one plot of a farm, so the harvest shows what each one did.';
   } else if (!tool) {
     line = firstDue ? `Pick the tool. Due now: ${JOB_INFO[firstDue].name.toLowerCase()} on ${farmsText(due[firstDue]!)}.` : 'Pick the tool for the job you want to do. Nothing is due on the farms right now.';
   } else {
-    const j = TOOL_JOB[tool];
-    line = due[j] ? `${toolName(tool)}: ${JOB_INFO[j].name.toLowerCase()} on ${farmsText(due[j]!)}. Drive onto a plot to work it.` : `${toolName(tool)} (${JOB_INFO[j].name.toLowerCase()}): no farm is waiting for this job right now. You can still drive, or pick another tool.`;
+    const js = toolJobs(tool);
+    const farms = dueFor(js);
+    const what = js.map(j => JOB_INFO[j].name.toLowerCase()).join(' or ');
+    line = farms.length ? `${toolName(tool)}: ${what} on ${farmsText(farms)}. Drive onto a plot to work it.` : `${toolName(tool)} (${what}): no farm is waiting for this job right now. You can still drive, or pick another tool.`;
   }
 
   return (
@@ -104,17 +121,19 @@ export function TractorPick({ tr, field, day, rig, onGo, onLeave }: { tr: Trial;
           </div>
         ) : (
           <div className="tp-tools" role="radiogroup" aria-label="Tool">
-            {JOB_ORDER.map(j => (
-              <div key={j} className={`tp-job${due[j] ? ' is-due' : ''}`}>
+            {GROUPS.map(g => {
+              const farms = dueFor(g.jobs);
+              return (
+              <div key={g.name} className={`tp-job${farms.length ? ' is-due' : ''}`}>
                 <p className="tp-job-title">
-                  {JOB_INFO[j].name}
-                  <small>{due[j] ? `Due: ${farmsText(due[j]!)}` : JOB_INFO[j].when}</small>
+                  {g.name}
+                  <small>{farms.length ? `Due: ${farmsText(farms)}` : g.when}</small>
                 </p>
-                {(Object.keys(TOOL_JOB) as ImplId[])
-                  .filter(k => TOOL_JOB[k] === j)
+                {(Object.keys(IMPL) as ImplId[])
+                  .filter(k => toolJobs(k)[0] === g.jobs[0])
                   .map(k => {
                     const used = usedOf(k);
-                    const fits = j === 'prep' ? tr.plans.map((_, f) => f).filter(f => prepNeed(f).tool === k) : [];
+                    const fits = g.jobs[0] === 'prep' ? tr.plans.map((_, f) => f).filter(f => prepNeed(f).tool === k) : [];
                     return (
                       <button type="button" key={k} role="radio" aria-checked={tool === k} className={`tp-tool${tool === k ? ' is-on' : ''}`} onClick={() => setTool(k)}>
                         <b>{IMPL[k].name}</b>
@@ -125,7 +144,8 @@ export function TractorPick({ tr, field, day, rig, onGo, onLeave }: { tr: Trial;
                     );
                   })}
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

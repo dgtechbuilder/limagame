@@ -5,8 +5,9 @@ import { img } from '../assets';
 import { FarmMap } from '../components/FarmMap';
 import { GuideLine } from '../first/Review';
 import type { Action } from '../state';
-import { farmName, plotsOf, type Trial } from '../trials/model';
-import { plotLocked, type Field } from '../world/field';
+import { CHECK_DAYS, farmName, plotsOf, type Trial } from '../trials/model';
+import { fieldDay, plotLocked, plotStage, type Field } from '../world/field';
+import { dayNumber } from '../rounds/farms';
 import { JOB_INFO, KIND_WORDS, OPTIONS, PLOT_LETTERS, plotCost, plotName, toolName, tractorName, type PlotJob, type PlotKind, type PlotRecord } from './data';
 
 /* The plot board: a farm's four mini plots side by side, and which seed, fertilizer and sprayer each one gets. Each
@@ -41,6 +42,9 @@ export function PlotBoard({
   const lock = lockOf(plot, kind);
   const growing = tr.phase === 'growing';
   const machines = rows.some(r => r.tractor);
+  // a staggered cycle: each plot is at its own stage today
+  const day = fieldDay(tr, dayNumber());
+  const stages = growing && tr.stagger && field ? rows.map((_, p) => plotStage(field, tr, farm, p, day)) : null;
 
   return (
     <div className="pb">
@@ -60,6 +64,15 @@ export function PlotBoard({
             <b>Plot {l}</b>
           </div>
         ))}
+        {stages && (
+          <Row label={day > CHECK_DAYS ? 'Harvest' : `Day ${day}`}>
+            {stages.map((st, p) => (
+              <div key={p} className={`pb-cell is-info${/today|Weed|Top|Spray/.test(st) ? ' is-due' : ''}`}>
+                <span className="pb-name">{st}</span>
+              </div>
+            ))}
+          </Row>
+        )}
         {kinds.map(k => (
           <Row key={k} label={KIND_WORDS[k].title}>
             {rows.map((r, p) => {
@@ -146,7 +159,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 
 /** The tools a tractor used on a plot, in job order. */
 export function toolsLine(r: PlotRecord) {
-  const order: PlotJob[] = ['prep', 'sow', 'setupFeed', 'spray', 'harvest'];
+  const order: PlotJob[] = ['prep', 'sow', 'setupFeed', 'weeding', 'topdress', 'spray', 'harvest'];
   return order
     .filter(j => r.tools?.[j])
     .map(j => `${JOB_INFO[j].name}: ${toolName(r.tools![j]!).toLowerCase()}`)

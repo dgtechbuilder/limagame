@@ -6,8 +6,13 @@
    without touching any code. The numbers are illustrative until that review is done. */
 
 import {
+  CARE_MISSED,
   FERTS,
   MISFIT_COST,
+  STALK_BORER,
+  careApplies,
+  careDay,
+  plotStart,
   PLOT_SHARE,
   SEEDS,
   TRACTOR_LAND_FACTOR,
@@ -22,6 +27,7 @@ import {
   sprayerOf,
   toolFit,
   toolName,
+  type CareJob,
   type FertId,
   type PlotJob,
   type PlotRecord,
@@ -321,8 +327,8 @@ export interface PlotResult {
   beans: number;
   quality: number;
   income: number;
-  /** what the plot's own inputs did to its yield (1 = no change) */
-  factors: { land: number; seed: number; fert: number; tools: number };
+  /** what the plot's own inputs did to its yield (1 = no change); care: its weeding and top-dress (staggered cycles) */
+  factors: { land: number; seed: number; fert: number; tools: number; care?: number };
   /** share of the plot's yield lost to problems */
   lost: number;
   inputs: PlotRecord;
@@ -373,6 +379,8 @@ export interface Trial {
   plots?: PlotRecord[][];
   /** coins spent on tractor fuel, by farm */
   fuel?: number[];
+  /** farm world, from the second cycle: the plots are planted a day apart, each with its own care (plots/data.ts) */
+  stagger?: boolean;
 }
 
 export interface TrialSummary {
@@ -493,6 +501,29 @@ export function toolsFactor(r: PlotRecord, farm: number): number {
 
 const round1 = (x: number) => Math.round(x * 10) / 10;
 
+/** A plot's care missed by this day (staggered cycles only): care due on a later day does not count yet. */
+export function careMissed(t: Pick<Trial, 'stagger'>, r: PlotRecord, plot: number, day = CHECK_DAYS + 1): CareJob[] {
+  if (!t.stagger) return [];
+  return (['weeding', 'topdress', 'borer'] as CareJob[]).filter(j => {
+    const d = careDay(plot, j, true);
+    return d <= CHECK_DAYS && d < day && careApplies(j, r) && !r.care?.[j];
+  });
+}
+
+/** What a plot's weeding and top-dress did to its yield (1 = all done, or not a staggered cycle). */
+export function careFactor(t: Pick<Trial, 'stagger'>, r: PlotRecord, plot: number, day = CHECK_DAYS + 1): number {
+  const missed = careMissed(t, r, plot, day);
+  return (missed.includes('weeding') ? 1 - CARE_MISSED.weeding : 1) * (missed.includes('topdress') ? 1 - CARE_MISSED.topdress : 1);
+}
+
+/** The share of a plot's yield stalk borer takes (staggered cycles): all of STALK_BORER unless the plot was sprayed
+    on its day, and then what its sprayer misses. The check strip always shows the full loss. */
+export function borerLoss(t: Pick<Trial, 'stagger'>, r: PlotRecord, plot: number, day = CHECK_DAYS + 1): number {
+  if (!t.stagger || careDay(plot, 'borer', true) >= day) return 0;
+  if (r.care?.borer && r.sprayer && r.sprayer !== 'none') return STALK_BORER * (1 - sprayerOf(r.sprayer).cover.armyworm);
+  return STALK_BORER;
+}
+
 /** What the farm plan and the farm's problems give each plot (the same for all four plots). */
 function farmContext(t: Trial, farm: number, lastDay: number) {
   const p = t.plans[farm];
@@ -504,25 +535,27 @@ function farmContext(t: Trial, farm: number, lastDay: number) {
   return { p, factors, farmShare, found: farmProblems(t, farm, lastDay) };
 }
 
-/** One plot's harvest from its inputs, before rounding. */
-function growPlot(t: Trial, farm: number, r: PlotRecord, ctx: ReturnType<typeof farmContext>) {
+/** One plot's harvest from its inputs, before rounding. In a staggered cycle, problems before the plot was planted
+    pass it by, and its care counts (`day`: care due from this day on does not count yet). */
+function growPlot(t: Trial, farm: number, r: PlotRecord, ctx: ReturnType<typeof farmContext>, plot: number, day = CHECK_DAYS + 1) {
   const seed = seedOf(r.seed);
   // land turned by the tractor from the seat gets the tractor's land prep instead of the plan's
   const land = r.tractor && r.tools?.prep ? TRACTOR_LAND_FACTOR / ctx.factors.land : 1;
-  const own = { land, seed: seed.factor[t.forecast], fert: fertOf(r.fert).factor, tools: toolsFactor(r, farm) };
-  const keep = ctx.found.reduce((n, q) => n * (1 - plotLoss(q.hazard, q.caught, q.treated, r)), 1);
-  const bags = POTENTIAL_BAGS * PLOT_SHARE * ctx.farmShare * own.land * own.seed * own.fert * own.tools * keep;
+  const own = { land, seed: seed.factor[t.forecast], fert: fertOf(r.fert).factor, tools: toolsFactor(r, farm), care: careFactor(t, r, plot, day) };
+  const start = plotStart(plot, t.stagger);
+  const keep = ctx.found.filter(q => q.day >= start).reduce((n, q) => n * (1 - plotLoss(q.hazard, q.caught, q.treated, r)), 1) * (1 - borerLoss(t, r, plot, day));
+  const bags = POTENTIAL_BAGS * PLOT_SHARE * ctx.farmShare * own.land * own.seed * own.fert * own.tools * own.care * keep;
   return { bags, keep, own, seed };
 }
 
 /** How each plot of a farm is growing so far, as a share of the best possible plot (1 = as good as it gets), for the
     crop's height and colour on the field. Problems seen so far count. */
-export function plotGrowth(t: Trial, farm: number, lastDay = CHECK_DAYS): number[] {
+export function plotGrowth(t: Trial, farm: number, lastDay = CHECK_DAYS, day = CHECK_DAYS + 1): number[] {
   if (farm >= t.plans.length) return [1, 1, 1, 1];
   const ctx = farmContext(t, farm, lastDay);
-  return plotsOf(t, farm).map(r => {
-    const g = growPlot(t, farm, r, ctx);
-    return Math.max(0.2, Math.min(1.2, (g.own.land * g.own.seed * g.own.fert * g.own.tools * g.keep) / 1.05));
+  return plotsOf(t, farm).map((r, p) => {
+    const g = growPlot(t, farm, r, ctx, p, day);
+    return Math.max(0.2, Math.min(1.2, (g.own.land * g.own.seed * g.own.fert * g.own.tools * g.own.care * g.keep) / 1.05));
   });
 }
 
@@ -532,8 +565,9 @@ export function harvestFarm(t: Trial, farm: number, lastDay = CHECK_DAYS): FarmR
   const ctx = farmContext(t, farm, lastDay);
   const { p, factors, found } = ctx;
   const rows = plotsOf(t, farm);
-  const plots: PlotResult[] = rows.map(r => {
-    const g = growPlot(t, farm, r, ctx);
+  const plots: PlotResult[] = rows.map((r, plot) => {
+    // care and stalk borer count once their day is past (all of them at harvest)
+    const g = growPlot(t, farm, r, ctx, plot, lastDay + 1);
     const bags = round1(g.bags);
     const beans = g.seed.beans ? round1(BEANS_BAGS * PLOT_SHARE * g.keep) : 0;
     const lost = 1 - g.keep;
@@ -550,7 +584,7 @@ export function harvestFarm(t: Trial, farm: number, lastDay = CHECK_DAYS): FarmR
   const lost = plots.reduce((n, x) => n + x.lost, 0) / plots.length;
   // the plots' own inputs together, and the farm-level seed and fertilizer as their average (for the comparison)
   const geo = (f: (x: PlotResult) => number) => Math.exp(plots.reduce((n, x) => n + Math.log(Math.max(1e-6, f(x))), 0) / plots.length);
-  const plotFactor = geo(x => x.factors.land * x.factors.seed * x.factors.fert * x.factors.tools);
+  const plotFactor = geo(x => x.factors.land * x.factors.seed * x.factors.fert * x.factors.tools * (x.factors.care ?? 1));
   const out = { ...factors, seed: geo(x => x.factors.seed), fert: geo(x => x.factors.fert) };
   const costs = farmCost(t, farm) + (t.treatments[farm] ?? 0) + (t.fuel?.[farm] ?? 0);
   const problems = found
@@ -594,12 +628,12 @@ export function plotLessons(t: Trial): PlotLesson[] {
   for (const tp of topics) {
     const by = new Map<string, number[]>();
     t.plans.forEach((_, farm) => {
-      plotsOf(t, farm).forEach(r => {
+      plotsOf(t, farm).forEach((r, p) => {
         const k = tp.get(r);
         if (k === undefined) return;
-        const real = growPlot(t, farm, r, ctxs[farm]).bags;
+        const real = growPlot(t, farm, r, ctxs[farm], p).bags;
         const swap = tp.topic === 'Land tool' ? { ...r, tools: { ...r.tools, prep: prepNeed(farm).tool } } : tp.set(r);
-        const ref = growPlot(t, farm, swap, ctxs[farm]).bags;
+        const ref = growPlot(t, farm, swap, ctxs[farm], p).bags;
         by.set(k, [...(by.get(k) ?? []), ref > 0 ? real / ref - 1 : 0]);
       });
     });

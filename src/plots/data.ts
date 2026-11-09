@@ -1,6 +1,11 @@
 /* Four mini plots on every farm: an on-farm trial, where each plot gets a different seed, fertilizer, sprayer,
    tractor and tool, side by side under the same weather and care, and the harvest shows what each one did.
 
+   From the second cycle in the farm world the plots are planted a day apart (Plot A on day 1 … Plot D on day 4), and
+   each one then has its own care calendar: weeding (and a top-dress) the day after planting, a spray against stalk
+   borer the day after that. So on any day the four plots of a farm are at different stages, and there is planting,
+   weeding, feeding and spraying to do every day.
+
    Every word and number the player learns from is here, so an agronomist can review them without touching code. The
    numbers are proposed, for that review (see docs/plot-trials-plan.md). No pictures or screens here, so the saved
    game can use it. */
@@ -138,6 +143,8 @@ export type FertId = 'none' | 'manure' | 'basal' | 'basalTop' | 'double';
 export interface FertOption extends InputOption<FertId> {
   /** yield multiplier */
   factor: number;
+  /** it has a CAN top-dress, done by hand or with the spreader the day after the plot is planted */
+  topDress?: true;
   /** how much of a hungry week's loss the plot suffers (1 = all of it) */
   hunger: number;
 }
@@ -186,6 +193,7 @@ export const FERTS: FertOption[] = [
     color: '#2f7d27',
     factor: 1,
     hunger: 0.3,
+    topDress: true,
   },
   {
     id: 'double',
@@ -197,6 +205,7 @@ export const FERTS: FertOption[] = [
     color: '#c0392b',
     factor: 0.95,
     hunger: 0.3,
+    topDress: true,
   },
 ];
 
@@ -264,7 +273,8 @@ export type TractorId = TractorKind['id'];
 
 /** What each tractor type does to a plot it works. */
 export const TRACTOR_PLOT: Record<TractorId, { fuel: number; compaction: number; speed: number; teach: string }> = {
-  compact: { fuel: 6, compaction: 1, speed: 0.85, teach: 'Light: it does not pack the soil. Slowest, and cheapest on fuel.' },
+  twoWheel: { fuel: 4, compaction: 1, speed: 0.7, teach: 'Walk-behind: you steer it by the handles. It does not pack the soil and uses the least fuel, but it is the slowest.' },
+  compact: { fuel: 6, compaction: 1, speed: 0.85, teach: 'Light: it does not pack the soil. Slow, and cheap on fuel.' },
   standard: { fuel: 9, compaction: 0.99, speed: 1, teach: 'Packs the soil a little. Middle speed and fuel.' },
   large: { fuel: 14, compaction: 0.96, speed: 1.25, teach: 'Fastest, but heavy wheels pack the soil (less grain), and it burns the most fuel.' },
 };
@@ -272,26 +282,32 @@ export const TRACTOR_PLOT: Record<TractorId, { fuel: number; compaction: number;
 /** Land turned by a tractor: the yield factor of its land prep (a hand hoe is 0.95, oxen 1). */
 export const TRACTOR_LAND_FACTOR = 1.03;
 
-export type PlotJob = 'prep' | 'sow' | 'setupFeed' | 'spray' | 'harvest';
+export type PlotJob = 'prep' | 'sow' | 'setupFeed' | 'weeding' | 'topdress' | 'spray' | 'harvest';
 
-/** The job each tool does when the tractor drives over a plot. */
+/** The job each tool does when the tractor drives over a plot (the spreader also top-dresses: TOOL_JOBS). */
 export const TOOL_JOB: Record<ImplId, PlotJob> = {
   plough: 'prep',
   harrow: 'prep',
   ridger: 'prep',
   planter: 'sow',
   drill: 'sow',
+  cultivator: 'weeding',
   spreader: 'setupFeed',
   sprayer: 'spray',
   maizeH: 'harvest',
   beanH: 'harvest',
 };
 
+/** Every job a tool can do: the spreader feeds at planting and top-dresses later. */
+export const toolJobs = (tool: ImplId): PlotJob[] => (tool === 'spreader' ? ['setupFeed', 'topdress'] : [TOOL_JOB[tool]]);
+
 export const JOB_INFO: Record<PlotJob, { name: string; when: string }> = {
   prep: { name: 'Prepare the land', when: 'before planting' },
   sow: { name: 'Sow', when: 'at planting' },
   setupFeed: { name: 'Fertilize', when: 'at planting' },
-  spray: { name: 'Spray', when: 'when a pest or disease is found' },
+  weeding: { name: 'Weed', when: 'the day after planting' },
+  topdress: { name: 'Top-dress', when: 'the day after planting, on DAP + CAN plots' },
+  spray: { name: 'Spray', when: 'two days after planting, and when a pest or disease is found' },
   harvest: { name: 'Harvest', when: 'when the cobs are dry' },
 };
 
@@ -302,8 +318,9 @@ export const TOOL_USE: Record<ImplId, string> = {
   ridger: 'Dry ground with a channel to bring water in (or wet ground to drain): it digs furrows and ridges.',
   planter: 'Sowing maize: one seed every 25 cm in rows 75 cm apart.',
   drill: 'Sowing small seeds such as beans or wheat in close rows. Too close for maize.',
-  spreader: 'Spreading fertilizer evenly over the ground at planting.',
-  sprayer: 'Spraying a whole plot fast against a pest or disease.',
+  cultivator: 'Weeding: its tines run between the maize rows the day after a plot is planted.',
+  spreader: 'Spreading fertilizer evenly at planting, and the CAN top-dress the day after.',
+  sprayer: 'Spraying a whole plot fast: against stalk borer, or a pest or disease.',
   maizeH: 'Picking and shelling dry maize cobs, row by row.',
   beanH: 'Cutting and threshing dry beans. On maize it drops and breaks cobs.',
 };
@@ -313,7 +330,7 @@ export const prepNeed = (farm: number) => LAYOUTS[farm % LAYOUTS.length].prep;
 
 /** How well a tool does a job on a farm: 1 = the right tool, less = a poorer job. */
 export function toolFit(job: PlotJob, tool: ImplId, farm: number): number {
-  if (TOOL_JOB[tool] !== job) return 0;
+  if (!toolJobs(tool).includes(job)) return 0;
   if (job === 'prep') return fitOf(prepNeed(farm).tool, tool);
   if (job === 'sow') return tool === 'planter' ? 1 : 0.5;
   if (job === 'harvest') return tool === 'maizeH' ? 1 : 0.4;
@@ -321,17 +338,69 @@ export function toolFit(job: PlotJob, tool: ImplId, farm: number): number {
 }
 
 /** The most a wrong tool takes off a plot's harvest, by job. */
-export const MISFIT_COST: Record<PlotJob, number> = { prep: 0.15, sow: 0.12, setupFeed: 0.08, spray: 0, harvest: 0.15 };
+export const MISFIT_COST: Record<PlotJob, number> = { prep: 0.15, sow: 0.12, setupFeed: 0.08, weeding: 0, topdress: 0, spray: 0, harvest: 0.15 };
 
 /** The tool that suits a job on a farm, for the picker's hints. */
 export function rightTool(job: PlotJob, farm: number): ImplId {
   if (job === 'prep') return prepNeed(farm).tool;
-  return ({ sow: 'planter', setupFeed: 'spreader', spray: 'sprayer', harvest: 'maizeH' } as const)[job];
+  return ({ sow: 'planter', setupFeed: 'spreader', weeding: 'cultivator', topdress: 'spreader', spray: 'sprayer', harvest: 'maizeH' } as const)[job];
 }
 
 export const TOOLS = Object.keys(TOOL_JOB) as ImplId[];
 export const toolName = (k: ImplId) => IMPL[k].name;
 export const tractorName = (k: TractorId) => TRACTORS.find(t => t.id === k)!.name;
+
+/* ---------------- plots a day apart, each with its own care ---------------- */
+
+/** Days between one plot's planting and the next one's (staggered cycles only). */
+export const PLOT_STAGGER = 1;
+/** The day a plot is planted: all on day 1, or a day apart when the cycle is staggered (Plot A day 1 … Plot D day 4). */
+export const plotStart = (plot: number, stagger?: boolean) => (stagger ? 1 + plot * PLOT_STAGGER : 1);
+
+export type CareJob = 'weeding' | 'topdress' | 'borer';
+export const CARE_JOBS: CareJob[] = ['weeding', 'topdress', 'borer'];
+
+/** A plot's care after planting, in a staggered cycle. Proposed numbers, for the agronomist's review. */
+export const CARE: Record<CareJob, { after: number; title: string; done: string; job: PlotJob; carry?: 'fertilizer' | 'sprayer'; teach: string }> = {
+  weeding: {
+    after: 1,
+    title: 'Weed',
+    done: 'weeded',
+    job: 'weeding',
+    teach: 'Weeds take the water and food meant for young maize. A plot not weeded loses a tenth of its grain.',
+  },
+  topdress: {
+    after: 1,
+    title: 'Top-dress',
+    done: 'top-dressed',
+    job: 'topdress',
+    carry: 'fertilizer',
+    teach: 'DAP + CAN only pays when the CAN goes on: without the top-dress the nitrogen runs out and the plot grows like DAP alone.',
+  },
+  borer: {
+    after: 2,
+    title: 'Spray against stalk borer',
+    done: 'sprayed against stalk borer',
+    job: 'spray',
+    carry: 'sprayer',
+    teach: 'Stalk borer tunnels into young stems. Each plot loses grain to it unless sprayed, as well as its sprayer reaches the funnels.',
+  },
+};
+
+/** What missed care costs a plot: weeding a share of its yield, the top-dress a share of its fertilizer's. */
+export const CARE_MISSED = { weeding: 0.1, topdress: 0.2 };
+/** The share of a plot's yield stalk borer takes unless it is sprayed (the check strip shows it every cycle). */
+export const STALK_BORER = 0.08;
+
+/** The day a plot's care is due. */
+export const careDay = (plot: number, job: CareJob, stagger?: boolean) => plotStart(plot, stagger) + CARE[job].after;
+
+/** Whether a plot gets this care at all: a top-dress only after DAP + CAN (or the double dose), no spray on the check strip. */
+export function careApplies(job: CareJob, r: Pick<PlotRecord, 'fert' | 'sprayer'>): boolean {
+  if (job === 'topdress') return !!fertOf(r.fert).topDress;
+  if (job === 'borer') return (r.sprayer ?? 'knapsack') !== 'none';
+  return true;
+}
 
 /* ---------------- one farm's four plots ---------------- */
 
@@ -344,6 +413,8 @@ export interface PlotRecord {
   tractor?: TractorId;
   /** the tool used for each job done by tractor on this plot */
   tools?: Partial<Record<PlotJob, ImplId>>;
+  /** the care done on this plot after planting, in a staggered cycle */
+  care?: Partial<Record<CareJob, true>>;
 }
 
 /** Plots A to D start like this on every farm, so farms stay comparable; the player changes them on the plot board. */
@@ -383,15 +454,16 @@ export function setPlotInput(rows: PlotRecord[], kind: PlotKind, plot: number, v
   return out;
 }
 
-/** Why a tractor can't work a plot of a farm with this type and tool, or null if it can. */
-export function tractorBlock(rows: PlotRecord[], plot: number, tractor: TractorId, tool: ImplId): string | null {
-  const job = TOOL_JOB[tool];
+/** Why a tractor can't work a plot of a farm with this type and tool, or null if it can. There are four tractor types
+    for the four plots, so every plot of a farm can have its own; a tool can work any number of plots. */
+export function tractorBlock(rows: PlotRecord[], plot: number, tractor: TractorId, tool: ImplId, job: PlotJob = TOOL_JOB[tool]): string | null {
   const here = rows[plot];
   if (here.tractor && here.tractor !== tractor) return `${plotName(plot)} is the ${tractorName(here.tractor).toLowerCase()} tractor's plot. Each tractor works one plot of a farm, so you can compare them.`;
   const mine = rows.findIndex((r, i) => i !== plot && r.tractor === tractor);
-  if (!here.tractor && mine >= 0) return `The ${tractorName(tractor).toLowerCase()} tractor already works ${plotName(mine)} on this farm. Try another plot with another tractor.`;
-  const used = rows.findIndex((r, i) => i !== plot && r.tools?.[job] === tool);
-  if (used >= 0) return `The ${toolName(tool).toLowerCase()} was used on ${plotName(used)} of this farm. Each tool goes on one plot: try another tool here.`;
+  if (!here.tractor && mine >= 0) {
+    const left = TRACTORS.filter(k => !rows.some(r => r.tractor === k.id)).map(k => k.name.toLowerCase());
+    return `The ${tractorName(tractor).toLowerCase()} tractor already works ${plotName(mine)} on this farm.${left.length ? ` Take the ${left.join(' or ')} tractor to ${plotName(plot)}.` : ''}`;
+  }
   const done = here.tools?.[job];
   if (done && done !== tool) return `${plotName(plot)} was already worked with the ${toolName(done).toLowerCase()}.`;
   return null;

@@ -58,7 +58,7 @@ function farmToDrive(st: GameState) {
   const t = st.trial;
   if (!t || t.phase !== 'growing') return -1;
   const f = st.field.cycle === t.cycle ? st.field : { ...st.field, marks: {} };
-  return t.plans.findIndex((p, i) => machinePrep(p) && p.land === 'tractor' && setupLeft(f, t, i) === 'prep' && !t.tractor?.[i]);
+  return t.plans.findIndex((p, i) => machinePrep(p) && p.land === 'tractor' && setupLeft(f, t, i, fieldDay(t, dayNumber())) === 'prep' && !t.tractor?.[i]);
 }
 
 /* The farm world: the farmer walks the farm and does the work by hand. This is the HUD and the glue; the
@@ -144,7 +144,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         if ((item === 'seeds' || item === 'fertilizer') && st.trial?.phase === 'growing') {
           const f = st.field.cycle === st.trial.cycle ? st.field : { ...st.field, marks: {} };
           const job = item === 'seeds' ? 'sow' : 'setupFeed';
-          const farm = st.trial.plans.findIndex((_, i) => setupLeft(f, st.trial!, i) === job);
+          const farm = st.trial.plans.findIndex((_, i) => setupLeft(f, st.trial!, i, fieldDay(st.trial, dayNumber())) === job);
           if (farm >= 0 && !doneMask(f, st.trial.cycle, farm, job)) return setCare({ kind: 'board', farm, kinds: [item === 'seeds' ? 'seed' : 'fert'], then: item });
         }
         dispatch({ type: 'carry', item });
@@ -454,7 +454,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
           coins={s.coins}
           dispatch={dispatch}
           tag={`The shed · ${KIND_WORDS[k].title.toLowerCase()}`}
-          line={`${KIND_WORDS[k].rule} Tap a plot to see every choice.`}
+          line={`${KIND_WORDS[k].rule}${tr.stagger && k !== 'sprayer' ? ' The plots are planted a day apart, Plot A first, so each is at its own stage.' : ''} Tap a plot to see every choice.`}
           done={{ label: c.then === 'sprayer' ? 'Pick up the sprayer' : c.then === 'seeds' ? 'Take the seed' : 'Take the fertilizer', onClick: pick }}
           onLeave={() => setCare(null)}
         />

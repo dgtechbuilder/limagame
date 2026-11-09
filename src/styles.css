@@ -1009,6 +1009,7 @@ button.card:active { transform: scale(0.98); }
 .pb-cell.is-on { border-color: var(--gold); background: #ffe9b8; }
 .pb-cell.is-locked { border-style: dashed; }
 .pb-cell.is-info { background: transparent; border-style: dashed; font-weight: 600; }
+.pb-cell.is-info.is-due { background: #e8f5d8; border-style: solid; border-color: #2f7d27; }
 .pb-cell small { font-size: 8.5px; font-weight: 700; color: #2f7d27; }
 .pb-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .pb-dot { width: 12px; height: 12px; border-radius: 100px; flex-shrink: 0; box-shadow: inset 0 0 0 1.5px rgba(0,0,0,.15); }
@@ -1034,22 +1035,22 @@ button.card:active { transform: scale(0.98); }
 .pb-note { margin: 0; font-size: 9.5px; font-weight: 600; opacity: 0.8; }
 
 .tp-panel { left: 24px; top: 62px; width: 826px; height: 268px; padding: 10px; overflow: hidden; }
-.tp-cards { display: flex; gap: 10px; height: 100%; }
+.tp-cards { display: flex; gap: 8px; height: 100%; }
 .tp-card {
-  flex: 1; display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: 14px; background: #fff8ec; border: 2.5px solid var(--brown-20);
-  text-align: left; color: var(--brown); font-size: 11.5px; line-height: 1.3;
+  flex: 1 1 0; min-width: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding: 9px 11px; border-radius: 14px; background: #fff8ec; border: 2.5px solid var(--brown-20);
+  text-align: left; color: var(--brown); font-size: 11px; line-height: 1.25;
 }
 .tp-card > b { font-size: 16px; }
 .tp-card:hover { border-color: var(--gold); }
 .tp-card.is-on { border-color: var(--gold); background: #ffe9b8; }
-.tp-note { font-size: 10.5px; opacity: 0.8; }
-.tp-meters { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; font-size: 10px; font-weight: 700; }
+.tp-note { font-size: 10px; opacity: 0.8; }
+.tp-meters { display: grid; grid-template-columns: 1fr; gap: 1px; font-size: 10px; font-weight: 700; }
 .tp-meters span { display: flex; justify-content: space-between; }
 .tp-meters i { font-style: normal; color: #a8612f; letter-spacing: 1px; }
 .tp-hp { font-size: 10px; font-weight: 800; opacity: 0.7; }
 .tp-meta { margin-top: auto; font-size: 11px; }
 .tp-card small { font-size: 10px; font-weight: 700; color: #2f7d27; }
-.tp-tools { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; height: 100%; }
+.tp-tools { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; height: 100%; }
 .tp-job { display: flex; flex-direction: column; gap: 4px; min-width: 0; overflow-y: auto; padding: 4px; border-radius: 12px; }
 .tp-job.is-due { background: rgba(242, 194, 48, 0.22); }
 .tp-job-title { margin: 0; font-size: 11.5px; font-weight: 800; display: flex; flex-direction: column; }

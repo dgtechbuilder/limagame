@@ -359,7 +359,7 @@ export function Tractor({ farm, cycle, best, name, demo, onFinish, onClose }: Tr
       phase === 'tractor' ? (
         <div className="tc-choose">
           <p className="tc-ask">Which tractor suits a field of {acresText}?</p>
-          <div className="tc-cards is-three">
+          <div className="tc-cards is-four">
             {TRACTORS.map(t => (
               <button type="button" key={t.id} className={`tc-card${tractor === t.id ? ' is-on' : ''}`} aria-pressed={tractor === t.id} onClick={() => setTractor(t.id)}>
                 <TractorIcon kind={t} />
@@ -638,9 +638,12 @@ function Sources({ figures, onClose }: { figures: MoneyFigure[]; onClose: () => 
   );
 }
 
+/** Each tractor type's paint, so its cards, the drive and the plot board match. */
+const TRACTOR_COLOR: Record<TractorKind['id'], string> = { twoWheel: '#c0392b', compact: '#e07b2a', standard: '#3e8e3a', large: '#2f6fb5' };
+
 function TractorIcon({ kind, small }: { kind: TractorKind; small?: boolean }) {
   const s = (small ? 22 : 40) * kind.size;
-  const body = kind.id === 'compact' ? '#e07b2a' : kind.id === 'large' ? '#2f6fb5' : '#3e8e3a';
+  const body = TRACTOR_COLOR[kind.id];
   return (
     <svg viewBox="0 0 40 36" width={s} height={(s * 36) / 40} aria-hidden="true">
       <rect x={4} y={14} width={24} height={11} rx={2} fill={body} />
@@ -661,6 +664,7 @@ const IMPL_SVG: Record<ImplId, string> = {
   ridger: "<rect x='6' y='8' width='36' height='4' rx='2' fill='#6b6f73'/><g fill='none' stroke='#4a4e52' stroke-width='3' stroke-linecap='round'><path d='M10 14l4 12l4-12'/><path d='M20 14l4 12l4-12'/><path d='M30 14l4 12l4-12'/></g>",
   planter: "<rect x='4' y='20' width='40' height='4' rx='2' fill='#6b6f73'/><g fill='#2f8f4e'><rect x='6' y='8' width='7' height='12' rx='2'/><rect x='16' y='8' width='7' height='12' rx='2'/><rect x='26' y='8' width='7' height='12' rx='2'/><rect x='36' y='8' width='7' height='12' rx='2'/></g>",
   drill: "<rect x='3' y='9' width='42' height='11' rx='2' fill='#c0392b'/><g stroke='#4a4e52' stroke-width='1.6'><path d='M6 20v7M10 20v7M14 20v7M18 20v7M22 20v7M26 20v7M30 20v7M34 20v7M38 20v7M42 20v7'/></g>",
+  cultivator: "<rect x='4' y='9' width='40' height='4' rx='2' fill='#6b6f73'/><g fill='none' stroke='#4a4e52' stroke-width='2.4' stroke-linecap='round'><path d='M9 13c0 8 4 10 4 12'/><path d='M19 13c0 8 4 10 4 12'/><path d='M29 13c0 8 4 10 4 12'/><path d='M39 13c0 8 4 10 4 12'/></g>",
   spreader: "<path d='M14 6h20l-4 12h-12z' fill='#e0892a'/><rect x='22' y='18' width='4' height='5' fill='#5a5e62'/><ellipse cx='24' cy='25' rx='12' ry='3' fill='#6b6f73'/><g fill='#f2f2f2'><circle cx='9' cy='28' r='1.4'/><circle cx='16' cy='30' r='1.4'/><circle cx='32' cy='30' r='1.4'/><circle cx='39' cy='28' r='1.4'/></g>",
   sprayer: "<rect x='1' y='16' width='46' height='3' rx='1.5' fill='#5a5e62'/><circle cx='24' cy='11' r='7' fill='#e6e6e6' stroke='#9a9a9a'/><g fill='#8ec9ef'><circle cx='6' cy='23' r='1.6'/><circle cx='14' cy='23' r='1.6'/><circle cx='34' cy='23' r='1.6'/><circle cx='42' cy='23' r='1.6'/></g>",
   maizeH: "<rect x='4' y='14' width='40' height='9' rx='2' fill='#c0392b'/><g fill='#7a1f16'><path d='M6 14l3-8l3 8z'/><path d='M16 14l3-8l3 8z'/><path d='M26 14l3-8l3 8z'/><path d='M36 14l3-8l3 8z'/></g><rect x='18' y='23' width='12' height='6' rx='1' fill='#e2c069'/>",
@@ -874,6 +878,7 @@ function paintCell(c: CanvasRenderingContext2D, job: Job, i: number) {
     ridger: '#5e3b20',
     planter: '#6a4426',
     drill: '#6a4426',
+    cultivator: '#7a5030',
     spreader: 'rgba(245,245,235,.55)',
     sprayer: 'rgba(190,230,255,.5)',
     maizeH: (gx * 7 + gy) % 5 ? '#d8c48a' : '#b8a46a',
@@ -916,7 +921,7 @@ function drawTractor(c: CanvasRenderingContext2D, job: Job, tr: TractorKind, ik:
   c.fillRect(-10, 8, 11, 5);
   c.fillRect(6, -10, 7, 3.5);
   c.fillRect(6, 6.5, 7, 3.5);
-  c.fillStyle = tr.id === 'compact' ? '#e07b2a' : tr.id === 'large' ? '#2f6fb5' : '#3e8e3a';
+  c.fillStyle = TRACTOR_COLOR[tr.id];
   c.beginPath();
   c.roundRect(-9, -7, 23, 14, 3);
   c.fill();

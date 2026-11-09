@@ -142,9 +142,9 @@ export const FACTORS = {
 const N = FACTORS.nitrogen.value;
 const FARM_ACRES = 1 / 6;
 /** litres of diesel an acre for each job a tractor can do (the tractor drive's implements: plough + harrow, planter, harvester) */
-export const TRACTOR_LPA: Record<string, number> = { prep: 13, sow: 4, setupFeed: 4, spray: 3, harvest: 10 };
-/** how much diesel each tractor type burns next to the standard one: its fuel cost a plot (6, 9, 14) over the standard's 9 */
-export const TRACTOR_FUEL: Record<string, number> = { compact: 6 / 9, standard: 1, large: 14 / 9 };
+export const TRACTOR_LPA: Record<string, number> = { prep: 13, sow: 4, setupFeed: 4, weeding: 3, topdress: 2, borer: 3, spray: 3, harvest: 10 };
+/** how much diesel each tractor type burns next to the standard one: its fuel cost a plot (4, 6, 9, 14) over the standard's 9 */
+export const TRACTOR_FUEL: Record<string, number> = { twoWheel: 4 / 9, compact: 6 / 9, standard: 1, large: 14 / 9 };
 
 /* ---------------- the six farms: a plan's inputs, at planting ---------------- */
 
@@ -215,6 +215,16 @@ export function tractorWork(job: string, share: number, type = 'standard'): Delt
 
 /** A tractor-hire farm the player never ploughed themselves: a contractor ploughed and harrowed it. */
 export const contractorDiesel = (): Delta => tractorWork('prep', 1);
+
+/* ---------------- a plot's own care (staggered cycles) ---------------- */
+
+/** One plot's care done: weeding by hand keeps herbicide off, a stalk-borer spray is a quarter of a farm's spray. The
+    top-dress's CAN is already counted with the plan's fertilizer at planting. */
+export function careDelta(job: string): Delta {
+  if (job === 'weeding') return { soil: 0.1 };
+  if (job === 'borer') return { emit: { chemicals: FACTORS.spray.value / 4 }, sprays: 0.25, pollution: 1.5 };
+  return {};
+}
 
 /* ---------------- treatments, follow-ups and wrong fixes ---------------- */
 
