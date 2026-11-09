@@ -9,6 +9,7 @@ import {
   SHOCKS,
   TASK_CLIMATE,
   TRACTOR_LPA,
+  careDelta,
   closeSeason,
   contractorDiesel,
   marketDelta,
@@ -90,11 +91,17 @@ export function trackClimate(prev: GameState, s: GameState, a: Action): GameStat
         const newly = popcount((s.field.marks[key] ?? 0) & ~before);
         if (newly > 0) {
           const type = a.rig?.tractor ?? 'standard';
-          const words: Record<string, string> = { prep: 'ploughed', sow: 'sown', setupFeed: 'fertilized', spray: 'sprayed', harvest: 'harvested' };
+          const words: Record<string, string> = { prep: 'ploughed', sow: 'sown', setupFeed: 'fertilized', weeding: 'weeded', topdress: 'top-dressed', borer: 'sprayed against stalk borer', spray: 'sprayed', harvest: 'harvested' };
           const plots = plotsIn((s.field.marks[key] ?? 0) & ~before).map(p => String.fromCharCode(65 + p)).join('');
           log(`${farmName(a.farm)} ${words[a.job]} · plot${plots.length > 1 ? 's' : ''} ${plots} by ${type} tractor`, 'tractor', tractorWork(a.job, newly / TILES, type));
         }
       }
+      // a plot's own care finished (staggered cycles)
+      const was = prev.trial?.plots?.[a.farm];
+      t.plots?.[a.farm]?.forEach((r, p) => {
+        const job = a.job as 'weeding' | 'topdress' | 'borer';
+        if (r.care?.[job] && !was?.[p]?.care?.[job]) log(`${farmName(a.farm)} plot ${String.fromCharCode(65 + p)} · ${job === 'borer' ? 'stalk-borer spray' : job}${a.tractor ? '' : ' by hand'}`, 'field', careDelta(job));
+      });
       // a treatment finished by hand
       const tr = /^t(\d)$/.exec(a.job);
       if (tr && prev.trial) {

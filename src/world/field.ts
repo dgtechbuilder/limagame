@@ -5,7 +5,7 @@
    No pictures or three.js here, so the saved game can use it. */
 
 import { PRESCRIBE, followUpTitle } from '../care/data';
-import { PLOTS_PER_FARM, type PlotKind } from '../plots/data';
+import { CARE, CARE_JOBS, PLOTS_PER_FARM, PLOT_LETTERS, careApplies, careDay, plotStart, type CareJob, type PlotKind } from '../plots/data';
 import {
   CHECK_DAYS,
   DAMAGE,
@@ -51,6 +51,18 @@ export function plotMask(plot: number) {
 }
 /** The plots that have any of these tiles. */
 export const plotsIn = (bits: number) => Array.from({ length: PLOTS_PER_FARM }, (_, p) => p).filter(p => bits & plotMask(p));
+/** "Plot A", "Plots B and C"… for the plots that have any of these tiles. */
+export const plotLetters = (bits: number) => {
+  const l = plotsIn(bits).map(p => PLOT_LETTERS[p]);
+  return l.length > 1 ? `Plots ${l.slice(0, -1).join(', ')} and ${l[l.length - 1]}` : `Plot ${l[0] ?? ''}`;
+};
+
+/** The plots planted by this day (or due to be): every plot, unless the cycle is staggered. */
+export function plantedBy(t: Pick<Trial, 'stagger'>, day: number) {
+  let m = 0;
+  for (let p = 0; p < PLOTS_PER_FARM; p++) if (plotStart(p, t.stagger) <= Math.max(1, day)) m |= plotMask(p);
+  return m;
+}
 
 export function tileCenter(farm: number, i: number) {
   const p = PLOTS[farm];
@@ -161,10 +173,56 @@ export function setupJobs(t: Pick<Trial, 'cycle' | 'plans' | 'plots'>, farm: num
   return jobs;
 }
 
-/** The first setup job a farm still needs, or null once it is planted. */
-export function setupLeft(f: Field, t: Trial, farm: number): string | null {
-  for (const job of setupJobs(t, farm)) if (!isDone(f, t, farm, job, needOf(job, t, farm))) return job;
+/** The tiles of a setup job due by this day: all of them, or in a staggered cycle the plots planted by then. */
+export const setupNeed = (job: string, t: Trial, farm: number, day: number) => needOf(job, t, farm) & plantedBy(t, day);
+
+/** The first setup job a farm still needs today, or null once every plot due by today is planted. */
+export function setupLeft(f: Field, t: Trial, farm: number, day: number): string | null {
+  for (const job of setupJobs(t, farm)) {
+    const need = setupNeed(job, t, farm, day);
+    if (need && !isDone(f, t, farm, job, need)) return job;
+  }
   return null;
+}
+
+/** The plots still to be planted on later days (staggered cycles), as a tile mask. */
+export const plantLater = (t: Trial, day: number) => FULL & ~plantedBy(t, day);
+
+/* ---------------- each plot's care after planting (staggered cycles) ---------------- */
+
+/** The tiles that need a care job by this day: the plots it is due on (from its day to the last check day), less
+    the plots that do not get it (no top-dress after plain DAP, no spray on the check strip). */
+export function careNeed(t: Trial, farm: number, job: CareJob, day: number): number {
+  if (!t.stagger || day < 1 || day > CHECK_DAYS) return 0;
+  const rows = plotsOf(t, farm);
+  let m = 0;
+  for (let p = 0; p < PLOTS_PER_FARM; p++) if (careDay(p, job, true) <= day && careDay(p, job, true) <= CHECK_DAYS && careApplies(job, rows[p])) m |= plotMask(p);
+  return m;
+}
+
+/** A plot's care still to do on a farm today, in calendar order. Its work is marked under the care job's name. */
+export function plotCareLeft(f: Field, t: Trial, farm: number, day: number): { job: CareJob; key: string; need: number }[] {
+  const out: { job: CareJob; key: string; need: number }[] = [];
+  for (const job of CARE_JOBS) {
+    const need = careNeed(t, farm, job, day);
+    const left = need & ~doneMask(f, t.cycle, farm, job);
+    if (left) out.push({ job, key: job, need: left });
+  }
+  return out;
+}
+
+/** What a plot is doing on a day, for the plot board and hints: planting, its care, or growing. */
+export function plotStage(f: Field, t: Trial, farm: number, plot: number, day: number): string {
+  if (!t.stagger) return '';
+  const start = plotStart(plot, true);
+  const m = plotMask(plot);
+  if (day > CHECK_DAYS) return 'Harvest';
+  if (day < start) return `Plant on day ${start}`;
+  if ((doneMask(f, t.cycle, farm, 'sow') & m) !== m) return 'Planting today';
+  const rows = plotsOf(t, farm);
+  const due = CARE_JOBS.filter(j => careApplies(j, rows[plot]) && careDay(plot, j, true) <= day && careDay(plot, j, true) <= CHECK_DAYS && (doneMask(f, t.cycle, farm, j) & m) !== m);
+  if (due.length) return due.map(j => CARE[j].title).join(' + ');
+  return 'Growing';
 }
 
 /** A spray treatment or follow-up has been done on this farm this cycle (its plots keep their sprayers after it). */
@@ -174,7 +232,7 @@ export function sprayDone(f: Field, t: Trial, farm: number): boolean {
     if (t.followUps?.some(u => u.farm === farm && u.day === day && u.job === 'spray' && u.done)) return true;
     if (doneMask(f, t.cycle, farm, `t${day}`) && TREAT_JOB[hazardFor(t, farm, day)] === 'spray') return true;
   }
-  return false;
+  return !!doneMask(f, t.cycle, farm, 'borer');
 }
 
 /** Why a plot's input can no longer be changed (it is in the ground), or null. */
@@ -206,7 +264,8 @@ export function treatLeft(f: Field, t: Trial, farm: number, day: number): { job:
   const job = TREAT_JOB[h];
   if (!job || !canTreat(h, t.plans[farm])) return null;
   if (PRESCRIBE[h] && !rec.fix) return null;
-  const need = needOf(job, t, farm, day) || FULL;
+  const grown = plantedBy(t, day);
+  const need = needOf(job, t, farm, day) & grown || grown;
   const key = `t${day}`;
   if (isDone(f, t, farm, key, need)) return null;
   return { job, key, need, hazard: h };
@@ -218,7 +277,8 @@ export function followUpLeft(f: Field, t: Trial, farm: number, day: number): { j
   const u = t.followUps?.find(x => x.farm === farm && x.day === day && !x.done);
   if (!u) return null;
   const job = u.job as TreatJob;
-  const need = needOf(job, t, farm, 100 + day) || FULL;
+  const grown = plantedBy(t, day);
+  const need = needOf(job, t, farm, 100 + day) & grown || grown;
   const key = `f${day}`;
   if (isDone(f, t, farm, key, need)) return null;
   return { job, key, need, hazard: u.hazard, follow: u };
@@ -233,11 +293,12 @@ export const treatCost = (h: TrialHazard) => DAMAGE[h].treat;
 export function carryNeeded(f: Field, t: Trial, day: number): boolean {
   if (!f.carry) return false;
   return t.plans.some((_, farm) => {
-    const setup = setupLeft(f, t, farm);
+    const setup = setupLeft(f, t, farm, day);
     if (setup) return JOB_CARRY[setup] === f.carry;
     const tr = treatLeft(f, t, farm, day);
     const fu = followUpLeft(f, t, farm, day);
-    return (!!tr && JOB_CARRY[tr.job] === f.carry) || (!!fu && JOB_CARRY[fu.job] === f.carry);
+    if ((!!tr && JOB_CARRY[tr.job] === f.carry) || (!!fu && JOB_CARRY[fu.job] === f.carry)) return true;
+    return plotCareLeft(f, t, farm, day).some(c => CARE[c.job].carry === f.carry);
   });
 }
 
@@ -245,7 +306,7 @@ export function carryNeeded(f: Field, t: Trial, day: number): boolean {
 export function sprayJobs(f: Field, t: Trial, day: number): { farm: number; hazard: TrialHazard }[] {
   const out: { farm: number; hazard: TrialHazard }[] = [];
   t.plans.forEach((_, farm) => {
-    if (setupLeft(f, t, farm)) return;
+    if (setupLeft(f, t, farm, day)) return;
     const tr = treatLeft(f, t, farm, day);
     if (tr?.job === 'spray') out.push({ farm, hazard: tr.hazard });
     const fu = followUpLeft(f, t, farm, day);
@@ -276,6 +337,11 @@ export interface Task {
 export type Place = 'mission' | 'shed-seeds' | 'shed-fertilizer' | 'shed-sprayer' | 'pond' | 'hire' | 'market' | 'house';
 export type TaskIcon = 'plan' | 'hoe' | 'seeds' | 'fertilizer' | 'check' | 'weed' | 'water' | 'spray' | 'drain' | 'goat' | 'birds' | 'tractor' | 'corn' | 'sleep' | 'wait' | 'results';
 
+const CARE_ICON: Record<CareJob, TaskIcon> = { weeding: 'weed', topdress: 'fertilizer', borer: 'spray' };
+
+/** Points for each plot's care done (staggered cycles). */
+export const CARE_POINTS = 5;
+
 export const JOB_WORDS: Record<string, { title: string; icon: TaskIcon }> = {
   weed: { title: 'Cut the weeds on', icon: 'weed' },
   water: { title: 'Water', icon: 'water' },
@@ -301,19 +367,22 @@ export function nextTask(f: Field, t: Trial | null, today: number, coins: number
   const day = currentDay(t, today);
   const name = (i: number) => `Farm ${i + 1}`;
   // planting comes first: every farm dug, then every farm sown, then fed (fewer trips to the shed)
-  const stageOf = (i: number) => ['prep', 'sow', 'setupFeed'].indexOf(setupLeft(f, t, i) ?? '');
+  const stageOf = (i: number) => ['prep', 'sow', 'setupFeed'].indexOf(setupLeft(f, t, i, day) ?? '');
   const waiting = t.plans.map((_, i) => i).filter(i => stageOf(i) >= 0);
   const first = Math.min(...waiting.map(stageOf));
   for (const i of waiting.filter(i => stageOf(i) === first)) {
-    const job = setupLeft(f, t, i)!;
+    const job = setupLeft(f, t, i, day)!;
+    // in a staggered cycle, the plots planted today
+    const left = setupNeed(job, t, i, day) & ~doneMask(f, t.cycle, i, job);
+    const where = t.stagger ? `${plotLetters(left)} today` : '';
     if (job === 'prep') {
       if (machinePrep(t.plans[i]))
-        return { title: t.plans[i].land === 'tractor' ? 'Hire the tractor' : 'Hire the oxen', note: `to plough ${name(i)}`, icon: 'tractor', target: { place: 'hire' } };
+        return { title: t.plans[i].land === 'tractor' ? 'Hire the tractor' : 'Hire the oxen', note: `to plough ${name(i)}${where ? ` · ${where}` : ''}`, icon: 'tractor', target: { place: 'hire' } };
       const verb = t.plans[i].land === 'slash' ? 'Clear' : t.plans[i].land === 'mulch' ? 'Mulch' : 'Dig';
-      return { title: `${verb} ${name(i)}`, note: 'Walk over every row', icon: 'hoe', target: { farm: i, at: 'plot' } };
+      return { title: `${verb} ${name(i)}`, note: where || 'Walk over every row', icon: 'hoe', target: { farm: i, at: 'plot' } };
     }
-    if (job === 'sow') return needCarry(f, 'seeds', { title: `Sow ${name(i)}`, note: 'Walk over every row', icon: 'seeds', target: { farm: i, at: 'plot' } });
-    return needCarry(f, 'fertilizer', { title: `Fertilize ${name(i)}`, note: 'At planting', icon: 'fertilizer', target: { farm: i, at: 'plot' } });
+    if (job === 'sow') return needCarry(f, 'seeds', { title: `Sow ${name(i)}`, note: where || 'Walk over every row', icon: 'seeds', target: { farm: i, at: 'plot' } });
+    return needCarry(f, 'fertilizer', { title: `Fertilize ${name(i)}`, note: where ? `${where} · at planting` : 'At planting', icon: 'fertilizer', target: { farm: i, at: 'plot' } });
   }
   if (day > CHECK_DAYS) {
     const left = t.plans.findIndex((_, i) => !isDone(f, t, i, 'harvest'));
@@ -346,6 +415,17 @@ export function nextTask(f: Field, t: Trial | null, today: number, coins: number
   }
   const unchecked = t.plans.findIndex((_, i) => !t.checks[checkKey(i, day)]);
   if (unchecked >= 0) return { title: `Check ${name(unchecked)}`, note: `Day ${day} of ${CHECK_DAYS}`, points: 100, icon: 'check', target: { farm: unchecked, at: 'sign' } };
+  // each plot's own care (staggered cycles): weeding and the top-dress the day after planting, a spray the day after
+  for (let i = 0; i < t.plans.length; i++) {
+    const care = plotCareLeft(f, t, i, day);
+    // what the farmer carries first, so one trip to the shed does every farm
+    const c = care.find(x => CARE[x.job].carry && CARE[x.job].carry === f.carry) ?? care[0];
+    if (c) {
+      const then: Task = { title: `${CARE[c.job].title} ${name(i)}`, note: `${plotLetters(c.need)} · plot care`, points: CARE_POINTS * plotsIn(c.need).length, icon: CARE_ICON[c.job], target: { farm: i, at: 'plot' } };
+      const item = CARE[c.job].carry;
+      return item ? needCarry(f, item, then) : then;
+    }
+  }
   if (t.clock === 'fast') return { title: day >= CHECK_DAYS ? 'Sleep till harvest' : `Sleep till day ${day + 1}`, note: 'Every farm is checked', icon: 'sleep', target: { place: 'house' } };
   return { title: 'Come back tomorrow', note: `Day ${day + 1} starts tomorrow`, icon: 'wait', target: { place: 'mission' } };
 }

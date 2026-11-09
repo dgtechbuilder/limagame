@@ -24,9 +24,9 @@ import {
   type TrialSummary,
 } from './trials/model';
 import { FOLLOW_UP } from './care/data';
-import { carryNeeded, emptyField, followUpLeft, plotLocked, plotMask, plotsIn, treatCost, treatLeft, type Carry, type Field } from './world/field';
+import { CARE_POINTS, carryNeeded, emptyField, followUpLeft, plotLetters, plotLocked, plotMask, plotsIn, treatCost, treatLeft, type Carry, type Field } from './world/field';
 import { TRACTOR_BONUS, type ImplId } from './tractor/data';
-import { TRACTOR_PLOT, plotCost, plotName, setPlotInput, tractorBlock, type PlotJob, type PlotKind, type TractorId } from './plots/data';
+import { CARE, CARE_JOBS, TRACTOR_PLOT, plotCost, plotName, setPlotInput, tractorBlock, type CareJob, type PlotJob, type PlotKind, type TractorId } from './plots/data';
 import { initialClimate, type ClimateState } from './climate/model';
 import { trackClimate } from './climate/track';
 import {
@@ -629,10 +629,11 @@ function play(s: GameState, a: Action): GameState {
       return {
         ...s,
         coins: s.coins - cost,
-        trial: { ...t, phase: 'growing', clock: a.clock, planted: dayNumber(), day: 1 },
+        // in the farm world, from the second cycle, the plots are planted a day apart, each with its own care
+        trial: { ...t, phase: 'growing', clock: a.clock, planted: dayNumber(), day: 1, stagger: s.view === 'world' && !t.guided },
         field: emptyField(t.cycle),
         ...gainXp(s, 0.1),
-        toast: toast(s.view === 'world' ? `${t.plans.length} farm plans paid: ${fmt(cost)} coins · now get them planted` : `${t.plans.length} farms planted for ${fmt(cost)} coins · day 1: check every farm`),
+        toast: toast(s.view === 'world' ? `${t.plans.length} farm plans paid: ${fmt(cost)} coins · ${t.guided ? 'now get them planted' : 'plant Plot A today, the next plot each day'}` : `${t.plans.length} farms planted for ${fmt(cost)} coins · day 1: check every farm`),
       };
     }
     case 'trialCheck': {
@@ -714,7 +715,7 @@ function play(s: GameState, a: Action): GameState {
         if (plot === undefined) return s;
         bits &= plotMask(plot);
         const rows = plotsOf(t, a.farm);
-        if (tractorBlock(rows, plot, a.rig.tractor, a.rig.tool)) return s;
+        if (tractorBlock(rows, plot, a.rig.tractor, a.rig.tool, a.rig.job)) return s;
         const here = rows[plot];
         if (!here.tractor || !here.tools?.[a.rig.job]) {
           fuel = Math.min(s.coins, TRACTOR_PLOT[a.rig.tractor].fuel);
@@ -727,6 +728,17 @@ function play(s: GameState, a: Action): GameState {
       }
       const after = before | bits;
       if (after === before) return s;
+      // a plot's care (staggered cycles) counts once the whole plot is done: it is saved on the plot for the harvest
+      let cared: number[] = [];
+      if ((CARE_JOBS as string[]).includes(a.job)) {
+        const job = a.job as CareJob;
+        const rows = plotsOf(t, a.farm);
+        cared = plotsIn(bits).filter(p => (after & plotMask(p)) === plotMask(p) && !rows[p].care?.[job]);
+        if (cared.length) {
+          const next = rows.map((r, i) => (cared.includes(i) ? { ...r, care: { ...(r.care ?? {}), [job]: true as const } } : r));
+          t = { ...t, plots: t.plans.map((_, i) => (i === a.farm ? next : plotsOf(t!, i))) };
+        }
+      }
       // what the tractor claimed is saved, and its fuel paid, along with the work
       const s1: GameState = t === s.trial ? s : { ...s, trial: t, coins: s.coins - fuel };
       let marked: Field = { ...f, marks: { ...f.marks, [key]: after } };
@@ -786,6 +798,11 @@ function play(s: GameState, a: Action): GameState {
           field = putDown(trial);
           return { ...s1, field, trial, ...gainXp(s1, 0.03), toast: toast(`${farmName(a.farm)}: follow-up done · the problem stays away`) };
         }
+      }
+      if (cared.length) {
+        const pts = CARE_POINTS * cared.length + bonus;
+        const m = cared.reduce((x, p) => x | plotMask(p), 0);
+        return { ...s1, field, points: s1.points + pts, ...gainXp(s1, 0.01 * cared.length), toast: toast(`${farmName(a.farm)} ${plotLetters(m)} ${CARE[a.job as CareJob].done} · +${pts} points${bonus ? ' with the tractor bonus' : ''}${fuel ? ` · −${fuel} coins of fuel` : ''}`) };
       }
       if (bonus) return { ...s1, field, points: s1.points + bonus, ...gainXp(s1, 0.02), toast: toast(`Tractor bonus · +${bonus} points · ${farmName(a.farm)} ${plotName(plotsIn(bits)[0])} done from the seat${fuel ? ` · −${fuel} coins of fuel` : ''}`) };
       if (fuel && a.rig) {

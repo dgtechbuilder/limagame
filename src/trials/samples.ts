@@ -89,7 +89,7 @@ function findCase(plans: Plan[], want: TrialHazard, minDay = 2): { trial: Trial;
   throw new Error(`No cycle shows ${want}`);
 }
 
-export type WakalaCase = 'fix' | 'spray' | 'followUp' | 'cameBack' | 'tractor' | 'voice' | 'plots';
+export type WakalaCase = 'fix' | 'spray' | 'followUp' | 'cameBack' | 'tractor' | 'voice' | 'plots' | 'stagger';
 
 /** A cycle set up for one of the new moments in the farm world: the trial, its field, the day and Farm 1's problem. */
 export function wakalaCase(kind: WakalaCase): { trial: Trial; field: Field; day: number; hazard: TrialHazard } {
@@ -97,6 +97,12 @@ export function wakalaCase(kind: WakalaCase): { trial: Trial; field: Field; day:
     // two farms dug by hand, nothing done yet: the tractor and the plot board on a fresh field
     const plans = [COMMON_PLAN, { ...COMMON_PLAN, pest: 'scout' } as Plan];
     const trial: Trial = { ...newTrial(2, false, plans[0]), plans, plots: newTrial(2, true, plans[0]).plots, treatments: [0, 0], phase: 'growing', clock: 'fast', planted: 0, day: 1 };
+    return { trial, field: emptyField(2), day: 1, hazard: hazardFor(trial, 0, 1) };
+  }
+  if (kind === 'stagger') {
+    // a staggered cycle on day 1: Plot A of each farm is planted today, the next plot each day after
+    const plans = [COMMON_PLAN, { ...COMMON_PLAN, pest: 'scout' } as Plan];
+    const trial: Trial = { ...newTrial(2, false, plans[0]), plans, plots: newTrial(2, true, plans[0]).plots, treatments: [0, 0], phase: 'growing', clock: 'fast', planted: 0, day: 1, stagger: true };
     return { trial, field: emptyField(2), day: 1, hazard: hazardFor(trial, 0, 1) };
   }
   if (kind === 'tractor') {

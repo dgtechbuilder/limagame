@@ -259,7 +259,7 @@ export function setupJob(job: Job, tractor: TractorKind['id'], impl: ImplId) {
   job.fit = fitOf(job.right, impl);
   job.wps = planRoute(job.lay.field, job.lay.obs, im.w, job.strips, im.front ? -16 : 16);
   job.a0 = job.wps[0];
-  job.burn = (job.idealL / job.idealLen) * tr.fuel * (im.heavy && tr.id === 'compact' ? 1.2 : 1) * Math.sqrt(im.lpa / IMPL[job.right].lpa);
+  job.burn = (job.idealL / job.idealLen) * tr.fuel * (im.heavy && tr.id === 'twoWheel' ? 1.4 : im.heavy && tr.id === 'compact' ? 1.2 : 1) * Math.sqrt(im.lpa / IMPL[job.right].lpa);
   job.tankL = tankOf(job, tr);
   resetJob(job);
 }
@@ -354,7 +354,7 @@ export function stepJob(job: Job, dtReal: number, c: Controls): StepEvent[] {
   }
   job.h = wrapA(job.h + rot);
   job.v += Math.max(-260 * dt, Math.min(180 * dt, want - job.v));
-  const f = job.im.heavy && tr.id === 'compact' ? 0.8 : 1;
+  const f = job.im.heavy && tr.id === 'twoWheel' ? 0.65 : job.im.heavy && tr.id === 'compact' ? 0.8 : 1;
   const dist = job.v * f * dt;
   const n = Math.max(1, Math.ceil(dist / 2));
   const cs = Math.cos(job.h);
@@ -479,7 +479,7 @@ export function finishJob(job: Job, reason: JobResult['reason']): JobResult {
   const manual = workAcres * right.manual.value * MONEY.wage.value;
   const tractor = job.acres * cov * im.hire.value * tr.hire + Math.max(0, usedL - idealForWork) * MONEY.diesel.value;
   const saved = manual - tractor;
-  const bestSaved = job.acres * (right.manual.value * MONEY.wage.value - right.hire.value * TRACTORS[0].hire);
+  const bestSaved = job.acres * (right.manual.value * MONEY.wage.value - right.hire.value * TRACTORS.find(x => x.id === 'compact')!.hire);
   const money = Math.round(Math.max(0, Math.min(100, (saved / bestSaved) * 100)));
   let score = Math.round(100 * (0.5 * Q + (0.2 * eff) / 100 + (0.15 * clim) / 100 + (0.15 * money) / 100)) - 5 * job.hits;
   score = Math.max(0, Math.min(100, score));

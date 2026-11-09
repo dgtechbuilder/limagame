@@ -22,8 +22,8 @@ differently in the 3D farm, and at harvest the results are shown plot by plot, w
 | Seed | Saved seed, certified hybrid (long season), drought-tolerant hybrid (early), improved open-pollinated, hybrid with beans, hybrid close spacing | Plot board at the seed shed (and in the planner) | from the first sown tile |
 | Fertilizer | None (a control plot), manure, DAP at planting, DAP + CAN top-dress, double dose | Plot board at the fertilizer shed (and in the planner) | from the first fed tile |
 | Sprayer | Knapsack, motorised mist blower, tractor boom sprayer, unsprayed check strip | Plot board at the sprayer shed, after the safety kit and product | all season, from the first spray |
-| Tractor | Compact, standard, large; the fourth plot is worked by hand | At the tractor, every time the player gets on | claimed by the first tile it works on a farm |
-| Tool | Disc plough, disc harrow, ridger, maize planter, seed drill, fertilizer spreader, boom sprayer, maize harvester, bean harvester | At the tractor, with what each is for, which job it does and which farms need it now | one plot of a farm per tool |
+| Tractor | Two-wheel, compact, standard, large: one for each plot (any plot can still be worked by hand) | At the tractor, every time the player gets on | claimed by the first tile it works on a farm |
+| Tool | Disc plough, disc harrow, ridger, maize planter, seed drill, inter-row cultivator, fertilizer spreader, boom sprayer, maize harvester, bean harvester | At the tractor, with what each is for, which job it does and which farms need it now | any plot (changed 9 Nov 2026: with 3 prep tools and 1 spreader for 4 plots, one-tool-per-plot left a plot that could not be worked) |
 
 - **The tractor at any point.** The tool decides the job: plough, harrow or ridger prepare the land; planter or
   drill sow; the spreader puts fertilizer down at planting; the boom sprayer sprays; the harvesters harvest. On the
@@ -70,3 +70,16 @@ all the plots together: which seed, fertilizer, tractor, tool and sprayer gave t
 7. Tests: plot board rules, tractor pick and plot claims, results by plot, updated tractor tests, tour screenshots;
    a smoke test of the live site after deploy.
 8. README, PR, CI green, merge, check the live site.
+
+## Update, 9 Nov 2026: four tractors, plots a day apart
+
+Reported: hiring the tractor to plough Farm 2, the fourth plot could not be worked, because all three tractor types
+were already used on the farm (and the tool rule blocked the same way: 3 prep tools, 1 spreader, 4 plots).
+
+- **Four tractor types**: a two-wheel (walk-behind, 15 hp) joins compact, standard and large, so each plot of a farm
+  can have its own. Tools are no longer one per plot.
+- **Plots a day apart** (from cycle 2 in the farm world): Plot A planted on day 1 … Plot D on day 4. Each plot then has
+  its own care: weeding (+ the CAN top-dress on DAP + CAN plots) the day after planting, a spray against stalk borer
+  the day after that. Every day there is something new to do, and each plot of a farm is at a different stage.
+- Proposed numbers, for review (`src/plots/data.ts`): missed weeding −10%, missed top-dress −20%, stalk borer 8% of
+  an unsprayed plot (less its sprayer's armyworm cover when sprayed), 5 points a plot's care.

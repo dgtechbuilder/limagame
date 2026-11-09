@@ -4,7 +4,7 @@
 
 import * as THREE from 'three';
 import { RIDE_SPEED, TRACTOR_EDGE, type ImplId } from '../tractor/data';
-import { JOB_INFO, PLOT_LETTERS, TOOL_JOB, TRACTOR_PLOT, plotName, sprayerOf, toolName, tractorBlock, type PlotJob, type TractorId } from '../plots/data';
+import { CARE, JOB_INFO, PLOT_LETTERS, TOOL_JOB, TRACTOR_PLOT, plotName, plotStart, sprayerOf, toolName, tractorBlock, type PlotJob, type TractorId } from '../plots/data';
 import { CHECK_DAYS, checkKey, farmName, harvestFarm, hazardFor, plotGrowth, plotsOf, type Trial, type TrialHazard } from '../trials/model';
 import {
   COLS,
@@ -28,6 +28,11 @@ import {
   fixLeft,
   plotMask,
   followUpLeft,
+  plantLater,
+  plantedBy,
+  plotCareLeft,
+  plotLetters,
+  setupNeed,
   type Carry,
   type Field,
   type Place,
@@ -818,7 +823,7 @@ export class FarmWorld {
       const sown = active ? this.marks(farm, 'sow') : 0;
       const fed = active ? this.marks(farm, 'setupFeed') : 0;
       const cut = active ? this.marks(farm, 'harvest') : 0;
-      const setupDone = active && growing && !setupLeft(f, t!, farm);
+      const setupDone = active && growing && !setupLeft(f, t!, farm, day);
       const h: TrialHazard | null = setupDone && day >= 1 && day <= CHECK_DAYS ? hazardFor(t!, farm, day) : null;
       const rec = h && t ? t.checks[checkKey(farm, day)] : undefined;
       const pend = h && t ? careLeft(f, t, farm, day) ?? (fixLeft(t, farm, day) ? true : null) : null;
@@ -861,7 +866,9 @@ export class FarmWorld {
         if (!isPrep) put(this.wild, at(c.x, 0.12, c.z, { ry: i * 1.3 }));
         // the crop
         if (!active || !(sown & bit) || gaps & bit) continue;
-        let stage: keyof FarmWorld['plants'] = day <= 2 ? 'sprout' : day <= 4 ? 'young' : day <= CHECK_DAYS ? 'tall' : 'ripe';
+        // a plot planted later (a staggered cycle) is that many days younger
+        const age = day > CHECK_DAYS ? day : day - plotStart(i % COLS, t?.stagger) + 1;
+        let stage: keyof FarmWorld['plants'] = age <= 2 ? 'sprout' : age <= 4 ? 'young' : day <= CHECK_DAYS ? 'tall' : 'ripe';
         if (done || cut & bit) stage = 'stubble';
         if (!growing && !done) continue;
         let tint = '#ffffff';
@@ -936,7 +943,7 @@ export class FarmWorld {
     if (c.t !== t || c.day !== day) this.grownCache = { t, day, farms: new Map() };
     let r = this.grownCache.farms.get(farm);
     if (!r) {
-      r = { lost: day > 1 ? harvestFarm(t, farm, Math.min(day - 1, CHECK_DAYS)).lost : 0, plots: plotGrowth(t, farm) };
+      r = { lost: day > 1 ? harvestFarm(t, farm, Math.min(day - 1, CHECK_DAYS)).lost : 0, plots: plotGrowth(t, farm, CHECK_DAYS, day) };
       this.grownCache.farms.set(farm, r);
     }
     return r;
@@ -958,7 +965,7 @@ export class FarmWorld {
     const day = fieldDay(t, v.today);
     const find = (hz: TrialHazard) => {
       if (!t || day < 1 || day > CHECK_DAYS) return -1;
-      return t.plans.findIndex((_, i) => !setupLeft(f, t, i) && hazardFor(t, i, day) === hz && !t.checks[checkKey(i, day)]?.treated && !isDone(f, t, i, `t${day}`, 1));
+      return t.plans.findIndex((_, i) => !setupLeft(f, t, i, day) && hazardFor(t, i, day) === hz && !t.checks[checkKey(i, day)]?.treated && !isDone(f, t, i, `t${day}`, 1));
     };
     const g = find('livestock');
     if (g !== this.goatState.farm && this.goatState.leaving <= 0) {
@@ -986,22 +993,31 @@ export class FarmWorld {
     const plan = t.plans[farm];
     const day = fieldDay(t, v.today);
     const carry = v.field.carry;
-    const setup = setupLeft(f, t, farm);
+    const setup = setupLeft(f, t, farm, day);
     if (setup === 'prep') {
       if (machinePrep(plan)) return { hint: `${plan.land === 'tractor' ? 'Hire the tractor' : 'Hire the oxen'} at the Hire spot to plough Farm ${farm + 1}` };
-      return { job: 'prep', need: FULL, fx: plan.land === 'slash' ? 'clear' : plan.land === 'mulch' ? 'mulch' : 'dig' };
+      return { job: 'prep', need: setupNeed('prep', t, farm, day), fx: plan.land === 'slash' ? 'clear' : plan.land === 'mulch' ? 'mulch' : 'dig' };
     }
-    if (setup === 'sow') return carry === 'seeds' ? { job: 'sow', need: FULL, fx: 'seed' } : { hint: 'Get the seed sack from the shed to sow' };
-    if (setup === 'setupFeed') return carry === 'fertilizer' ? { job: 'setupFeed', need: needOf('setupFeed', t, farm), fx: 'fert' } : { hint: 'Get fertilizer from the shed: this farm gets it at planting' };
+    if (setup === 'sow') return carry === 'seeds' ? { job: 'sow', need: setupNeed('sow', t, farm, day), fx: 'seed' } : { hint: 'Get the seed sack from the shed to sow' };
+    if (setup === 'setupFeed') return carry === 'fertilizer' ? { job: 'setupFeed', need: setupNeed('setupFeed', t, farm, day), fx: 'fert' } : { hint: 'Get fertilizer from the shed: this farm gets it at planting' };
     if (day > CHECK_DAYS) return { job: 'harvest', need: FULL, fx: 'harvest' };
+    // today's treatment first, then each plot's own care (staggered cycles): whichever the farmer carries the load for
+    const jobs: { job: string; need: number; fx: Fx; carry?: Carry; hint: string }[] = [];
     const tr = careLeft(f, t, farm, day);
-    if (!tr) return null;
-    if (tr.job === 'weed') return { job: tr.key, need: tr.need, fx: 'weed' };
-    if (tr.job === 'drain') return { job: tr.key, need: tr.need, fx: 'drain' };
-    if (tr.job === 'water') return carry === 'water' ? { job: tr.key, need: tr.need, fx: 'water' } : { hint: 'Fill the watering can at the pond' };
-    if (tr.job === 'feed') return carry === 'fertilizer' ? { job: tr.key, need: tr.need, fx: 'fert' } : { hint: 'Get fertilizer from the shed to top-dress' };
-    if (tr.job === 'spray') return carry === 'sprayer' ? { job: tr.key, need: tr.need, fx: 'spray' } : { hint: 'Get the sprayer from the shed' };
-    return null;
+    if (tr?.job === 'weed') jobs.push({ job: tr.key, need: tr.need, fx: 'weed', hint: '' });
+    if (tr?.job === 'drain') jobs.push({ job: tr.key, need: tr.need, fx: 'drain', hint: '' });
+    if (tr?.job === 'water') jobs.push({ job: tr.key, need: tr.need, fx: 'water', carry: 'water', hint: 'Fill the watering can at the pond' });
+    if (tr?.job === 'feed') jobs.push({ job: tr.key, need: tr.need, fx: 'fert', carry: 'fertilizer', hint: 'Get fertilizer from the shed to top-dress' });
+    if (tr?.job === 'spray') jobs.push({ job: tr.key, need: tr.need, fx: 'spray', carry: 'sprayer', hint: 'Get the sprayer from the shed' });
+    for (const c of plotCareLeft(f, t, farm, day)) {
+      const item = CARE[c.job].carry ?? null;
+      const where = plotLetters(c.need);
+      jobs.push({ job: c.key, need: c.need, fx: c.job === 'weeding' ? 'weed' : c.job === 'topdress' ? 'fert' : 'spray', carry: item, hint: `${where}: ${c.job === 'topdress' ? 'time for the top-dress. Get fertilizer from the shed' : 'time to spray against stalk borer. Get the sprayer from the shed'}` });
+    }
+    if (!jobs.length) return null;
+    const go = jobs.find(j => !j.carry || j.carry === carry);
+    if (go) return { job: go.job, need: go.need, fx: go.fx };
+    return { hint: jobs[0].hint };
   }
 
   private doWork(dt: number) {
@@ -1062,29 +1078,46 @@ export class FarmWorld {
     if (!t || t.phase !== 'growing' || !rig || farm >= t.plans.length) return;
     const f = this.liveField();
     const day = fieldDay(t, v.today);
-    const job = TOOL_JOB[rig.tool];
+    let job = TOOL_JOB[rig.tool];
     const tool = toolName(rig.tool).toLowerCase();
     const plot = Math.max(0, Math.min(COLS - 1, Math.round((this.pos.x - PLOTS[farm].x) / TILE + (COLS - 1) / 2)));
-    const setup = setupLeft(f, t, farm);
+    const pm = plotMask(plot);
+    const setup = setupLeft(f, t, farm, day);
+    const care = plotCareLeft(f, t, farm, day);
+    const careOf = (j: string) => care.find(c => c.job === j);
+    const later = plantLater(t, day) & pm ? plotStart(plot, t.stagger) : 0;
     let key: string | null = null;
     let need = 0;
+    // the spreader top-dresses once a farm is planted
+    if (job === 'setupFeed' && setup !== 'setupFeed' && careOf('topdress')) job = 'topdress';
     if (job === 'prep' || job === 'sow' || job === 'setupFeed') {
+      if (later) return this.rideHint(`${plotName(plot)} of ${farmName(farm)} is planted on day ${later}: come back then`);
       if (setup === job) {
         key = job;
-        need = needOf(job, t, farm);
+        need = setupNeed(job, t, farm, day);
       } else if (setup) return this.rideHint(`${farmName(farm)} needs to ${JOB_INFO[setup as PlotJob].name.toLowerCase()} first: the ${tool} is for later`);
       else return this.rideHint(`${farmName(farm)} is planted: nothing for the ${tool} here now`);
     } else if (job === 'harvest') {
       if (setup || day <= CHECK_DAYS) return this.rideHint(`The maize on ${farmName(farm)} is not ready to harvest yet`);
       key = 'harvest';
       need = FULL;
-    } else {
-      const c = day >= 1 && day <= CHECK_DAYS ? careLeft(f, t, farm, day) : null;
-      if (c?.job !== 'spray') return this.rideHint(`Nothing to spray on ${farmName(farm)} today`);
+    } else if (job === 'weeding' || job === 'topdress') {
+      const c = careOf(job);
+      if (!c || !(c.need & pm)) return this.rideHint(later ? `${plotName(plot)} of ${farmName(farm)} is planted on day ${later}: come back after that` : `${plotName(plot)} of ${farmName(farm)} needs no ${JOB_INFO[job].name.toLowerCase()} today`);
       key = c.key;
       need = c.need;
+    } else {
+      // the sprayer: today's pest or disease first, then a plot's spray against stalk borer
+      const c = day >= 1 && day <= CHECK_DAYS ? careLeft(f, t, farm, day) : null;
+      const borer = careOf('borer');
+      if (c?.job === 'spray' && c.need & pm) {
+        key = c.key;
+        need = c.need;
+      } else if (borer && borer.need & pm) {
+        key = borer.key;
+        need = borer.need;
+      } else return this.rideHint(c?.job === 'spray' || borer ? `${plotName(plot)} of ${farmName(farm)} needs no spray today` : `Nothing to spray on ${farmName(farm)} today`);
     }
-    const pm = plotMask(plot);
     if (!(need & pm)) return this.rideHint(job === 'setupFeed' ? `${plotName(plot)} gets no fertilizer: it is the control plot` : job === 'spray' ? `${plotName(plot)} is the unsprayed check strip` : `${plotName(plot)} needs no ${tool} work`);
     const rows = plotsOf(t, farm).map(r => ({ ...r, tools: { ...(r.tools ?? {}) } }));
     // what this ride has claimed already, before the state caught up
@@ -1094,7 +1127,7 @@ export class FarmWorld {
       if (what === 'tractor') rows[p].tractor = tl as TractorId;
       else rows[p].tools![what as PlotJob] = tl as ImplId;
     }
-    let block = tractorBlock(rows, plot, rig.tractor, rig.tool);
+    let block = tractorBlock(rows, plot, rig.tractor, rig.tool, job);
     const sp = rows[plot].sprayer;
     if (!block && job === 'spray' && sp && sp !== 'boom') block = `${plotName(plot)} is sprayed with the ${sprayerOf(sp).name.toLowerCase()}: the boom sprayer has its own plot`;
     if (block) return this.rideHint(block);
@@ -1123,7 +1156,7 @@ export class FarmWorld {
   private fxOf(job: PlotJob): Fx {
     const plan = this.view?.trial?.plans[0];
     void plan;
-    return ({ prep: 'dig', sow: 'seed', setupFeed: 'fert', spray: 'spray', harvest: 'harvest' } as const)[job];
+    return ({ prep: 'dig', sow: 'seed', setupFeed: 'fert', weeding: 'weed', topdress: 'fert', spray: 'spray', harvest: 'harvest' } as const)[job];
   }
 
   /* ---------------- the frame ---------------- */
@@ -1527,7 +1560,8 @@ export class FarmWorld {
   /** Farms the oxen or tractor can plough now. A tractor-hire farm is driven by the player first (the tractor
       screen, from Wakala Agent); the 3D tractor then shows that work on the plot. Oxen plough by themselves. */
   private hireFarms(t: Trial, f: Field) {
-    const waiting = t.plans.map((_, i) => i).filter(i => machinePrep(t.plans[i]) && setupLeft(f, t, i) === 'prep');
+    const day = fieldDay(t, this.view?.today ?? 0);
+    const waiting = t.plans.map((_, i) => i).filter(i => machinePrep(t.plans[i]) && setupLeft(f, t, i, day) === 'prep');
     const toDrive = waiting.filter(i => t.plans[i].land === 'tractor' && !t.tractor?.[i]);
     return { ready: waiting.filter(i => !toDrive.includes(i)), toDrive, any: waiting.length > 0 };
   }
@@ -1613,9 +1647,11 @@ export class FarmWorld {
     if (farm >= 0) {
       let bits = 0;
       const done = this.marks(farm, 'prep');
+      // only the plots due to be planted by today (a staggered cycle ploughs a plot a day)
+      const due = t ? plantedBy(t, fieldDay(t, this.view?.today ?? 0)) : FULL;
       for (let i = 0; i < TILES; i++) {
         const c = tileCenter(farm, i);
-        if (!(done & (1 << i)) && Math.hypot(c.x - veh.position.x, c.z - veh.position.z) < (veh === this.oxen ? 1.25 : TRACTOR_REACH)) bits |= 1 << i;
+        if (due & (1 << i) && !(done & (1 << i)) && Math.hypot(c.x - veh.position.x, c.z - veh.position.z) < (veh === this.oxen ? 1.25 : TRACTOR_REACH)) bits |= 1 << i;
       }
       if (bits) {
         this.pending.set(`${farm}:prep`, (this.pending.get(`${farm}:prep`) ?? 0) | bits);

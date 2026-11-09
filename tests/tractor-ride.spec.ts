@@ -1,9 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
 import { boot, scenario, state, type Win } from './helpers';
 
-/* The tractor in the farm world: at the tractor the farmer picks its type and tool, then drives onto a plot. Each
-   tractor type and each tool works one plot (A to D) of a farm, so a cycle compares them side by side. A plot finished
-   from the seat pays bonus points; fuel is paid per plot. */
+/* The tractor in the farm world: at the tractor the farmer picks its type and tool, then drives onto a plot. There
+   are four tractor types for a farm's four plots (A to D): each type works one plot of a farm, so a cycle compares
+   them side by side, and every plot can be worked from the seat. A tool can work any plot. A plot finished from the
+   seat pays bonus points; fuel is paid per plot. */
 
 /** The tiles of one plot (a column of the farm's 4 × 5 tiles). */
 const plotMask = (p: number) => [0, 1, 2, 3, 4].reduce((m, r) => m | (1 << (r * 4 + p)), 0);
@@ -60,7 +61,7 @@ test('pick a tractor and a tool, then work one plot from the seat', async ({ pag
   expect(s1.points).toBe(before.points + 10);
   expect(s1.field.bonus).toContain('0:prep:0');
 
-  // the same tractor and tool may not take a second plot of the farm
+  // the same tractor may not take a second plot of the farm
   await drivePlot(page, 0, 1);
   await page.waitForTimeout(800);
   expect(((await state(page)).field.marks['0:prep'] ?? 0) & plotMask(1)).toBe(0);
@@ -74,6 +75,19 @@ test('pick a tractor and a tool, then work one plot from the seat', async ({ pag
   const s2 = await state(page);
   expect(s2.trial.plots[0][1].tractor).toBe('large');
   expect(s2.trial.plots[0][1].tools.prep).toBe('harrow');
+
+  // the compact and the two-wheel tractor take Plots C and D, with the same plough as Plot A: the whole farm is
+  // ploughed from the seat (with three tractor types, the fourth plot could not be)
+  await page.locator('.hud-rig').click();
+  await pick(page, 'Compact', 'Disc plough');
+  await drivePlot(page, 0, 2);
+  await expect.poll(async () => ((await state(page)).field.marks['0:prep'] ?? 0) & plotMask(2), { timeout: 60_000 }).toBe(plotMask(2));
+  await page.locator('.hud-rig').click();
+  await pick(page, 'Two-wheel', 'Disc plough');
+  await drivePlot(page, 0, 3);
+  await expect.poll(async () => (await state(page)).field.marks['0:prep'] ?? 0, { timeout: 60_000 }).toBe((1 << 20) - 1);
+  const s3 = await state(page);
+  expect(s3.trial.plots[0].map((r: { tractor: string }) => r.tractor)).toEqual(['standard', 'large', 'compact', 'twoWheel']);
 
   // get off: back on foot
   await button.click();

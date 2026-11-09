@@ -423,7 +423,7 @@ the logic and data were ported, not its HTML.
   the five pictures. Her lines sit beside the captions, never instead of them. From cycle 2 she is sure of the wrong
   thing on about one check in four (the same check always shows the same line): her guess, never advice.
 - **The tractor drive.** On a farm whose plan says *Tractor hire*, the Hire spot opens the drive before planting:
-  a brief, then the player picks the tractor (compact, standard, large) and the implement (eight, nothing
+  a brief, then the player picks the tractor (two-wheel, compact, standard, large) and the implement (eight, nothing
   pre-picked), ticks the ready check and drives against the clock around rocks and trunks: tap and hold to steer,
   arrow keys or WASD, slow or fast, or autopilot (at most 2 stars). The summary scores the job, efficiency, climate
   and cost saving, and shows what the same work would cost by hand, in shillings, as real-world information. Then
@@ -491,20 +491,33 @@ its own seed, fertilizer, sprayer and machine, while the weather, the farm plan 
 farm, so the harvest shows what each choice did. The plan is in `docs/plot-trials-plan.md`; every word and number is in
 `src/plots/data.ts`, for an agronomist's review.
 
-- **One of each per farm.** A seed, a fertilizer, a sprayer, a tractor type and a tool each go on one plot of a farm.
+- **One of each per farm.** A seed, a fertilizer, a sprayer and a tractor type each go on one plot of a farm.
   Choosing one already on another plot swaps the two, so every farm always compares four seeds and four fertilizers
-  (one plot gets none, as the control) and four sprayers (one plot is an unsprayed check strip). Three tractor types
-  means at least one plot is worked by hand.
+  (one plot gets none, as the control) and four sprayers (one plot is an unsprayed check strip). Four tractor types
+  (two-wheel, compact, standard, large) mean every plot can have its own; any plot can still be worked by hand. A tool
+  can work any plot.
+- **Plots a day apart** (from cycle 2 in the farm world; the guided first cycle plants every plot on day 1). Plot A of
+  each farm is planted on day 1, Plot B on day 2, Plot C on day 3, Plot D on day 4. Each plot then has its own care:
+  weeding the day after planting (by hand or the inter-row cultivator), the CAN top-dress the same day on a DAP + CAN
+  or double-dose plot (by hand or the spreader), and a spray against stalk borer the day after that (not on the check
+  strip). So the four plots of a farm are at different stages and every day has planting, weeding, feeding and
+  spraying to do: on day 3, Plot C is planted while Plot B is weeded and top-dressed and Plot A is sprayed. Care left
+  undone can be caught up until day 6. At harvest, a plot never weeded loses 10%, a missed top-dress 20% (the CAN
+  never went on), and stalk borer takes 8% of every plot unless it was sprayed (less what its sprayer misses), so the
+  check strip shows what spraying saves. Problems before a plot was planted pass it by. Each plot's care done pays 5
+  points. The task card names the plots due (*Plot B today*, *Plot B · plot care*), the plot board shows each plot's
+  stage that day, and the younger plots are drawn younger in the 3D farm.
 - **The plot board** shows a farm's four plots and every choice with what it is, when it is the right one and what it
   costs. It opens in the plan (the *Plots A–D* row, per farm), at the seed and fertilizer sheds before the first plot
   of a farm is sown or spread, and after the safety kit and product before a spray. A plot already sown or spread keeps
   its input; a change while the farms grow pays or refunds the difference.
-- **The tractor can be used at any point.** At the tractor the farmer picks its type (compact, standard, large: fuel,
-  speed, how much it packs the soil) and its tool (plough, harrow, ridger, planter, seed drill, fertilizer spreader,
-  boom sprayer, maize or bean harvester), with what each tool is for and which farms need that job today. The tool
-  decides the job. Driving onto a plot works that plot only; the first plot a type works on a farm is its plot for the
-  cycle, and a tool used on one plot cannot be used on another plot of that farm. Fuel is paid per plot and job; a
-  plot finished from the seat pays 10 points. *Change tool* swaps the type or tool without getting off.
+- **The tractor can be used at any point.** At the tractor the farmer picks its type (two-wheel, compact, standard,
+  large: fuel, speed, how much it packs the soil) and its tool (plough, harrow, ridger, planter, seed drill, inter-row
+  cultivator, fertilizer spreader, boom sprayer, maize or bean harvester), with what each tool is for and which farms
+  need that job today. The tool decides the job (the spreader feeds at planting and top-dresses later; the sprayer
+  sprays a pest or disease, or stalk borer). Driving onto a plot works that plot only; the first plot a type works on
+  a farm is its plot for the cycle. Fuel is paid per plot and job; a plot finished from the seat pays 10 points.
+  *Change tool* swaps the type or tool without getting off.
 - **Growth on the field.** The crop on each plot grows taller or shorter, greener or paler, with its inputs.
 - **Results by plot.** The results have a *By plot* view: every plot's harvest, and Lima AI's lessons, each a fair
   comparison: every plot's harvest against the same plot with one input changed to a yardstick (long-season hybrid,
