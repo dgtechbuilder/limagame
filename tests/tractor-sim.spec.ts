@@ -24,7 +24,7 @@ test('a plot is one column of a farm: one pass of the tractor down it', () => {
   expect(RIDE_SPEED).toBeGreaterThan(1);
 });
 
-test('the tractor bonus and fuel: once per plot and job, only from the seat, one plot per type and tool', () => {
+test('the tractor bonus and fuel: once per plot and job, only from the seat, one plot per type', () => {
   const c = wakalaCase('plots');
   const base = { ...initialState, trial: c.trial, field: { ...emptyField(c.trial.cycle) }, points: 0, coins: 1000 };
   const rig = { tractor: 'standard', tool: 'plough', job: 'prep' } as const;
@@ -41,14 +41,18 @@ test('the tractor bonus and fuel: once per plot and job, only from the seat, one
   expect(done.field.bonus).toContain('0:prep:0');
   expect(done.toast?.text).toContain('Tractor bonus');
   expect(done.coins).toBe(1000 - TRACTOR_PLOT.standard.fuel);
-  // the same type, or the same tool, on another plot of the farm: refused
+  // the same type on another plot of the farm: refused
   expect(reducer(done, { type: 'fieldMark', farm: 0, job: 'prep', bits: plotMask(1), tractor: true, rig })).toBe(done);
-  expect(reducer(done, { type: 'fieldMark', farm: 0, job: 'prep', bits: plotMask(1), tractor: true, rig: { ...rig, tractor: 'large' } })).toBe(done);
-  // another type with another tool works Plot B
-  const b = reducer(done, { type: 'fieldMark', farm: 0, job: 'prep', bits: plotMask(1), tractor: true, rig: { tractor: 'large', tool: 'harrow', job: 'prep' } });
+  // another type works Plot B, with the same tool or another: a tool can work any plot
+  const b = reducer(done, { type: 'fieldMark', farm: 0, job: 'prep', bits: plotMask(1), tractor: true, rig: { ...rig, tractor: 'large' } });
   expect(b.field.marks['0:prep']).toBe(plotMask(0) | plotMask(1));
   expect(b.trial!.plots![0][1].tractor).toBe('large');
   expect(b.coins).toBe(1000 - TRACTOR_PLOT.standard.fuel - TRACTOR_PLOT.large.fuel);
+  // four types for four plots: the compact and the two-wheel take Plots C and D, so every plot is worked from the seat
+  const c3 = reducer(b, { type: 'fieldMark', farm: 0, job: 'prep', bits: plotMask(2), tractor: true, rig: { tractor: 'compact', tool: 'harrow', job: 'prep' } });
+  const d4 = reducer(c3, { type: 'fieldMark', farm: 0, job: 'prep', bits: plotMask(3), tractor: true, rig: { tractor: 'twoWheel', tool: 'plough', job: 'prep' } });
+  expect(d4.field.marks['0:prep']).toBe(FULL);
+  expect(d4.trial!.plots![0].map(r => r.tractor)).toEqual(['standard', 'large', 'compact', 'twoWheel']);
   // the same job on foot pays no bonus and no fuel
   const foot = reducer(base, { type: 'fieldMark', farm: 0, job: 'prep', bits: FULL });
   expect(foot.points).toBe(0);
@@ -81,6 +85,6 @@ test('the drive can be played by steering: tap-and-hold towards each row, no aut
     expect(r.cov, `farm ${farm + 1} coverage`).toBeGreaterThan(0.6);
     expect(r.score, `farm ${farm + 1} score`).toBeGreaterThan(40);
   }
-  expect(TRACTORS.length).toBe(3);
-  expect(Object.keys(IMPL).length).toBe(9);
+  expect(TRACTORS.length).toBe(4);
+  expect(Object.keys(IMPL).length).toBe(10);
 });
