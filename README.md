@@ -39,6 +39,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [Design review mode](#design-review-mode)
 - [Saving, events and privacy](#saving-events-and-privacy)
 - [Performance on low-cost phones](#performance-on-low-cost-phones)
+- [Tests](#tests)
 - [Assumptions and open decisions](#assumptions-and-open-decisions)
 
 ---
@@ -66,9 +67,13 @@ npm run dev        # http://localhost:5173
 npm run build      # production build in dist/
 npm run preview    # serve the production build
 npm run typecheck  # TypeScript, no output files
+npm test           # Playwright play-tests (run `npx playwright install chromium` once)
 ```
 
-Needs Node 18 or newer. There is no backend: everything runs in the browser.
+Needs Node 18 or newer (CI uses Node 20). There is no backend: everything runs in the browser.
+
+**Stack**: React 19 + TypeScript 5, Vite 6, [three.js](https://threejs.org) 0.170 for the 3D farm, Playwright for the
+play-tests. No other runtime dependencies.
 
 ## Deploy
 
@@ -79,6 +84,9 @@ deploy). The workflow can also be started by hand from the *Actions* tab. Pages 
 
 `vite.config.ts` uses a relative base (`./`), so the same build works at
 `https://<user>.github.io/<repo>/` or any other path.
+
+Pull requests run [`.github/workflows/tests.yml`](.github/workflows/tests.yml): type-check, build and the
+Playwright play-tests, with the report and screenshots kept for 14 days.
 
 Optional build setting: `VITE_EVENTS_URL=https://…` sends the first-session events (see below) to your
 own collector.
@@ -93,10 +101,12 @@ src/
   data.ts                  farm copy, prices, tasks, rewards, storage and processing options
   assets.ts                image paths (art exported from Figma into public/assets)
   styles.css               design tokens (colours, gold button, panels) and component styles
+  speech.ts                Read aloud: the phone's own voice (speechSynthesis)
   components/
     Nav.tsx                Back / Menu / Farm buttons shared by every screen (NavBar, NavContext)
     FarmMap.tsx            the Figma farm map: the ground of the whole game (1× and 2×)
-    FarmScene.tsx          farm screen: HUD, Next Task, field bubbles, selected plot
+    FarmScene.tsx          classic farm screen: HUD, Next Task, field bubbles, selected plot
+    PhotoPicture.tsx       a real photo with its clue ring and credit (author and licence)
     Modal.tsx, ui.tsx, Icons.tsx   modal frames, buttons, chips, inline SVG icons
   screens/
     MainMenu.tsx           the main menu
@@ -107,27 +117,37 @@ src/
     Climate.tsx            the Climate page: Overview, Emissions, Water & soil, Climate shocks, Activity
   art/                     retro anime characters: anime.tsx (SVG kit: farmer, guide, shopkeeper, Ojuok),
                            Cast.tsx (anime or original picture), style.ts (style and read-aloud contexts)
-  speech.ts                Read aloud: the phone's own voice (speechSynthesis)
-  climate/                 climate tracking: model.ts (every factor, the ledger, rating, levels), track.ts (which
-                           actions record what), Tag.tsx (climate tags on choices), sample.ts (design review)
   first/                   the first session (see below)
-  world/                   the farm world (see below): field.ts the work by hand, engine.ts the 3D farm, World.tsx the HUD
-  trials/                  the six farms (see below): model.ts holds every number; Trials.tsx the screens (loaded when opened)
+  rounds/                  field rounds (see below), loaded only when opened:
+    data.ts, farms.ts      the beds, their crops and the points a check pays
+    hazards.ts             every situation, by crop and stage, and the calls
+    walk.ts                the walking network over the painted map
+    Rounds.tsx, Inspect.tsx, scene.tsx   the rounds, a bed's check, and the drawn pictures
+    trial.ts               a six-farm check: what a farm shows today, from its own plan
+    photos.ts, photos/     real photos from Wikimedia Commons by situation, credits.json + CREDITS.md (see photos/README.md)
+  world/                   the 3D farm world (see below): field.ts the work by hand (no three.js), engine.ts the scene,
+                           models.ts the low-poly models, toon.ts the anime cel shading, World.tsx the HUD
+  trials/                  the six farms (see below): model.ts holds every number; Trials.tsx the screens (loaded when
+                           opened); samples.ts sample cycles for design review
   care/                    from Wakala Agent: the fix after a right call, the safety kit and product, follow-ups (data.ts),
-                           Mama Achieng's lines (voice.ts), and their screens (loaded when opened)
+                           Mama Achieng's lines (voice.ts), and their screens Prescribe.tsx, Spray.tsx (loaded when opened)
   plots/                   plots A to D: data.ts (seeds, fertilizers, sprayers, tractor types and tools, with what each
                            does and costs); PlotBoard.tsx (a seed, fertilizer and sprayer per plot); TractorPick.tsx
   tractor/                 from Wakala Agent: the tractor drive before planting: data.ts, sim.ts (no DOM), Tractor.tsx
+  climate/                 climate tracking: model.ts (every factor, the ledger, rating, levels), track.ts (which
+                           actions record what), Tag.tsx (climate tags on choices), sample.ts (design review)
+  review/Review.tsx        design review (?review=1): sample states for every screen, loaded only in review
   dev/hook.ts              ?dev in dev builds only: state and jump-to-state helpers for the play-tests
-tests/                     Playwright play-tests (npm test)
-  rounds/                  field rounds: checks of every bed on the farm, back to back (see below); loaded only when opened
-    trial.ts               a six-farm check: what a farm shows today, from its own plan
-    photos/                real photos from Wikimedia Commons by situation, credits.json + CREDITS.md (see photos/README.md)
+tests/                     Playwright play-tests (npm test, see Tests below); helpers.ts shared set-up
 public/
   assets/                  130 images exported from Figma, incl. bg-farm.webp and bg-farm@2x.webp
-  manifest.webmanifest     installable web app (landscape, full screen) + icons
+  manifest.webmanifest     installable web app (landscape, full screen) + icon-192.png, icon-512.png
+  sw.js                    service worker (published game only): a second visit opens without downloading again
 design-refs/               PNG renders of the 22 Figma frames, for side-by-side checks
-docs/                      screenshots used in this README
+docs/                      screenshots used in this README (docs/wakala/ for the Wakala moments) and
+                           plot-trials-plan.md (the plan for plots A to D)
+.github/workflows/         deploy.yml (GitHub Pages) and tests.yml (pull requests)
+playwright.config.ts, vite.config.ts, tsconfig.json
 ```
 
 ## How the Figma design maps to code
@@ -477,12 +497,8 @@ morning and evening windows, the three-misses rule, browser notifications, hold-
 harvest tractor stages, the boom-sprayer, delivery and route jobs, gems, hub maps, road walking and its onboarding.
 Wakala's photos were not added yet (Wikimedia could not be reached from the build session).
 
-**Tests.** `npm test` runs the Playwright play-tests in `tests/` against the dev server (run
-`npx playwright install chromium` once): a world check with a wrong then right fix and the work by hand, a
-follow-up done and one missed, a spray job with the kit and product, a tractor drive on autopilot, the first session
-read right and wrong, saving and *Reset progress*, the tractor's type and tool on its own plot, the plot board at the
-seed shed and in the plan, the results by plot, and a tour on a 740 × 340 touch screen that saves screenshots to
-`test-results/tour/`. They run on every pull request (`.github/workflows/tests.yml`).
+**Tests.** The Wakala moments are played by `tests/care.spec.ts`, `tests/tractor.spec.ts` and `tests/tour.spec.ts`;
+see [Tests](#tests).
 
 ## Plots A to D
 
@@ -615,6 +631,7 @@ player's saved game or events.
   (see [From Wakala Agent](#from-wakala-agent)). Each has a
   timestamp and time since the first event. They are kept on the device (`lima-events`, last 300) and, only
   if `VITE_EVENTS_URL` is set at build time, sent with `navigator.sendBeacon`.
+- **Settings** are saved inside the same game save (`GameState.settings`) and survive *Reset progress*.
 - **No personal data is sent.** Events never include the farmer's name. There are no accounts, cookies or
   third-party scripts; the only outside request is the Poppins font from Google Fonts.
 
@@ -653,6 +670,26 @@ player's saved game or events.
   downloading it again, and the game plays on a weak signal. The page is fetched fresh when there is a connection,
   so an update shows at once.
 
+## Tests
+
+`npm test` runs the Playwright play-tests in `tests/` against the dev server (run `npx playwright install chromium`
+once). They open the game with `?dev`, set up a moment through `window.__lima` (`src/dev/hook.ts`) and play it through
+the real screens. They run on every pull request (`.github/workflows/tests.yml`).
+
+| File | What it plays |
+| --- | --- |
+| `first-session.spec.ts` | the first session read right first time; a wrong call then the back maize; saving and *Reset progress* |
+| `care.spec.ts` | a world check with a wrong then right fix and the work by hand; a follow-up done and one missed; a spray job with the kit and product |
+| `tractor.spec.ts` | hiring the tractor: tractor and implement, a drive on autopilot, the summary |
+| `tractor-ride.spec.ts` | the tractor's type and tool on one plot from the seat; walking to the tractor; the hired tractor ploughing a whole farm |
+| `tractor-sim.spec.ts` | the tractor rules with no browser: one pass per plot, bonus and fuel once per plot and job, steering without autopilot |
+| `plots.spec.ts` | the plot board at the seed shed and in the plan; the results by plot |
+| `nav.spec.ts` | the main menu, Back, Menu and Farm on the shop, Mission and the tractor drive |
+| `settings.spec.ts` | every Settings section; character style; rename and look; graphics and motion; read aloud; reset keeps settings |
+| `climate.spec.ts` | the CLIMATE button and page; Farm Moja tasks, six-farm plans, tractor diesel and harvests tracked; selling; climate levels |
+| `tour.spec.ts` | a tour of the Wakala moments on a 740 × 340 touch screen, saving screenshots to `test-results/tour/` |
+| `perf.spec.ts` | start-up and the 3D farm on a phone screen: frame cost, triangles and draw calls (prints the numbers) |
+
 ## Assumptions and open decisions
 
 - **Game balance** (task counts, yields, prices, point costs) is illustrative, not agronomic data.
@@ -670,8 +707,8 @@ player's saved game or events.
 - **No two plans the same** is enforced; *one change per farm* is suggested, not enforced.
 - **The 3D farm world** needs human play-testing on watering, spraying, drains, the goat, tractor/oxen hire, a
   full six-farm cycle and the daily (one-day-per-real-day) clock — only a two-farm guided cycle has been run so far.
-- **Art styles**: the farm and UI are the painted Figma art; the first-session crops and the farmer are
-  drawn flat in code.
+- **Art styles**: the farm and UI are the painted Figma art; the first-session crops are drawn flat in code; the
+  characters are retro anime by default (*Original* in Settings brings back the Figma pictures).
 - **Language**: English with a little Swahili (*Karibu*, *Twende*, shamba, sukuma wiki). Full Swahili is not done.
 - **Messages** shows a reminder to check every bed; there is no inbox yet.
 - The faint 5% pattern texture on the cream panels in Figma is omitted.
