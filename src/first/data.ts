@@ -146,3 +146,65 @@ export const SHAMBAS: Record<string, ShambaReview> = {
 };
 
 export const say = (line: string, name: string) => line.replace(/\{name\}/g, name);
+
+/* ------------------------------------------------------------------ */
+/* The story so far: three pages, after the farmer is named and before the first walk.
+   The farmer bought this farm, last season's harvest failed and lost money, and this season they start by learning
+   from each mistake. Each mistake is one the game then teaches: reading the crops (the maize check), watering by
+   the soil (the sukuma wiki check), and when to harvest, store and sell (the season). */
+
+export interface StoryMistake {
+  /** icon, from the review calls */
+  icon: Call;
+  what: string;
+  lesson: string;
+}
+
+export interface StoryPage {
+  id: 'bought' | 'failed' | 'learn';
+  title: string;
+  lines: string[];
+  /** page 2: what the season cost, in shillings */
+  ledger?: { label: string; ksh: number; kind: 'out' | 'in' | 'lost' }[];
+  /** page 3: last season's mistakes, each with what to do instead */
+  mistakes?: StoryMistake[];
+  button: string;
+}
+
+export const STORY: StoryPage[] = [
+  {
+    id: 'bought',
+    title: 'A farm of my own',
+    lines: [
+      'For years, {name} saved from a job in town. Last year, the savings bought this farm: red soil, a water tank and a small hut.',
+      'The plan was simple: plant maize and sukuma wiki, come back at harvest, and sell.',
+    ],
+    button: 'Next',
+  },
+  {
+    id: 'failed',
+    title: 'The harvest that failed',
+    lines: [
+      'The maize came up green, then went ragged. By the time {name} looked closely, caterpillars had eaten most of it, and the sukuma wiki at the back had dried out.',
+    ],
+    ledger: [
+      { label: 'Spent on seed, fertiliser and labour', ksh: 38000, kind: 'out' },
+      { label: 'Earned from the harvest', ksh: 14500, kind: 'in' },
+      { label: 'Lost', ksh: 23500, kind: 'lost' },
+    ],
+    button: 'Next',
+  },
+  {
+    id: 'learn',
+    title: 'What went wrong',
+    lines: ['This season {name} will farm smarter, starting with last season’s mistakes.'],
+    mistakes: [
+      { icon: 'pests', what: 'Checked the crops only now and then.', lesson: 'Check every bed often, and catch pests early.' },
+      { icon: 'water', what: 'Watered when it was easy.', lesson: 'Read the soil, and water when the crop needs it.' },
+      { icon: 'harvestEarly', what: 'Sold everything at harvest, at the lowest price.', lesson: 'Plan when to harvest, store and sell.' },
+    ],
+    button: 'Start with my maize',
+  },
+];
+
+export const ksh = (n: number) => `KSh ${n.toLocaleString('en-US')}`;

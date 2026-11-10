@@ -4,11 +4,12 @@ import { FarmerPortrait } from './art';
 import { CreateFarmer } from './Create';
 import { LOOKS, SHAMBAS, say } from './data';
 import { GuideLine, Review } from './Review';
+import { Story } from './Story';
 import { track } from './track';
 import { Village } from './Village';
 
 /* The first session, in order, all on the farmer's own farm:
-   create the farmer → walk to the maize → first check (wrong call → back maize bed → check again)
+   create the farmer → the story so far (bought the farm, last harvest failed, learn from the mistakes) → walk to the maize → first check (wrong call → back maize bed → check again)
    → the whole farm opens → walk to the sukuma wiki → second check → field rounds: check every bed. */
 
 export function FirstSession({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
@@ -56,7 +57,7 @@ export function FirstSession({ s, dispatch }: { s: GameState; dispatch: Dispatch
           onDone={(n, l) => {
             track('farmer_created', { look: l, suggested: ['Wanjiku', 'Otieno', 'Chebet'].includes(n) });
             dispatch({ type: 'farmer', name: n, look: l });
-            go('walk1');
+            go('story');
           }}
         />
       </>
@@ -70,6 +71,14 @@ export function FirstSession({ s, dispatch }: { s: GameState; dispatch: Dispatch
     </div>
   );
   const topLine = { top: 8, bottom: 'auto', left: 172, right: 190 } as const;
+
+  if (phase === 'story')
+    return (
+      <>
+        <Village look={look} name={name} route={null} target={null} open={false} />
+        <Story name={name} look={look} onDone={() => go('walk1')} />
+      </>
+    );
 
   if (phase === 'walk1')
     return (
