@@ -53,7 +53,9 @@ function Row({ title, body, children }: { title: string; body: ReactNode; childr
 }
 
 export function SettingsPage({ s, dispatch, tab: startTab }: Props) {
-  const [tab, setTab] = useState<SettingsTab>(startTab ?? (s.farmer ? 'farmer' : 'game'));
+  // the tab is part of the address (#/settings/display), so it lives in the game state
+  const tab: SettingsTab = startTab ?? (s.farmer ? 'farmer' : 'game');
+  const setTab = (t: SettingsTab) => dispatch({ type: 'open', modal: { kind: 'settings', tab: t } });
   const set = (patch: Partial<Settings>) => dispatch({ type: 'settings', patch });
   const close = () => dispatch({ type: 'close' });
 
@@ -293,6 +295,9 @@ function HelpTab({ s, dispatch }: Props) {
         <GoldButton font={10} height={28} style={{ width: 120 }} onClick={() => dispatch({ type: 'open', modal: { kind: 'welcome' } })}>
           Open
         </GoldButton>
+      </Row>
+      <Row title="Page addresses" body="Every page has its own address after the # in the address bar. Change it to go to another page, e.g. #/farm, #/shop/food or #/climate/emissions.">
+        <code className="set-address">#/settings/help</code>
       </Row>
       <Row title="Design review" body="A sandbox with a menu of every screen. Your game is not changed.">
         <GoldButton

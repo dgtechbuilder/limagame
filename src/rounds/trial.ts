@@ -7,6 +7,7 @@ import {
   FARM_STEPS,
   canTreat,
   causeOf,
+  cropOf,
   farmName,
   hazardFor,
   lower,
@@ -21,7 +22,7 @@ import {
 const OUTSIDE: TrialHazard[] = ['hail', 'livestock'];
 
 export const planLine = (t: Trial, farm: number) =>
-  'Plan: ' + FARM_STEPS.map(s => lower(optionOf(s.key, t.plans[farm]).label)).join(' · ') + ' · 4 plots';
+  'Plan: ' + FARM_STEPS.map(s => lower(optionOf(s.key, t.plans[farm]).label)).join(' · ') + ' · 20 plots';
 
 export interface TrialRound extends Round {
   farmIndex: number;
@@ -38,7 +39,7 @@ export function trialRounds(t: Trial, day: number): TrialRound[] {
     const bed = FARMS[i];
     const round = checkFor({ ...bed, id: `t${i}`, n: i + 1, title: `{name}'s ${farmName(i)}`, short: farmName(i) }, elapsed, {
       hazard: h,
-      crop: 'maize',
+      crop: cropOf(t, i),
       stage,
     });
     const outside = OUTSIDE.includes(h) || (h === 'flood' && !causeOf(h, plan, t.forecast).startsWith('This farm'));

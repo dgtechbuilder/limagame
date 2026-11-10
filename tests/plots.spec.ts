@@ -1,42 +1,89 @@
-import { expect, test } from '@playwright/test';
-import { boot, scenario, state, tapTask, type Win } from './helpers';
+import { expect, test, type Page } from '@playwright/test';
+import { boot, state, type Win } from './helpers';
 
-/* Four mini plots on every farm (A to D): each seed, fertilizer and sprayer goes on one plot of a farm, chosen on the
-   plot board (at the shed and in the plan), and the results show every plot's harvest and what each choice did. */
+/* Every farm is 20 plots (its 4 × 5 tiles), cleared and planted one plot at a time: stand on a plot, press Clear or
+   Plant, and a 3-second timer does the work. The first planting period grows maize on Farm 1 (to clear first) and
+   sukuma wiki on Farm 2 (cleared already, ready to plant). Seed, fertilizer and sprayer are one set per farm. */
 
 const FULL = (1 << 20) - 1;
 type D = { dispatch: (a: unknown) => void };
+const task = (page: Page) => page.locator('.hud-task b').innerText();
 
-test('at the seed shed, the plot board puts a seed on each plot (one seed per plot)', async ({ page }) => {
-  test.setTimeout(180_000);
+/** Open the farm world on a new player's first cycle. */
+async function firstCycle(page: Page) {
   await boot(page);
-  await scenario(page, 'plots');
-  // both farms dug: next, the seed
-  await page.evaluate(F => {
-    const d = (window as unknown as Win).__lima as unknown as D;
-    d.dispatch({ type: 'fieldMark', farm: 0, job: 'prep', bits: F });
-    d.dispatch({ type: 'fieldMark', farm: 1, job: 'prep', bits: F });
-  }, FULL);
-  const before = await state(page);
-  await tapTask(page, 'Get seeds');
-  await expect(page.locator('.pb-grid')).toBeVisible({ timeout: 60_000 });
-  await expect(page.locator('.pb-grid .pb-cell')).toHaveCount(4);
-  // every choice says what it is for and what it costs
-  await expect(page.locator('.pb-opt')).toHaveCount(6);
-  await expect(page.locator('.pb-opt', { hasText: 'Saved seed' })).toContainText('coins');
-  // Plot A takes the saved seed; the plot that had it (D) gets Plot A's seed: each seed stays on one plot
-  await page.locator('.pb-grid .pb-cell').first().click();
-  await page.locator('.pb-opt', { hasText: 'Saved seed' }).click();
-  await expect(page.locator('.pb-grid .pb-cell').first()).toContainText('Saved seed');
+  await page.evaluate(() => (window as unknown as Win).__lima.jump({ view: 'world', trial: null, trialHistory: [], coins: 5000 }));
+  await page.waitForFunction(() => !!(window as unknown as Win).__limaWorld && !!(window as unknown as Win).__lima.state.trial);
+  await page.evaluate(() => ((window as unknown as Win).__limaWorld!.speedScale = 6));
+}
+
+/** Walk to the plot the task card points at (tap the card), then press its button and wait for the timer. */
+async function workNextPlot(page: Page) {
+  // the farm the task card names; the farmer is put on its next plot (walking there is played in the first plots)
+  const farm = Number(/Farm (\d)/.exec(await task(page))![1]) - 1;
+  await page.evaluate(f => {
+    const w = (window as unknown as Win).__limaWorld!;
+    const t = w.nextTile(f);
+    w.spawn(t.x, t.z);
+  }, farm);
+  await page.locator('.hud-plot').click({ timeout: 20_000 });
+  await expect(page.locator('.hud-timer')).toBeHidden({ timeout: 10_000 });
+}
+
+test('the first planting period: maize on Farm 1 to clear, sukuma wiki on Farm 2 to plant; the timer takes 3 seconds', async ({ page }) => {
+  test.setTimeout(480_000);
+  await firstCycle(page);
+  const s0 = await state(page);
+  expect(s0.trial.phase).toBe('growing');
+  expect(s0.trial.crops).toEqual(['maize', 'kale']);
+  expect(s0.trial.cleared).toEqual([1]);
+  expect(s0.trial.plots[0]).toHaveLength(1);
+  await expect(page.locator('.hud-task')).toContainText('Clear Farm 1 for maize');
+  await expect(page.locator('.hud-task')).toContainText('20 of 20 plots left');
+
+  // the first plot at the real speed: a button on the plot, then a 3-second timer
+  await page.locator('.hud-task').click();
+  const button = page.locator('.hud-plot');
+  await expect(button).toContainText('Clear');
+  await expect(button).toContainText('Plot 1');
+  await button.click();
+  const timer = page.getByRole('timer');
+  await expect(timer).toContainText('Clearing Plot 1');
+  await page.waitForTimeout(1500);
+  expect((await state(page)).field.marks['0:prep'] ?? 0).toBe(0);
+  await expect(timer).toBeHidden({ timeout: 4000 });
+  await expect.poll(async () => (await state(page)).field.marks['0:prep']).toBe(1);
+  await expect(page.locator('.hud-hint')).toContainText('Plot 1 cleared · 19 to go on Farm 1');
+
+  // walking off the plot stops the work, and the plot stays as it was
+  await page.locator('.hud-task').click();
+  await button.click({ timeout: 20_000 });
+  await page.evaluate(() => {
+    const w = (window as unknown as Win).__limaWorld!;
+    const at = w.farmerAt();
+    w.walkTo(at.x, at.z + 8);
+  });
+  await expect(page.locator('.hud-hint')).toContainText('Stay on the plot', { timeout: 5000 });
+  expect((await state(page)).field.marks['0:prep']).toBe(1);
+
+  // the rest quickly: every plot of Farm 1 cleared, then the sukuma wiki planted, then the maize
+  await page.evaluate(() => ((window as unknown as Win).__limaWorld as unknown as { workScale: number }).workScale = 0.05);
+  const order: string[] = [];
+  // a press while the farmer is still arriving can be stopped (they walked off): tries to spare
+  for (let n = 0; n < 200; n++) {
+    const t = await task(page);
+    if (!order.includes(t)) order.push(t);
+    if (!/^(Clear|Plant)/.test(t)) break;
+    await workNextPlot(page);
+  }
+  expect(order).toEqual(['Clear Farm 1 for maize', 'Plant sukuma wiki on Farm 2', 'Plant maize on Farm 1', 'Get fertilizer']);
   const s1 = await state(page);
-  expect(s1.trial.plots[0].map((r: { seed: string }) => r.seed)).toEqual(['saved', 'dt', 'opv', 'certified']);
-  // a swap costs nothing: the same four seeds
-  expect(s1.coins).toBe(before.coins);
-  await page.getByRole('button', { name: 'Take the seed', exact: true }).click();
-  await expect.poll(async () => (await state(page)).field.carry).toBe('seeds');
+  expect(s1.field.marks).toMatchObject({ '0:prep': FULL, '1:sow': FULL, '0:sow': FULL });
+  // Farm 2 was never cleared by hand: it started cleared
+  expect(s1.field.marks['1:prep']).toBeUndefined();
 });
 
-test('the plan: each farm has a plot board, and the results compare every plot', async ({ page }) => {
+test('the plan: one set of inputs per farm, and the results by input', async ({ page }) => {
   test.setTimeout(180_000);
   await boot(page);
   // a six-farm plan
@@ -48,18 +95,21 @@ test('the plan: each farm has a plot board, and the results compare every plot',
   await expect(page.locator('.tr-plots')).toHaveCount(6);
   await page.locator('.tr-plots').nth(2).click();
   await expect(page.locator('.pb-tabs [aria-selected="true"]')).toHaveText('Farm 3');
-  // Farm 3, Plot B's fertilizer: farmyard manure (it swaps with Plot C)
-  await page.locator('.pb-grid .pb-cell').nth(5).click();
+  await expect(page.locator('.pb-head')).toHaveText('All 20 plots');
+  await expect(page.locator('.pb-grid .pb-cell')).toHaveCount(3);
+  // Farm 3's fertilizer: farmyard manure, for the whole farm
+  await page.locator('.pb-grid .pb-cell').nth(1).click();
   await page.locator('.pb-opt', { hasText: 'Farmyard manure' }).click();
   const s = await state(page);
-  expect(s.trial.plots[2][1].fert).toBe('manure');
-  expect(s.trial.plots[2][2].fert).toBe('basalTop');
+  expect(s.trial.plots[2]).toHaveLength(1);
+  expect(s.trial.plots[2][0].fert).toBe('manure');
+  expect(s.trial.plots[1][0].fert).toBe('basal');
   await page.getByRole('button', { name: 'Done', exact: true }).click();
+  await expect(page.locator('.tr-plots').nth(2)).toContainText('Long-season hybrid');
 
-  // grow and harvest at once, then the results by plot
+  // grow and harvest at once, then the results by input
   await page.evaluate(() => {
-    const l = (window as unknown as Win).__lima;
-    const d = l as unknown as D;
+    const d = (window as unknown as Win).__lima as unknown as D;
     d.dispatch({ type: 'trialSuggest' });
     d.dispatch({ type: 'trialPlant', clock: 'fast' });
   });
@@ -69,10 +119,10 @@ test('the plan: each farm has a plot board, and the results compare every plot',
     l.jump({ trial: { ...l.state.trial, day: 7 }, trialHistory: l.state.trialHistory, coins: l.state.coins, trialsOpen: true });
   });
   await page.evaluate(() => ((window as unknown as Win).__lima as unknown as D).dispatch({ type: 'trialHarvest' }));
-  await page.getByRole('tab', { name: 'By plot', exact: true }).click();
-  await expect(page.locator('.pt-cell')).toHaveCount(24);
-  await expect(page.locator('.tr-lessons')).toContainText('Seed.');
+  await page.getByRole('tab', { name: 'By input', exact: true }).click();
+  await expect(page.locator('.pt-cell')).toHaveCount(6);
+  await expect(page.locator('.pt-cell').nth(2)).toContainText('Manure');
   await expect(page.locator('.tr-lessons')).toContainText('Fertilizer.');
   const r = await state(page);
-  expect(r.trial.results[0].plots).toHaveLength(4);
+  expect(r.trial.results[0].plots).toHaveLength(1);
 });

@@ -31,8 +31,9 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [The farm world](#the-farm-world)
 - [The six farms](#the-six-farms)
 - [From Wakala Agent](#from-wakala-agent)
-- [Plots A to D](#plots-a-to-d)
+- [Plots and inputs](#plots-and-inputs)
 - [Navigation and the main menu](#navigation-and-the-main-menu)
+- [Page addresses](#page-addresses)
 - [Settings](#settings)
 - [Climate tracking](#climate-tracking)
 - [Character art: retro anime](#character-art-retro-anime)
@@ -53,7 +54,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 | **0:25** | Checks the maize by looking: spots the rows with fall armyworm and makes the right call. This is the moment the game is built around. |
 | **~2:00** | The whole farm opens. Their sukuma wiki needs the same kind of check, with fewer hints. |
 | **~3:00** | **Field rounds**: checks every bed on the farm, one after another — and comes back often, because every bed changes every day. |
-| **Then** | **Two farms** (about 10 minutes): Farm 1 grows maize a common way, the player changes one thing on Farm 2, checks both every day for six days, harvests and sees which grew more, and why. |
+| **Then** | **The first planting period** (about 10 minutes): maize on Farm 1, which they clear plot by plot, and sukuma wiki on Farm 2, which they plant plot by plot; then they check both every day for six days and harvest. |
 | **Every week** | **Six farms**: a different plan on each farm, one day of checks each real day (or all now), then the harvests compared. The plan that worked becomes their recipe for the next cycle. |
 | **Any time** | Plays seasons of maize on Farm Moja: six farming steps, harvest timing, storage, processing, selling, results, rewards. |
 
@@ -116,8 +117,8 @@ src/
   trials/                  the six farms (see below): model.ts holds every number; Trials.tsx the screens (loaded when opened)
   care/                    from Wakala Agent: the fix after a right call, the safety kit and product, follow-ups (data.ts),
                            Mama Achieng's lines (voice.ts), and their screens (loaded when opened)
-  plots/                   plots A to D: data.ts (seeds, fertilizers, sprayers, tractor types and tools, with what each
-                           does and costs); PlotBoard.tsx (a seed, fertilizer and sprayer per plot); TractorPick.tsx
+  plots/                   plots and inputs: data.ts (20 plots a farm; seeds, fertilizers, sprayers, tractor types and
+                           tools, with what each does and costs); PlotBoard.tsx (a farm's seed, fertilizer and sprayer); TractorPick.tsx
   tractor/                 from Wakala Agent: the tractor drive before planting: data.ts, sim.ts (no DOM), Tractor.tsx
   dev/hook.ts              ?dev in dev builds only: state and jump-to-state helpers for the play-tests
 tests/                     Playwright play-tests (npm test)
@@ -318,11 +319,15 @@ WASD. The **task card** at the top says what to do next; tap it and the farmer w
 
 ![The farm world](docs/farm-world.webp)
 
-- **The six farms are six plots** of 4 × 5 tiles, Farms 1–3 at the back and 4–6 in front, each with a sign. Walking
-  over a farm does its next job on the tiles within reach (two passes cover a farm), with the tool or load it needs:
-  - **land prep**: dig with a hoe, clear with a sickle, or mulch, as the plan says; **tractor hire** and **oxen** are
-    hired at the **Hire** spot by the shed, and plough the farms themselves while the farmer works elsewhere;
-  - **sowing** with the seed sack and **fertilizer at planting** with the bag, both picked up at the shed;
+- **The six farms** each have **20 plots** (4 × 5 tiles, Plot 1 at the back left), Farms 1–3 at the back and 4–6 in
+  front, each with a sign. **Clearing and planting are done one plot at a time**: the farmer stands on a plot, a
+  **Clear** or **Plant** button shows under them, and pressing it starts a **3-second timer** (a stopwatch over the
+  farmer, its ring filling). Walking off the plot stops the timer and the plot stays as it was. The task card counts
+  the plots left and walks the farmer to the next one. The other jobs are done by walking over the plots with the tool
+  or load they need:
+  - **land prep** by hand is the Clear button (the plan says how: hoe, sickle or mulch); **tractor hire** and
+    **oxen** are hired at the **Hire** spot by the shed, and plough the farms themselves while the farmer works elsewhere;
+  - **planting** is the Plant button (no seed sack to fetch); **fertilizer at planting** with the bag from the shed;
   - **each day's check**: walk to a farm's sign (a **!** badge) to read it, with the same real photos and calls as the
     field rounds. A right call turns into work by hand: **cut the weeds**, **water** (fill the can at the pond),
     **top-dress**, **spray** (the sprayer from the shed), **dig drains** through puddles, **chase the goat out**,
@@ -333,9 +338,9 @@ WASD. The **task card** at the top says what to do next; tap it and the farmer w
   Problems missed earlier leave the farm yellower.
 - **The tractor** waits by the shed. Tap **TRACTOR** (left edge) to walk to it; there the farmer picks its type and
   tool, then hops on (**GET OFF** to step down, **Change tool** to swap). The tool decides the job, and the tractor works
-  the plot (A to D) under it: see [Plots A to D](#plots-a-to-d). It drives a little faster than walking and does a
-  whole plot in one pass. A plot finished from the seat pays **+10 bonus points** once per plot and job
-  (`TRACTOR_BONUS`). The hired tractor (a *Tractor hire* plan) ploughs a whole farm in one pass.
+  the plots under it as it drives (a column of five plots a pass): see [Plots and inputs](#plots-and-inputs). It drives
+  a little faster than walking. A farm whose 20 plots are all done from the seat pays **+30 bonus points** once per
+  farm and job (`TRACTOR_BONUS.perJob`). The hired tractor (a *Tractor hire* plan) ploughs a whole farm in one pass.
 - **Sleep** at the farmhouse starts the next day (on the fast clock); **Plan** by the house, or **Mission** on the
   HUD, opens the plans, progress and results.
 - The HUD: the farmer and their level (top left), settings, coins and points (top right; **+** opens the shop and
@@ -349,7 +354,7 @@ farmer. The world is loaded only after the first session (`src/world/`, about 15
 `src/world/field.ts` holds the field work (which jobs, in which order, which tiles), with no three.js, so the saved
 game can use it.
 
-A full guided cycle (dig → sow → fertilize → six days of checks, including a right call becoming weeding and
+A full guided cycle (clear → plant → fertilize → six days of checks, including a right call becoming weeding and
 scaring off birds → harvest → sell) has been played end to end with no errors. **Not yet human-tested**: watering,
 spraying, digging drains, chasing the goat, hiring the tractor or oxen, a full six-farm cycle, and the daily clock
 (one day per real day). The first session (the village walk) is still the 2D Figma map, not the 3D world.
@@ -386,10 +391,21 @@ today, or **!** at harvest).
 
 ![Six harvests compared, with Lima AI's reasons](docs/six-farms-results.webp)
 
-**The first cycle is guided**: two farms, Farm 1 locked to a common way of growing maize (hand hoe, saved seed,
-planted with the rains, fertilizer at planting only, no pest control, rain only, harvested when ready), and the
-player changes one thing on Farm 2. Its days move on as soon as both farms are checked, so the whole cycle takes
-about 10 minutes. From the second cycle there are six farms, the season's rain changes (normal, dry, normal, wet),
+**The first planting period** (the first cycle) needs no planning: it starts as soon as the farm opens, with two
+farms grown a common way (hand hoe, planted with the rains, fertilizer at planting only, no pest control, rain only,
+harvested when ready), each a different crop at a different stage:
+
+- **Farm 1: maize, before planting.** Its 20 plots are still wild grass: the farmer clears each one (the Clear button
+  and its 3-second timer), then plants it.
+- **Farm 2: sukuma wiki, at planting.** It starts cleared, ready to plant: the farmer plants each of its 20 plots
+  (the Plant button, 3 seconds each).
+
+The task card leads in that order: clear Farm 1's plots, then plant the sukuma wiki on Farm 2, then plant the maize on
+Farm 1, then fertilizer at planting. Sukuma wiki grows as low, broad-leafed plants in the 3D farm; its checks use the
+sukuma wiki pictures and photos of the field rounds, and it meets **aphids** where maize meets armyworm (no birds at
+the cobs). The results show each farm's harvest and what it lost. **Sukuma wiki uses maize's yield and price numbers
+for now** (bags, at maize prices) until an agronomist sets its own. The days move on as soon as both farms are
+checked, so the whole cycle takes about 10 minutes. From the second cycle there are six farms of maize, the season's rain changes (normal, dry, normal, wet),
 and the player chooses how the days pass: **one day each real day** (the daily habit, about a week a cycle) or
 **all six days now**; they can switch at any time.
 
@@ -498,34 +514,35 @@ read right and wrong, saving and *Reset progress*, the tractor's type and tool o
 seed shed and in the plan, the results by plot, and a tour on a 740 × 340 touch screen that saves screenshots to
 `test-results/tour/`. They run on every pull request (`.github/workflows/tests.yml`).
 
-## Plots A to D
+## Plots and inputs
 
-Every farm is split into four mini plots, A to D (its four columns of tiles). Each plot is a small on-farm trial: it gets
-its own seed, fertilizer, sprayer and machine, while the weather, the farm plan and the care stay the same across the
-farm, so the harvest shows what each choice did. The plan is in `docs/plot-trials-plan.md`; every word and number is in
-`src/plots/data.ts`, for an agronomist's review.
+**Every farm is 20 plots**: its 4 × 5 tiles, Plot 1 at the back left to Plot 20 at the front right
+(`PLOTS_PER_FARM` in `src/plots/data.ts`; `plotAt` in `src/world/field.ts` finds the plot under the farmer). The work
+done is a 20-bit mask per farm and job, one bit per plot. **Clearing and planting are done a plot at a time** with the
+Clear and Plant buttons and a 3-second timer (`PLOT_WORK_S`); the other jobs by walking over the plots.
 
-- **One of each per farm.** A seed, a fertilizer, a sprayer, a tractor type and a tool each go on one plot of a farm.
-  Choosing one already on another plot swaps the two, so every farm always compares four seeds and four fertilizers
-  (one plot gets none, as the control) and four sprayers (one plot is an unsprayed check strip). Three tractor types
-  means at least one plot is worked by hand.
-- **The plot board** shows a farm's four plots and every choice with what it is, when it is the right one and what it
-  costs. It opens in the plan (the *Plots A–D* row, per farm), at the seed and fertilizer sheds before the first plot
-  of a farm is sown or spread, and after the safety kit and product before a spray. A plot already sown or spread keeps
-  its input; a change while the farms grow pays or refunds the difference.
+**Inputs are one set per farm**: one seed, one fertilizer and one sprayer for all 20 plots, so the six farms compare
+them. Every word and number is in `src/plots/data.ts`, for an agronomist's review.
+
+- **The inputs board** shows a farm's seed, fertilizer and sprayer, with what each choice is, when it is the right one
+  and what it costs. It opens in the plan (the *Inputs* row, one box per farm), and at the fertilizer and sprayer sheds.
+  A farm already sown or spread keeps its input; a change while the farms grow pays or refunds the difference.
 - **The tractor can be used at any point.** At the tractor the farmer picks its type (compact, standard, large: fuel,
   speed, how much it packs the soil) and its tool (plough, harrow, ridger, planter, seed drill, fertilizer spreader,
   boom sprayer, maize or bean harvester), with what each tool is for and which farms need that job today. The tool
-  decides the job. Driving onto a plot works that plot only; the first plot a type works on a farm is its plot for the
-  cycle, and a tool used on one plot cannot be used on another plot of that farm. Fuel is paid per plot and job; a
-  plot finished from the seat pays 10 points. *Change tool* swaps the type or tool without getting off.
-- **Growth on the field.** The crop on each plot grows taller or shorter, greener or paler, with its inputs.
-- **Results by plot.** The results have a *By plot* view: every plot's harvest, and Lima AI's lessons, each a fair
-  comparison: every plot's harvest against the same plot with one input changed to a yardstick (long-season hybrid,
-  no fertilizer, work by hand, the tool the farm needed, no spray), averaged over the plots with each choice.
-- **Proposed numbers.** Seeds and fertilizers change yield as proposed in the plan (drought-tolerant seed in a dry
-  season, DAP and CAN against no fertilizer, a large tractor's soil packing, the wrong tool for the ground). They are
-  game estimates until reviewed. The farm plan keeps land prep, date, pest control, water and harvest.
+  decides the job, and the tractor works the plots it drives over. Fuel is paid once per farm and job (24, 36 or 56
+  coins); a farm whose 20 plots are all done from the seat pays 30 points. The first type and tool on a farm are kept
+  with its results; spraying from the seat makes the farm's sprayer the boom sprayer. *Change tool* swaps the type or
+  tool without getting off.
+- **Growth on the field.** A farm's crop grows taller or shorter, greener or paler, with its inputs.
+- **Results by input.** The results have a *By input* view: every farm's harvest beside its seed, fertilizer, sprayer
+  and tractor, and Lima AI's lessons, each a fair comparison: a farm's harvest against the same farm with one input
+  changed to a yardstick (long-season hybrid, no fertilizer, work by hand, the tool the farm needed, no spray),
+  averaged over the farms with each choice.
+- **Proposed numbers.** Seeds and fertilizers change yield as proposed in `docs/plot-trials-plan.md` (drought-tolerant
+  seed in a dry season, DAP and CAN against no fertilizer, a large tractor's soil packing, the wrong tool for the
+  ground). They are game estimates until reviewed.
+- **Older saves.** A farm saved with four input plots (A to D) keeps Plot A's inputs for the whole farm.
 
 ## Navigation and the main menu
 
@@ -543,6 +560,46 @@ The **main menu** (`src/screens/MainMenu.tsx`, the **MENU** button on the farm) 
 Tractor, Shop, Rewards, Farming steps and Settings. A screen opened from the menu goes back to the menu on *Back*;
 *Farm* closes everything. The shared buttons are `NavBar` in `src/components/Nav.tsx`; `ModalShell` adds them to every
 modal. `tests/nav.spec.ts` plays them.
+
+## Page addresses
+
+Every page has its own web address after the `#`, so a player can type one in the address bar to go there,
+reload without losing their place, bookmark a page, and use the browser's **Back** and **Forward**
+(`src/route.ts`). For example `https://dgtechbuilder.github.io/limagame/#/settings/display`.
+
+| Address | Page |
+| --- | --- |
+| `#/start` | Name your farmer (first session) |
+| `#/story/1` · `/2` · `/3` | The story so far, page by page |
+| `#/walk/maize` · `#/check/maize` | Walk to the maize, and its check |
+| `#/walk/back-maize` · `#/check/back-maize` | The back maize, after a wrong call |
+| `#/walk/sukuma` · `#/check/sukuma` | The sukuma wiki, and its check |
+| `#/farm` | The farm |
+| `#/menu` | Main menu |
+| `#/rounds` · `#/rounds/six-farms` | Field rounds: every bed, or today's checks of the six farms |
+| `#/mission` | Mission: the six farms |
+| `#/settings/my-farmer` · `game` · `display` · `help` | Settings, by section |
+| `#/climate/overview` · `emissions` · `water-and-soil` · `shocks` · `activity` | Climate, by section |
+| `#/shop/food` · `fertilizer` · `water-tanks` · `equipment` | Shop, by tab |
+| `#/steps/land-prep` · `planting` · `fertilizer` · `pesticides` · `water` · `harvest` | Farming steps |
+| `#/harvest-timing` · `#/sale` · `#/storage` · `#/value-addition` · `#/process` | The season after harvest |
+| `#/farm-info` · `#/results` · `#/rewards` · `#/welcome` | Farm info, season results, rewards, how the farm works |
+
+**The player's session decides where an address can go.** The game's saved state stays the one source of
+truth: the address always names the page on show, and a typed address goes through the same rules as a tap.
+
+- **First session:** only its steps, the main menu and Settings can be reached, and only steps the player has
+  already reached. They can step back between naming the farmer, the story pages and the walk to the maize
+  (as the Back button can), but not skip ahead to a check or open the farm early.
+- **After the first session:** every farm page can be reached. The first-session steps can't, and
+  `#/rounds/six-farms` works only on a day the six farms have checks.
+- **Anything else** (a page that doesn't exist, or one the player can't reach yet) leaves them where they are,
+  with a short message, and the address is put back. Addresses are tidied first: any case, extra slashes.
+- Opening the game with an address goes straight to that page (if allowed); with no address, it opens where
+  the player left off. Each new page adds a step to the browser's history. A correction replaces the address
+  instead, so Back never lands on a page the player couldn't open.
+- The browser tab's title names the page. *Settings → Help & data* explains addresses to players.
+- Design review (`?review` / `?screen`) leaves the address alone.
 
 ## Settings
 

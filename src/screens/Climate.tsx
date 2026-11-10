@@ -1,4 +1,4 @@
-import { useEffect, useState, type Dispatch, type ReactNode } from 'react';
+import { useEffect, type Dispatch, type ReactNode } from 'react';
 import { NavBar } from '../components/Nav';
 import {
   FACTORS,
@@ -80,7 +80,9 @@ function Empty({ children }: { children: ReactNode }) {
 /* ---------------- the page ---------------- */
 
 export function ClimatePage({ s, dispatch, tab: startTab }: Props) {
-  const [tab, setTab] = useState<ClimateTab>(startTab ?? 'overview');
+  // the tab is part of the address (#/climate/emissions), so it lives in the game state
+  const tab: ClimateTab = startTab ?? 'overview';
+  const setTab = (t: ClimateTab) => dispatch({ type: 'open', modal: { kind: 'climate', tab: t } });
   const close = () => dispatch({ type: 'close' });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && dispatch({ type: 'close' });

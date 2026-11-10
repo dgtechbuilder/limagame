@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { img } from '../assets';
 import { GoldButton } from '../components/ui';
 import { useVoice } from '../art/style';
@@ -15,8 +15,10 @@ import { track } from './track';
 
 const ARMYWORM = photoByKey('armyworm/pests');
 
-export function Story({ name, look, onDone }: { name: string; look: Look; onDone: () => void }) {
-  const [i, setI] = useState(0);
+/** page: 0-based, kept in the game state so each page has its own address (#/story/2). */
+export function Story({ name, look, page: at, onPage, onDone }: { name: string; look: Look; page: number; onPage: (page: number) => void; onDone: () => void }) {
+  const i = Math.max(0, Math.min(STORY.length - 1, at));
+  const setI = onPage;
   const page = STORY[i];
   const t = (line: string) => say(line, name);
   const last = i === STORY.length - 1;

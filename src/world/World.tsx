@@ -4,6 +4,7 @@ import { FarmerPortrait } from '../first/art';
 import { LOOKS } from '../first/data';
 import { Inspect } from '../rounds/Inspect';
 import { dayNumber, ROUND_POINTS } from '../rounds/farms';
+import { CROP_NAME } from '../rounds/hazards';
 import { trialRounds } from '../rounds/trial';
 import type { Action, GameState } from '../state';
 import { CHECK_DAYS, DAMAGE, WRONG_FIX_COST, canTreat, causeOf, checkKey, farmName, hazardFor, plotsOf, returnedProblem } from '../trials/model';
@@ -13,6 +14,9 @@ import { FOLLOW_UP, PRESCRIBE, fixOrder } from '../care/data';
 import { voiceFor } from '../care/voice';
 import {
   CARRY_NAME,
+  PLOT_WORK_S,
+  TILES,
+  popcount,
   TREAT_JOB,
   allHarvested,
   careLeft,
@@ -30,12 +34,12 @@ import {
   type TaskIcon,
   type TreatJob,
 } from './field';
-import { FarmWorld, PLACES, STAGE_H, STAGE_W, TRACTOR_BOARD } from './engine';
+import { FarmWorld, PLACES, STAGE_H, STAGE_W, TRACTOR_BOARD, type Fx } from './engine';
 import { useNav } from '../components/Nav';
 import { ClimateIcon } from '../components/Icons';
 import { rating } from '../climate/model';
 import { TRACTOR_BONUS } from '../tractor/data';
-import { JOB_INFO, KIND_WORDS, TOOL_JOB, toolName, tractorName, type PlotKind } from '../plots/data';
+import { JOB_INFO, KIND_WORDS, TOOL_JOB, plotName, toolName, tractorName, type PlotKind } from '../plots/data';
 import type { Rig } from '../plots/TractorPick';
 
 // from Wakala Agent: the screens after a right call, at the shed and at the Hire spot, loaded when first opened
@@ -49,7 +53,7 @@ const TractorPick = lazy(() => import('../plots/TractorPick').then(m => ({ defau
 export type WorldDemo = 'check' | 'prescribe' | 'spray' | 'tractor' | 'tractor-summary' | 'rig' | 'board';
 
 type Care = { kind: 'fix'; farm: number; day: number } | { kind: 'spray'; jobs: { farm: number; hazard: import('../trials/model').TrialHazard }[] } | { kind: 'tractor'; farm: number; demo?: 'summary' }
-  // the plot board at a shed (then the item is picked up), and the tractor's type and tool
+  // the inputs board at a shed (then the item is picked up), and the tractor's type and tool
   | { kind: 'board'; farm: number; kinds: PlotKind[]; then: 'seeds' | 'fertilizer' | 'sprayer' }
   | { kind: 'rig' };
 
@@ -95,7 +99,9 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
   const [care, setCare] = useState<Care | null>(null);
   /** the tractor type and tool on the tractor now */
   const [rig, setRig] = useState<Rig | null>(null);
-  const [anchors, setAnchors] = useState<{ farmer: { x: number; y: number }; sign: { x: number; y: number; visible: boolean } | null; riding: boolean; nearTractor: boolean }>({ farmer: { x: 437, y: 160 }, sign: null, riding: false, nearTractor: false });
+  const [anchors, setAnchors] = useState<Anchors>({ farmer: { x: 437, y: 160 }, sign: null, riding: false, nearTractor: false, plot: null });
+  /** clearing or planting one plot: started at, and how long it takes (ms) */
+  const [working, setWorking] = useState<(PlotHere & { start: number; ms: number }) | null>(null);
   /** the farmer is walking to the tractor to hop on */
   const rideIntent = useRef(false);
   const nav = useNav();
@@ -140,7 +146,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
           const jobs = sprayJobs(st.field.cycle === st.trial.cycle ? st.field : { ...st.field, marks: {} }, st.trial, fieldDay(st.trial, dayNumber()));
           if (jobs.length) return setCare({ kind: 'spray', jobs });
         }
-        // at the seed or fertilizer shed: first, which plot of the farm gets which (once, before any of it is in the ground)
+        // at the seed or fertilizer shed: first, which seed or fertilizer the farm gets (once, before any of it is in the ground)
         if ((item === 'seeds' || item === 'fertilizer') && st.trial?.phase === 'growing') {
           const f = st.field.cycle === st.trial.cycle ? st.field : { ...st.field, marks: {} };
           const job = item === 'seeds' ? 'sow' : 'setupFeed';
@@ -184,7 +190,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     const tick = window.setInterval(() => {
       const f = w.farmerScreen();
       const sg = eng.current && atSignRef.current >= 0 ? signOf(atSignRef.current) : null;
-      const next = { farmer: f, sign: sg ? w.project(sg.x, 2.5, sg.z) : null, riding: w.isRiding(), nearTractor: w.nearTractor() };
+      const next = { farmer: f, sign: sg ? w.project(sg.x, 2.5, sg.z) : null, riding: w.isRiding(), nearTractor: w.nearTractor(), plot: w.plotJobHere() };
       // the HUD follows the farmer: re-render only when something on it would move or change
       setAnchors(a => (sameAnchors(a, next) ? a : next));
     }, 120);
@@ -200,6 +206,44 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
   atSignRef.current = atSign;
 
   const overlay = paused || !!checking || !!night || !!care;
+
+  // the first planting period starts as soon as the farm opens: Farm 1's maize to clear, Farm 2's sukuma wiki to plant
+  useEffect(() => {
+    if (!s.trial && s.trialHistory.length === 0) dispatch({ type: 'trialNew' });
+  }, [s.trial, s.trialHistory.length, dispatch]);
+
+  /* ---------------- clearing and planting: a button on each plot, then a 3-second timer ---------------- */
+
+  function startPlot(p: PlotHere) {
+    const w = eng.current;
+    if (!w || working) return;
+    // a press while still walking stops the farmer on this plot, so the work isn't cut short by walking off it
+    w.stopWalking();
+    setWorking({ ...p, start: performance.now(), ms: PLOT_WORK_S * 1000 * w.workScale });
+  }
+  useEffect(() => {
+    if (!working) return;
+    const id = window.setInterval(() => {
+      const w = eng.current;
+      if (!w) return;
+      // walking off the plot (or a screen opening on top) stops the work; the plot stays as it was
+      if (overlay || !samePlot(w.plotJobHere(), working)) {
+        setWorking(null);
+        if (!overlay) say('Stay on the plot until the timer is done');
+        return;
+      }
+      w.plotWorking(working.fx);
+      if (performance.now() - working.start < working.ms) return;
+      w.plotFinished(working.farm, working.plot, working.job, working.fx);
+      setWorking(null);
+      const st = sRef.current;
+      const done = st.trial ? doneMask(st.field.cycle === st.trial.cycle ? st.field : { ...st.field, marks: {} }, st.trial.cycle, working.farm, working.job) : 0;
+      const left = TILES - popcount(done | (1 << working.plot));
+      say(`${plotName(working.plot)} ${working.job === 'prep' ? 'cleared' : 'planted'}${left ? ` · ${left} to go on ${farmName(working.farm)}` : ` · ${farmName(working.farm)} is ${working.job === 'prep' ? 'cleared' : 'planted'}!`}`);
+    }, 120);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [working, overlay]);
   useEffect(() => {
     const w = eng.current;
     if (!w) return;
@@ -215,7 +259,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     return w.nextTile(target.farm);
   }
 
-  /* ---------------- the tractor seat: a type and a tool, one plot each, and bonus points ---------------- */
+  /* ---------------- the tractor seat: a type and a tool, and bonus points ---------------- */
 
   /** At the tractor: pick its type and tool first (while the farms grow), then hop on. */
   function mountTractor() {
@@ -236,7 +280,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     track('tractor_ride', { stage: 'seat', ...(rig ?? {}) });
     if (rig) {
       const j = TOOL_JOB[rig.tool];
-      say(`${tractorName(rig.tractor)} tractor with the ${toolName(rig.tool).toLowerCase()}: drive onto a plot to ${JOB_INFO[j].name.toLowerCase()} it. +${TRACTOR_BONUS.perPlot} points a plot`);
+      say(`${tractorName(rig.tractor)} tractor with the ${toolName(rig.tool).toLowerCase()}: drive over a farm's plots to ${JOB_INFO[j].name.toLowerCase()} them. +${TRACTOR_BONUS.perJob} points for a whole farm`);
     } else say('On the tractor');
   }
 
@@ -454,7 +498,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
           coins={s.coins}
           dispatch={dispatch}
           tag={`The shed · ${KIND_WORDS[k].title.toLowerCase()}`}
-          line={`${KIND_WORDS[k].rule} Tap a plot to see every choice.`}
+          line={`${KIND_WORDS[k].rule} Tap a box to see every choice.`}
           done={{ label: c.then === 'sprayer' ? 'Pick up the sprayer' : c.then === 'seeds' ? 'Take the seed' : 'Take the fertilizer', onClick: pick }}
           onLeave={() => setCare(null)}
         />
@@ -673,6 +717,24 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         </>
       )}
 
+      {/* clearing and planting: the button on the plot under the farmer, then its timer */}
+      {working && !overlay && <PlotTimer at={anchors.farmer} start={working.start} ms={working.ms} verb={working.job === 'prep' ? 'Clearing' : 'Planting'} plot={working.plot} />}
+      {!working && anchors.plot && !overlay && !(s.roundsOpen || s.trialsOpen) && (
+        <button
+          type="button"
+          className={`hud-plot is-${anchors.plot.job}`}
+          style={{ left: Math.min(STAGE_W - 90, Math.max(90, anchors.farmer.x)), top: Math.min(STAGE_H - 60, anchors.farmer.y + 70) }}
+          onClick={() => startPlot(anchors.plot!)}
+          aria-label={`${anchors.plot.job === 'prep' ? 'Clear' : 'Plant'} ${plotName(anchors.plot.plot)} of ${farmName(anchors.plot.farm)} (${PLOT_WORK_S} seconds)`}
+        >
+          <TaskGlyph icon={anchors.plot.job === 'prep' ? 'hoe' : 'seeds'} />
+          <span>
+            <b>{anchors.plot.job === 'prep' ? 'Clear' : 'Plant'}</b>
+            <i>{plotName(anchors.plot.plot)}</i>
+          </span>
+        </button>
+      )}
+
       {hint && (
         <div key={hint.id} className="hud-hint" style={{ left: Math.min(STAGE_W - 120, Math.max(120, anchors.farmer.x)), top: Math.max(56, anchors.farmer.y - 34) }}>
           {hint.text}
@@ -706,7 +768,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
             second={checking.second}
             points={t.checks[checkKey(checking.farm, checking.day)]?.right ? 0 : checking.second ? ROUND_POINTS.second : ROUND_POINTS.first}
             tag={`${farmName(checking.farm)} of ${t.plans.length}`}
-            note={`Maize · day ${checking.day} of ${CHECK_DAYS}`}
+            note={`${CROP_NAME[check.r.crop]} · day ${checking.day} of ${CHECK_DAYS}`}
             after={check.after}
             voice={check.voice}
             continueLabel={t.checks[checkKey(checking.farm, checking.day)]?.right && fixLeft(t, checking.farm, checking.day) ? 'Choose the fix' : 'Back to the farm'}
@@ -735,12 +797,50 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
 }
 
 
-type Anchors = { farmer: { x: number; y: number }; sign: { x: number; y: number; visible: boolean } | null; riding: boolean; nearTractor: boolean };
+/** The plot under the farmer that is waiting to be cleared or planted (its button shows). */
+type PlotHere = { farm: number; plot: number; job: 'prep' | 'sow'; fx: Fx };
+type Anchors = { farmer: { x: number; y: number }; sign: { x: number; y: number; visible: boolean } | null; riding: boolean; nearTractor: boolean; plot: PlotHere | null };
+const samePlot = (a: PlotHere | null, b: PlotHere | null) => a === b || (!!a && !!b && a.farm === b.farm && a.plot === b.plot && a.job === b.job);
 const near = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.abs(a.x - b.x) < 1 && Math.abs(a.y - b.y) < 1;
 function sameAnchors(a: Anchors, b: Anchors) {
-  if (a.riding !== b.riding || a.nearTractor !== b.nearTractor || !near(a.farmer, b.farmer)) return false;
+  if (a.riding !== b.riding || a.nearTractor !== b.nearTractor || !near(a.farmer, b.farmer) || !samePlot(a.plot, b.plot)) return false;
   if (!a.sign || !b.sign) return a.sign === b.sign;
   return a.sign.visible === b.sign.visible && near(a.sign, b.sign);
+}
+
+/** The timer over the farmer while a plot is cleared or planted: a stopwatch whose ring fills, and the seconds left. */
+function PlotTimer({ at, start, ms, verb, plot }: { at: { x: number; y: number }; start: number; ms: number; verb: string; plot: number }) {
+  const [now, setNow] = useState(performance.now());
+  useEffect(() => {
+    let raf = 0;
+    const tick = () => {
+      setNow(performance.now());
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  const done = Math.min(1, (now - start) / ms);
+  const left = Math.max(0, Math.ceil(((1 - done) * ms) / 1000));
+  const R = 15;
+  const L = 2 * Math.PI * R;
+  return (
+    <div className="hud-timer" role="timer" aria-live="polite" aria-label={`${verb} ${plotName(plot)}: ${left} seconds left`} style={{ left: Math.min(STAGE_W - 70, Math.max(70, at.x)), top: Math.max(70, at.y - 12) }}>
+      <svg viewBox="-20 -24 40 44" width={46} height={50} aria-hidden="true">
+        <rect x={-3} y={-23} width={6} height={5} rx={1.5} fill="#5b3418" />
+        <path d="M11,-14 L15,-18" stroke="#5b3418" strokeWidth={3} strokeLinecap="round" />
+        <circle r={R + 3} fill="#fff" stroke="#5b3418" strokeWidth={2} />
+        <circle r={R} fill="none" stroke="#f1e2c8" strokeWidth={5} />
+        <circle r={R} fill="none" stroke="#f39c12" strokeWidth={5} strokeDasharray={`${L * done} ${L}`} transform="rotate(-90)" />
+        <text y={5} textAnchor="middle" fontSize={14} fontWeight={900} fill="#5b3418">
+          {left}
+        </text>
+      </svg>
+      <span>
+        {verb} {plotName(plot)}
+      </span>
+    </div>
+  );
 }
 
 /* ---------------- icons ---------------- */

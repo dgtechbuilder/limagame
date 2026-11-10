@@ -454,6 +454,45 @@ export function maizeTile(stage: 'sprout' | 'young' | 'tall' | 'ripe' | 'stubble
   return merge(parts);
 }
 
+/** Sukuma wiki at a stage, for one tile (four plants): a low rosette of broad, blue-green leaves on a short stem.
+    Ripe is the same plant at full size, ready for its lower leaves to be picked; stubble is the stem with a few left. */
+export function kaleTile(stage: 'sprout' | 'young' | 'tall' | 'ripe' | 'stubble'): THREE.BufferGeometry {
+  const parts: Part[] = [];
+  const dark = '#2f6e45';
+  const mid = '#4f8f5a';
+  const light = '#7cb66c';
+  const broad = (len: number, wide: number, color: string, ry: number, tilt: number, y: number): Part => ({
+    geo: G.sphere,
+    color,
+    m: at(Math.sin(ry) * len * 0.42, y, Math.cos(ry) * len * 0.42, { sx: wide, sy: 0.05, sz: len, ry, rx: tilt }),
+  });
+  const spots = [
+    [-0.27, -0.28],
+    [0.27, -0.28],
+    [-0.27, 0.28],
+    [0.27, 0.28],
+  ];
+  for (const [x, z] of spots) {
+    const plant: Part[] = [];
+    if (stage === 'sprout') {
+      plant.push(broad(0.16, 0.11, light, 0.5, -0.5, 0.06), broad(0.16, 0.11, light, 3.6, -0.5, 0.06));
+    } else if (stage === 'young') {
+      plant.push({ geo: G.cyl6, color: '#7a9a5a', m: at(0, 0.07, 0, { sx: 0.05, sy: 0.14, sz: 0.05 }) });
+      for (let i = 0; i < 5; i++) plant.push(broad(0.26, 0.18, i % 2 ? mid : light, i * 1.26, -0.45, 0.12));
+    } else if (stage === 'tall' || stage === 'ripe') {
+      const s = stage === 'ripe' ? 1.15 : 1;
+      plant.push({ geo: G.cyl6, color: '#6f8f55', m: at(0, 0.16 * s, 0, { sx: 0.07, sy: 0.32 * s, sz: 0.07 }) });
+      for (let i = 0; i < 6; i++) plant.push(broad(0.38 * s, 0.27 * s, i % 2 ? dark : mid, i * 1.05, -0.55, 0.12 * s));
+      for (let i = 0; i < 4; i++) plant.push(broad(0.26 * s, 0.2 * s, light, i * 1.57 + 0.5, -0.9, 0.3 * s));
+    } else {
+      plant.push({ geo: G.cyl6, color: '#7d8a55', m: at(0, 0.14, 0, { sx: 0.07, sy: 0.28, sz: 0.07 }) });
+      for (let i = 0; i < 3; i++) plant.push(broad(0.2, 0.15, light, i * 2.1, -0.9, 0.28));
+    }
+    parts.push(...place(plant, at(x, 0.06, z, { ry: x * 7 + z * 3 })));
+  }
+  return merge(parts);
+}
+
 export function weedTile(): THREE.BufferGeometry {
   const parts: Part[] = [];
   for (const [x, z, s] of [

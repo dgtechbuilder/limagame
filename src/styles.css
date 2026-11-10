@@ -864,6 +864,23 @@ button.card:active { transform: scale(0.98); }
   box-shadow: 0 0 0 2.5px #fff, 0 4px 10px rgba(0, 0, 0, 0.3); animation: pop-up 0.2s ease both;
 }
 .hud-check:disabled { background: #b9a88f; }
+/* clearing and planting: a button on each plot, then the timer */
+.hud-plot {
+  position: absolute; z-index: 6; transform: translate(-50%, 0); display: flex; align-items: center; gap: 6px;
+  padding: 5px 14px 5px 6px; border-radius: 100px; white-space: nowrap; color: #fff;
+  background: linear-gradient(#ffcf4d, #f39c12); box-shadow: 0 0 0 2.5px #fff, 0 4px 10px rgba(0, 0, 0, 0.3); animation: pop-x 0.2s ease both;
+}
+.hud-plot.is-sow { background: linear-gradient(#7fd35a, #2f9b14); }
+.hud-plot svg { width: 26px; height: 26px; background: rgba(255, 255, 255, 0.92); border-radius: 100px; padding: 2px; }
+.hud-plot span { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.05; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3); }
+.hud-plot b { font-size: 14px; font-weight: 900; }
+.hud-plot i { font-size: 10px; font-weight: 700; font-style: normal; opacity: 0.95; }
+.hud-plot:active { transform: translate(-50%, 0) scale(0.96); }
+.hud-timer {
+  position: absolute; z-index: 6; transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; gap: 1px;
+  pointer-events: none; animation: pop-up 0.2s ease both;
+}
+.hud-timer span { padding: 2px 9px; border-radius: 100px; background: #fff; color: #5b3418; font-size: 10.5px; font-weight: 800; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25); }
 .world-night {
   position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(18, 24, 58, 0.82);
   color: #ffe08a; font-size: 28px; font-weight: 900; animation: fadein 0.5s ease both;
@@ -1111,6 +1128,8 @@ button.card:active { transform: scale(0.98); }
 
 .tr-plots { display: flex; gap: 2px; align-items: center; justify-content: center; padding: 0 2px; }
 .tr-plot-chip { width: 17px; height: 17px; border-radius: 5px; display: grid; place-items: center; color: #fff; font-size: 9px; font-weight: 800; text-shadow: 0 1px 1px rgba(0,0,0,.4); }
+.tr-input { display: flex; align-items: center; gap: 4px; min-width: 0; font-size: 8px; font-weight: 600; line-height: 1.1; text-align: left; }
+.tr-input .tr-plot-chip { flex-shrink: 0; width: 10px; height: 10px; border-radius: 3px; }
 .tr-tabs { display: flex; gap: 3px; }
 .tr-tabs button { flex: 1; padding: 3px 0; border-radius: 100px; border: 1.5px solid var(--brown-20); font-size: 10px; font-weight: 800; color: var(--brown); background: #fff; }
 .tr-tabs button.is-on { background: var(--gold); border-color: var(--gold); color: #fff; }
@@ -1253,3 +1272,6 @@ button.card:active { transform: scale(0.98); }
 .tr-picker button > b { grid-row: 1 / span 2; }
 .tr-picker button > i { grid-column: 3; grid-row: 1 / span 2; }
 .tr-picker button > .climate-tag { grid-column: 2; grid-row: 2; margin-top: -8px; font-size: 9px; }
+
+/* Settings · Help: the page address */
+.set-address { padding: 4px 8px; border-radius: 8px; background: var(--brown-05); border: 1px solid var(--brown-20); font-size: 10px; font-weight: 600; white-space: nowrap; }

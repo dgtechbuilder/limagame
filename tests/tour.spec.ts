@@ -107,7 +107,7 @@ test('tour of the Wakala moments on a phone-sized screen', async ({ page }) => {
   await settle(page);
   await page.screenshot({ path: shot('16-3d-tractor-ploughs') });
 
-  // plots A to D: the tractor's type and tool, then a plot of its own
+  // the tractor's type and tool, then a column of Farm 1's plots from the seat
   await scenario(page, 'plots');
   // the hired tractor from the last moment finishes its job and comes home first
   await expect
@@ -136,18 +136,17 @@ test('tour of the Wakala moments on a phone-sized screen', async ({ page }) => {
   await page.evaluate(([x, z]) => (window as unknown as Win).__limaWorld!.walkTo(x, z), [farm1.x - 1.8, farm1.z + 3.9]);
   await page.waitForTimeout(4000);
   await settle(page);
-  await page.screenshot({ path: shot('19-tractor-plot-a') });
+  await page.screenshot({ path: shot('19-tractor-plots') });
   await page.locator('.hud-tractor').click();
 
-  // the seed shed: a seed for each plot
-  await page.evaluate(F => {
-    const d = (window as unknown as Win).__lima as unknown as { dispatch: (a: unknown) => void };
-    d.dispatch({ type: 'fieldMark', farm: 0, job: 'prep', bits: F });
-    d.dispatch({ type: 'fieldMark', farm: 1, job: 'prep', bits: F });
-  }, (1 << 20) - 1);
-  await tapTask(page, 'Get seeds');
-  await expect(page.locator('.pb-grid')).toBeVisible({ timeout: 60_000 });
-  await page.locator('.pb-grid .pb-cell').nth(1).click();
+  // clearing by hand: the button on the next plot, then its 3-second timer (a fresh field: the hired tractor from
+  // earlier may have ploughed on while it drove home)
+  await scenario(page, 'plots');
+  await tapTask(page, 'Clear Farm 1');
+  await expect(page.locator('.hud-plot')).toBeVisible({ timeout: 60_000 });
   await settle(page);
-  await page.screenshot({ path: shot('20-seed-board') });
+  await page.screenshot({ path: shot('20-plot-button') });
+  await page.locator('.hud-plot').click();
+  await page.waitForTimeout(1200);
+  await page.screenshot({ path: shot('21-plot-timer') });
 });

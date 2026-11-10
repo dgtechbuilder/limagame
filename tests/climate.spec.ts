@@ -57,8 +57,11 @@ test('a Farm Moja task is tracked: manure stores carbon, earns credits and shows
 
 test('six farms: planting records each plan; tractor work and drives burn diesel; the harvest closes the cycle', async ({ page }) => {
   await boot(page);
-  await jump(page, { view: 'classic', coins: 5000 });
+  // a planned cycle (the first one plants itself: maize and sukuma wiki), so the plans can differ
+  await jump(page, { view: 'classic', coins: 5000, trialHistory: [{ cycle: 1, farms: 2, best: 0, bags: [5, 5], profit: [0, 0] }] });
   await act(page, { type: 'trialNew' });
+  // six farms may not share a plan: one change each, then Farm 2's own
+  await act(page, { type: 'trialSuggest' });
   await act(page, { type: 'trialPlan', farm: 1, key: 'fert', value: 'double' });
   await act(page, { type: 'trialPlan', farm: 1, key: 'land', value: 'tractor' });
   await act(page, { type: 'trialPlant', clock: 'fast' });
@@ -68,12 +71,12 @@ test('six farms: planting records each plan; tractor work and drives burn diesel
   expect(c.total.fertN).toBeGreaterThanOrEqual(7);
   expect(c.co2By.fertilizer).toBeGreaterThanOrEqual(70);
 
-  // ploughing Farm 2 from the tractor seat, one mini plot at a time: a compact tractor on plot A, a large one on plot B
+  // ploughing Farm 2 from the tractor seat: a compact tractor over five of its 20 plots, a large one over five more
   const mask = (plot: number) => { let m = 0; for (let i = plot; i < 20; i += 4) m |= 1 << i; return m; };
   await act(page, { type: 'fieldMark', farm: 1, job: 'prep', bits: mask(0), tractor: true, rig: { tractor: 'compact', tool: 'plough', job: 'prep' } });
   await act(page, { type: 'fieldMark', farm: 1, job: 'prep', bits: mask(1), tractor: true, rig: { tractor: 'large', tool: 'harrow', job: 'prep' } });
   c = await climate(page);
-  // a plot is a quarter of the farm; a compact tractor burns 6/9 of the standard's diesel, a large one 14/9
+  // five plots are a quarter of the farm; a compact tractor burns 6/9 of the standard's diesel, a large one 14/9
   const litres = (13 / 6) * 0.25 * (6 / 9 + 14 / 9);
   expect(c.total.diesel).toBeCloseTo(litres, 3);
   expect(c.co2By.fuel).toBeCloseTo(litres * 2.68, 3);

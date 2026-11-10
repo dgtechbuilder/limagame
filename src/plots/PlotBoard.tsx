@@ -7,11 +7,10 @@ import { GuideLine } from '../first/Review';
 import type { Action } from '../state';
 import { farmName, plotsOf, type Trial } from '../trials/model';
 import { plotLocked, type Field } from '../world/field';
-import { JOB_INFO, KIND_WORDS, OPTIONS, PLOT_LETTERS, plotCost, plotName, toolName, tractorName, type PlotJob, type PlotKind, type PlotRecord } from './data';
+import { JOB_INFO, KIND_WORDS, OPTIONS, PLOTS_PER_FARM, plotCost, toolName, tractorName, type PlotJob, type PlotKind, type PlotRecord } from './data';
 
-/* The plot board: a farm's four mini plots side by side, and which seed, fertilizer and sprayer each one gets. Each
-   input goes on one plot of a farm (choosing one already on another plot swaps the two), so the harvest compares them
-   under the same weather and care. Tap a plot's box to see every choice, what it is for, and what it costs. */
+/* The inputs board: the seed, fertilizer and sprayer a farm grows with, on all its 20 plots. One set per farm, so the
+   harvest compares farms. Tap a box to see every choice, what it is for, and what it costs. */
 
 export function PlotBoard({
   tr,
@@ -53,13 +52,11 @@ export function PlotBoard({
           ))}
         </div>
       )}
-      <div className="pb-grid" style={{ gridTemplateColumns: `76px repeat(4, minmax(0, 1fr))` }} role="grid" aria-label={`${farmName(farm)}: the four plots`}>
+      <div className="pb-grid" style={{ gridTemplateColumns: `76px repeat(${rows.length}, minmax(0, 1fr))` }} role="grid" aria-label={`${farmName(farm)}: its inputs`}>
         <div className="pb-corner">{farmName(farm)}</div>
-        {PLOT_LETTERS.map(l => (
-          <div key={l} className="pb-head">
-            <b>Plot {l}</b>
-          </div>
-        ))}
+        <div className="pb-head">
+          <b>All {PLOTS_PER_FARM} plots</b>
+        </div>
         {kinds.map(k => (
           <Row key={k} label={KIND_WORDS[k].title}>
             {rows.map((r, p) => {
@@ -74,7 +71,7 @@ export function PlotBoard({
                   className={`pb-cell${on ? ' is-on' : ''}${locked ? ' is-locked' : ''}`}
                   onClick={() => setPick({ kind: k, plot: p })}
                   aria-pressed={on}
-                  aria-label={`${plotName(p)}, ${KIND_WORDS[k].one}: ${op?.label ?? 'not chosen'}${locked ? ` (${locked.toLowerCase()})` : ''}`}
+                  aria-label={`${farmName(farm)}, ${KIND_WORDS[k].one}: ${op?.label ?? 'not chosen'}${locked ? ` (${locked.toLowerCase()})` : ''}`}
                 >
                   <span className="pb-dot" style={{ background: op?.color ?? '#ccc' }} aria-hidden="true" />
                   <span className="pb-name">{op?.label ?? '—'}</span>
@@ -98,9 +95,9 @@ export function PlotBoard({
 
       <div className="pb-side" aria-live="polite">
         <p className="pb-side-title">
-          {plotName(plot)} · {KIND_WORDS[kind].one}
+          {farmName(farm)} · {KIND_WORDS[kind].one}
         </p>
-        <p className="pb-rule">{lock ? `${plotName(plot)} is ${lock.toLowerCase()}: it keeps what it has.` : KIND_WORDS[kind].rule}</p>
+        <p className="pb-rule">{lock ? `${farmName(farm)} is ${lock.toLowerCase()}: it keeps what it has.` : KIND_WORDS[kind].rule}</p>
         <ul className="pb-opts">
           {OPTIONS[kind].map(op => {
             const at = rows.findIndex(r => r[kind] === op.id);
@@ -122,7 +119,7 @@ export function PlotBoard({
                   </span>
                   <span className="pb-opt-side">
                     <i>{price ? `${fmt(price)} coins` : 'Free'}</i>
-                    {at >= 0 && <small>{at === plot ? 'This plot' : `On ${plotName(at)}`}</small>}
+                    {at >= 0 && <small>This farm</small>}
                   </span>
                 </button>
               </li>
@@ -153,12 +150,12 @@ export function toolsLine(r: PlotRecord) {
     .join(' · ');
 }
 
-/** A compact line of a farm's four plots for one input: "A certified · B drought-tolerant …". */
+/** A farm's input of one kind, in words: "Long-season hybrid". */
 export function plotsLine(rows: PlotRecord[], kind: PlotKind) {
-  return rows.map((r, p) => `${PLOT_LETTERS[p]} ${OPTIONS[kind].find(x => x.id === r[kind])?.label ?? '—'}`).join(' · ');
+  return rows.map(r => OPTIONS[kind].find(x => x.id === r[kind])?.label ?? '—').join(' · ');
 }
 
-/** The plot board as a screen of its own: at a shed before the seed, fertilizer or sprayer is picked up. */
+/** The inputs board as a screen of its own: at a shed before the seed, fertilizer or sprayer is picked up. */
 export function PlotScreen({
   tr,
   farm: start,
@@ -189,7 +186,7 @@ export function PlotScreen({
       <div className="abs" style={{ left: 336, top: -4, width: 203, height: 58 }}>
         <img src={img.plank} alt="" width={203} height={58} />
         <span className="label abs" style={{ left: 0, right: 0, top: 21, textAlign: 'center', fontSize: 11 }}>
-          Plots A to D
+          Farm inputs
         </span>
       </div>
       <span className="rr-roundtag">{tag}</span>

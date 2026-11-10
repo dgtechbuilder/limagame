@@ -24,11 +24,12 @@ import {
   type TrialSummary,
 } from './trials/model';
 import { FOLLOW_UP } from './care/data';
-import { carryNeeded, emptyField, followUpLeft, plotLocked, plotMask, plotsIn, treatCost, treatLeft, type Carry, type Field } from './world/field';
+import { FULL, carryNeeded, emptyField, followUpLeft, plotLocked, treatCost, treatLeft, type Carry, type Field } from './world/field';
 import { TRACTOR_BONUS, type ImplId } from './tractor/data';
-import { TRACTOR_PLOT, plotCost, plotName, setPlotInput, tractorBlock, type PlotJob, type PlotKind, type TractorId } from './plots/data';
+import { TRACTOR_PLOT, plotCost, setPlotInput, toolName, type PlotJob, type PlotKind, type TractorId } from './plots/data';
 import { initialClimate, type ClimateState } from './climate/model';
 import { trackClimate } from './climate/track';
+import { routeTo } from './route';
 import {
   GROWING_STEPS,
   HARVEST_EFFECT,
@@ -149,7 +150,8 @@ export interface GameState {
   worldDemo: string | null;
   // first session
   farmer: { name: string; look: number } | null;
-  fs: { phase: FsPhase; at: 'first' | 'lower'; opened: boolean };
+  /** page: the story page shown (0–2) while phase is 'story' */
+  fs: { phase: FsPhase; at: 'first' | 'lower'; opened: boolean; page?: number };
   /** reminder shown in Messages, e.g. the bean shamba to check tomorrow */
   note: string | null;
   // UI
@@ -347,7 +349,7 @@ export type Action =
       bits: number;
       /** the tiles were done from the tractor seat */
       tractor?: boolean;
-      /** the tractor type and tool that did them (one plot at a time: plots/data.ts tractorBlock) */
+      /** the tractor type and tool that did them */
       rig?: { tractor: TractorId; tool: ImplId; job: PlotJob };
     }
   /** put a seed, fertilizer or sprayer on a plot of a farm (another plot with it swaps) */
@@ -365,7 +367,9 @@ export type Action =
   | { type: 'followUpMissed'; keys: string[] }
   /** farm world: a before-planting tractor drive finished (the drive's coins and points are worked out by the screen) */
   | { type: 'tractorDone'; farm: number; score: number; stars: number; Q: number; coins: number; points: number; diesel?: number; co2?: number; clim?: number }
-  | { type: 'fs'; phase: FsPhase; at?: 'first' | 'lower'; opened?: boolean; note?: string };
+  | { type: 'fs'; phase: FsPhase; at?: 'first' | 'lower'; opened?: boolean; note?: string; page?: number }
+  /** go to a web address (src/route.ts): the screen it names, if the player may go there now */
+  | { type: 'route'; path: string };
 
 let toastId = 0;
 export const toast = (text: string) => ({ id: ++toastId, text });
@@ -389,7 +393,8 @@ export function reducer(s: GameState, a: Action): GameState {
 function play(s: GameState, a: Action): GameState {
   switch (a.type) {
     case 'open':
-      return { ...s, modal: a.modal, fromMenu: s.modal?.kind === 'menu' && a.modal.kind !== 'menu', plotSelected: false };
+      // another section of the same screen (a Settings tab, a Shop tab) keeps where Back goes
+      return { ...s, modal: a.modal, fromMenu: s.modal?.kind === a.modal.kind ? s.fromMenu : s.modal?.kind === 'menu' && a.modal.kind !== 'menu', plotSelected: false };
     case 'close':
       // a screen opened from the main menu goes back to the menu
       return s.fromMenu && s.modal && s.modal.kind !== 'menu' ? { ...s, modal: { kind: 'menu' }, fromMenu: false } : { ...s, modal: null, fromMenu: false };
@@ -607,7 +612,18 @@ function play(s: GameState, a: Action): GameState {
     case 'trialNew': {
       if (s.trial && s.trial.phase !== 'done') return s;
       const guided = s.trialHistory.length === 0;
-      return { ...s, trial: newTrial(s.trialHistory.length + 1, guided, s.recipe ?? COMMON_PLAN) };
+      const trial = newTrial(s.trialHistory.length + 1, guided, s.recipe ?? COMMON_PLAN);
+      if (!guided) return { ...s, trial };
+      // the first planting period starts at once, with no plan to make: maize on Farm 1 (to clear, then plant) and
+      // sukuma wiki on Farm 2 (cleared, ready to plant)
+      const cost = Math.min(s.coins, trialCost(trial));
+      return {
+        ...s,
+        coins: s.coins - cost,
+        trial: { ...trial, phase: 'growing', clock: 'fast', planted: dayNumber(), day: 1 },
+        field: emptyField(trial.cycle),
+        toast: toast(`Your first planting: maize on Farm 1, sukuma wiki on Farm 2 · −${fmt(cost)} coins for seed and fertilizer`),
+      };
     }
     case 'trialPlan': {
       const t = s.trial;
@@ -705,21 +721,18 @@ function play(s: GameState, a: Action): GameState {
       const f = s.field.cycle === t0.cycle ? s.field : emptyField(t0.cycle);
       const key = `${a.farm}:${a.job}`;
       const before = f.marks[key] ?? 0;
-      // the tractor works one plot at a time, and only a plot its type and tool may work (each one plot per farm)
+      // the tractor's first work on a farm and job: its fuel is paid, and its type and tool are noted for the results
       let t = s.trial;
       let fuel = 0;
-      let bits = a.bits;
-      if (a.rig) {
-        const plot = plotsIn(bits)[0];
-        if (plot === undefined) return s;
-        bits &= plotMask(plot);
+      const bits = a.bits;
+      if (a.rig && bits & ~before) {
         const rows = plotsOf(t, a.farm);
-        if (tractorBlock(rows, plot, a.rig.tractor, a.rig.tool)) return s;
-        const here = rows[plot];
-        if (!here.tractor || !here.tools?.[a.rig.job]) {
+        const here = rows[0];
+        if (!here.tools?.[a.rig.job]) {
           fuel = Math.min(s.coins, TRACTOR_PLOT[a.rig.tractor].fuel);
-          let next = rows.map((r, i) => (i === plot ? { ...r, tractor: a.rig!.tractor, tools: { ...(r.tools ?? {}), [a.rig!.job]: a.rig!.tool } } : r));
-          if (a.rig.job === 'spray' && here.sprayer !== 'boom') next = setPlotInput(next, 'sprayer', plot, 'boom');
+          let next = rows.map((r, i) => (i === 0 ? { ...r, tractor: r.tractor ?? a.rig!.tractor, tools: { ...(r.tools ?? {}), [a.rig!.job]: a.rig!.tool } } : r));
+          // spraying from the seat is the boom sprayer's work
+          if (a.rig.job === 'spray' && here.sprayer !== 'boom') next = setPlotInput(next, 'sprayer', 0, 'boom');
           const plots = t.plans.map((_, i) => (i === a.farm ? next : plotsOf(t!, i)));
           const spent = t.plans.map((_, i) => (t!.fuel?.[i] ?? 0) + (i === a.farm ? fuel : 0));
           t = { ...t, plots, fuel: spent };
@@ -730,18 +743,15 @@ function play(s: GameState, a: Action): GameState {
       // what the tractor claimed is saved, and its fuel paid, along with the work
       const s1: GameState = t === s.trial ? s : { ...s, trial: t, coins: s.coins - fuel };
       let marked: Field = { ...f, marks: { ...f.marks, [key]: after } };
-      // extra points for using a tractor: a big job (plough, plant, fertilize, harvest) finished mostly from the seat
+      // extra points for using a tractor: a farm's job finished from the seat, once per farm and job
       let bonus = 0;
       if (a.tractor && a.rig) {
-        // the tractor's plot finished from the seat: bonus points, once per plot and job
-        const plot = plotsIn(bits)[0];
-        const pm = plotMask(plot);
-        const seat = (f.byTractor?.[key] ?? 0) | bits;
-        const bk = `${key}:${plot}`;
+        // only plots this pass newly did count as done from the seat
+        const seat = (f.byTractor?.[key] ?? 0) | (bits & ~before);
         marked = { ...marked, byTractor: { ...(f.byTractor ?? {}), [key]: seat } };
-        if ((after & pm) === pm && (seat & pm) === pm && !(f.bonus ?? []).includes(bk)) {
-          bonus = TRACTOR_BONUS.perPlot;
-          marked = { ...marked, bonus: [...(f.bonus ?? []), bk] };
+        if (after === FULL && seat === FULL && !(f.bonus ?? []).includes(key)) {
+          bonus = TRACTOR_BONUS.perJob;
+          marked = { ...marked, bonus: [...(f.bonus ?? []), key] };
         }
       }
       // put down what is carried once no job left today needs it
@@ -787,11 +797,8 @@ function play(s: GameState, a: Action): GameState {
           return { ...s1, field, trial, ...gainXp(s1, 0.03), toast: toast(`${farmName(a.farm)}: follow-up done · the problem stays away`) };
         }
       }
-      if (bonus) return { ...s1, field, points: s1.points + bonus, ...gainXp(s1, 0.02), toast: toast(`Tractor bonus · +${bonus} points · ${farmName(a.farm)} ${plotName(plotsIn(bits)[0])} done from the seat${fuel ? ` · −${fuel} coins of fuel` : ''}`) };
-      if (fuel && a.rig) {
-        const plot = plotsIn(bits)[0];
-        return { ...s1, field, toast: toast(`${farmName(a.farm)} ${plotName(plot)} is the ${a.rig.tractor} tractor's plot now · −${fuel} coins of fuel`) };
-      }
+      if (bonus) return { ...s1, field, points: s1.points + bonus, ...gainXp(s1, 0.02), toast: toast(`Tractor bonus · +${bonus} points · all 20 plots of ${farmName(a.farm)} done from the seat${fuel ? ` · −${fuel} coins of fuel` : ''}`) };
+      if (fuel && a.rig) return { ...s1, field, toast: toast(`${farmName(a.farm)}: the ${a.rig.tractor} tractor's ${toolName(a.rig.tool).toLowerCase()} at work · −${fuel} coins of fuel`) };
       return { ...s1, field };
     }
     case 'plotSet': {
@@ -805,7 +812,7 @@ function play(s: GameState, a: Action): GameState {
         const f = s.field.cycle === t.cycle ? s.field : emptyField(t.cycle);
         const moved = next.map((r, i) => (r[a.kind] !== rows[i][a.kind] ? i : -1)).filter(i => i >= 0);
         const stuck = moved.find(i => plotLocked(f, t, a.farm, i, a.kind));
-        if (stuck !== undefined) return { ...s, toast: toast(`${farmName(a.farm)} ${plotName(stuck)} is already ${plotLocked(f, t, a.farm, stuck, a.kind)!.toLowerCase()}: it keeps its ${a.kind === 'fert' ? 'fertilizer' : a.kind}`) };
+        if (stuck !== undefined) return { ...s, toast: toast(`${farmName(a.farm)} is already ${plotLocked(f, t, a.farm, stuck, a.kind)!.toLowerCase()}: it keeps its ${a.kind === 'fert' ? 'fertilizer' : a.kind}`) };
       }
       const plots = t.plans.map((_, i) => (i === a.farm ? next : plotsOf(t, i)));
       // once the farms are paid for, a change of seed or fertilizer is paid (or refunded) at once
@@ -860,11 +867,13 @@ function play(s: GameState, a: Action): GameState {
     case 'fs':
       return {
         ...s,
-        fs: { phase: a.phase, at: a.at ?? s.fs.at, opened: a.opened ?? s.fs.opened },
+        fs: { phase: a.phase, at: a.at ?? s.fs.at, opened: a.opened ?? s.fs.opened, page: a.page ?? s.fs.page ?? 0 },
         note: a.note ?? s.note,
         // passing the first review completes onboarding, so it never repeats
         onboarded: s.onboarded || a.phase === 'walk2',
       };
+    case 'route':
+      return routeTo(s, a.path).reduce(play, s);
   }
 }
 
@@ -888,8 +897,14 @@ export const REVIEW_BASE: Partial<GameState> = {
   fs: { phase: 'done', at: 'first', opened: true },
 };
 
+/** The saved game, opened at the address in the browser's address bar (if the player may go there). */
 function load(): GameState {
   if (reviewing()) return { ...initialState, ...REVIEW_BASE };
+  const saved = loadSaved();
+  return window.location.hash ? reducer(saved, { type: 'route', path: window.location.hash }) : saved;
+}
+
+function loadSaved(): GameState {
   try {
     const raw = window.localStorage.getItem(SAVE_KEY);
     if (!raw) return initialState;

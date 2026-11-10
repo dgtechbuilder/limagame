@@ -1,12 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
 import { boot, scenario, state, type Win } from './helpers';
 
-/* The tractor in the farm world: at the tractor the farmer picks its type and tool, then drives onto a plot. Each
-   tractor type and each tool works one plot (A to D) of a farm, so a cycle compares them side by side. A plot finished
-   from the seat pays bonus points; fuel is paid per plot. */
+/* The tractor in the farm world: at the tractor the farmer picks its type and tool, then drives over a farm's plots.
+   The tool decides the job; the plots under the tractor get it. Fuel is paid once per farm and job; a farm whose 20
+   plots are all done from the seat pays bonus points. */
 
-/** The tiles of one plot (a column of the farm's 4 × 5 tiles). */
-const plotMask = (p: number) => [0, 1, 2, 3, 4].reduce((m, r) => m | (1 << (r * 4 + p)), 0);
+/** The plots in one column of a farm (a pass of the tractor down it): 5 of its 20. */
+const columnMask = (c: number) => [0, 1, 2, 3, 4].reduce((m, r) => m | (1 << (r * 4 + c)), 0);
+const FULL = (1 << 20) - 1;
 const TILE = 1.2;
 
 async function pick(page: Page, tractor: string, tool: string) {
@@ -17,7 +18,7 @@ async function pick(page: Page, tractor: string, tool: string) {
   await page.getByRole('button', { name: 'Start the engine', exact: true }).click();
 }
 
-/** Drive straight down one plot of a farm and back up. */
+/** Drive straight down one column of a farm's plots and back up. */
 async function drivePlot(page: Page, farm: number, plot: number) {
   const p = await page.evaluate(f => (window as unknown as Win).__lima.plots[f], farm);
   const x = p.x + (plot - 1.5) * TILE;
@@ -28,7 +29,7 @@ async function drivePlot(page: Page, farm: number, plot: number) {
   await expect.poll(() => page.evaluate(() => (window as unknown as Win).__limaWorld!.farmerAt().z), { timeout: 60_000 }).toBeGreaterThan(p.z + 3.5);
 }
 
-test('pick a tractor and a tool, then work one plot from the seat', async ({ page }) => {
+test('pick a tractor and a tool, then work a farm\'s plots from the seat', async ({ page }) => {
   test.setTimeout(240_000);
   await boot(page);
   await scenario(page, 'plots');
@@ -49,31 +50,33 @@ test('pick a tractor and a tool, then work one plot from the seat', async ({ pag
   await expect(page.locator('.hud-status')).toContainText('Standard · Disc plough');
   expect(await page.evaluate(() => (window as unknown as Win).__limaWorld!.isRiding())).toBe(true);
 
-  // down Plot A of Farm 1: that plot is ploughed, and it is the standard tractor's plot now
+  // down the first column of Farm 1: those 5 plots are ploughed; the standard tractor's fuel is paid, once
   await drivePlot(page, 0, 0);
-  await expect.poll(async () => ((await state(page)).field.marks['0:prep'] ?? 0) & plotMask(0), { timeout: 60_000 }).toBe(plotMask(0));
+  await expect.poll(async () => ((await state(page)).field.marks['0:prep'] ?? 0) & columnMask(0), { timeout: 60_000 }).toBe(columnMask(0));
   const s1 = await state(page);
-  expect(s1.field.marks['0:prep'] & plotMask(1)).toBe(0);
+  // (driving to the column's start can clip a plot of the next one; the far columns stay untouched)
+  expect(s1.field.marks['0:prep'] & (columnMask(2) | columnMask(3))).toBe(0);
   expect(s1.trial.plots[0][0].tractor).toBe('standard');
   expect(s1.trial.plots[0][0].tools.prep).toBe('plough');
-  expect(s1.coins).toBe(before.coins - 9);
-  expect(s1.points).toBe(before.points + 10);
-  expect(s1.field.bonus).toContain('0:prep:0');
+  expect(s1.coins).toBe(before.coins - 36);
+  expect(s1.points).toBe(before.points);
 
-  // the same tractor and tool may not take a second plot of the farm
-  await drivePlot(page, 0, 1);
-  await page.waitForTimeout(800);
-  expect(((await state(page)).field.marks['0:prep'] ?? 0) & plotMask(1)).toBe(0);
-
-  // another tractor with another tool does
+  // another tractor and tool work the next column: no more fuel for this farm's ploughing
   await page.locator('.hud-rig').click();
   await pick(page, 'Large', 'Disc harrow');
   await expect(page.locator('.hud-status')).toContainText('Large · Disc harrow');
   await drivePlot(page, 0, 1);
-  await expect.poll(async () => ((await state(page)).field.marks['0:prep'] ?? 0) & plotMask(1), { timeout: 60_000 }).toBe(plotMask(1));
+  await expect.poll(async () => ((await state(page)).field.marks['0:prep'] ?? 0) & columnMask(1), { timeout: 60_000 }).toBe(columnMask(1));
+  expect((await state(page)).coins).toBe(before.coins - 36);
+
+  // the last two columns: all 20 plots from the seat, so the bonus is paid
+  await drivePlot(page, 0, 2);
+  await drivePlot(page, 0, 3);
+  await expect.poll(async () => (await state(page)).field.marks['0:prep'], { timeout: 60_000 }).toBe(FULL);
   const s2 = await state(page);
-  expect(s2.trial.plots[0][1].tractor).toBe('large');
-  expect(s2.trial.plots[0][1].tools.prep).toBe('harrow');
+  expect(s2.points).toBe(before.points + 30);
+  expect(s2.field.bonus).toContain('0:prep');
+  expect(s2.trial.plots[0][0].tractor).toBe('standard');
 
   // get off: back on foot
   await button.click();
@@ -98,7 +101,6 @@ test('the hired tractor ploughs a whole farm in one pass', async ({ page }) => {
   test.setTimeout(120_000);
   await boot(page);
   await scenario(page, 'tractor');
-  const FULL = (1 << 20) - 1;
   // the drive (its own test) is skipped: a scored drive is on file, so the Hire spot sends the 3D tractor out
   await page.evaluate(() => {
     const d = (window as unknown as Win).__lima as unknown as { dispatch: (a: unknown) => void };

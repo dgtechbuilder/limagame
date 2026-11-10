@@ -6,10 +6,11 @@ import { GuideLine } from '../first/Review';
 import { CHECK_DAYS, farmName, plotsOf, type Trial } from '../trials/model';
 import { TRACTORS, IMPL, type ImplId } from '../tractor/data';
 import { careLeft, isDone, setupLeft, type Field } from '../world/field';
-import { JOB_INFO, TOOL_JOB, TOOL_USE, TRACTOR_PLOT, plotName, prepNeed, toolName, tractorName, type PlotJob, type TractorId } from './data';
+import { JOB_INFO, TOOL_JOB, TOOL_USE, TRACTOR_PLOT, prepNeed, toolName, tractorName, type PlotJob, type TractorId } from './data';
 
-/* At the tractor: before the engine starts, the farmer picks the tractor type and the tool for the job. Each one works
-   one plot of a farm (Plots A to D), so a cycle's harvest compares tractors, tools and hand work side by side.
+/* At the tractor: before the engine starts, the farmer picks the tractor type and the tool for the job. The tractor
+   works every plot it drives over; the first type and tool on a farm are kept with its results, so a cycle's harvest
+   compares tractors, tools and hand work across the farms.
    Every card says what it is for, what it costs in fuel and where it has been used. */
 
 export type Rig = { tractor: TractorId; tool: ImplId };
@@ -43,20 +44,20 @@ export function TractorPick({ tr, field, day, rig, onGo, onLeave }: { tr: Trial;
   const [tool, setTool] = useState<ImplId | null>(rig && (!firstDue || TOOL_JOB[rig.tool] === firstDue) ? rig.tool : null);
   const plots = tr.plans.map((_, i) => plotsOf(tr, i));
 
-  /** where a tractor type works: "Farm 1 Plot A" … */
-  const worksOf = (k: TractorId) => plots.flatMap((rows, f) => rows.map((r, p) => (r.tractor === k ? `${farmName(f)} ${plotName(p)}` : '')).filter(Boolean));
-  const usedOf = (k: ImplId) => plots.flatMap((rows, f) => rows.map((r, p) => (r.tools?.[TOOL_JOB[k]] === k ? `${farmName(f)} ${plotName(p)}` : '')).filter(Boolean));
+  /** where a tractor type works: "Farm 1" … */
+  const worksOf = (k: TractorId) => plots.flatMap((rows, f) => (rows.some(r => r.tractor === k) ? [farmName(f)] : []));
+  const usedOf = (k: ImplId) => plots.flatMap((rows, f) => (rows.some(r => r.tools?.[TOOL_JOB[k]] === k) ? [farmName(f)] : []));
 
   let line: string;
   if (step === 'tractor') {
     line = tractor
       ? `The ${tractorName(tractor).toLowerCase()} tractor: ${TRACTOR_PLOT[tractor].teach} Next, pick the tool.`
-      : 'Pick a tractor. Each type works one plot of a farm, and one plot stays by hand, so the harvest shows what each one did.';
+      : 'Pick a tractor. Work some farms by tractor and some by hand, and the harvest shows what each one did.';
   } else if (!tool) {
     line = firstDue ? `Pick the tool. Due now: ${JOB_INFO[firstDue].name.toLowerCase()} on ${farmsText(due[firstDue]!)}.` : 'Pick the tool for the job you want to do. Nothing is due on the farms right now.';
   } else {
     const j = TOOL_JOB[tool];
-    line = due[j] ? `${toolName(tool)}: ${JOB_INFO[j].name.toLowerCase()} on ${farmsText(due[j]!)}. Drive onto a plot to work it.` : `${toolName(tool)} (${JOB_INFO[j].name.toLowerCase()}): no farm is waiting for this job right now. You can still drive, or pick another tool.`;
+    line = due[j] ? `${toolName(tool)}: ${JOB_INFO[j].name.toLowerCase()} on ${farmsText(due[j]!)}. Drive over a farm's plots to work them.` : `${toolName(tool)} (${JOB_INFO[j].name.toLowerCase()}): no farm is waiting for this job right now. You can still drive, or pick another tool.`;
   }
 
   return (
@@ -95,7 +96,7 @@ export function TractorPick({ tr, field, day, rig, onGo, onLeave }: { tr: Trial;
                     ))}
                   </span>
                   <span className="tp-meta">
-                    Fuel <b>{TRACTOR_PLOT[k.id].fuel} coins</b> a plot · speed {Math.round(TRACTOR_PLOT[k.id].speed * 100)}%
+                    Fuel <b>{TRACTOR_PLOT[k.id].fuel} coins</b> a farm · speed {Math.round(TRACTOR_PLOT[k.id].speed * 100)}%
                   </span>
                   <small>{works.length ? `Works ${works.slice(0, 3).join(', ')}${works.length > 3 ? '…' : ''}` : 'Not used yet this cycle'}</small>
                 </button>

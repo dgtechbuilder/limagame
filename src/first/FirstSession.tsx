@@ -57,7 +57,7 @@ export function FirstSession({ s, dispatch }: { s: GameState; dispatch: Dispatch
           onDone={(n, l) => {
             track('farmer_created', { look: l, suggested: ['Wanjiku', 'Otieno', 'Chebet'].includes(n) });
             dispatch({ type: 'farmer', name: n, look: l });
-            go('story');
+            go('story', { page: 0 });
           }}
         />
       </>
@@ -76,7 +76,7 @@ export function FirstSession({ s, dispatch }: { s: GameState; dispatch: Dispatch
     return (
       <>
         <Village look={look} name={name} route={null} target={null} open={false} />
-        <Story name={name} look={look} onDone={() => go('walk1')} />
+        <Story name={name} look={look} page={s.fs.page ?? 0} onPage={page => go('story', { page })} onDone={() => go('walk1')} />
       </>
     );
 
@@ -143,7 +143,7 @@ export function FirstSession({ s, dispatch }: { s: GameState; dispatch: Dispatch
         look={look}
         ending={
           s.view === 'world'
-            ? { line: 'Now your own farm, {name}: grow maize two ways and see which grows more. Healthy crops mean good food for your family.', button: 'Go to my farm' }
+            ? { line: 'Now your own farm, {name}: clear Farm 1 for maize, then plant sukuma wiki on Farm 2, one plot at a time.', button: 'Go to my farm' }
             : { line: 'Your tomatoes need a check too, {name}: healthy crops mean good food for your family.', button: 'Check all my crops' }
         }
         onPassed={() => track('review_passed', { shamba: 'sukuma' })}
@@ -152,7 +152,7 @@ export function FirstSession({ s, dispatch }: { s: GameState; dispatch: Dispatch
           track('session_close');
           if (s.view === 'world') {
             // into the walkable farm: its task card says what to do first
-            go('done', { note: 'Plan your farms: tap the task card at the top of the farm.' });
+            go('done', { note: 'Clear Farm 1 for maize, then plant sukuma wiki on Farm 2: tap the task card at the top of the farm.' });
             return;
           }
           go('done', { note: 'Check every bed on your farm often: open Rounds on the farm.' });
