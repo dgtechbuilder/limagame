@@ -61,7 +61,7 @@ export const TRACTOR_JOBS = ['prep', 'sow', 'setupFeed', 'harvest'] as const;
 export const TRACTOR_BONUS = {
   /** a farm-world job (plough, plant, fertilize, harvest) done mostly from the tractor seat, once per farm and job */
   perJob: 30,
-  /** a farm-world job finished on the tractor's own plot (a quarter of a farm) from the seat, once per plot and job */
+  /** kept for old saves' wording; a farm finished from the seat pays perJob */
   perPlot: 10,
   /** the first scored drive on a farm each cycle */
   perDrive: 25,

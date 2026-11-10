@@ -2,7 +2,7 @@
    planted, a tile ploughed from the tractor seat, a treatment done, a harvest sold) and record its climate effect.
    Kept out of the main reducer so the farming rules stay readable; the numbers are in model.ts. */
 
-import { TILES, TREAT_JOB, plotsIn, popcount } from '../world/field';
+import { TILES, TREAT_JOB, popcount } from '../world/field';
 import { checkKey, farmName, hazardFor, optionOf, type Trial } from '../trials/model';
 import { toast, SELLING, SOLD, type Action, type GameState } from '../state';
 import {
@@ -56,9 +56,11 @@ export function trackClimate(prev: GameState, s: GameState, a: Action): GameStat
       break;
     }
     // Six farms: each plan's inputs go in at planting
+    // the farms are planted: from the plan, or (the first planting period) as soon as the cycle starts
+    case 'trialNew':
     case 'trialPlant': {
       const t = s.trial;
-      if (!t || prev.trial?.phase !== 'plan' || t.phase !== 'growing') break;
+      if (!t || t.phase !== 'growing' || (prev.trial?.phase === 'growing' && prev.trial.cycle === t.cycle)) break;
       t.plans.forEach((p, i) => log(`${farmName(i)} planted · ${optionOf('land', p).label}, ${optionOf('fert', p).label.toLowerCase()}, ${optionOf('pest', p).label.toLowerCase()}`, 'farms', planDelta(p, t.forecast, solar)));
       break;
     }
@@ -91,8 +93,7 @@ export function trackClimate(prev: GameState, s: GameState, a: Action): GameStat
         if (newly > 0) {
           const type = a.rig?.tractor ?? 'standard';
           const words: Record<string, string> = { prep: 'ploughed', sow: 'sown', setupFeed: 'fertilized', spray: 'sprayed', harvest: 'harvested' };
-          const plots = plotsIn((s.field.marks[key] ?? 0) & ~before).map(p => String.fromCharCode(65 + p)).join('');
-          log(`${farmName(a.farm)} ${words[a.job]} · plot${plots.length > 1 ? 's' : ''} ${plots} by ${type} tractor`, 'tractor', tractorWork(a.job, newly / TILES, type));
+          log(`${farmName(a.farm)} ${words[a.job]} · ${newly} plot${newly > 1 ? 's' : ''} by ${type} tractor`, 'tractor', tractorWork(a.job, newly / TILES, type));
         }
       }
       // a treatment finished by hand

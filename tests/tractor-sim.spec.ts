@@ -1,54 +1,67 @@
 import { expect, test } from '@playwright/test';
-import { COLS, FULL, PLOT_D, TILE, WORK_REACH, emptyField } from '../src/world/field';
+import { COLS, FULL, PLOT_D, PLOT_WORK_S, TILE, TILES, WORK_REACH, emptyField, plotAt, tileCenter } from '../src/world/field';
 import { RIDE_SPEED, TRACTORS, TRACTOR_BONUS, TRACTOR_EDGE, IMPL } from '../src/tractor/data';
-import { TRACTOR_PLOT } from '../src/plots/data';
+import { PLOTS_PER_FARM, TRACTOR_PLOT, plotName } from '../src/plots/data';
 import { createJob, setupJob, stepJob, finishJob, rewardFor, type Controls } from '../src/tractor/sim';
 import { initialState, reducer } from '../src/state';
 import { wakalaCase } from '../src/trials/samples';
 
-/* The tractor, without a browser: a plot per pass, the bonus points and fuel per plot, and a drive steered by hand
-   (not autopilot) that has to be finishable. */
+/* Plots and the tractor, without a browser: a farm is 20 plots (one tile each), fuel is paid once per farm and job,
+   the bonus once a farm's job is done from the seat, and a drive steered by hand (not autopilot) has to be finishable. */
 
-/** The tiles of one plot (a column of the farm's 4 × 5 tiles). */
-const plotMask = (p: number) => [0, 1, 2, 3, 4].reduce((m, r) => m | (1 << (r * COLS + p)), 0);
+/** The plots in one column of a farm (one pass of the tractor down it). */
+const columnMask = (c: number) => [0, 1, 2, 3, 4].reduce((m, r) => m | (1 << (r * COLS + c)), 0);
 
-test('a plot is one column of a farm: one pass of the tractor down it', () => {
-  // the tractor works the column under it; a tile is worked when its centre is within reach of the tractor
-  expect(TILE * 0.5).toBeLessThan(WORK_REACH * TRACTOR_EDGE);
+test('a farm is 20 plots, one tile each, numbered from the back left', () => {
+  expect(PLOTS_PER_FARM).toBe(20);
+  expect(TILES).toBe(PLOTS_PER_FARM);
   expect(PLOT_D / TILE).toBe(5);
-  expect([0, 1, 2, 3].map(plotMask).reduce((a, b) => a | b, 0)).toBe(FULL);
-  // each type has its own fuel, speed and soil packing
+  expect(plotName(0)).toBe('Plot 1');
+  expect(plotName(19)).toBe('Plot 20');
+  // every tile's centre is on its own plot of its own farm
+  for (const farm of [0, 3, 5])
+    for (let p = 0; p < TILES; p++) {
+      const c = tileCenter(farm, p);
+      expect(plotAt(c.x, c.z)).toEqual({ farm, plot: p });
+    }
+  expect(plotAt(0, -20)).toBeNull();
+  expect(PLOT_WORK_S).toBe(3);
+  // the tractor works a column of plots as it drives; each type has its own fuel, speed and soil packing
+  expect(TILE * 0.5).toBeLessThan(WORK_REACH * TRACTOR_EDGE);
+  expect([0, 1, 2, 3].map(columnMask).reduce((a, b) => a | b, 0)).toBe(FULL);
   expect(TRACTOR_PLOT.large.speed).toBeGreaterThan(TRACTOR_PLOT.compact.speed);
   expect(TRACTOR_PLOT.large.fuel).toBeGreaterThan(TRACTOR_PLOT.compact.fuel);
   expect(TRACTOR_PLOT.large.compaction).toBeLessThan(TRACTOR_PLOT.compact.compaction);
   expect(RIDE_SPEED).toBeGreaterThan(1);
 });
 
-test('the tractor bonus and fuel: once per plot and job, only from the seat, one plot per type and tool', () => {
+test('the tractor: fuel once per farm and job, the bonus once all 20 plots are done from the seat', () => {
   const c = wakalaCase('plots');
   const base = { ...initialState, trial: c.trial, field: { ...emptyField(c.trial.cycle) }, points: 0, coins: 1000 };
   const rig = { tractor: 'standard', tool: 'plough', job: 'prep' } as const;
-  // half of Plot A from the seat: fuel paid, the plot is the standard tractor's now, no bonus yet
-  const half = reducer(base, { type: 'fieldMark', farm: 0, job: 'prep', bits: plotMask(0) & 0x1ff, tractor: true, rig });
-  expect(half.points).toBe(0);
-  expect(half.coins).toBe(1000 - TRACTOR_PLOT.standard.fuel);
-  expect(half.trial!.plots![0][0].tractor).toBe('standard');
-  expect(half.trial!.plots![0][0].tools!.prep).toBe('plough');
-  // only Plot A's tiles count, whatever else is under the tractor
-  const done = reducer(half, { type: 'fieldMark', farm: 0, job: 'prep', bits: FULL, tractor: true, rig });
-  expect(done.field.marks['0:prep']).toBe(plotMask(0));
-  expect(done.points).toBe(TRACTOR_BONUS.perPlot);
-  expect(done.field.bonus).toContain('0:prep:0');
+  // one column from the seat: fuel paid, the tractor and tool noted on the farm, no bonus yet
+  const one = reducer(base, { type: 'fieldMark', farm: 0, job: 'prep', bits: columnMask(0), tractor: true, rig });
+  expect(one.points).toBe(0);
+  expect(one.coins).toBe(1000 - TRACTOR_PLOT.standard.fuel);
+  expect(one.trial!.plots![0]).toHaveLength(1);
+  expect(one.trial!.plots![0][0].tractor).toBe('standard');
+  expect(one.trial!.plots![0][0].tools!.prep).toBe('plough');
+  // another type on the same farm and job: allowed, no more fuel, the first type stays on the record
+  const two = reducer(one, { type: 'fieldMark', farm: 0, job: 'prep', bits: columnMask(1), tractor: true, rig: { tractor: 'large', tool: 'harrow', job: 'prep' } });
+  expect(two.field.marks['0:prep']).toBe(columnMask(0) | columnMask(1));
+  expect(two.coins).toBe(one.coins);
+  expect(two.trial!.plots![0][0].tractor).toBe('standard');
+  // the rest from the seat: all 20 plots, so the bonus is paid, once
+  const done = reducer(two, { type: 'fieldMark', farm: 0, job: 'prep', bits: FULL, tractor: true, rig });
+  expect(done.field.marks['0:prep']).toBe(FULL);
+  expect(done.points).toBe(TRACTOR_BONUS.perJob);
+  expect(done.field.bonus).toContain('0:prep');
   expect(done.toast?.text).toContain('Tractor bonus');
-  expect(done.coins).toBe(1000 - TRACTOR_PLOT.standard.fuel);
-  // the same type, or the same tool, on another plot of the farm: refused
-  expect(reducer(done, { type: 'fieldMark', farm: 0, job: 'prep', bits: plotMask(1), tractor: true, rig })).toBe(done);
-  expect(reducer(done, { type: 'fieldMark', farm: 0, job: 'prep', bits: plotMask(1), tractor: true, rig: { ...rig, tractor: 'large' } })).toBe(done);
-  // another type with another tool works Plot B
-  const b = reducer(done, { type: 'fieldMark', farm: 0, job: 'prep', bits: plotMask(1), tractor: true, rig: { tractor: 'large', tool: 'harrow', job: 'prep' } });
-  expect(b.field.marks['0:prep']).toBe(plotMask(0) | plotMask(1));
-  expect(b.trial!.plots![0][1].tractor).toBe('large');
-  expect(b.coins).toBe(1000 - TRACTOR_PLOT.standard.fuel - TRACTOR_PLOT.large.fuel);
+  expect(reducer(done, { type: 'fieldMark', farm: 0, job: 'prep', bits: FULL, tractor: true, rig })).toBe(done);
+  // a farm finished partly on foot pays no bonus
+  const mixed = reducer(reducer(base, { type: 'fieldMark', farm: 0, job: 'prep', bits: columnMask(0) }), { type: 'fieldMark', farm: 0, job: 'prep', bits: FULL, tractor: true, rig });
+  expect(mixed.field.marks['0:prep']).toBe(FULL);
+  expect(mixed.points).toBe(0);
   // the same job on foot pays no bonus and no fuel
   const foot = reducer(base, { type: 'fieldMark', farm: 0, job: 'prep', bits: FULL });
   expect(foot.points).toBe(0);

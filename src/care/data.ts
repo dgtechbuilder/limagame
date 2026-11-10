@@ -118,7 +118,7 @@ export const PRODUCTS: Record<string, Product[]> = {
   // Wakala
   aphids: [
     { id: 'lambda', name: 'Lambda-cyhalothrin', kind: 'insecticide for sucking insects', right: true, lesson: 'Kills sucking insects like aphids.' },
-    { id: 'glyphosate', name: 'Glyphosate', kind: 'weed killer', right: false, lesson: 'Glyphosate kills plants. It would kill the beans, not the aphids.' },
+    { id: 'glyphosate', name: 'Glyphosate', kind: 'weed killer', right: false, lesson: 'Glyphosate kills plants. It would kill the crop, not the aphids.' },
     { id: 'mancozeb', name: 'Mancozeb', kind: 'fungicide', right: false, lesson: 'Mancozeb treats leaf disease. It does not kill aphids.' },
   ],
   // new: leaf rust on maize
@@ -139,6 +139,7 @@ export const FOLLOW_UP: Partial<Record<TrialHazard, { afterDays: number; job: 'w
   drought: { afterDays: 1, job: 'water', title: 'Water {farm} again', why: 'One watering does not last: dry soil needs water again the next day.' },
   // Wakala: spray again in 7 days
   armyworm: { afterDays: 2, job: 'spray', title: 'Spray {farm} again', why: 'Eggs hatch after the first spray: a second spray catches the new caterpillars.' },
+  aphids: { afterDays: 2, job: 'spray', title: 'Spray {farm} again', why: 'Aphids breed fast: a second spray catches the young ones the first one missed.' },
   // Wakala: top-dress with CAN, then water it in the next day
   nitrogen: { afterDays: 1, job: 'water', title: 'Water the top-dress in on {farm}', why: 'Fertilizer only reaches the roots once it is watered in.' },
   // Wakala: hoe again in 7 days

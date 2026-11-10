@@ -1,7 +1,9 @@
 /* The farm world's field work: what each of the six farms needs doing by hand, tile by tile.
 
-   A farm is a plot of 4 × 5 tiles, in four mini plots A to D: its columns, left to right (plots/data.ts). Each job (dig, sow, fertilize, cut weeds, water, spray, harvest…) is done by
-   the farmer walking over the tiles with the right tool or load; the work done is a bit mask per farm and job.
+   A farm is 4 × 5 tiles, and each tile is one of its 20 plots (Plot 1 at the back left, plots/data.ts). Clearing and
+   planting are done a plot at a time with a button (PLOT_WORK_S each); the other jobs (fertilize, cut weeds, water,
+   spray, harvest…) by walking over the plots with the right tool or load. The work done is a bit mask per farm and
+   job, one bit per plot.
    No pictures or three.js here, so the saved game can use it. */
 
 import { PRESCRIBE, followUpTitle } from '../care/data';
@@ -9,8 +11,10 @@ import { PLOTS_PER_FARM, type PlotKind } from '../plots/data';
 import {
   CHECK_DAYS,
   DAMAGE,
+  CROP_WORDS,
   canTreat,
   checkKey,
+  cropOf,
   currentDay,
   hazardFor,
   plotsOf,
@@ -41,16 +45,25 @@ export const PLOTS: { x: number; z: number }[] = [
 export const PLOT_W = COLS * TILE;
 export const PLOT_D = ROWS * TILE;
 
-/** Which mini plot a tile is in: its column. */
-export const plotOfTile = (i: number) => i % COLS;
-/** The tiles of a mini plot. */
-export function plotMask(plot: number) {
-  let m = 0;
-  for (let i = plot; i < TILES; i += COLS) m |= 1 << i;
-  return m;
-}
-/** The plots that have any of these tiles. */
+/** A plot is one tile. */
+export const plotMask = (plot: number) => 1 << plot;
+/** The plots in a mask. */
 export const plotsIn = (bits: number) => Array.from({ length: PLOTS_PER_FARM }, (_, p) => p).filter(p => bits & plotMask(p));
+
+/** Clearing and planting are done one plot at a time with a button: this long each (seconds). */
+export const PLOT_WORK_S = 3;
+/** The jobs done plot by plot with a button, not by walking over the plots. */
+export const BUTTON_JOBS = ['prep', 'sow'] as const;
+/** The farm and plot a point of the world is on, or null. */
+export function plotAt(x: number, z: number): { farm: number; plot: number } | null {
+  for (let farm = 0; farm < PLOTS.length; farm++) {
+    const p = PLOTS[farm];
+    const col = Math.floor((x - (p.x - PLOT_W / 2)) / TILE);
+    const row = Math.floor((z - (p.z - PLOT_D / 2)) / TILE);
+    if (col >= 0 && col < COLS && row >= 0 && row < ROWS) return { farm, plot: row * COLS + col };
+  }
+  return null;
+}
 
 export function tileCenter(farm: number, i: number) {
   const p = PLOTS[farm];
@@ -95,14 +108,15 @@ export const TREAT_JOB: Partial<Record<TrialHazard, TreatJob>> = {
   drought: 'water',
   nitrogen: 'feed',
   armyworm: 'spray',
+  aphids: 'spray',
   disease: 'spray',
   flood: 'drain',
   livestock: 'goat',
   wildlife: 'birds',
 };
 
+/** What each job needs carried. Planting needs nothing: the farmer plants a plot at a time with the button. */
 export const JOB_CARRY: Partial<Record<string, Exclude<Carry, null>>> = {
-  sow: 'seeds',
   feed: 'fertilizer',
   setupFeed: 'fertilizer',
   water: 'water',
@@ -135,14 +149,15 @@ export function popcount(m: number) {
   return n;
 }
 
-/** The tiles a job needs done. Fertilizer at planting skips a plot that gets none; spraying skips the check strip. */
+/** The plots a job needs done. A farm with no fertilizer needs no fertilizer at planting; a farm with no sprayer is
+    not sprayed. */
 export function needOf(job: string, t: Pick<Trial, 'cycle' | 'plans' | 'plots'>, farm: number, day = 0) {
   if (job === 'weed') return someTiles(`w:${t.cycle}:${farm}:${day}`, 7);
   if (job === 'drain') return someTiles(`p:${t.cycle}:${farm}:${day}`, 5);
   if (job === 'goat' || job === 'birds') return 1;
   if (job === 'setupFeed' || job === 'spray') {
-    const rows = plotsOf(t, farm);
-    return rows.reduce((m, r, p) => ((job === 'setupFeed' ? r.fert === 'none' : r.sprayer === 'none') ? m : m | plotMask(p)), 0);
+    const r = plotsOf(t, farm)[0];
+    return (job === 'setupFeed' ? r.fert === 'none' : r.sprayer === 'none') ? 0 : FULL;
   }
   return FULL;
 }
@@ -154,9 +169,10 @@ export const isDone = (f: Field, t: Pick<Trial, 'cycle'>, farm: number, job: str
 /** Land prep with oxen or a tractor is hired, not walked. */
 export const machinePrep = (p: Plan) => p.land === 'ox' || p.land === 'tractor';
 
-/** The setup jobs of a farm, in order: prepare the land, sow, then fertilizer at planting (if any plot gets some). */
-export function setupJobs(t: Pick<Trial, 'cycle' | 'plans' | 'plots'>, farm: number): string[] {
-  const jobs = ['prep', 'sow'];
+/** The setup jobs of a farm, in order: prepare the land, sow, then fertilizer at planting (if the farm gets some). A
+    farm that starts the cycle cleared (Farm 2's sukuma wiki in the first cycle: Trial.cleared) skips the clearing. */
+export function setupJobs(t: Pick<Trial, 'cycle' | 'plans' | 'plots' | 'cleared'>, farm: number): string[] {
+  const jobs = t.cleared?.includes(farm) ? ['sow'] : ['prep', 'sow'];
   if (needOf('setupFeed', t, farm)) jobs.push('setupFeed');
   return jobs;
 }
@@ -177,13 +193,12 @@ export function sprayDone(f: Field, t: Trial, farm: number): boolean {
   return false;
 }
 
-/** Why a plot's input can no longer be changed (it is in the ground), or null. */
-export function plotLocked(f: Field, t: Trial, farm: number, plot: number, kind: PlotKind): string | null {
+/** Why a farm's input can no longer be changed (some of it is in the ground), or null. */
+export function plotLocked(f: Field, t: Trial, farm: number, _set: number, kind: PlotKind): string | null {
   if (t.phase !== 'growing') return null;
-  const m = plotMask(plot);
-  if (kind === 'seed' && doneMask(f, t.cycle, farm, 'sow') & m) return 'Sown';
-  if (kind === 'fert' && doneMask(f, t.cycle, farm, 'setupFeed') & m) return 'Spread';
-  if (kind === 'sprayer' && plotsOf(t, farm)[plot].sprayer && sprayDone(f, t, farm)) return 'In use';
+  if (kind === 'seed' && doneMask(f, t.cycle, farm, 'sow')) return 'Sown';
+  if (kind === 'fert' && doneMask(f, t.cycle, farm, 'setupFeed')) return 'Spread';
+  if (kind === 'sprayer' && plotsOf(t, farm)[0].sprayer && sprayDone(f, t, farm)) return 'In use';
   return null;
 }
 
@@ -300,24 +315,30 @@ export function nextTask(f: Field, t: Trial | null, today: number, coins: number
   if (t.phase === 'done') return { title: 'See the results', note: `Cycle ${t.cycle}`, icon: 'results', target: { place: 'mission' } };
   const day = currentDay(t, today);
   const name = (i: number) => `Farm ${i + 1}`;
-  // planting comes first: every farm dug, then every farm sown, then fed (fewer trips to the shed)
+  // planting comes first: every farm cleared, then every farm planted, then fed (fewer trips to the shed). A farm
+  // that started the cycle cleared goes first at each stage (in the first cycle: plant the sukuma wiki, then the maize).
   const stageOf = (i: number) => ['prep', 'sow', 'setupFeed'].indexOf(setupLeft(f, t, i) ?? '');
   const waiting = t.plans.map((_, i) => i).filter(i => stageOf(i) >= 0);
   const first = Math.min(...waiting.map(stageOf));
-  for (const i of waiting.filter(i => stageOf(i) === first)) {
+  const ahead = (i: number) => (t.cleared?.includes(i) ? 0 : 1);
+  for (const i of waiting.filter(i => stageOf(i) === first).sort((a, b) => ahead(a) - ahead(b) || a - b)) {
     const job = setupLeft(f, t, i)!;
+    const crop = CROP_WORDS[cropOf(t, i)].name;
     if (job === 'prep') {
       if (machinePrep(t.plans[i]))
         return { title: t.plans[i].land === 'tractor' ? 'Hire the tractor' : 'Hire the oxen', note: `to plough ${name(i)}`, icon: 'tractor', target: { place: 'hire' } };
-      const verb = t.plans[i].land === 'slash' ? 'Clear' : t.plans[i].land === 'mulch' ? 'Mulch' : 'Dig';
-      return { title: `${verb} ${name(i)}`, note: 'Walk over every row', icon: 'hoe', target: { farm: i, at: 'plot' } };
+      const left = TILES - popcount(doneMask(f, t.cycle, i, 'prep'));
+      return { title: `Clear ${name(i)} for ${crop}`, note: `${left} of ${TILES} plots left · press Clear on each`, icon: 'hoe', target: { farm: i, at: 'plot' } };
     }
-    if (job === 'sow') return needCarry(f, 'seeds', { title: `Sow ${name(i)}`, note: 'Walk over every row', icon: 'seeds', target: { farm: i, at: 'plot' } });
+    if (job === 'sow') {
+      const left = TILES - popcount(doneMask(f, t.cycle, i, 'sow'));
+      return { title: `Plant ${crop} on ${name(i)}`, note: `${left} of ${TILES} plots left · press Plant on each`, icon: 'seeds', target: { farm: i, at: 'plot' } };
+    }
     return needCarry(f, 'fertilizer', { title: `Fertilize ${name(i)}`, note: 'At planting', icon: 'fertilizer', target: { farm: i, at: 'plot' } });
   }
   if (day > CHECK_DAYS) {
     const left = t.plans.findIndex((_, i) => !isDone(f, t, i, 'harvest'));
-    if (left >= 0) return { title: `Harvest ${name(left)}`, note: 'The cobs are dry', icon: 'corn', target: { farm: left, at: 'plot' } };
+    if (left >= 0) return { title: `Harvest ${name(left)}`, note: CROP_WORDS[cropOf(t, left)].ready, icon: 'corn', target: { farm: left, at: 'plot' } };
     return { title: 'Collect Corn', note: 'Sell at the market', icon: 'corn', target: { place: 'market' } };
   }
   // a farm read right whose fix is still to be picked

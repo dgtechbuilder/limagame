@@ -1,13 +1,13 @@
-/* The farm world: a walkable 3D farm in three.js. The farmer walks (tap, drag or keys), and walking over a farm's
-   tiles does that farm's next job with the right tool or load. The React side (World.tsx) owns the game state;
+/* The farm world: a walkable 3D farm in three.js. The farmer walks (tap, drag or keys). Clearing and planting are
+   done a plot at a time with a button (World.tsx); walking over a farm's plots does its other jobs with the right tool
+   or load. The React side (World.tsx) owns the game state;
    this engine draws it and reports what the farmer did. */
 
 import * as THREE from 'three';
 import { RIDE_SPEED, TRACTOR_EDGE, type ImplId } from '../tractor/data';
-import { JOB_INFO, PLOT_LETTERS, TOOL_JOB, TRACTOR_PLOT, plotName, sprayerOf, toolName, tractorBlock, type PlotJob, type TractorId } from '../plots/data';
-import { CHECK_DAYS, checkKey, farmName, harvestFarm, hazardFor, plotGrowth, plotsOf, type Trial, type TrialHazard } from '../trials/model';
+import { JOB_INFO, TOOL_JOB, TRACTOR_PLOT, toolName, type PlotJob, type TractorId } from '../plots/data';
+import { CHECK_DAYS, CROP_WORDS, checkKey, cropOf, farmName, harvestFarm, hazardFor, plotGrowth, type Trial, type TrialHazard } from '../trials/model';
 import {
-  COLS,
   FULL,
   PLOTS,
   PLOT_D,
@@ -26,7 +26,8 @@ import {
   treatLeft,
   careLeft,
   fixLeft,
-  plotMask,
+  plotAt,
+  BUTTON_JOBS,
   followUpLeft,
   type Carry,
   type Field,
@@ -45,6 +46,7 @@ import {
   hailTile,
   house,
   maizeTile,
+  kaleTile,
   makeArrow,
   makeBird,
   makeChicken,
@@ -145,7 +147,7 @@ export interface WorldEvents {
   arrived?: () => void;
 }
 
-type Fx = 'dig' | 'clear' | 'mulch' | 'seed' | 'fert' | 'water' | 'spray' | 'weed' | 'drain' | 'harvest';
+export type Fx = 'dig' | 'clear' | 'mulch' | 'seed' | 'fert' | 'water' | 'spray' | 'weed' | 'drain' | 'harvest';
 
 interface Rect {
   x0: number;
@@ -175,6 +177,8 @@ export class FarmWorld {
   private joy = new THREE.Vector2();
   private keys = new Set<string>();
   private walking = 0;
+  /** play-tests shorten the plot timer (1 = the real 3 seconds) */
+  workScale = 1;
   private work = 0;
   private workFx: Fx | null = null;
   private lastHint = 0;
@@ -188,15 +192,14 @@ export class FarmWorld {
   /** the tractor type and tool chosen at the tractor (plots/data.ts): the tool decides the job */
   private rig: { tractor: TractorId; tool: ImplId } | null = null;
   /** plots the tractor has claimed here before the state caught up, as `${cycle}:${farm}:${tractor or job:tool}` → plot */
-  private claims = new Map<string, number>();
-  private plotLines!: THREE.InstancedMesh;
-  private plotLabels: THREE.Sprite[][] = [];
 
   // the field, drawn as instances: 6 farms × 20 tiles
   private base!: THREE.InstancedMesh;
   private mound!: THREE.InstancedMesh;
   private wild!: THREE.InstancedMesh;
   private plants: Record<'sprout' | 'young' | 'tall' | 'ripe' | 'stubble', THREE.InstancedMesh> = {} as never;
+  /** sukuma wiki, by the same stages (the first cycle's Farm 2) */
+  private kale: Record<'sprout' | 'young' | 'tall' | 'ripe' | 'stubble', THREE.InstancedMesh> = {} as never;
   private weeds!: THREE.InstancedMesh;
   private puddles!: THREE.InstancedMesh;
   private hail!: THREE.InstancedMesh;
@@ -647,25 +650,11 @@ export class FarmWorld {
     this.mound = inst(G.box, lam('#ffffff'), n, false);
     this.wild = inst(wildTile(), vcMaterial(), n);
     for (const st of ['sprout', 'young', 'tall', 'ripe', 'stubble'] as const) this.plants[st] = inst(maizeTile(st), vcMaterial(true), n);
+    for (const st of ['sprout', 'young', 'tall', 'ripe', 'stubble'] as const) this.kale[st] = inst(kaleTile(st), vcMaterial(true), n);
     this.weeds = inst(weedTile(), vcMaterial(true), n);
     this.puddles = inst(puddleTile(), new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.85 }), n, false);
     this.hail = inst(hailTile(), vcMaterial(), n, false);
     this.pests = inst(pestTile(), vcMaterial(), n, false);
-    // the four mini plots of each farm: pale lines between them, and their letters A to D at the front
-    this.plotLines = inst(G.box, lam('#f6ecc4'), PLOTS.length * (COLS - 1), false);
-    PLOTS.forEach((p, f) => {
-      for (let c = 0; c < COLS - 1; c++) this.plotLines.setMatrixAt(f * (COLS - 1) + c, at(p.x + (c + 0.5 - (COLS - 1) / 2) * TILE, 0.05, p.z, { sx: 0.07, sy: 0.05, sz: PLOT_D + 0.2 }));
-      const row: THREE.Sprite[] = [];
-      for (let c = 0; c < COLS; c++) {
-        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: badgeTexture(PLOT_LETTERS[c], '#7a4a22'), depthTest: false }));
-        sp.scale.set(0.42, 0.42, 1);
-        sp.position.set(p.x + (c - (COLS - 1) / 2) * TILE, 0.35, p.z + PLOT_D / 2 + 0.32);
-        sp.renderOrder = 4;
-        this.scene.add(sp);
-        row.push(sp);
-      }
-      this.plotLabels.push(row);
-    });
     // a sign at each farm
     for (let f = 0; f < PLOTS.length; f++) {
       const s = signOf(f);
@@ -801,7 +790,7 @@ export class FarmWorld {
     const growing = t?.phase === 'growing';
     const done = t?.phase === 'done';
     const col = new THREE.Color();
-    const meshes = [this.mound, this.wild, ...Object.values(this.plants), this.weeds, this.puddles, this.hail, this.pests];
+    const meshes = [this.mound, this.wild, ...Object.values(this.plants), ...Object.values(this.kale), this.weeds, this.puddles, this.hail, this.pests];
     // only what shows is drawn: each instanced mesh is packed from the start and its count set to what it holds (a
     // hidden instance would still cost its triangles, in the picture and again in the shadows)
     const used = new Map<THREE.InstancedMesh, number>(meshes.map(m => [m, 0]));
@@ -814,7 +803,8 @@ export class FarmWorld {
     for (let farm = 0; farm < PLOTS.length; farm++) {
       const active = !!t && farm < t.plans.length && t.phase !== 'plan';
       const plan = t?.plans[farm];
-      const prep = active ? this.marks(farm, 'prep') : 0;
+      // a farm that started the cycle cleared (the first cycle's sukuma wiki) shows cleared soil from the start
+      const prep = active ? (t?.cleared?.includes(farm) ? FULL : this.marks(farm, 'prep')) : 0;
       const sown = active ? this.marks(farm, 'sow') : 0;
       const fed = active ? this.marks(farm, 'setupFeed') : 0;
       const cut = active ? this.marks(farm, 'harvest') : 0;
@@ -835,9 +825,8 @@ export class FarmWorld {
       const weedMask = h === 'weeds' ? needOf('weed', t!, farm, day) : 0;
       const puddleMask = h === 'flood' ? needOf('drain', t!, farm, day) : 0;
       const gaps = plan?.date === 'early' ? someTiles(`gap:${t?.cycle}:${farm}`, 5) : 0;
-      // each mini plot grows with its own seed, fertilizer and machines: taller or shorter, greener or paler
-      const growth = active && t ? this.grown(t, farm, day).plots : [1, 1, 1, 1];
-      this.plotLabels[farm].forEach(sp => (sp.visible = active));
+      // the farm grows with its seed, fertilizer and machines: taller or shorter, greener or paler
+      const growth = active && t ? this.grown(t, farm, day).plots : [1];
 
       col.set(active && prep ? '#7a4224' : '#93cf33');
       this.base.setColorAt(farm, col);
@@ -871,7 +860,7 @@ export class FarmWorld {
           if (!healed) {
             if (h === 'nitrogen') tint = '#e8e070';
             if (h === 'disease') tint = '#e4a35c';
-            if (h === 'armyworm') tint = '#d6e09a';
+            if (h === 'armyworm' || h === 'aphids') tint = '#d6e09a';
             if (h === 'drought') {
               tint = '#c8c48a';
               sy = 0.85;
@@ -881,21 +870,20 @@ export class FarmWorld {
           }
         }
         if (h === 'plantLate') sy *= 0.8;
-        // the plots part ways as the crop grows
-        const g = growth[i % COLS];
+        const g = growth[0] ?? 1;
         if (stage !== 'sprout' && stage !== 'stubble') {
           sy *= 0.7 + 0.3 * Math.min(1, g);
           if (g < 0.62 && tint === '#ffffff') tint = '#e6eb9a';
         }
         if (lost > 0.08 && tint === '#ffffff' && stage !== 'stubble') tint = lost > 0.25 ? '#dcd27a' : '#eef0a8';
         col.set(tint);
-        put(this.plants[stage], at(c.x, 0.06, c.z, { sy, ry: (i % 2) * 0.4 }), col);
+        put((t && cropOf(t, farm) === 'kale' ? this.kale : this.plants)[stage], at(c.x, 0.06, c.z, { sy, ry: (i % 2) * 0.4 }), col);
         const weedy = (showProblem && !(treatBits & bit) && weedMask & bit) || fuWeeds & bit;
         if (weedy) put(this.weeds, at(c.x, 0.08, c.z, { ry: i }));
         if (showProblem && !(treatBits & bit)) {
           if (puddleMask & bit) put(this.puddles, at(c.x, 0, c.z));
           if (h === 'hail' && i % 2 === 0) put(this.hail, at(c.x, 0, c.z));
-          if (h === 'armyworm' && i % 3 === 0) put(this.pests, at(c.x, 0.1, c.z));
+          if ((h === 'armyworm' || h === 'aphids') && i % 3 === 0) put(this.pests, at(c.x, 0.1, c.z));
         }
       }
       // the sign's badge: check due, work to do, harvest
@@ -916,7 +904,7 @@ export class FarmWorld {
       m.count = used.get(m)!;
       m.visible = m.count > 0;
     }
-    for (const m of [this.base, this.plotLines, ...meshes]) {
+    for (const m of [this.base, ...meshes]) {
       m.instanceMatrix.needsUpdate = true;
       if (m.instanceColor) m.instanceColor.needsUpdate = true;
     }
@@ -991,7 +979,7 @@ export class FarmWorld {
       if (machinePrep(plan)) return { hint: `${plan.land === 'tractor' ? 'Hire the tractor' : 'Hire the oxen'} at the Hire spot to plough Farm ${farm + 1}` };
       return { job: 'prep', need: FULL, fx: plan.land === 'slash' ? 'clear' : plan.land === 'mulch' ? 'mulch' : 'dig' };
     }
-    if (setup === 'sow') return carry === 'seeds' ? { job: 'sow', need: FULL, fx: 'seed' } : { hint: 'Get the seed sack from the shed to sow' };
+    if (setup === 'sow') return { job: 'sow', need: FULL, fx: 'seed' };
     if (setup === 'setupFeed') return carry === 'fertilizer' ? { job: 'setupFeed', need: needOf('setupFeed', t, farm), fx: 'fert' } : { hint: 'Get fertilizer from the shed: this farm gets it at planting' };
     if (day > CHECK_DAYS) return { job: 'harvest', need: FULL, fx: 'harvest' };
     const tr = careLeft(f, t, farm, day);
@@ -1015,6 +1003,8 @@ export class FarmWorld {
     if (this.riding) return this.rideWork(farm);
     const j = this.jobAt(farm);
     if (!j) return;
+    // clearing and planting are done a plot at a time with a button (World.tsx), not by walking over the plots
+    if (!('hint' in j) && (BUTTON_JOBS as readonly string[]).includes(j.job)) return;
     if ('hint' in j) {
       if (v.focus !== farm) return;
       const now = performance.now();
@@ -1053,8 +1043,7 @@ export class FarmWorld {
     this.ev.hint(text);
   }
 
-  /** The tractor at work: the tool decides the job; it works the plot under it, if that plot may be worked with this
-      tractor type and tool (each one plot per farm). */
+  /** The tractor at work: the tool decides the job; it works the plots under it as it drives. */
   private rideWork(farm: number) {
     const v = this.view!;
     const t = v.trial;
@@ -1064,7 +1053,6 @@ export class FarmWorld {
     const day = fieldDay(t, v.today);
     const job = TOOL_JOB[rig.tool];
     const tool = toolName(rig.tool).toLowerCase();
-    const plot = Math.max(0, Math.min(COLS - 1, Math.round((this.pos.x - PLOTS[farm].x) / TILE + (COLS - 1) / 2)));
     const setup = setupLeft(f, t, farm);
     let key: string | null = null;
     let need = 0;
@@ -1075,7 +1063,7 @@ export class FarmWorld {
       } else if (setup) return this.rideHint(`${farmName(farm)} needs to ${JOB_INFO[setup as PlotJob].name.toLowerCase()} first: the ${tool} is for later`);
       else return this.rideHint(`${farmName(farm)} is planted: nothing for the ${tool} here now`);
     } else if (job === 'harvest') {
-      if (setup || day <= CHECK_DAYS) return this.rideHint(`The maize on ${farmName(farm)} is not ready to harvest yet`);
+      if (setup || day <= CHECK_DAYS) return this.rideHint(`The ${CROP_WORDS[cropOf(t, farm)].name} on ${farmName(farm)} is not ready to harvest yet`);
       key = 'harvest';
       need = FULL;
     } else {
@@ -1084,40 +1072,56 @@ export class FarmWorld {
       key = c.key;
       need = c.need;
     }
-    const pm = plotMask(plot);
-    if (!(need & pm)) return this.rideHint(job === 'setupFeed' ? `${plotName(plot)} gets no fertilizer: it is the control plot` : job === 'spray' ? `${plotName(plot)} is the unsprayed check strip` : `${plotName(plot)} needs no ${tool} work`);
-    const rows = plotsOf(t, farm).map(r => ({ ...r, tools: { ...(r.tools ?? {}) } }));
-    // what this ride has claimed already, before the state caught up
-    for (const [k, p] of this.claims) {
-      const [cy, fm, what, tl] = k.split(':');
-      if (Number(cy) !== t.cycle || Number(fm) !== farm) continue;
-      if (what === 'tractor') rows[p].tractor = tl as TractorId;
-      else rows[p].tools![what as PlotJob] = tl as ImplId;
-    }
-    let block = tractorBlock(rows, plot, rig.tractor, rig.tool);
-    const sp = rows[plot].sprayer;
-    if (!block && job === 'spray' && sp && sp !== 'boom') block = `${plotName(plot)} is sprayed with the ${sprayerOf(sp).name.toLowerCase()}: the boom sprayer has its own plot`;
-    if (block) return this.rideHint(block);
+    if (!need) return this.rideHint(job === 'setupFeed' ? `${farmName(farm)} gets no fertilizer` : `${farmName(farm)} needs no ${tool} work`);
     const done = this.marks(farm, key);
     let bits = 0;
     for (let i = 0; i < TILES; i++) {
       const bit = 1 << i;
-      if (!(need & pm & bit) || done & bit) continue;
+      if (!(need & bit) || done & bit) continue;
       const c = tileCenter(farm, i);
-      if (Math.abs(c.z - this.pos.y) < TILE * 1.6) {
+      if (Math.abs(c.x - this.pos.x) < TILE * 0.75 && Math.abs(c.z - this.pos.y) < TILE * 1.6) {
         bits |= bit;
         this.burst(this.fxOf(job), c.x, c.z, job === 'harvest' ? 3 : 6);
       }
     }
     if (!bits) return;
-    this.claims.set(`${t.cycle}:${farm}:tractor:${rig.tractor}`, plot);
-    this.claims.set(`${t.cycle}:${farm}:${job}:${rig.tool}`, plot);
     const k = `${farm}:${key}`;
     this.pending.set(k, (this.pending.get(k) ?? 0) | bits);
     this.work = 0.45;
     this.workFx = this.fxOf(job);
     this.dirty = true;
     this.ev.mark(farm, key, bits, true, { tractor: rig.tractor, tool: rig.tool, job });
+  }
+
+  /* ---------------- clearing and planting, a plot at a time (the button and timer are World.tsx's) ---------------- */
+
+  /** The plot the farmer stands on and the button job it is waiting for (clear or plant), or null. */
+  plotJobHere(): { farm: number; plot: number; job: 'prep' | 'sow'; fx: Fx } | null {
+    if (!this.view || this.riding) return null;
+    const at = plotAt(this.pos.x, this.pos.y);
+    if (!at) return null;
+    const j = this.jobAt(at.farm);
+    if (!j || 'hint' in j || !(BUTTON_JOBS as readonly string[]).includes(j.job)) return null;
+    if (!(j.need & (1 << at.plot)) || this.marks(at.farm, j.job) & (1 << at.plot)) return null;
+    return { farm: at.farm, plot: at.plot, job: j.job as 'prep' | 'sow', fx: j.fx };
+  }
+
+  /** The farmer is at work on a plot: keep the work animation going and throw a little soil or seed. */
+  plotWorking(fx: Fx) {
+    this.work = 0.45;
+    this.workFx = fx;
+    this.burst(fx, this.pos.x, this.pos.y, 2);
+  }
+
+  /** A plot's clearing or planting is done: draw it at once (the state catches up) and report it. */
+  plotFinished(farm: number, plot: number, job: 'prep' | 'sow', fx: Fx) {
+    const bit = 1 << plot;
+    const k = `${farm}:${job}`;
+    this.pending.set(k, (this.pending.get(k) ?? 0) | bit);
+    const c = tileCenter(farm, plot);
+    this.burst(fx, c.x, c.z, 8);
+    this.dirty = true;
+    this.ev.mark(farm, job, bit, false);
   }
 
   private fxOf(job: PlotJob): Fx {

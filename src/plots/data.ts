@@ -1,5 +1,6 @@
-/* Four mini plots on every farm: an on-farm trial, where each plot gets a different seed, fertilizer, sprayer,
-   tractor and tool, side by side under the same weather and care, and the harvest shows what each one did.
+/* A farm's inputs: the seed, fertilizer and sprayer it grows with, and the tractor and tools that worked it. Every
+   farm is 20 plots (its 4 × 5 tiles: see world/field.ts), worked one plot at a time; the inputs are chosen once per
+   farm and go on all 20 plots, so the six farms compare them.
 
    Every word and number the player learns from is here, so an agronomist can review them without touching code. The
    numbers are proposed, for that review (see docs/plot-trials-plan.md). No pictures or screens here, so the saved
@@ -8,13 +9,14 @@
 import type { Forecast, TrialHazard } from '../trials/model';
 import { IMPL, LAYOUTS, TRACTORS, fitOf, type ImplId, type TractorKind } from '../tractor/data';
 
-/** Plots A to D are a farm's four columns of tiles, left to right. */
-export const PLOTS_PER_FARM = 4;
-export const PLOT_LETTERS = ['A', 'B', 'C', 'D'] as const;
-export const plotName = (p: number) => `Plot ${PLOT_LETTERS[p]}`;
+/** Every farm is 20 plots: its 4 × 5 tiles, numbered 1 to 20 from the back left. */
+export const PLOTS_PER_FARM = 20;
+export const plotName = (p: number) => `Plot ${p + 1}`;
 
-/** A plot's share of a farm's potential harvest. */
-export const PLOT_SHARE = 1 / PLOTS_PER_FARM;
+/** One set of inputs per farm (the record below): the seed, fertilizer and sprayer go on every plot. */
+export const INPUT_SETS = 1;
+/** An input set's share of a farm's potential harvest and of its input costs: the whole farm. */
+export const PLOT_SHARE = 1 / INPUT_SETS;
 
 /* ---------------- seeds ---------------- */
 
@@ -262,11 +264,11 @@ export const SPRAYERS: SprayerOption[] = [
 
 export type TractorId = TractorKind['id'];
 
-/** What each tractor type does to a plot it works. */
+/** What each tractor type does to a farm it works: fuel is coins per farm and job, paid the first time it works it. */
 export const TRACTOR_PLOT: Record<TractorId, { fuel: number; compaction: number; speed: number; teach: string }> = {
-  compact: { fuel: 6, compaction: 1, speed: 0.85, teach: 'Light: it does not pack the soil. Slowest, and cheapest on fuel.' },
-  standard: { fuel: 9, compaction: 0.99, speed: 1, teach: 'Packs the soil a little. Middle speed and fuel.' },
-  large: { fuel: 14, compaction: 0.96, speed: 1.25, teach: 'Fastest, but heavy wheels pack the soil (less grain), and it burns the most fuel.' },
+  compact: { fuel: 24, compaction: 1, speed: 0.85, teach: 'Light: it does not pack the soil. Slowest, and cheapest on fuel.' },
+  standard: { fuel: 36, compaction: 0.99, speed: 1, teach: 'Packs the soil a little. Middle speed and fuel.' },
+  large: { fuel: 56, compaction: 0.96, speed: 1.25, teach: 'Fastest, but heavy wheels pack the soil (less grain), and it burns the most fuel.' },
 };
 
 /** Land turned by a tractor: the yield factor of its land prep (a hand hoe is 0.95, oxen 1). */
@@ -333,29 +335,26 @@ export const TOOLS = Object.keys(TOOL_JOB) as ImplId[];
 export const toolName = (k: ImplId) => IMPL[k].name;
 export const tractorName = (k: TractorId) => TRACTORS.find(t => t.id === k)!.name;
 
-/* ---------------- one farm's four plots ---------------- */
+/* ---------------- one farm's inputs ---------------- */
 
 export interface PlotRecord {
   seed: SeedId;
   fert: FertId;
   /** chosen before the farm's first spray, kept all season */
   sprayer?: SprayerId;
-  /** the tractor type that works this plot (claimed by the first tile it works) */
+  /** the tractor type that first worked this farm */
   tractor?: TractorId;
-  /** the tool used for each job done by tractor on this plot */
+  /** the tool first used for each job done by tractor on this farm */
   tools?: Partial<Record<PlotJob, ImplId>>;
 }
 
-/** Plots A to D start like this on every farm, so farms stay comparable; the player changes them on the plot board. */
-export const DEFAULT_SEEDS: SeedId[] = ['certified', 'dt', 'opv', 'saved'];
-export const DEFAULT_FERTS: FertId[] = ['none', 'basalTop', 'manure', 'basal'];
-export const DEFAULT_SPRAYERS: SprayerId[] = ['knapsack', 'none', 'mist', 'boom'];
+/** Every farm starts with these inputs; the player changes them on the inputs board (in the plan, or at a shed). */
+export const defaultPlots = (): PlotRecord[] => [{ seed: 'certified', fert: 'basal', sprayer: 'knapsack' }];
 
-export const defaultPlots = (): PlotRecord[] => DEFAULT_SEEDS.map((seed, p) => ({ seed, fert: DEFAULT_FERTS[p], sprayer: DEFAULT_SPRAYERS[p] }));
-
-/** Old saves (before plots): all four plots follow the farm plan. */
-export const legacyPlots = (seed: string, fert: string): PlotRecord[] =>
-  Array.from({ length: PLOTS_PER_FARM }, () => ({ seed: (SEEDS.some(x => x.id === seed) ? seed : 'certified') as SeedId, fert: (FERTS.some(x => x.id === fert) ? fert : 'basal') as FertId }));
+/** Old saves (before inputs were chosen): the farm follows its plan. */
+export const legacyPlots = (seed: string, fert: string): PlotRecord[] => [
+  { seed: (SEEDS.some(x => x.id === seed) ? seed : 'certified') as SeedId, fert: (FERTS.some(x => x.id === fert) ? fert : 'basal') as FertId },
+];
 
 export type PlotKind = 'seed' | 'fert' | 'sprayer';
 
@@ -365,36 +364,17 @@ export const sprayerOf = (id: SprayerId) => SPRAYERS.find(x => x.id === id)!;
 
 export const OPTIONS: { [K in PlotKind]: InputOption[] } = { seed: SEEDS, fert: FERTS, sprayer: SPRAYERS };
 export const KIND_WORDS: Record<PlotKind, { title: string; one: string; shed: string; rule: string }> = {
-  seed: { title: 'Seeds', one: 'seed', shed: 'the seed shed', rule: 'Each seed goes on one plot of a farm, so you can compare them side by side.' },
-  fert: { title: 'Fertilizer', one: 'fertilizer', shed: 'the fertilizer shed', rule: 'Each fertilizer goes on one plot of a farm. Leave one plot with none to see what fertilizer adds.' },
-  sprayer: { title: 'Sprayers', one: 'sprayer', shed: 'the sprayer shed', rule: 'Each sprayer is used on one plot of a farm, all season. One plot stays unsprayed as a check.' },
+  seed: { title: 'Seed', one: 'seed', shed: 'the seed shed', rule: 'One seed for the whole farm, all 20 plots. Give another farm a different seed to compare them.' },
+  fert: { title: 'Fertilizer', one: 'fertilizer', shed: 'the fertilizer shed', rule: 'One fertilizer for the whole farm. Leave a farm with none to see what fertilizer adds.' },
+  sprayer: { title: 'Sprayer', one: 'sprayer', shed: 'the sprayer shed', rule: 'One sprayer for the whole farm, all season. A farm with none stays unsprayed.' },
 };
 
-/** Coins a plot's input costs (a quarter of a farm's). */
+/** Coins an input costs a farm. */
 export const plotCost = (kind: PlotKind, id: string) => Math.round((OPTIONS[kind].find(x => x.id === id)?.cost ?? 0) * PLOT_SHARE);
 
-/** Put an input on a plot. If another plot of the farm has it, the two swap, so each input stays on one plot. */
+/** Put an input on a farm (its one input set). */
 export function setPlotInput(rows: PlotRecord[], kind: PlotKind, plot: number, value: string): PlotRecord[] {
-  const out = rows.map(r => ({ ...r }));
-  const old = out[plot][kind];
-  const other = out.findIndex((r, i) => i !== plot && r[kind] === value);
-  (out[plot] as unknown as Record<string, unknown>)[kind] = value;
-  if (other >= 0) (out[other] as unknown as Record<string, unknown>)[kind] = old;
-  return out;
-}
-
-/** Why a tractor can't work a plot of a farm with this type and tool, or null if it can. */
-export function tractorBlock(rows: PlotRecord[], plot: number, tractor: TractorId, tool: ImplId): string | null {
-  const job = TOOL_JOB[tool];
-  const here = rows[plot];
-  if (here.tractor && here.tractor !== tractor) return `${plotName(plot)} is the ${tractorName(here.tractor).toLowerCase()} tractor's plot. Each tractor works one plot of a farm, so you can compare them.`;
-  const mine = rows.findIndex((r, i) => i !== plot && r.tractor === tractor);
-  if (!here.tractor && mine >= 0) return `The ${tractorName(tractor).toLowerCase()} tractor already works ${plotName(mine)} on this farm. Try another plot with another tractor.`;
-  const used = rows.findIndex((r, i) => i !== plot && r.tools?.[job] === tool);
-  if (used >= 0) return `The ${toolName(tool).toLowerCase()} was used on ${plotName(used)} of this farm. Each tool goes on one plot: try another tool here.`;
-  const done = here.tools?.[job];
-  if (done && done !== tool) return `${plotName(plot)} was already worked with the ${toolName(done).toLowerCase()}.`;
-  return null;
+  return rows.map((r, i) => (i === plot ? { ...r, [kind]: value } : { ...r }));
 }
 
 /** Hazards whose damage a plot's inputs change. */

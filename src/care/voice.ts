@@ -17,6 +17,7 @@ export const SAY: Record<TrialHazard, string> = {
   flood: 'Water has been standing between these rows since the storm.',
   nitrogen: 'Part of this maize looks pale to me.', // Wakala
   armyworm: 'Something is eating holes in this maize. I found droppings this morning.', // Wakala
+  aphids: 'The sukuma leaves are curling, and they feel sticky under my hand.',
   disease: 'Some leaves here have spots I have not seen before.',
   weeds: 'Something is growing between the rows.', // Wakala
   livestock: 'The gate was open this morning. Something got in.',
@@ -64,6 +65,13 @@ export const REMARK: Partial<Record<TrialHazard, Partial<Record<RoundPart, strin
     water: 'The plants have had enough water.',
     farm: 'It started in one corner of the farm.', // Wakala
   },
+  aphids: {
+    crop: 'The young leaves are curled and cupped.',
+    pests: 'Turn a leaf over: grey-green insects, packed close.',
+    soil: 'The soil seems fine to me.',
+    water: 'The plants have had enough water.',
+    farm: 'It started on a few plants at the edge.',
+  },
   disease: {
     crop: 'The plants are standing up well.',
     pests: 'The spots rub off on my fingers.',
@@ -101,6 +109,7 @@ export const WRONG_GUESS: Record<TrialHazard, string> = {
   flood: 'I think this maize just needs fertilizer.',
   nitrogen: 'I think pests are back. Some leaves have a yellow stripe.', // Wakala
   armyworm: 'I think they just need more water. They look tired to me.', // Wakala
+  aphids: 'I think they just need more water. The leaves are curling.',
   disease: 'I think the sun has burnt those leaves, that is all.',
   weeds: 'Those pretty flowers can stay. The maize will be fine.',
   livestock: 'I think the storm broke those plants.',

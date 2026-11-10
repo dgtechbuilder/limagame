@@ -12,7 +12,7 @@ import { CROP_NAME, CYCLE_DAYS, STAGE_LABELS, dayNumber, type HazardId, type Sta
 import type { Crop } from '../first/data';
 import { Inspect, type InspectView } from './Inspect';
 import { trialRounds, type TrialRound } from './trial';
-import { CHECK_DAYS, FORECASTS, checkKey, currentDay } from '../trials/model';
+import { CHECK_DAYS, FORECASTS, checkKey, cropOf, currentDay } from '../trials/model';
 import { BEDS, START_NODE, START_POINT, measure, pointAt, routeBetween, standNode, type Pt } from './walk';
 
 /* Field rounds: every bed on the farmer's farm, back to back.
@@ -254,7 +254,7 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
     return (
       <Inspect
         tag={tr ? `${tr.short} of ${rounds.length}` : undefined}
-        note={tr ? `Maize · ${STAGE_LABELS[r.stage]} · day ${tDay} of ${CHECK_DAYS}` : undefined}
+        note={tr ? `${CROP_NAME[r.crop]} · ${STAGE_LABELS[r.stage]} · day ${tDay} of ${CHECK_DAYS}` : undefined}
         after={tr?.after}
         key={`${r.id}-${visit.second}-${demoView ?? ''}`}
         round={r}
@@ -350,7 +350,7 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
 
       <p className="rr-cycle">
         {trial
-          ? `Cycle ${trial.cycle} · maize · day ${tDay} of ${CHECK_DAYS} · ${FORECASTS[trial.forecast].label.split(':')[0]}`
+          ? `Cycle ${trial.cycle} · ${[...new Set(trial.plans.map((_, i) => CROP_NAME[cropOf(trial, i)].toLowerCase()))].join(' & ')} · day ${tDay} of ${CHECK_DAYS} · ${FORECASTS[trial.forecast].label.split(':')[0]}`
           : `Week ${Math.floor(rounds[0].day / 7) + 1} of 3 · ${STAGE_LABELS[rounds[0].stage]} · crops change in ${CYCLE_DAYS - rounds[0].day} days`}
       </p>
 
