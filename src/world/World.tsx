@@ -217,6 +217,8 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
   function startPlot(p: PlotHere) {
     const w = eng.current;
     if (!w || working) return;
+    // a press while still walking stops the farmer on this plot, so the work isn't cut short by walking off it
+    w.stopWalking();
     setWorking({ ...p, start: performance.now(), ms: PLOT_WORK_S * 1000 * w.workScale });
   }
   useEffect(() => {

@@ -19,7 +19,13 @@ async function firstCycle(page: Page) {
 
 /** Walk to the plot the task card points at (tap the card), then press its button and wait for the timer. */
 async function workNextPlot(page: Page) {
-  await page.locator('.hud-task').click();
+  // the farm the task card names; the farmer is put on its next plot (walking there is played in the first plots)
+  const farm = Number(/Farm (\d)/.exec(await task(page))![1]) - 1;
+  await page.evaluate(f => {
+    const w = (window as unknown as Win).__limaWorld!;
+    const t = w.nextTile(f);
+    w.spawn(t.x, t.z);
+  }, farm);
   await page.locator('.hud-plot').click({ timeout: 20_000 });
   await expect(page.locator('.hud-timer')).toBeHidden({ timeout: 10_000 });
 }

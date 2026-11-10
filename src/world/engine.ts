@@ -1106,6 +1106,11 @@ export class FarmWorld {
     return { farm: at.farm, plot: at.plot, job: j.job as 'prep' | 'sow', fx: j.fx };
   }
 
+  /** Stop walking where the farmer stands (they start work on the plot under them). */
+  stopWalking() {
+    this.target = null;
+  }
+
   /** The farmer is at work on a plot: keep the work animation going and throw a little soil or seed. */
   plotWorking(fx: Fx) {
     this.work = 0.45;
