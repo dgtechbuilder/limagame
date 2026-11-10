@@ -139,7 +139,9 @@ test('tour of the Wakala moments on a phone-sized screen', async ({ page }) => {
   await page.screenshot({ path: shot('19-tractor-plots') });
   await page.locator('.hud-tractor').click();
 
-  // clearing by hand: the button on the next plot, then its 3-second timer
+  // clearing by hand: the button on the next plot, then its 3-second timer (a fresh field: the hired tractor from
+  // earlier may have ploughed on while it drove home)
+  await scenario(page, 'plots');
   await tapTask(page, 'Clear Farm 1');
   await expect(page.locator('.hud-plot')).toBeVisible({ timeout: 60_000 });
   await settle(page);

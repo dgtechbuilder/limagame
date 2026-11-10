@@ -60,6 +60,8 @@ test('six farms: planting records each plan; tractor work and drives burn diesel
   // a planned cycle (the first one plants itself: maize and sukuma wiki), so the plans can differ
   await jump(page, { view: 'classic', coins: 5000, trialHistory: [{ cycle: 1, farms: 2, best: 0, bags: [5, 5], profit: [0, 0] }] });
   await act(page, { type: 'trialNew' });
+  // six farms may not share a plan: one change each, then Farm 2's own
+  await act(page, { type: 'trialSuggest' });
   await act(page, { type: 'trialPlan', farm: 1, key: 'fert', value: 'double' });
   await act(page, { type: 'trialPlan', farm: 1, key: 'land', value: 'tractor' });
   await act(page, { type: 'trialPlant', clock: 'fast' });
