@@ -9,7 +9,7 @@ import { GuideFace } from '../art/Cast';
 import { useVoice } from '../art/style';
 import { speak } from '../speech';
 import { Field, FIELD_H, FIELD_W, FarmerFigure, PartArt, rowGeometry } from './art';
-import { CALLS, PART_LABELS, say, type Call, type Look, type PartId, type ShambaReview } from './data';
+import { CALLS, PART_LABELS, savedLine, say, stakeLine, type Call, type Look, type PartId, type ShambaReview } from './data';
 import { track } from './track';
 
 /* One review, driven entirely by a ShambaReview record:
@@ -280,6 +280,20 @@ export function Review({
           {t(shamba.title)}
         </span>
       </div>
+
+      {/* what this problem costs if it is left alone, while the player reads it; what was saved once it is caught */}
+      {step === 'right' ? (
+        phase >= 1 && (
+          <p className="stake is-saved" role="note">
+            {savedLine(shamba.atStake)}
+          </p>
+        )
+      ) : (
+        <p className="stake" role="note">
+          <span aria-hidden="true">!</span>
+          {stakeLine(shamba.atStake)}
+        </p>
+      )}
 
       <ol className="review-steps" aria-label="Review steps">
         {steps.map(([, label], i) => (

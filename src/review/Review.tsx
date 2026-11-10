@@ -42,6 +42,7 @@ const SCREENS: { label: string; group: string; state: Partial<GameState> }[] = [
   { group: 'First session', label: '1 · Create the farmer', state: { onboarded: false, farmer: null, fs: { phase: 'create', at: 'first', opened: false } } },
   { group: 'First session', label: '1b · The story so far', state: { onboarded: false, fs: { phase: 'story', at: 'first', opened: false } } },
   { group: 'First session', label: '2 · Walk to the shamba', state: { onboarded: false, fs: { phase: 'walk1', at: 'first', opened: false } } },
+  { group: 'First session', label: '2b · Farm update', state: { onboarded: false, fs: { phase: 'update', at: 'first', opened: false } } },
   { group: 'First session', label: '3 · First review', state: { onboarded: false, fs: { phase: 'review1', at: 'first', opened: false } } },
   { group: 'First session', label: '3b · Walk to the back shamba', state: { onboarded: false, fs: { phase: 'walkRetry', at: 'first', opened: false } } },
   { group: 'First session', label: '3c · Retry review', state: { onboarded: false, fs: { phase: 'retry', at: 'lower', opened: false } } },

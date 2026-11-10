@@ -105,7 +105,7 @@ export interface Prices {
 }
 
 /** First session: create → walk → review (→ retry) → the whole farm opens → second review → done. */
-export type FsPhase = 'create' | 'story' | 'walk1' | 'review1' | 'walkRetry' | 'retry' | 'walk2' | 'review2' | 'done';
+export type FsPhase = 'create' | 'story' | 'walk1' | 'update' | 'review1' | 'walkRetry' | 'retry' | 'walk2' | 'review2' | 'done';
 
 /** The best result for one field round: read right (and on which look), or still missed. */
 export interface RoundRecord {

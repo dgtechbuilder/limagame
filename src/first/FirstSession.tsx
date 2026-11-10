@@ -5,11 +5,13 @@ import { CreateFarmer } from './Create';
 import { LOOKS, SHAMBAS, say } from './data';
 import { GuideLine, Review } from './Review';
 import { Story } from './Story';
+import { FarmUpdate } from './Update';
 import { track } from './track';
 import { Village } from './Village';
 
 /* The first session, in order, all on the farmer's own farm:
-   create the farmer → the story so far (bought the farm, last harvest failed, learn from the mistakes) → walk to the maize → first check (wrong call → back maize bed → check again)
+   create the farmer → the story so far (bought the farm, last harvest failed, learn from the mistakes) → walk to the maize
+   → the farm update (7 weeks in, money spent, heading for a loss) → first check (wrong call → back maize bed → check again)
    → the whole farm opens → walk to the sukuma wiki → second check → field rounds: check every bed. */
 
 export function FirstSession({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
@@ -83,9 +85,17 @@ export function FirstSession({ s, dispatch }: { s: GameState; dispatch: Dispatch
   if (phase === 'walk1')
     return (
       <>
-        <Village look={look} name={name} route="toFirst" target="first" open={false} showTapHint={!moved} onFirstMove={() => (setMoved(true), track('first_move'))} onArrive={arrive('first', 'review1')} />
+        <Village look={look} name={name} route="toFirst" target="first" open={false} showTapHint={!moved} onFirstMove={() => (setMoved(true), track('first_move'))} onArrive={arrive('first', 'update')} />
         {hud}
         <GuideLine style={topLine} text={moved ? t('Keep going, {name}. Your maize is just ahead.') : t('Karibu, {name}! Tap the path to walk to your maize.')} />
+      </>
+    );
+
+  if (phase === 'update')
+    return (
+      <>
+        <Village look={look} name={name} route={null} target={null} open={false} />
+        <FarmUpdate name={name} onDone={() => go('review1')} />
       </>
     );
 

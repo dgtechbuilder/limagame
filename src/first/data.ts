@@ -77,6 +77,8 @@ export interface ShambaReview {
   practice: string;
   /** Shamba to send the player to after a wrong call. Without one, they look again at the same shamba. */
   retry?: string;
+  /** Shillings of harvest this problem costs if it is left alone (shown while the player checks). */
+  atStake: number;
 }
 
 export const SHAMBAS: Record<string, ShambaReview> = {
@@ -100,6 +102,7 @@ export const SHAMBAS: Record<string, ShambaReview> = {
     right: 'Fall armyworm! Well read, {name}.',
     practice: 'A pinch of ash or sand in each funnel stops them early.',
     retry: 'lower',
+    atStake: 10000,
   },
   lower: {
     id: 'lower',
@@ -121,6 +124,7 @@ export const SHAMBAS: Record<string, ShambaReview> = {
     clue: { part: 'pests', text: 'Ragged holes and sawdust mean caterpillars, {name}.' },
     right: 'Fall armyworm! You caught it, {name}.',
     practice: 'A pinch of ash or sand in each funnel stops them early.',
+    atStake: 10000,
   },
   sukuma: {
     id: 'sukuma',
@@ -142,6 +146,7 @@ export const SHAMBAS: Record<string, ShambaReview> = {
     clue: { part: 'soil', text: 'No holes, {name}, but the soil at the back is cracked and dry.' },
     right: 'They are thirsty! Good eye, {name}.',
     practice: 'Water at the roots in the cool of the morning.',
+    atStake: 5000,
   },
 };
 
@@ -208,3 +213,30 @@ export const STORY: StoryPage[] = [
 ];
 
 export const ksh = (n: number) => `KSh ${n.toLocaleString('en-US')}`;
+
+/* ------------------------------------------------------------------ */
+/* The farm update: on arriving at the maize, before the first check, how this season is going. The numbers make one
+   story with the checks: what is at stake on the maize and the sukuma wiki (SHAMBAS[…].atStake) is about what the
+   season stands to lose, so catching both problems turns a loss back towards breaking even. */
+
+export const FARM_UPDATE = {
+  weeks: 7,
+  /** spent so far this season: seed, fertilizer and labour (shillings) */
+  spent: 21400,
+  /** what the harvest would bring at this rate (shillings) */
+  atThisRate: 6000,
+  title: 'How your farm is doing',
+  lines: [
+    'Your farm has been running for {weeks} weeks this season, {name}, and you have spent {spent} on seed, fertilizer and labour.',
+    'The way it is going, you will lose most of that money again.',
+  ],
+  crops: [
+    { crop: 'maize' as Crop, name: 'Maize', sign: 'Some rows look ragged.', stake: 'first' },
+    { crop: 'kale' as Crop, name: 'Sukuma wiki', sign: 'The back rows look dull.', stake: 'sukuma' },
+  ],
+  button: 'Check my maize',
+};
+
+/** What a problem puts at stake, in words for the check screen. */
+export const stakeLine = (n: number) => `This problem will cost you about ${ksh(n)} of harvest if it is left alone.`;
+export const savedLine = (n: number) => `Caught in time: about ${ksh(n)} of harvest saved.`;
