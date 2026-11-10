@@ -5,8 +5,8 @@ rural farm — played on a landscape phone. It is **one farm, the player's own**
 player learns to read their crops with their own eyes, then checks every bed on the farm often, so the farm keeps
 growing healthy, nutritious food. Its core is **the six farms**: the same maize grown to six different plans side
 by side, so a year or more of trial and error happens in a few weeks of play. Seasons of maize turn every choice
-(doing the work, when to harvest, how to store, whether to process) into what they earn. Points unlock real
-partner discounts.
+(doing the work, when to harvest, how to store, whether to process) into what they earn. Every job also records what it
+does to the climate, the water and the soil, on its own Climate page. Points unlock real partner discounts.
 
 The game is built in React + TypeScript from the Figma file **"29 Oct Farm Management App"**
 (`dvRxEJtTy8rGBPIVmCLb4E`, section *Farm game*). The Figma farm map is the ground of the whole game.
@@ -57,6 +57,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 | **Then** | **The first planting period** (about 10 minutes): maize on Farm 1, which they clear plot by plot, and sukuma wiki on Farm 2, which they plant plot by plot; then they check both every day for six days and harvest. |
 | **Every week** | **Six farms**: a different plan on each farm, one day of checks each real day (or all now), then the harvests compared. The plan that worked becomes their recipe for the next cycle. |
 | **Any time** | Plays seasons of maize on Farm Moja: six farming steps, harvest timing, storage, processing, selling, results, rewards. |
+| **Any time** | Opens **Climate** to see what their farming did to the climate, the water and the soil, and the climate credits it earned. |
 
 A wrong call is part of learning: the clue they missed is circled, and they try again on a second maize bed.
 
@@ -90,8 +91,9 @@ own collector.
 ```
 src/
   main.tsx                 entry point
-  App.tsx                  scales the 874 × 402 stage to the screen; routes first session / farm / modals; review menu
+  App.tsx                  scales the 874 × 402 stage to the screen; routes first session / farm / modals
   state.ts                 game state, season rules and saving (useReducer + localStorage)
+  route.ts                 page addresses: pathOf (the address of the page on show), routeTo (an address to the page)
   data.ts                  farm copy, prices, tasks, rewards, storage and processing options
   assets.ts                image paths (art exported from Figma into public/assets)
   styles.css               design tokens (colours, gold button, panels) and component styles
@@ -112,7 +114,7 @@ src/
   speech.ts                Read aloud: the phone's own voice (speechSynthesis)
   climate/                 climate tracking: model.ts (every factor, the ledger, rating, levels), track.ts (which
                            actions record what), Tag.tsx (climate tags on choices), sample.ts (design review)
-  first/                   the first session (see below)
+  first/                   the first session, including the story so far (see below)
   world/                   the farm world (see below): field.ts the work by hand, engine.ts the 3D farm, World.tsx the HUD
   trials/                  the six farms (see below): model.ts holds every number; Trials.tsx the screens (loaded when opened)
   care/                    from Wakala Agent: the fix after a right call, the safety kit and product, follow-ups (data.ts),
@@ -120,14 +122,16 @@ src/
   plots/                   plots and inputs: data.ts (20 plots a farm; seeds, fertilizers, sprayers, tractor types and
                            tools, with what each does and costs); PlotBoard.tsx (a farm's seed, fertilizer and sprayer); TractorPick.tsx
   tractor/                 from Wakala Agent: the tractor drive before planting: data.ts, sim.ts (no DOM), Tractor.tsx
-  dev/hook.ts              ?dev in dev builds only: state and jump-to-state helpers for the play-tests
-tests/                     Playwright play-tests (npm test)
   rounds/                  field rounds: checks of every bed on the farm, back to back (see below); loaded only when opened
     trial.ts               a six-farm check: what a farm shows today, from its own plan
     photos/                real photos from Wikimedia Commons by situation, credits.json + CREDITS.md (see photos/README.md)
+  review/Review.tsx        design review's menu and sample screens (a separate chunk, loaded only in review mode)
+  dev/hook.ts              ?dev in dev builds only: state and jump-to-state helpers for the play-tests
+tests/                     Playwright play-tests (npm test)
 public/
   assets/                  130 images exported from Figma, incl. bg-farm.webp and bg-farm@2x.webp
   manifest.webmanifest     installable web app (landscape, full screen) + icons
+  sw.js                    service worker: keeps the published game on the phone for repeat visits
 design-refs/               PNG renders of the 22 Figma frames, for side-by-side checks
 docs/                      screenshots used in this README
 ```
@@ -220,6 +224,7 @@ nitrogen deficiency.
 | `Review.tsx` | The one review system: Look → Spot → Judge → Result |
 | `Village.tsx` | Tap-to-walk over the Figma map along fixed routes; mist, arrows and labels. Bed outlines and routes are in `SPOTS`, `MAIN`, `TO_LOWER`, `TO_SUKUMA`. |
 | `Create.tsx`, `FirstSession.tsx` | Farmer creation and the order of moments |
+| `Story.tsx` | The story so far: three pages, Previous / Next, Skip story, read aloud |
 | `track.ts` | Event log (below) |
 
 ## The season
@@ -508,11 +513,21 @@ harvest tractor stages, the boom-sprayer, delivery and route jobs, gems, hub map
 Wakala's photos were not added yet (Wikimedia could not be reached from the build session).
 
 **Tests.** `npm test` runs the Playwright play-tests in `tests/` against the dev server (run
-`npx playwright install chromium` once): a world check with a wrong then right fix and the work by hand, a
-follow-up done and one missed, a spray job with the kit and product, a tractor drive on autopilot, the first session
-read right and wrong, saving and *Reset progress*, the tractor's type and tool on its own plot, the plot board at the
-seed shed and in the plan, the results by plot, and a tour on a 740 × 340 touch screen that saves screenshots to
-`test-results/tour/`. They run on every pull request (`.github/workflows/tests.yml`).
+`npx playwright install chromium` once):
+
+| File | What it plays |
+| --- | --- |
+| `first-session.spec.ts` | the story so far, the first session read right and wrong, saving and *Reset progress* |
+| `plots.spec.ts` | the first planting period (Clear and Plant with the real 3-second timer, walking off, the order) and the inputs board in the plan |
+| `care.spec.ts` | a world check with a wrong then right fix and the work by hand, a follow-up done and one missed, a spray job with the kit and product |
+| `tractor*.spec.ts` | a tractor drive on autopilot or by steering, its rewards, the tractor's type and tool and a farm's plots from the seat, the hired tractor |
+| `routes.spec.ts` | typed page addresses, Back and Forward, reload, and the blocked cases |
+| `climate.spec.ts` | the CLIMATE button, tracking from tasks, plans and sales, and climate levels |
+| `nav.spec.ts`, `settings.spec.ts` | Back, Menu and Farm on every screen; every Settings section |
+| `perf.spec.ts` | the start and the 3D farm on a 740 × 340 phone screen, with the numbers printed |
+| `tour.spec.ts` | a tour on a 740 × 340 touch screen that saves screenshots to `test-results/tour/` |
+
+They run on every pull request (`.github/workflows/tests.yml`).
 
 ## Plots and inputs
 
@@ -553,11 +568,13 @@ Every screen has at least two or three ways to move, and one of them is always t
 | Shop, Farming Steps, Rewards, Sale, Storage… | one step (to the menu if it was opened from there) | ☰ | ⌂ |
 | Mission (six farms), Field rounds, a farm check, Choose the fix, the safety kit | one step | ☰ | ⌂ |
 | Settings | close (to the menu if it was opened from there) | ☰ | ⌂ (not in the first session) |
+| Climate | close (to the menu if it was opened from there); another tab keeps where Back goes | ☰ | ⌂ |
 | The tractor drive | the previous step | ☰ (the clock waits while it is open) | ⌂ |
 | First session | one step where that is safe | ☰ | Settings instead (the farm is not open yet) |
 
 The **main menu** (`src/screens/MainMenu.tsx`, the **MENU** button on the farm) lists My farm, Mission, Field rounds,
-Tractor, Shop, Rewards, Farming steps and Settings. A screen opened from the menu goes back to the menu on *Back*;
+Tractor, Shop, Climate, Rewards, Farming steps and Settings. In the first session it lists only Back to the game, How
+the farm works and Settings. A screen opened from the menu goes back to the menu on *Back*;
 *Farm* closes everything. The shared buttons are `NavBar` in `src/components/Nav.tsx`; `ModalShell` adds them to every
 modal. `tests/nav.spec.ts` plays them.
 
@@ -610,10 +627,11 @@ four sections. Every control works at once and is saved on the device; *Reset pr
 | --- | --- |
 | **My farmer** | rename the farmer; change the look (the farm, the rounds and the HUD all follow) |
 | **Game** | *Character style*: Retro anime or Original · *Farm view*: 3D farm or Classic · *Read aloud*: speaks the guide's lines and the game's messages with the phone's voice (a Kenyan English voice when the phone has one), with a Test button |
-| **Display** | *Graphics*: Auto (drops shadows by itself on slow phones), High, Low (no shadows, 1× resolution) · *Reduce motion*: ends every animation and transition at once · *Full screen* |
-| **Help & data** | How the farm works · Design review · Reset progress (asks twice) |
+| **Display** | *Graphics*: Auto (shadows and a picture sized to the phone, lighter by itself if it slows down; see [Performance](#performance-on-low-cost-phones)), High (always shadows, the sharpest picture), Low (no shadows, 1× resolution) · *Reduce motion*: ends every animation and transition at once · *Full screen* |
+| **Help & data** | How the farm works · Page addresses (what the address after the `#` does, with this page's) · Design review · Reset progress (asks twice) |
 
-The settings live in `GameState.settings` (`src/state.ts`). The 3D farm is rebuilt when the character style or the
+The settings live in `GameState.settings` (`src/state.ts`); each section has its own address (`#/settings/display`).
+The 3D farm is rebuilt when the character style or the
 graphics change. `tests/settings.spec.ts` plays every section.
 
 ## Climate tracking
@@ -671,7 +689,8 @@ download:
 ## Design review mode
 
 Open **`?review=1`** (or *Settings → Design review*) for a sandbox with a menu of every screen filled with
-sample data: each first-session moment, every Figma frame, and the added screens. Deep-link with
+sample data: each first-session moment (including *1b · The story so far*), every Figma frame, and the added screens
+(Settings, the farm world, Wakala's moments, plots and inputs, the six farms, field rounds and every Climate tab). Deep-link with
 `?screen=<name>`, for example `?screen=Storage` or `?screen=3 · First review`. Review mode never touches the
 player's saved game or events.
 
@@ -681,9 +700,10 @@ player's saved game or events.
   coins, points, seasons. *Settings → Reset progress* erases it and starts again with a new farmer. Saves from
   before the first session existed keep their coins and play the first session once.
 - **Events**: one per first-session moment, so drop-off can be measured — `create_shown`, `farmer_created`,
-  `walk_start`, `first_move`, `shamba_reached`, `review_start`, `part_viewed`, `spot_found`, `call`,
-  `review_failed`, `review_passed`, `farm_opened`, `session_close`, and the farm-world events from Wakala Agent
-  (see [From Wakala Agent](#from-wakala-agent)). Each has a
+  `story_page`, `story_done`, `story_skipped`, `walk_start`, `first_move`, `shamba_reached`, `review_start`, `part_viewed`, `spot_found`, `call`,
+  `review_failed`, `review_passed`, `farm_opened`, `session_close`; the field-round events (`round_start`,
+  `round_part_viewed`, `round_call`); `tractor_ride` (getting on the tractor, with its type and tool); and the
+  farm-world events from Wakala Agent (see [From Wakala Agent](#from-wakala-agent)). Each has a
   timestamp and time since the first event. They are kept on the device (`lima-events`, last 300) and, only
   if `VITE_EVENTS_URL` is set at build time, sent with `navigator.sendBeacon`.
 - **No personal data is sent.** Events never include the farmer's name. There are no accounts, cookies or
@@ -737,7 +757,9 @@ player's saved game or events.
 - **Missed checks** cost harvest on the six farms (see `DAMAGE` in `src/trials/model.ts`). In the everyday field
   rounds they still only show as a bed to look at again.
 - **The six-farm model** (yields, problem odds, damage, prices) is illustrative and needs agronomist review before any
-  pilot. Only maize is planned in it so far; beans, sukuma wiki and tomatoes would each need their own table.
+  pilot. Only maize is planned in it so far; beans, sukuma wiki and tomatoes would each need their own table. In the first
+  planting period, **sukuma wiki borrows maize's yield and price** (bags, at maize prices) until an agronomist sets its own.
+- **The story so far** uses illustrative numbers (KSh 38,000 spent, 14,500 earned) for a failed first season.
 - **No two plans the same** is enforced; *one change per farm* is suggested, not enforced.
 - **The 3D farm world** needs human play-testing on watering, spraying, drains, the goat, tractor/oxen hire, a
   full six-farm cycle and the daily (one-day-per-real-day) clock — only a two-farm guided cycle has been run so far.

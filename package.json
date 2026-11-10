@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Lima Farming Game: a farm-management game recreated from the Figma file '29 Oct Farm Management App'.",
+  "description": "Lima Farming Game: a farming game for a landscape phone, built from the Figma file '29 Oct Farm Management App': a walkable 3D farm of 20-plot farms, six farms to compare plans, field rounds, climate tracking and page addresses.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
