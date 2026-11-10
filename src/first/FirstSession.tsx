@@ -57,7 +57,7 @@ export function FirstSession({ s, dispatch }: { s: GameState; dispatch: Dispatch
           onDone={(n, l) => {
             track('farmer_created', { look: l, suggested: ['Wanjiku', 'Otieno', 'Chebet'].includes(n) });
             dispatch({ type: 'farmer', name: n, look: l });
-            go('story');
+            go('story', { page: 0 });
           }}
         />
       </>
@@ -76,7 +76,7 @@ export function FirstSession({ s, dispatch }: { s: GameState; dispatch: Dispatch
     return (
       <>
         <Village look={look} name={name} route={null} target={null} open={false} />
-        <Story name={name} look={look} onDone={() => go('walk1')} />
+        <Story name={name} look={look} page={s.fs.page ?? 0} onPage={page => go('story', { page })} onDone={() => go('walk1')} />
       </>
     );
 

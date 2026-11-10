@@ -19,6 +19,7 @@ import { speak, stopSpeaking } from './speech';
 import { MainMenu } from './screens/MainMenu';
 import { NavBar, NavContext } from './components/Nav';
 import { reviewing, useGame } from './state';
+import { pathOf } from './route';
 
 const STAGE_W = 874;
 const STAGE_H = 402;
@@ -54,6 +55,35 @@ export default function App() {
   useEffect(() => {
     if (import.meta.env.DEV && new URLSearchParams(window.location.search).has('dev')) void import('./dev/hook').then(m => m.install(() => live.current, dispatch));
   }, [dispatch]);
+
+  // Web addresses (src/route.ts): the address bar always names the screen on show. A new screen adds a step to the
+  // browser's history (so Back and Forward work); a typed address the player may not go to yet is put back.
+  const path = pathOf(s);
+  const fromUrl = useRef(false);
+  const firstSync = useRef(true);
+  const [urlSeq, setUrlSeq] = useState(0);
+  useEffect(() => {
+    if (review) return;
+    const onHash = () => {
+      fromUrl.current = true;
+      dispatch({ type: 'route', path: window.location.hash });
+      setUrlSeq(n => n + 1);
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, [dispatch, review]);
+  useEffect(() => {
+    if (review) return;
+    const replace = firstSync.current || fromUrl.current;
+    firstSync.current = false;
+    fromUrl.current = false;
+    const words = path.slice(1).split('/').map(w => w.replace(/-/g, ' ').replace(/^./, c => c.toUpperCase()));
+    document.title = `${words.join(' · ')} · Lima Farming Game`;
+    if (window.location.hash === `#${path}`) return;
+    const url = `${window.location.pathname}${window.location.search}#${path}`;
+    if (replace) window.history.replaceState(null, '', url);
+    else window.history.pushState(null, '', url);
+  }, [path, urlSeq, review]);
 
   // The farm world (and its 3D engine) is fetched while the player is busy elsewhere, so it opens without a wait.
   useEffect(() => {

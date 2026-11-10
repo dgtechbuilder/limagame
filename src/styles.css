@@ -1253,3 +1253,6 @@ button.card:active { transform: scale(0.98); }
 .tr-picker button > b { grid-row: 1 / span 2; }
 .tr-picker button > i { grid-column: 3; grid-row: 1 / span 2; }
 .tr-picker button > .climate-tag { grid-column: 2; grid-row: 2; margin-top: -8px; font-size: 9px; }
+
+/* Settings · Help: the page address */
+.set-address { padding: 4px 8px; border-radius: 8px; background: var(--brown-05); border: 1px solid var(--brown-20); font-size: 10px; font-weight: 600; white-space: nowrap; }

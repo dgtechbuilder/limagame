@@ -33,6 +33,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [From Wakala Agent](#from-wakala-agent)
 - [Plots A to D](#plots-a-to-d)
 - [Navigation and the main menu](#navigation-and-the-main-menu)
+- [Page addresses](#page-addresses)
 - [Settings](#settings)
 - [Climate tracking](#climate-tracking)
 - [Character art: retro anime](#character-art-retro-anime)
@@ -543,6 +544,46 @@ The **main menu** (`src/screens/MainMenu.tsx`, the **MENU** button on the farm) 
 Tractor, Shop, Rewards, Farming steps and Settings. A screen opened from the menu goes back to the menu on *Back*;
 *Farm* closes everything. The shared buttons are `NavBar` in `src/components/Nav.tsx`; `ModalShell` adds them to every
 modal. `tests/nav.spec.ts` plays them.
+
+## Page addresses
+
+Every page has its own web address after the `#`, so a player can type one in the address bar to go there,
+reload without losing their place, bookmark a page, and use the browser's **Back** and **Forward**
+(`src/route.ts`). For example `https://dgtechbuilder.github.io/limagame/#/settings/display`.
+
+| Address | Page |
+| --- | --- |
+| `#/start` | Name your farmer (first session) |
+| `#/story/1` · `/2` · `/3` | The story so far, page by page |
+| `#/walk/maize` · `#/check/maize` | Walk to the maize, and its check |
+| `#/walk/back-maize` · `#/check/back-maize` | The back maize, after a wrong call |
+| `#/walk/sukuma` · `#/check/sukuma` | The sukuma wiki, and its check |
+| `#/farm` | The farm |
+| `#/menu` | Main menu |
+| `#/rounds` · `#/rounds/six-farms` | Field rounds: every bed, or today's checks of the six farms |
+| `#/mission` | Mission: the six farms |
+| `#/settings/my-farmer` · `game` · `display` · `help` | Settings, by section |
+| `#/climate/overview` · `emissions` · `water-and-soil` · `shocks` · `activity` | Climate, by section |
+| `#/shop/food` · `fertilizer` · `water-tanks` · `equipment` | Shop, by tab |
+| `#/steps/land-prep` · `planting` · `fertilizer` · `pesticides` · `water` · `harvest` | Farming steps |
+| `#/harvest-timing` · `#/sale` · `#/storage` · `#/value-addition` · `#/process` | The season after harvest |
+| `#/farm-info` · `#/results` · `#/rewards` · `#/welcome` | Farm info, season results, rewards, how the farm works |
+
+**The player's session decides where an address can go.** The game's saved state stays the one source of
+truth: the address always names the page on show, and a typed address goes through the same rules as a tap.
+
+- **First session:** only its steps, the main menu and Settings can be reached, and only steps the player has
+  already reached. They can step back between naming the farmer, the story pages and the walk to the maize
+  (as the Back button can), but not skip ahead to a check or open the farm early.
+- **After the first session:** every farm page can be reached. The first-session steps can't, and
+  `#/rounds/six-farms` works only on a day the six farms have checks.
+- **Anything else** (a page that doesn't exist, or one the player can't reach yet) leaves them where they are,
+  with a short message, and the address is put back. Addresses are tidied first: any case, extra slashes.
+- Opening the game with an address goes straight to that page (if allowed); with no address, it opens where
+  the player left off. Each new page adds a step to the browser's history. A correction replaces the address
+  instead, so Back never lands on a page the player couldn't open.
+- The browser tab's title names the page. *Settings → Help & data* explains addresses to players.
+- Design review (`?review` / `?screen`) leaves the address alone.
 
 ## Settings
 

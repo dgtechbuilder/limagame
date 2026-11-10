@@ -29,6 +29,7 @@ import { TRACTOR_BONUS, type ImplId } from './tractor/data';
 import { TRACTOR_PLOT, plotCost, plotName, setPlotInput, tractorBlock, type PlotJob, type PlotKind, type TractorId } from './plots/data';
 import { initialClimate, type ClimateState } from './climate/model';
 import { trackClimate } from './climate/track';
+import { routeTo } from './route';
 import {
   GROWING_STEPS,
   HARVEST_EFFECT,
@@ -149,7 +150,8 @@ export interface GameState {
   worldDemo: string | null;
   // first session
   farmer: { name: string; look: number } | null;
-  fs: { phase: FsPhase; at: 'first' | 'lower'; opened: boolean };
+  /** page: the story page shown (0–2) while phase is 'story' */
+  fs: { phase: FsPhase; at: 'first' | 'lower'; opened: boolean; page?: number };
   /** reminder shown in Messages, e.g. the bean shamba to check tomorrow */
   note: string | null;
   // UI
@@ -365,7 +367,9 @@ export type Action =
   | { type: 'followUpMissed'; keys: string[] }
   /** farm world: a before-planting tractor drive finished (the drive's coins and points are worked out by the screen) */
   | { type: 'tractorDone'; farm: number; score: number; stars: number; Q: number; coins: number; points: number; diesel?: number; co2?: number; clim?: number }
-  | { type: 'fs'; phase: FsPhase; at?: 'first' | 'lower'; opened?: boolean; note?: string };
+  | { type: 'fs'; phase: FsPhase; at?: 'first' | 'lower'; opened?: boolean; note?: string; page?: number }
+  /** go to a web address (src/route.ts): the screen it names, if the player may go there now */
+  | { type: 'route'; path: string };
 
 let toastId = 0;
 export const toast = (text: string) => ({ id: ++toastId, text });
@@ -389,7 +393,8 @@ export function reducer(s: GameState, a: Action): GameState {
 function play(s: GameState, a: Action): GameState {
   switch (a.type) {
     case 'open':
-      return { ...s, modal: a.modal, fromMenu: s.modal?.kind === 'menu' && a.modal.kind !== 'menu', plotSelected: false };
+      // another section of the same screen (a Settings tab, a Shop tab) keeps where Back goes
+      return { ...s, modal: a.modal, fromMenu: s.modal?.kind === a.modal.kind ? s.fromMenu : s.modal?.kind === 'menu' && a.modal.kind !== 'menu', plotSelected: false };
     case 'close':
       // a screen opened from the main menu goes back to the menu
       return s.fromMenu && s.modal && s.modal.kind !== 'menu' ? { ...s, modal: { kind: 'menu' }, fromMenu: false } : { ...s, modal: null, fromMenu: false };
@@ -860,11 +865,13 @@ function play(s: GameState, a: Action): GameState {
     case 'fs':
       return {
         ...s,
-        fs: { phase: a.phase, at: a.at ?? s.fs.at, opened: a.opened ?? s.fs.opened },
+        fs: { phase: a.phase, at: a.at ?? s.fs.at, opened: a.opened ?? s.fs.opened, page: a.page ?? s.fs.page ?? 0 },
         note: a.note ?? s.note,
         // passing the first review completes onboarding, so it never repeats
         onboarded: s.onboarded || a.phase === 'walk2',
       };
+    case 'route':
+      return routeTo(s, a.path).reduce(play, s);
   }
 }
 
@@ -888,8 +895,14 @@ export const REVIEW_BASE: Partial<GameState> = {
   fs: { phase: 'done', at: 'first', opened: true },
 };
 
+/** The saved game, opened at the address in the browser's address bar (if the player may go there). */
 function load(): GameState {
   if (reviewing()) return { ...initialState, ...REVIEW_BASE };
+  const saved = loadSaved();
+  return window.location.hash ? reducer(saved, { type: 'route', path: window.location.hash }) : saved;
+}
+
+function loadSaved(): GameState {
   try {
     const raw = window.localStorage.getItem(SAVE_KEY);
     if (!raw) return initialState;
