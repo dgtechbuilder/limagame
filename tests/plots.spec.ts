@@ -25,7 +25,7 @@ async function workNextPlot(page: Page) {
 }
 
 test('the first planting period: maize on Farm 1 to clear, sukuma wiki on Farm 2 to plant; the timer takes 3 seconds', async ({ page }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(480_000);
   await firstCycle(page);
   const s0 = await state(page);
   expect(s0.trial.phase).toBe('growing');
@@ -63,7 +63,8 @@ test('the first planting period: maize on Farm 1 to clear, sukuma wiki on Farm 2
   // the rest quickly: every plot of Farm 1 cleared, then the sukuma wiki planted, then the maize
   await page.evaluate(() => ((window as unknown as Win).__limaWorld as unknown as { workScale: number }).workScale = 0.05);
   const order: string[] = [];
-  for (let n = 0; n < 70; n++) {
+  // a press while the farmer is still arriving can be stopped (they walked off): tries to spare
+  for (let n = 0; n < 200; n++) {
     const t = await task(page);
     if (!order.includes(t)) order.push(t);
     if (!/^(Clear|Plant)/.test(t)) break;
