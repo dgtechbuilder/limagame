@@ -694,6 +694,8 @@ game's reward sounds:
 
 The reducer tags each action with the sound it earned (`soundOf` in `src/state.ts`): a refusal (*You need … coins*)
 or a step back plays nothing. `App.tsx` plays the tag once; screens with their own pop-ups call `sfx.action()`.
+Each cue is rendered once into a buffer off the main thread (an `OfflineAudioContext`), after the first tap; playing
+it is a single buffer source, and the audio context sleeps between cues, so sound never slows the 3D farm.
 Settings → Game → *Sound effects* turns them off.
 
 ## Money on screen

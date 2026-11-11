@@ -24,7 +24,6 @@ function audio(): AudioContext | null {
   if (!AC) return null;
   try {
     ctx ??= new AC();
-    if (ctx.state === 'suspended') void ctx.resume();
     return ctx;
   } catch {
     return null;
@@ -34,7 +33,7 @@ function audio(): AudioContext | null {
 const hz = (midi: number) => 440 * Math.pow(2, (midi - 69) / 12);
 
 /** One struck note: a few partials (a bell's are not whole multiples), a fast attack and an exponential ring-out. */
-function bell(ac: AudioContext, out: AudioNode, at: number, midi: number, len: number, gain: number) {
+function bell(ac: BaseAudioContext, out: AudioNode, at: number, midi: number, len: number, gain: number) {
   const f = hz(midi);
   const partials: [number, number, OscillatorType][] = [
     [1, 1, 'triangle'],
@@ -57,7 +56,7 @@ function bell(ac: AudioContext, out: AudioNode, at: number, midi: number, len: n
 }
 
 /** A brassy note: two detuned saws through a filter that opens as it is blown, with a little vibrato. */
-function brass(ac: AudioContext, out: AudioNode, at: number, midi: number, len: number, gain: number) {
+function brass(ac: BaseAudioContext, out: AudioNode, at: number, midi: number, len: number, gain: number) {
   const f = hz(midi);
   const lp = ac.createBiquadFilter();
   lp.type = 'lowpass';
@@ -91,7 +90,7 @@ function brass(ac: AudioContext, out: AudioNode, at: number, midi: number, len: 
 }
 
 /** A soft drum hit: a sine that drops in pitch fast. */
-function thump(ac: AudioContext, out: AudioNode, at: number, gain: number) {
+function thump(ac: BaseAudioContext, out: AudioNode, at: number, gain: number) {
   const o = ac.createOscillator();
   const v = ac.createGain();
   o.type = 'sine';
@@ -105,12 +104,12 @@ function thump(ac: AudioContext, out: AudioNode, at: number, gain: number) {
 }
 
 /** A quick run of tiny high bells: the sparkle on top. */
-function sparkle(ac: AudioContext, out: AudioNode, at: number, from: number, notes: number, gap: number, gain: number) {
+function sparkle(ac: BaseAudioContext, out: AudioNode, at: number, from: number, notes: number, gap: number, gain: number) {
   const scale = [0, 4, 7, 12, 16, 19, 24];
   for (let i = 0; i < notes; i++) bell(ac, out, at + i * gap, from + scale[i % scale.length], 0.25, gain * (1 - i / (notes + 2)));
 }
 
-function master(ac: AudioContext, gain: number) {
+function master(ac: BaseAudioContext, gain: number) {
   const comp = ac.createDynamicsCompressor();
   comp.threshold.value = -14;
   comp.ratio.value = 4;
@@ -121,8 +120,8 @@ function master(ac: AudioContext, gain: number) {
 }
 
 /** A completed action: ding-DING, with a coin sparkle. */
-function playAction(ac: AudioContext) {
-  const t = ac.currentTime + 0.01;
+function drawAction(ac: BaseAudioContext) {
+  const t = 0.01;
   const out = master(ac, 0.5);
   bell(ac, out, t, 88, 0.35, 0.5); // E6
   bell(ac, out, t + 0.085, 95, 0.6, 0.6); // B6
@@ -130,8 +129,8 @@ function playAction(ac: AudioContext) {
 }
 
 /** A completed flow: a climbing fanfare, a held major chord, a drum hit and a sparkle tail. */
-function playFlow(ac: AudioContext) {
-  const t = ac.currentTime + 0.01;
+function drawFlow(ac: BaseAudioContext) {
+  const t = 0.01;
   const out = master(ac, 0.42);
   thump(ac, out, t, 0.7);
   // G4 C5 E5 … then a held C major chord (C5 E5 G5 C6)
@@ -142,18 +141,54 @@ function playFlow(ac: AudioContext) {
   sparkle(ac, out, t + 0.5, 96, 6, 0.05, 0.14);
 }
 
-function play(kind: SfxKind) {
+/* Each cue is rendered once, off the main thread (an OfflineAudioContext), into a buffer; playing it is then a single
+   buffer source, so a cue costs almost nothing while the 3D farm is drawing. The live context sleeps between cues. */
+const LENGTH: Record<SfxKind, number> = { action: 0.8, flow: 1.6 };
+const rendered: Partial<Record<SfxKind, Promise<AudioBuffer | null>>> = {};
+function render(kind: SfxKind, rate: number): Promise<AudioBuffer | null> {
+  const Off = typeof window !== 'undefined' ? (window.OfflineAudioContext ?? (window as unknown as { webkitOfflineAudioContext?: typeof OfflineAudioContext }).webkitOfflineAudioContext) : undefined;
+  if (!Off) return Promise.resolve(null);
+  return (rendered[kind] ??= (async () => {
+    try {
+      const off = new Off(2, Math.ceil(LENGTH[kind] * rate), rate);
+      if (kind === 'flow') drawFlow(off);
+      else drawAction(off);
+      return await off.startRendering();
+    } catch {
+      return null;
+    }
+  })());
+}
+
+let sleep: number | undefined;
+async function play(kind: SfxKind) {
   sfxLog.push(kind);
   if (sfxLog.length > 50) sfxLog.shift();
   if (!on) return;
   const ac = audio();
   if (!ac) return;
+  const buf = await render(kind, ac.sampleRate);
+  if (!buf) return;
   try {
-    if (kind === 'flow') playFlow(ac);
-    else playAction(ac);
+    window.clearTimeout(sleep);
+    if (ac.state === 'suspended') await ac.resume();
+    const src = ac.createBufferSource();
+    src.buffer = buf;
+    src.connect(ac.destination);
+    src.start();
+    // the audio thread rests once the cue has played
+    sleep = window.setTimeout(() => void ac.suspend().catch(() => undefined), (buf.duration + 0.5) * 1000);
   } catch {
     /* no sound on this device: the game goes on */
   }
+}
+
+/** Render both cues ahead of time, so the first one plays without a wait. */
+export function warmSfx() {
+  const ac = audio();
+  if (!ac) return;
+  void render('action', ac.sampleRate);
+  void render('flow', ac.sampleRate);
 }
 
 /** A short gap between cues, so one tap that finishes both an action and its flow plays only the bigger one. */
@@ -164,7 +199,7 @@ function cue(kind: SfxKind) {
   if (now - lastAt < 250 && (lastKind === 'flow' || kind === lastKind)) return;
   lastAt = now;
   lastKind = kind;
-  play(kind);
+  void play(kind);
 }
 
 export const sfx = {
