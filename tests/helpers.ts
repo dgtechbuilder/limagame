@@ -16,6 +16,7 @@ type Win = Window & {
     shamba: (id: string) => { correct: string; problemRows: number[] };
     sign: (farm: number) => { x: number; z: number };
     events: () => { name: string; [k: string]: unknown }[];
+    sfx: () => ('action' | 'flow')[];
     clearEvents: () => void;
     tractorClock: (scale: number) => void;
     plots: { x: number; z: number }[];
@@ -119,7 +120,20 @@ export async function closeCheer(page: Page, title: string | RegExp) {
   await expect(pop).toBeHidden();
 }
 
-/** The story's page 2: play last season a step at a time (each a short timer), then press = to see the loss. */
+/** Planting by hand on the story's page 2: tap each bunch of seeds, then its bed. */
+export async function plantByHand(page: Page) {
+  for (const [seed, bed] of [
+    ['Maize seeds', 'Maize bed'],
+    ['Sukuma seeds', 'Sukuma bed'],
+  ]) {
+    await page.getByRole('button', { name: seed, exact: true }).click();
+    await page.getByRole('button', { name: `${bed}: tap to sow` }).click();
+    await expect(page.getByRole('button', { name: `${bed}: sown` })).toBeVisible();
+  }
+}
+
+/** The story's page 2: play last season a step at a time (planting by hand, then two short timers), then press = to see
+    the loss. */
 export async function playLastSeason(page: Page) {
   const cheers: [string, RegExp][] = [
     ['Plant the season', /^Well done/],
@@ -132,12 +146,13 @@ export async function playLastSeason(page: Page) {
     if (/is-done/.test((await button.getAttribute('class')) ?? '')) continue;
     await expect(button).toBeEnabled({ timeout: 10_000 });
     await button.click();
+    if (step === 'Plant the season') await plantByHand(page);
     await expect(button).toHaveClass(/is-done/, { timeout: 10_000 });
     await closeCheer(page, cheer);
   }
   await expect(page.locator('.story-sum-title')).toHaveText('Your first harvest: here is the financial result');
   await page.getByRole('button', { name: 'Equals: see how the season went' }).click();
-  await expect(page.locator('.story-sum .is-lost')).toContainText('KSh 23,500');
+  await expect(page.locator('.story-sum .is-lost')).toContainText('KSh 235,000');
 }
 
 /** The story's page 3: turn over each mistake to see what to do instead. */

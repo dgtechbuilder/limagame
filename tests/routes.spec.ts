@@ -23,13 +23,13 @@ test('first session: each step and story page has an address, and later steps ca
   await signStory(page);
   await page.getByRole('button', { name: 'Next', exact: true }).click();
   await expect.poll(() => hash(page)).toBe('#/story/2');
-  await expect(page.locator('.story-title')).toHaveText('The harvest that failed');
+  await expect(page.locator('.story-title')).toHaveText('Last season’s Harvest results');
 
   // the browser's Back and Forward turn the pages
   await page.goBack();
   await expect(page.locator('.story-title')).toHaveText('A farm of my own');
   await page.goForward();
-  await expect(page.locator('.story-title')).toHaveText('The harvest that failed');
+  await expect(page.locator('.story-title')).toHaveText('Last season’s Harvest results');
 
   // typing a page number goes to it
   await type(page, '#/story/3');

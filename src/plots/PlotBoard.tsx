@@ -1,5 +1,4 @@
 import { useState, type Dispatch, type ReactNode } from 'react';
-import { fmt } from '../components/ui';
 import { NavBar } from '../components/Nav';
 import { img } from '../assets';
 import { FarmMap } from '../components/FarmMap';
@@ -8,6 +7,7 @@ import type { Action } from '../state';
 import { farmName, plotsOf, type Trial } from '../trials/model';
 import { plotLocked, type Field } from '../world/field';
 import { JOB_INFO, KIND_WORDS, OPTIONS, PLOTS_PER_FARM, plotCost, toolName, tractorName, type PlotJob, type PlotKind, type PlotRecord } from './data';
+import { money } from '../money';
 
 /* The inputs board: the seed, fertilizer and sprayer a farm grows with, on all its 20 plots. One set per farm, so the
    harvest compares farms. Tap a box to see every choice, what it is for, and what it costs. */
@@ -118,7 +118,7 @@ export function PlotBoard({
                     <em>{op.bestFor}</em>
                   </span>
                   <span className="pb-opt-side">
-                    <i>{price ? `${fmt(price)} coins` : 'Free'}</i>
+                    <i>{price ? `${money(price)} coins` : 'Free'}</i>
                     {at >= 0 && <small>This farm</small>}
                   </span>
                 </button>
@@ -126,7 +126,7 @@ export function PlotBoard({
             );
           })}
         </ul>
-        {growing && kind !== 'sprayer' && <p className="pb-note">Changing a seed or fertilizer now pays (or refunds) the difference. You have {fmt(coins)} coins.</p>}
+        {growing && kind !== 'sprayer' && <p className="pb-note">Changing a seed or fertilizer now pays (or refunds) the difference. You have {money(coins)} coins.</p>}
       </div>
     </div>
   );

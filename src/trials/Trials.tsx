@@ -5,7 +5,7 @@ import { FarmMap } from '../components/FarmMap';
 import { ClimateTag } from '../climate/Tag';
 import { optionDelta } from '../climate/model';
 import { hasSolar } from '../climate/track';
-import { GoldButton, Stars, fmt } from '../components/ui';
+import { GoldButton, Stars } from '../components/ui';
 import { say } from '../first/data';
 import { GuideLine } from '../first/Review';
 import { dayNumber } from '../rounds/farms';
@@ -39,6 +39,7 @@ import {
   type Trial,
   type TrialHazard,
 } from './model';
+import { money } from '../money';
 
 /* The six farms: plan → grow (a check of every farm each day) → harvest and compare.
    The first cycle is guided: two farms, Farm 1 grown a common way, Farm 2 with one change. */
@@ -180,7 +181,7 @@ function PlanBoard({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) 
             return (
               <div key={i} className={`tr-head${twin >= 0 ? ' is-twin' : ''}`}>
                 <b>{farmName(i)}</b>
-                <small>{twin >= 0 ? `Same as ${farmName(twin)}` : tr.guided && i === 0 ? 'A common way' : `${fmt(farmCost(tr, i))} coins`}</small>
+                <small>{twin >= 0 ? `Same as ${farmName(twin)}` : tr.guided && i === 0 ? 'A common way' : `${money(farmCost(tr, i))} coins`}</small>
               </div>
             );
           })}
@@ -225,7 +226,7 @@ function PlanBoard({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) 
         </div>
         <div className="tr-foot">
           <span>
-            Total <b>{fmt(total)}</b> coins · you have {fmt(s.coins)}
+            Total <b>{money(total)}</b> coins · you have {money(s.coins)}
           </span>
           {!tr.guided && (
             <button type="button" className="tr-link" onClick={() => dispatch({ type: 'trialSuggest' })}>
@@ -309,7 +310,7 @@ function Picker({ s, tr, farm, stepKey, dispatch, onClose }: { s: GameState; tr:
                 <b>{op.label}</b>
                 <span>{op.does}</span>
                 <ClimateTag d={optionDelta(stepKey, op.id, tr.forecast, hasSolar(s))} />
-                <i>{op.cost ? `${fmt(op.cost)} coins` : 'Free'}</i>
+                <i>{op.cost ? `${money(op.cost)} coins` : 'Free'}</i>
               </button>
             </li>
           ))}
@@ -475,8 +476,8 @@ function Compare({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) {
           ))}
           <div className="tr-label">Profit</div>
           {results.map((r, i) => (
-            <div key={i} className={`tr-val${r.profit < 0 ? ' is-neg' : ''}`} title={`Sold for ${fmt(r.income)}, cost ${fmt(r.costs)}`}>
-              {fmt(r.profit)}
+            <div key={i} className={`tr-val${r.profit < 0 ? ' is-neg' : ''}`} title={`Sold for ${money(r.income)}, cost ${money(r.costs)}`}>
+              {money(r.profit)}
             </div>
           ))}
           {differing.map(step => (
@@ -519,8 +520,8 @@ function Compare({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) {
       <GuideLine
         text={t(
           tr.guided
-            ? `Both farms are harvested and sold for ${fmt(income)} coins, {name}. Next: six farms, each testing a different change.`
-            : `Cycle ${tr.cycle} is harvested and sold for ${fmt(income)} coins, {name}. Keep the plan that worked and test more changes.`,
+            ? `Both farms are harvested and sold for ${money(income)} coins, {name}. Next: six farms, each testing a different change.`
+            : `Cycle ${tr.cycle} is harvested and sold for ${money(income)} coins, {name}. Keep the plan that worked and test more changes.`,
         )}
         action={{ label: 'Plan the next cycle', onClick: () => dispatch({ type: 'trialNew' }) }}
       />

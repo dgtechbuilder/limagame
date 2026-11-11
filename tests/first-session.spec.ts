@@ -54,17 +54,28 @@ test('the story so far: sign for the farm, play last season, press =, turn over 
   await expect(card).toContainText('Signed. This farm is yours, Wanjiku.');
   await next.click();
 
-  // page 2: the steps go in order, each with a timer; the sum's = shows the loss
-  await expect(card.locator('.story-title')).toHaveText('The harvest that failed');
+  // page 2: the steps go in order; planting is done by hand (a bunch of seeds onto each bed), then the others have a
+  // timer; the sum's = shows the loss
+  await expect(card.locator('.story-title')).toHaveText('Last season’s Harvest results');
   await expect(card.locator('.story-step', { hasText: 'Weed the farm' })).toBeDisabled();
   await card.locator('.story-step', { hasText: 'Plant the season' }).click();
-  await expect(page.getByRole('timer')).toBeVisible();
-  await expect(card.locator('.story-caption')).toHaveText('Planting maize and sukuma wiki…');
+  await expect(card.locator('.story-caption')).toHaveText('Tap the maize seeds, then tap the maize bed to sow them.');
+  // the sukuma seeds wait for the maize; a bed takes only the seed in hand
+  await expect(page.getByRole('button', { name: 'Sukuma seeds', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: 'Maize seeds', exact: true }).click();
+  await page.getByRole('button', { name: 'Sukuma bed: tap to sow' }).click();
+  await expect(page.getByRole('button', { name: 'Sukuma bed: tap to sow' })).toBeVisible();
+  await page.getByRole('button', { name: 'Maize bed: tap to sow' }).click();
+  await expect(card.locator('.story-caption')).toHaveText('Now tap the sukuma seeds, then tap the sukuma bed.');
+  await page.getByRole('button', { name: 'Sukuma seeds', exact: true }).click();
+  await page.getByRole('button', { name: 'Sukuma bed: tap to sow' }).click();
+  // each bed sown, and the step, ping a happy sound
+  expect(await page.evaluate(() => (window as unknown as Win).__lima.sfx().filter(k => k === 'action').length)).toBeGreaterThanOrEqual(3);
   // the pop-up holds the next step until Continue
   await expect(page.locator('.story-cheer-title')).toHaveText('Well done, Wanjiku!', { timeout: 5000 });
   await expect(card.locator('.story-step', { hasText: 'Weed the farm' })).toBeDisabled();
   await closeCheer(page, 'Well done, Wanjiku!');
-  await expect(card.locator('.story-caption')).toHaveText('Seed, fertiliser and labour went in: KSh 38,000 spent.');
+  await expect(card.locator('.story-caption')).toHaveText('Seed, fertiliser and labour went in: KSh 380,000 spent.');
   // the financial result waits for the harvest
   await expect(card.locator('.story-sum')).toHaveCount(0);
   await playLastSeason(page);
@@ -102,18 +113,18 @@ test('the farm update on arriving at the maize, and what each problem puts at st
   await expect.poll(async () => (await state(page)).fs.phase).toBe('update');
   await expect(card).toContainText('Week 7 of the season');
   await expect(card).toContainText('running for 7 weeks this season, Wanjiku');
-  await expect(card).toContainText('KSh 21,400');
+  await expect(card).toContainText('KSh 214,000');
   await expect(card).toContainText('lose most of that money');
   await expect(card.locator('.update-crops li')).toHaveCount(2);
-  await expect(card).toContainText('KSh 10,000 at stake');
-  await expect(card).toContainText('KSh 5,000 at stake');
+  await expect(card).toContainText('KSh 100,000 at stake');
+  await expect(card).toContainText('KSh 50,000 at stake');
   // Back from the update returns to the walk; on to the check, the stake shows while the player reads the maize
   await page.locator('.nav-btn[aria-label="Back"]').click();
   await expect.poll(async () => (await state(page)).fs.phase).toBe('walk1');
   await walkToBed(page);
-  await expect(page.locator('.stake')).toHaveText('!This problem will cost you about KSh 10,000 of harvest if it is left alone.');
+  await expect(page.locator('.stake')).toHaveText('!This problem will cost you about KSh 100,000 of harvest if it is left alone.');
   await review(page, 'first', true);
-  await expect(page.locator('.stake.is-saved')).toContainText('about KSh 10,000 of harvest saved', { timeout: 10_000 });
+  await expect(page.locator('.stake.is-saved')).toContainText('about KSh 100,000 of harvest saved', { timeout: 10_000 });
   expect(await eventNames(page)).toContain('farm_update_shown');
 });
 

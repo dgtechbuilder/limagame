@@ -41,6 +41,7 @@ import { rating } from '../climate/model';
 import { TRACTOR_BONUS } from '../tractor/data';
 import { JOB_INFO, KIND_WORDS, TOOL_JOB, plotName, toolName, tractorName, type PlotKind } from '../plots/data';
 import type { Rig } from '../plots/TractorPick';
+import { money } from '../money';
 
 // from Wakala Agent: the screens after a right call, at the shed and at the Hire spot, loaded when first opened
 const Prescribe = lazy(() => import('../care/Prescribe').then(m => ({ default: m.Prescribe })));
@@ -462,7 +463,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
           name={name}
           cost={WRONG_FIX_COST[h] ?? 0}
           wrongBefore={rec?.wrongFixes ?? 0}
-          then={job ? `${JOB_HINT[job]} (${treatCost(h)} coins).${FOLLOW_UP[h] ? ` ${FOLLOW_UP[h]!.why}` : ''}` : 'deal with it.'}
+          then={job ? `${JOB_HINT[job]} (${money(treatCost(h))} coins).${FOLLOW_UP[h] ? ` ${FOLLOW_UP[h]!.why}` : ''}` : 'deal with it.'}
           onPick={op => dispatch({ type: 'prescribe', farm: c.farm, day: c.day, pick: op.id, right: op.right })}
           onDone={() => {
             setCare(null);
@@ -550,7 +551,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     let then = '';
     if (h === 'hail') then = 'Nothing to treat: hail-damaged plants often recover.';
     else if (job && canTreat(h, plan) && PRESCRIBE[h]) then = 'Next: choose the fix.';
-    else if (job && canTreat(h, plan)) then = `Now ${JOB_HINT[job]} (${DAMAGE[h].treat} coins).`;
+    else if (job && canTreat(h, plan)) then = `Now ${JOB_HINT[job]} (${money(DAMAGE[h].treat)} coins).`;
     else if (DAMAGE[h].treat > 0) then = 'It stays untreated, so the damage goes on.';
     const voice = voiceFor(t.cycle, checking.farm, checking.day, h, !!returnedProblem(t, checking.farm, checking.day));
     return { r, voice, after: { right: [cause, h === 'healthy' ? '' : then].filter(Boolean).join(' '), wrong: DAMAGE[h].missed ? `Look again in ${CHECK_WAIT_S} seconds: until it is read right, it costs harvest.` : '' } };
@@ -660,7 +661,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       <div className="hud-pills">
         <span className="hud-pill" title="Coins">
           <img src={img.cash} alt="" width={26} height={26} />
-          <b>{fmt(s.coins)}</b>
+          <b>{money(s.coins)}</b>
           <button type="button" aria-label="Shop" onClick={() => dispatch({ type: 'open', modal: { kind: 'shop', tab: 'food' } })}>
             +
           </button>
@@ -694,7 +695,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
           {(task.coins !== undefined || task.points) && (
             <small className={task.coins !== undefined && task.coins < 0 ? 'is-cost' : ''}>
               <img src={task.points ? img.star : img.coin} alt="" width={10} height={10} />
-              {task.points ? `+${task.points}` : fmt(Math.abs(task.coins ?? 0))}
+              {task.points ? `+${task.points}` : money(Math.abs(task.coins ?? 0))}
             </small>
           )}
         </span>

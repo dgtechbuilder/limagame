@@ -35,6 +35,8 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [Plots and inputs](#plots-and-inputs)
 - [Navigation and the main menu](#navigation-and-the-main-menu)
 - [Page addresses](#page-addresses)
+- [Sound effects](#sound-effects)
+- [Money on screen](#money-on-screen)
 - [Settings](#settings)
 - [Climate tracking](#climate-tracking)
 - [Character art: retro anime](#character-art-retro-anime)
@@ -50,7 +52,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 | When | What happens |
 | --- | --- |
 | **0:00** | Names a farmer (or taps *Wanjiku*, *Otieno* or *Chebet*) and picks a look. No menus or text walls first. |
-| **0:05** | **The story so far**, three short pages: they bought this farm, last season's harvest failed and lost money, and this season they start by learning from each mistake. |
+| **0:05** | **The story so far**, three short pages: they bought this farm, last season's harvest results (they plant by hand, then watch the season fail and lose money), and this season they start by learning from each mistake. |
 | **0:10** | Walks across their farm to the maize. The rest of the farm is under mist. |
 | **0:25** | Checks the maize by looking: spots the rows with fall armyworm and makes the right call. This is the moment the game is built around. |
 | **~2:00** | The whole farm opens. Their sukuma wiki needs the same kind of check, with fewer hints. |
@@ -167,29 +169,34 @@ A new player never sees the farm screen first. Everything happens on their own f
    - *A farm of my own*: the farmer saved from a job in town and bought this farm. The signpost says FOR SALE and the
      title deed's owner line is blank: **Sign for my farm** writes the player's name onto the deed a letter at a
      time, and the signpost becomes *Chebet's farm* with a SOLD sticker.
-   - *The harvest that failed*: last season, played a step at a time. **Plant the season**, **Weed the farm**
-     and **Harvest** each run a short timer (`STORY_STEP_S`, 2 seconds, a ring in the button) while the picture
-     changes: bare rows, sprouts, ragged maize with a real armyworm photo (credited) and dry sukuma wiki, then
-     stubble and one small sack. The sum fills in as it goes (Spent KSh 38,000 − Earned ?), and **=** reveals the
-     loss, counting up to KSh 23,500.
-   - *What went wrong*: three mistakes, each crossed out; tap one to turn it over and see what to do instead, and its
-     line is ticked in the farmer's notebook. These are the lessons the game teaches next: check every bed often
-     (the maize check), water by the soil (the sukuma wiki check), and plan when to harvest, store and sell (the
-     season). **Start with my maize** begins the walk once all three are turned over.
+   - *Last season's Harvest results*: last season, played a step at a time. **Plant the season** is done by hand:
+     the picture shows a maize bed and a sukuma bed, with a bunch of maize seeds and a bunch of sukuma seeds in an
+     open palm; the player taps the maize seeds, then the maize bed (the seed lands and shoots come up), then the
+     same with the sukuma seeds. **Weed the farm** and **Harvest** each run a short timer (`STORY_STEP_S`, 2 seconds,
+     a ring in the button) while the picture changes: ragged maize with a real armyworm photo (credited) and dry
+     sukuma wiki, then stubble and one small sack. The sum fills in as it goes (Spent KSh 380,000 − Earned ?), and
+     **=** reveals the loss, counting up to KSh 235,000.
+   - *What went wrong*: three mistakes, each crossed out; tap one to turn it over and see the practical fix, and its
+     line is ticked in the farmer's notebook: walk every bed **every 2 days** and treat pests the same day (the maize
+     check); feel the soil every 2 days and water at the roots when it is dry a finger deep, checking again after
+     each step (planting, weeding, top-dressing), because the soil changes (the sukuma wiki check); dry, store in
+     sealed bags and sell in batches as the price rises (the season). **Start with my maize** begins the walk once
+     all three are turned over.
 
    The top Back button goes from the story to creating the farmer, and from the walk back to the story. Events:
-   `story_page`, `story_signed`, `story_step`, `story_sum`, `story_done`, `story_skipped`.
+   `story_page`, `story_signed`, `story_sow`, `story_step`, `story_sum`, `story_done`, `story_skipped`.
 3. **Walk to the maize** — on the Figma map: in along the dirt path, up the grass to the front maize bed.
-   The first tap or drag moves the farmer; a pulsing ring shows where to tap. About 10–15 seconds.
+   The first tap or drag moves the farmer; a pulsing ring shows where to tap. The farmer walks quickly (156 stage
+   px a second, three times the first version's pace): about 4 seconds.
    - **The farm update** (on arriving, before the first check): *week 7 of the season*. The farm has been running for
-     7 weeks and has cost KSh 21,400 in seed, fertilizer and labour; at this rate the harvest brings back about
-     KSh 6,000, a loss of KSh 15,400 (a bar chart shows it). The maize (*some rows look ragged*) has KSh 10,000 at
-     stake and the sukuma wiki (*the back rows look dull*) KSh 5,000: catching both turns most of the loss around.
+     7 weeks and has cost KSh 214,000 in seed, fertilizer and labour; at this rate the harvest brings back about
+     KSh 60,000, a loss of KSh 154,000 (a bar chart shows it). The maize (*some rows look ragged*) has KSh 100,000 at
+     stake and the sukuma wiki (*the back rows look dull*) KSh 50,000: catching both turns most of the loss around.
      **Check my maize** opens the check. Words and numbers: `FARM_UPDATE` in `src/first/data.ts`; event
      `farm_update_shown`.
    - **What is at stake, on every check**: a red line at the top left while the player reads the crop, *This problem
-     will cost you about KSh 10,000 of harvest if it is left alone* (KSh 5,000 on the sukuma wiki: `atStake` on each
-     shamba), which turns green once it is caught: *Caught in time: about KSh 10,000 of harvest saved*.
+     will cost you about KSh 100,000 of harvest if it is left alone* (KSh 50,000 on the sukuma wiki: `atStake` on each
+     shamba), which turns green once it is caught: *Caught in time: about KSh 100,000 of harvest saved*.
 4. **First check (the aha moment)** — four steps, the template for every check in Lima:
    - **Look** at four pictures (the crop, pests & disease, soil & water, layout). Tap to zoom; the next one glows.
    - **Spot** the rows that look wrong in the field.
@@ -542,22 +549,34 @@ helps more farmers, more efficiently. Code: `src/business/model.ts` (every rule 
 
 **A day** (the *Today* tab)
 
-- **Bookings.** A village map: the player's tractor yard and the farms around it (12 km across). Each day some
+- **Bookings.** A village map: the player's tractor yard and the farms around it (about 13 km across). **The village
+  is laid out afresh every day**: the yard, the nine farms and up to three crossroads are scattered at random (seeded
+  by the day, so a reload shows the same map), and **winding murram roads join every farm to every other**. Roads
+  are laid shortest first, never crossing another road or running through a farm, then some are dropped so the
+  network has loops and dead ends to think about (`mapFor` in `model.ts`). Distances are along the roads (a curve's
+  length, not the straight line), so the shortest way round is not always the obvious one. Each day some
   farmers book work on one or two **parts of their farm** (*Top field: disc plough, 1.5 acres*), the same farms for
   the same day on a reload. More farms book as the business grows, and two more with the co-op.
 - **My tractor or a partner.** Tap a farm, and book each part for **my tractor** or pass it to a **partner**. Each
   button shows what that choice leaves the business: the hire less the job's diesel (in red when it's thin), or the
   partner's 10%. A job needs its implement on the player's tractor; without one it can still go to the partner.
-- **The route.** The farms booked for the tractor make the route (yard → stops → yard), drawn on the map; **↑**
-  moves a stop earlier. Live meters: hours (a day is 9: driving at 14 km/h plus the work), the route's km against the
-  **shortest possible**, as an efficiency %, and the day's hire, diesel, driver and profit.
-- **Start the day.** The tractor drives the route on the map, then the day's result: stars (any work; a route within
-  5% of the shortest; no farmer left waiting), the money, what the farmers saved against doing the work by hand,
-  and the jobs nobody took. Each farmer helped pays the player 20 points (Lima's rewards).
+- **At least three farms.** The player's tractor must visit at least **three farms** a day (`MIN_STOPS`; fewer only
+  on a day when fewer farms have a job its implements can do, or when even the quickest three can't fit in a day).
+  Meters: *Farms for your tractor, 2 of 3 needed* and the work hours of a 9-hour day (*+ driving*).
+- **Plan the route.** **Next: plan the route**, then tap the farms in the order the tractor will visit them (yard →
+  stops → yard); the strip under the map fills in *1 Akinyi, 2 Mutua, ?*. **Undo last stop** and **Clear route**
+  start over. There is **no route line, no km and no "shortest" hint** while planning: the player judges distance
+  from the roads alone. The day only has to fit with the shortest way round (work + shortest drive ≤ 9 hours); a
+  longer route costs more diesel and, past 9 hours, the driver's overtime (1.5× their hourly pay).
+- **Start the day.** The tractor drives the roads on the map, then the day's result with the **efficiency score**
+  (out of 100: the shortest route's km against the player's): *The most efficient route!* or *Not the most
+  efficient route: yours was 28.5 km; the best was 23.4 km*, with both orders written out. Stars: any work; the most
+  efficient route (99.5% or better); no farmer left waiting. Then the money, what the farmers saved against doing the
+  work by hand, and the jobs nobody took. Each farmer helped pays the player 20 points (Lima's rewards).
 
 **Partners**: Kimani Tractor Hire (takes passed-on bookings, 10% to the player; signed from the start), Lake Farmers'
 Co-op (two more farms a day), Rafiki Fuel (diesel 10% cheaper), County Roads Office (rents the tractor for a whole
-day, KSh 12,000), Shamba Booking App (**Shortest route** in one tap). Most open at a business level, some for a fee.
+day, KSh 120,000), Shamba Booking App (**Shortest route** in one tap, on the route step). Most open at a business level, some for a fee.
 
 **Fleet**: the standard tractor with a disc plough and harrow to start; buy a ridger, a boom sprayer, a maize planter,
 or a large tractor (30% faster work, 50% more diesel).
@@ -565,9 +584,10 @@ or a large tractor (30% faster work, 50% more diesel).
 **Levels** by farmers helped: 1 *One tractor, one driver*, 2 *Known in the village* (8), 3 *The ward's tractor
 service* (20), 4 *A tractor business* (40), 5 *The county's tractor service* (80).
 
-**Numbers.** The business keeps its own account in shillings (it starts with KSh 20,000). Hire per acre, diesel
-(KSh 228 a litre) and hand-work days are Wakala's figures (`tractor/data.ts` `MONEY`, `IMPL`), with their sources;
-road speed and diesel, work rates, the driver's KSh 1,000 a day, the partner's share and the shop's prices are
+**Numbers.** The business keeps its own account in shillings (it starts with KSh 200,000 on screen). Hire per acre,
+diesel and hand-work days are Wakala's figures (`tractor/data.ts` `MONEY`, `IMPL`), with their sources, shown at
+10 times like every value in the game (see *Money on screen*); road speed (20 km/h) and diesel, work rates, the
+driver's KSh 10,000 a day, the partner's share and the shop's prices are
 **game estimates**, marked in the code. The real margins are thin: ploughing and planting pay well, harrowing far away
 barely covers its diesel, so a good route and the right jobs to pass on matter.
 
@@ -614,7 +634,9 @@ Every screen has at least two or three ways to move, and one of them is always t
 | First session | one step where that is safe | ☰ | Settings instead (the farm is not open yet) |
 
 The **main menu** (`src/screens/MainMenu.tsx`, the **MENU** button on the farm) lists My farm, Mission, Field rounds,
-Tractor, Shop, Rewards, Farming steps and Settings. A screen opened from the menu goes back to the menu on *Back*;
+Tractor, Tractor business, Shop, Climate, Rewards, Farming steps and Settings. The list scrolls, with a gold
+**scroll wheel** beside it (▲ and ▼ buttons and a thumb to drag, since phones hide scroll bars); the mouse wheel and
+a swipe scroll it too. A screen opened from the menu goes back to the menu on *Back*;
 *Farm* closes everything. The shared buttons are `NavBar` in `src/components/Nav.tsx`; `ModalShell` adds them to every
 modal. `tests/nav.spec.ts` plays them.
 
@@ -659,6 +681,28 @@ truth: the address always names the page on show, and a typed address goes throu
 - The browser tab's title names the page. *Settings → Help & data* explains addresses to players.
 - Design review (`?review` / `?screen`) leaves the address alone.
 
+## Sound effects
+
+Every completed action and every completed flow plays a happy sound, made on the phone with the Web Audio API
+(`src/sfx.ts`, nothing downloaded). There are two, in the punchy, major-key, metallic style of a mobile base-building
+game's reward sounds:
+
+- **Action** — a bright bell-like double *ding* with a coin sparkle: a bed sown, the deed signed, a story step, a
+  check read right, an item bought or sold, a farming step done, a farm treated, a partner signed, the route set.
+- **Flow** — a short brass fanfare climbing to a held chord, with a drum hit and a sparkle tail: the story told, the
+  first session done, a season sold, a six-farm harvest in, a tractor job finished, a day of the tractor business run.
+
+The reducer tags each action with the sound it earned (`soundOf` in `src/state.ts`): a refusal (*You need … coins*)
+or a step back plays nothing. `App.tsx` plays the tag once; screens with their own pop-ups call `sfx.action()`.
+Settings → Game → *Sound effects* turns them off.
+
+## Money on screen
+
+Every money value is shown at **10 times** its stored amount: coins, prices, costs, profits and shillings all gain a
+0 (`money()` and `kshText()` in `src/money.ts`). The game's own maths, its unlocks and old saves are unchanged, so
+everything compares exactly as before; only what the player reads is scaled. Points, litres, km, acres and days are
+not money and are not scaled. Typed prices (Sale of produce) are read back at the same scale.
+
 ## Settings
 
 *Settings* (the **SETTINGS** button on the farm, the main menu, or the top bar in the first session) is a full page with
@@ -667,7 +711,7 @@ four sections. Every control works at once and is saved on the device; *Reset pr
 | Section | Controls |
 | --- | --- |
 | **My farmer** | rename the farmer; change the look (the farm, the rounds and the HUD all follow) |
-| **Game** | *Character style*: Retro anime or Original · *Farm view*: 3D farm or Classic · *Read aloud*: speaks the guide's lines and the game's messages with the phone's voice (a Kenyan English voice when the phone has one), with a Test button |
+| **Game** | *Character style*: Retro anime or Original · *Farm view*: 3D farm or Classic · *Read aloud*: speaks the guide's lines and the game's messages with the phone's voice (a Kenyan English voice when the phone has one), with a Test button · *Sound effects*: on or off, with a button to hear each one |
 | **Display** | *Graphics*: Auto (drops shadows by itself on slow phones), High, Low (no shadows, 1× resolution) · *Reduce motion*: ends every animation and transition at once · *Full screen* |
 | **Help & data** | How the farm works · Design review · Reset progress (asks twice) |
 

@@ -7,6 +7,7 @@ import { CAST, AnimeBust } from '../art/anime';
 import { ArtContext } from '../art/style';
 import { img } from '../assets';
 import { canSpeak, speak } from '../speech';
+import { setSoundOn, sfx } from '../sfx';
 import { clearSave, initialState, type Action, type GameState, type Settings, type SettingsTab } from '../state';
 
 /* Settings: a full page with four sections. Every control changes the game straight away and is kept on this device.
@@ -223,6 +224,29 @@ function GameTab({ s, dispatch, set }: Props & { set: (p: Partial<Settings>) => 
           />
           <button type="button" className="set-link" disabled={!voiceOk} onClick={() => speak(`Karibu${s.farmer ? `, ${s.farmer.name}` : ''}! This is how the guide sounds.`)}>
             Test
+          </button>
+        </div>
+      </Row>
+      <Row title="Sound effects" body="A happy ping when you finish an action, and a fanfare when you finish a whole flow.">
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <Seg
+            label="Sound effects"
+            value={st.sound === false ? 'off' : 'on'}
+            onChange={v => {
+              set({ sound: v === 'on' });
+              setSoundOn(v === 'on');
+              if (v === 'on') sfx.action();
+            }}
+            options={[
+              { id: 'off', label: 'Off' },
+              { id: 'on', label: 'On' },
+            ]}
+          />
+          <button type="button" className="set-link" disabled={st.sound === false} onClick={() => sfx.action()}>
+            Action
+          </button>
+          <button type="button" className="set-link" disabled={st.sound === false} onClick={() => sfx.flow()}>
+            Flow
           </button>
         </div>
       </Row>

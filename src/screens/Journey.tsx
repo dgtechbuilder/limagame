@@ -25,6 +25,7 @@ import {
   type Prices,
   type SeasonResult,
 } from '../state';
+import { VALUE_X, money } from '../money';
 
 type Props = { s: GameState; dispatch: Dispatch<Action> };
 
@@ -92,7 +93,8 @@ export function SaleModal({ s, dispatch }: Props) {
     { key: 'storage', label: 'Storage cost' },
   ];
   const setPrice = (key: keyof Prices, raw: string) => {
-    const n = Math.min(key === 'market' || key === 'farmgate' ? 60 : 200, Number(raw.replace(/\D/g, '')) || 0);
+    // prices are typed as shown (10 times the stored value, src/money.ts)
+    const n = Math.min(key === 'market' || key === 'farmgate' ? 60 : 200, (Number(raw.replace(/\D/g, '')) || 0) / VALUE_X);
     dispatch({ type: 'prices', prices: { ...p, [key]: n } });
   };
   const selling = s.stage === SELLING && s.harvested;
@@ -125,7 +127,7 @@ export function SaleModal({ s, dispatch }: Props) {
                     <span className="field-box">
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         <Img src={img.coin20} w={20} h={21} />
-                        <input id={`price-${f.key}`} inputMode="numeric" value={p[f.key]} aria-label={f.label} onChange={e => setPrice(f.key, e.target.value)} />
+                        <input id={`price-${f.key}`} inputMode="numeric" value={money(p[f.key]).replace(/,/g, '')} aria-label={f.label} onChange={e => setPrice(f.key, e.target.value)} />
                       </span>
                       <EditIcon size={20} />
                     </span>
@@ -136,12 +138,12 @@ export function SaleModal({ s, dispatch }: Props) {
                 <Row label="Bags to sell">{s.harvested!.bags} bags</Row>
                 <span className="hair" />
                 <Row label="Profit per bag at market, after costs">
-                  <Coin size={14} /> {perBag}/bag
+                  <Coin size={14} /> {money(perBag)}/bag
                 </Row>
               </div>
               <p style={{ fontSize: 9, color: p.farmgate >= perBag ? '#c0392b' : undefined }}>
                 {p.farmgate >= perBag ? 'Selling at the gate pays more right now: ' : 'Market pays more: '}
-                {p.farmgate}/bag at your gate vs {perBag}/bag at market
+                {money(p.farmgate)}/bag at your gate vs {money(perBag)}/bag at market
               </p>
               <GoldButton font={10} height={29} onClick={() => go(dispatch, { kind: 'storage' })}>
                 Continue · choose storage
@@ -184,7 +186,7 @@ export function StorageModal({ s, dispatch }: Props) {
                     <p style={{ fontSize: 11, fontWeight: 700, textAlign: 'center', lineHeight: 1.45 }}>{o.name}</p>
                     <div style={{ width: '100%', background: 'rgba(255,255,255,0.2)', borderRadius: 4, padding: 4, display: 'flex', flexDirection: 'column', gap: 4 }}>
                       <Row size={8} label="Cost">
-                        <Coin size={14} /> {o.costPerBag ? `${o.costPerBag}/bag` : 'Free'}
+                        <Coin size={14} /> {o.costPerBag ? `${money(o.costPerBag)}/bag` : 'Free'}
                       </Row>
                       <span className="hair" />
                       <Row size={8} label="Spoilage risk">{o.spoilage}</Row>
@@ -339,7 +341,7 @@ export function ValueModal({ s, dispatch }: Props) {
                     <Row size={8} label="CO₂e">{PROCESS_CO2[p.id] ? `${p.id === 'processing' && hasSolar(s) ? 0.2 : PROCESS_CO2[p.id]} kg/bag` : 'None (sun)'}</Row>
                     <span className="hair" />
                     <Row size={8} label="Cost">
-                      <Coin size={14} /> {p.cost}
+                      <Coin size={14} /> {money(p.cost)}
                     </Row>
                   </div>
                   <GoldButton
@@ -400,7 +402,7 @@ export function ProcessModal({ s, dispatch }: Props) {
                 <Coin size={14} /> + {p.profitIncrease}%
               </p>
               <p style={{ fontSize: 8, marginTop: 4, lineHeight: 1.4 }}>
-                <b>{fmt(q.revenue)}</b> coins vs {fmt(plain.revenue)} as plain grain
+                <b>{money(q.revenue)}</b> coins vs {money(plain.revenue)} as plain grain
               </p>
             </div>
             <GoldButton font={10} height={27} style={{ position: 'absolute', left: 16, top: 218, width: 201 }} onClick={() => dispatch({ type: 'completeSale', processId: p.id })}>
@@ -435,7 +437,7 @@ export function InfoModal({ s, dispatch }: Props) {
   const est = expectedHarvest(s, s.harvestChoice);
   const now = nextAction(s);
   const rows: [string, ReactNode][] = [
-    ['Profit at market', <><Coin size={14} /> {profitPerBag(s.prices)}/bag</>],
+    ['Profit at market', <><Coin size={14} /> {money(profitPerBag(s.prices))}/bag</>],
     [s.harvested ? 'Bags harvested' : 'Expected harvest', `${s.harvested?.bags ?? est.bags} bags`],
     ['Farm size', '1 acre'],
     ['Crop health', health === null ? 'Not planted yet' : <><Stars value={Math.max(1, Math.round(1 + 4 * health))} size={11} /> {Math.round(health * 100)}%</>],
@@ -545,13 +547,13 @@ export function OutcomeModal({ s, dispatch }: Props) {
                 <Line label="Harvest choice">{HARVEST_CHOICES.find(c => c.id === r.choice)!.label}</Line>
                 <Line label="Yield"><Img src={img.yieldIcon} w={14} h={14} /> {r.bagsHarvested} bags ({r.bagsSold} sold)</Line>
                 <Line label="Quality"><Stars value={r.quality} size={10} /></Line>
-                <Line label="Sale value"><Coin size={14} /> {fmt(r.revenue)}</Line>
+                <Line label="Sale value"><Coin size={14} /> {money(r.revenue)}</Line>
                 <Line label="Profit/loss">
                   <span style={{ color: r.profit >= 0 ? 'var(--green-text)' : '#c0392b' }}>
                     {r.profit >= 0 ? '+' : '−'}
-                    {fmt(Math.abs(r.profit))}
+                    {money(Math.abs(r.profit))}
                   </span>
-                  <span style={{ fontWeight: 400, opacity: 0.7 }}>after {fmt(r.spend)} spent</span>
+                  <span style={{ fontWeight: 400, opacity: 0.7 }}>after {money(r.spend)} spent</span>
                 </Line>
               </div>
               {latest && s.stage === SOLD ? (

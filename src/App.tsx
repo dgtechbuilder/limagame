@@ -17,6 +17,7 @@ import { SettingsPage } from './screens/Settings';
 import { ClimatePage } from './screens/Climate';
 import { ArtContext, VoiceContext } from './art/style';
 import { speak, stopSpeaking } from './speech';
+import { setSoundOn, sfx } from './sfx';
 import { MainMenu } from './screens/MainMenu';
 import { NavBar, NavContext } from './components/Nav';
 import { reviewing, useGame } from './state';
@@ -110,6 +111,12 @@ export default function App() {
   useEffect(() => {
     if (!voiceOn) stopSpeaking();
   }, [voiceOn]);
+
+  // Sound effects (src/sfx.ts): a happy ping for each completed action, a fanfare for each completed flow
+  useLayoutEffect(() => setSoundOn(s.settings.sound !== false), [s.settings.sound]);
+  useEffect(() => {
+    if (s.sfx) sfx[s.sfx.kind]();
+  }, [s.sfx]);
 
   useEffect(() => {
     if (!s.toast) return;

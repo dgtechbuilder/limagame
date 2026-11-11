@@ -30,6 +30,8 @@ import { TRACTOR_PLOT, plotCost, setPlotInput, toolName, type PlotJob, type Plot
 import { initialClimate, type ClimateState } from './climate/model';
 import { trackClimate } from './climate/track';
 import { routeTo } from './route';
+import type { SfxKind } from './sfx';
+import { money } from './money';
 import { POINTS_A_FARMER, SHOP, hireOutDay, newBiz, partnerBlock, partnerOf, planDay, requestsFor, runDay, shopBlock, type Biz, type Bookings, type FleetItem, type PartnerId } from './business/model';
 import {
   GROWING_STEPS,
@@ -73,10 +75,12 @@ export interface Settings {
   reduceMotion: boolean;
   /** read the guide's lines and the messages aloud */
   voice: boolean;
+  /** the happy sound effects when an action or a flow is completed (src/sfx.ts) */
+  sound: boolean;
 }
 export type SettingsTab = 'farmer' | 'game' | 'display' | 'help';
 export type ClimateTab = 'overview' | 'emissions' | 'water' | 'shocks' | 'activity';
-export const DEFAULT_SETTINGS: Settings = { art: 'anime', graphics: 'auto', reduceMotion: false, voice: false };
+export const DEFAULT_SETTINGS: Settings = { art: 'anime', graphics: 'auto', reduceMotion: false, voice: false, sound: true };
 
 /** Stage index: 0–5 = the farming step being worked on, 6 = harvested and selling, 7 = season sold. */
 export const SELLING = 6;
@@ -120,6 +124,8 @@ export type RoundsView = 'map' | 'look' | 'judge' | 'right' | 'wrong' | 'summary
 
 export interface GameState {
   settings: Settings;
+  /** the sound effect the last action earned (App plays it once): a completed action, or a completed flow */
+  sfx: { id: number; kind: SfxKind } | null;
   /** climate tracking: emissions, carbon stored, water, pollution, soil, credits (src/climate/model.ts) */
   climate: ClimateState;
   /** the farm screen: the walkable 3D farm, or the classic painted one */
@@ -232,6 +238,7 @@ export const initialState: GameState = {
   modal: null,
   plotSelected: false,
   toast: null,
+  sfx: null,
   onboarded: false,
   coins: 5000,
   water: 20,
@@ -398,10 +405,39 @@ const fmt = (n: number) => n.toLocaleString('en-US');
 /** A message's first letter lowered, so names and units like KSh keep their capitals. */
 const lowerFirst = (x: string) => x.charAt(0).toLowerCase() + x.slice(1);
 
-/** Every action, then the climate it changed (src/climate/track.ts). */
+/** Every action, then the climate it changed (src/climate/track.ts), then the sound it earned. */
 export function reducer(s: GameState, a: Action): GameState {
   const next = play(s, a);
-  return next === s ? s : trackClimate(s, next, a);
+  if (next === s) return s;
+  const tracked = trackClimate(s, next, a);
+  const kind = soundOf(s, next, a);
+  return kind ? { ...tracked, sfx: { id: ++sfxId, kind } } : tracked;
+}
+
+let sfxId = 0;
+/** Flows: finishing one of these ends a whole piece of play. */
+const FLOWS = new Set<Action['type']>(['completeSale', 'trialHarvest', 'bizRun', 'bizHireOut', 'tractorDone']);
+/** Actions: finishing one of these is one thing done. Some only count when they earned something (their message). */
+const ACTIONS = new Set<Action['type']>(['buy', 'sell', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy']);
+const EARNED = new Set<Action['type']>(['roundResult', 'trialCheck', 'fieldMark']);
+const FS_ORDER: FsPhase[] = ['create', 'story', 'walk1', 'update', 'review1', 'walkRetry', 'retry', 'walk2', 'review2', 'done'];
+
+/** The sound an action earned: none for a refusal (only a message changes) or a step back. */
+function soundOf(s: GameState, next: GameState, a: Action): SfxKind | null {
+  const changed = (Object.keys(next) as (keyof GameState)[]).some(k => k !== 'toast' && k !== 'sfx' && k !== 'climate' && next[k] !== s[k]);
+  if (!changed) return null;
+  if (a.type === 'fs') {
+    const from = FS_ORDER.indexOf(s.fs.phase);
+    const to = FS_ORDER.indexOf(next.fs.phase);
+    if (to <= from) return null;
+    // the story told, and the first session done, are whole flows; every other step forward is an action
+    return next.fs.phase === 'done' || s.fs.phase === 'story' ? 'flow' : 'action';
+  }
+  if (FLOWS.has(a.type)) return 'flow';
+  if (ACTIONS.has(a.type)) return 'action';
+  if (a.type === 'prescribe') return a.right ? 'action' : null;
+  if (EARNED.has(a.type)) return next.toast && next.toast !== s.toast && !/^(You need|That costs)/.test(next.toast.text) ? 'action' : null;
+  return null;
 }
 
 function play(s: GameState, a: Action): GameState {
@@ -421,13 +457,13 @@ function play(s: GameState, a: Action): GameState {
     case 'onboarded':
       return { ...s, onboarded: true };
     case 'buy': {
-      if (s.coins < a.price) return { ...s, toast: toast(`You need ${fmt(a.price)} coins for ${a.name}`) };
+      if (s.coins < a.price) return { ...s, toast: toast(`You need ${money(a.price)} coins for ${a.name}`) };
       return {
         ...s,
         coins: s.coins - a.price,
         inventory: [...s.inventory, a.id],
         ...gainXp(s, 0.03),
-        toast: toast(`Bought ${a.name} for ${fmt(a.price)} coins`),
+        toast: toast(`Bought ${a.name} for ${money(a.price)} coins`),
       };
     }
     case 'sell': {
@@ -438,7 +474,7 @@ function play(s: GameState, a: Action): GameState {
         coins: s.coins + a.price,
         stock: { ...s.stock, [a.id]: left - 1 },
         ...gainXp(s, 0.03),
-        toast: toast(`Sold 1 bag of ${a.name} for ${a.price} coins`),
+        toast: toast(`Sold 1 bag of ${a.name} for ${money(a.price)} coins`),
       };
     }
     case 'task': {
@@ -447,7 +483,7 @@ function play(s: GameState, a: Action): GameState {
       const item = TASK_USES_ITEM[a.id];
       const fromStock = item ? s.inventory.indexOf(item) : -1;
       const cost = fromStock >= 0 ? 0 : a.price;
-      if (s.coins < cost) return { ...s, toast: toast(`You need ${cost} coins for ${a.name}`) };
+      if (s.coins < cost) return { ...s, toast: toast(`You need ${money(cost)} coins for ${a.name}`) };
       const inventory = fromStock >= 0 ? s.inventory.filter((_, i) => i !== fromStock) : s.inventory;
       const tip = TASK_TIPS[a.id] ?? `${a.name} done`;
       return {
@@ -540,7 +576,7 @@ function play(s: GameState, a: Action): GameState {
         farmView: history.length - 1,
         ...gainXp(s, 0.5),
         modal: { kind: 'outcome' },
-        toast: toast(`Sold ${q.bagsSold} bags for ${fmt(q.revenue)} coins · +${q.bagsSold * 5} points`),
+        toast: toast(`Sold ${q.bagsSold} bags for ${money(q.revenue)} coins · +${q.bagsSold * 5} points`),
       };
     }
     case 'newSeason':
@@ -636,7 +672,7 @@ function play(s: GameState, a: Action): GameState {
         coins: s.coins - cost,
         trial: { ...trial, phase: 'growing', clock: 'fast', planted: dayNumber(), day: 1 },
         field: emptyField(trial.cycle),
-        toast: toast(`Your first planting: maize on Farm 1, sukuma wiki on Farm 2 · −${fmt(cost)} coins for seed and fertilizer`),
+        toast: toast(`Your first planting: maize on Farm 1, sukuma wiki on Farm 2 · −${money(cost)} coins for seed and fertilizer`),
       };
     }
     case 'trialPlan': {
@@ -662,7 +698,7 @@ function play(s: GameState, a: Action): GameState {
         trial: { ...t, phase: 'growing', clock: a.clock, planted: dayNumber(), day: 1 },
         field: emptyField(t.cycle),
         ...gainXp(s, 0.1),
-        toast: toast(s.view === 'world' ? `${t.plans.length} farm plans paid: ${fmt(cost)} coins · now get them planted` : `${t.plans.length} farms planted for ${fmt(cost)} coins · day 1: check every farm`),
+        toast: toast(s.view === 'world' ? `${t.plans.length} farm plans paid: ${money(cost)} coins · now get them planted` : `${t.plans.length} farms planted for ${money(cost)} coins · day 1: check every farm`),
       };
     }
     case 'trialCheck': {
@@ -684,7 +720,7 @@ function play(s: GameState, a: Action): GameState {
         points: s.points + earned,
         trial: { ...t, checks: { ...t.checks, [key]: { right: a.right, tries: a.tries, treated: paid } }, treatments },
         ...gainXp(s, a.right ? 0.06 : 0.01),
-        toast: earned ? toast(`Read right · +${earned} points${paid ? ` · treated for ${fix} coins` : ''}`) : s.toast,
+        toast: earned ? toast(`Read right · +${earned} points${paid ? ` · treated for ${money(fix)} coins` : ''}`) : s.toast,
       };
     }
     case 'trialNextDay': {
@@ -715,7 +751,7 @@ function play(s: GameState, a: Action): GameState {
         trial: { ...t, phase: 'done', results },
         trialHistory: [...s.trialHistory, summary],
         ...gainXp(s, 0.4),
-        toast: toast(`Harvest sold for ${fmt(income)} coins · +${50 * t.plans.length} points`),
+        toast: toast(`Harvest sold for ${money(income)} coins · +${50 * t.plans.length} points`),
       };
     }
     case 'view':
@@ -777,7 +813,7 @@ function play(s: GameState, a: Action): GameState {
         const pending = treatLeft(f, t, a.farm, day);
         if (pending && (after & pending.need) === pending.need) {
           const cost = treatCost(pending.hazard);
-          if (s1.coins < cost) return { ...s1, field: marked, toast: toast(`You need ${cost} coins to treat ${farmName(a.farm)}`) };
+          if (s1.coins < cost) return { ...s1, field: marked, toast: toast(`You need ${money(cost)} coins to treat ${farmName(a.farm)}`) };
           const ck = checkKey(a.farm, day);
           // the care that has to be done again a day or two later (only inside the six check days)
           const fu = FOLLOW_UP[pending.hazard];
@@ -797,7 +833,7 @@ function play(s: GameState, a: Action): GameState {
             coins: s1.coins - cost,
             trial,
             ...gainXp(s1, 0.03),
-            toast: toast(`${farmName(a.farm)} treated · −${cost} coins · most of the damage stopped${due ? ` · come back on day ${due}` : ''}`),
+            toast: toast(`${farmName(a.farm)} treated · −${money(cost)} coins · most of the damage stopped${due ? ` · come back on day ${due}` : ''}`),
           };
         }
       }
@@ -811,8 +847,8 @@ function play(s: GameState, a: Action): GameState {
           return { ...s1, field, trial, ...gainXp(s1, 0.03), toast: toast(`${farmName(a.farm)}: follow-up done · the problem stays away`) };
         }
       }
-      if (bonus) return { ...s1, field, points: s1.points + bonus, ...gainXp(s1, 0.02), toast: toast(`Tractor bonus · +${bonus} points · all 20 plots of ${farmName(a.farm)} done from the seat${fuel ? ` · −${fuel} coins of fuel` : ''}`) };
-      if (fuel && a.rig) return { ...s1, field, toast: toast(`${farmName(a.farm)}: the ${a.rig.tractor} tractor's ${toolName(a.rig.tool).toLowerCase()} at work · −${fuel} coins of fuel`) };
+      if (bonus) return { ...s1, field, points: s1.points + bonus, ...gainXp(s1, 0.02), toast: toast(`Tractor bonus · +${bonus} points · all 20 plots of ${farmName(a.farm)} done from the seat${fuel ? ` · −${money(fuel)} coins of fuel` : ''}`) };
+      if (fuel && a.rig) return { ...s1, field, toast: toast(`${farmName(a.farm)}: the ${a.rig.tractor} tractor's ${toolName(a.rig.tool).toLowerCase()} at work · −${money(fuel)} coins of fuel`) };
       return { ...s1, field };
     }
     case 'plotSet': {
@@ -831,7 +867,7 @@ function play(s: GameState, a: Action): GameState {
       const plots = t.plans.map((_, i) => (i === a.farm ? next : plotsOf(t, i)));
       // once the farms are paid for, a change of seed or fertilizer is paid (or refunded) at once
       const delta = t.phase === 'growing' && a.kind !== 'sprayer' ? next.reduce((n, r, i) => n + plotCost(a.kind, r[a.kind] as string) - plotCost(a.kind, rows[i][a.kind] as string), 0) : 0;
-      if (delta > s.coins) return { ...s, toast: toast(`That costs ${delta} coins more and you have ${s.coins}`) };
+      if (delta > s.coins) return { ...s, toast: toast(`That costs ${money(delta)} coins more and you have ${money(s.coins)}`) };
       return { ...s, coins: s.coins - delta, trial: { ...t, plots } };
     }
     case 'prescribe': {
@@ -935,7 +971,7 @@ function play(s: GameState, a: Action): GameState {
 /* ------------------------------------------------------------------ */
 
 const SAVE_KEY = 'lima-farming-game:v2';
-const TRANSIENT: (keyof GameState)[] = ['fromMenu', 'navSeq', 'rideReq', 'modal', 'plotSelected', 'toast', 'roundsOpen', 'roundsView', 'roundsDemo', 'worldDemo', 'trialsOpen', 'roundsTrial', 'bizOpen'];
+const TRANSIENT: (keyof GameState)[] = ['sfx', 'fromMenu', 'navSeq', 'rideReq', 'modal', 'plotSelected', 'toast', 'roundsOpen', 'roundsView', 'roundsDemo', 'worldDemo', 'trialsOpen', 'roundsTrial', 'bizOpen'];
 
 /** Design-review links (?review or ?screen) use a throwaway game so they never touch a player's save. */
 export const reviewing = () => {
@@ -964,7 +1000,7 @@ function loadSaved(): GameState {
     const saved = JSON.parse(raw);
     // Saves from before the farm had one owner may carry a reminder about neighbours.
     if (typeof saved.note === 'string' && /Achieng|neighbour/i.test(saved.note)) saved.note = 'Check every bed on your farm often: open Rounds on the farm.';
-    return { ...initialState, ...saved, fromMenu: false, navSeq: 0, rideReq: 0, modal: null, plotSelected: false, toast: null, roundsOpen: false, roundsView: null, roundsDemo: null, worldDemo: null, trialsOpen: false, bizOpen: false, roundsTrial: false, rounds: { ...initialState.rounds, ...(saved.rounds ?? {}) }, settings: { ...DEFAULT_SETTINGS, ...(saved.settings ?? {}) }, climate: { ...initialClimate, ...(saved.climate ?? {}) } };
+    return { ...initialState, ...saved, fromMenu: false, navSeq: 0, rideReq: 0, modal: null, plotSelected: false, toast: null, sfx: null, roundsOpen: false, roundsView: null, roundsDemo: null, worldDemo: null, trialsOpen: false, bizOpen: false, roundsTrial: false, rounds: { ...initialState.rounds, ...(saved.rounds ?? {}) }, settings: { ...DEFAULT_SETTINGS, ...(saved.settings ?? {}) }, climate: { ...initialClimate, ...(saved.climate ?? {}) } };
   } catch {
     return initialState;
   }
