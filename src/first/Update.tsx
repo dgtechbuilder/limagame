@@ -8,7 +8,7 @@ import { FARM_UPDATE, SHAMBAS, ksh, say } from './data';
 import { track } from './track';
 
 /* The farm update: the farmer has walked to the maize, and before the first check sees how this season is going:
-   7 weeks in, over KSh 20,000 spent, and heading for a loss of most of it. Each crop's problem is still unread; what
+   7 weeks in, over KSh 200,000 spent, and heading for a loss of most of it. Each crop's problem is still unread; what
    each one puts at stake is shown again on its check. */
 
 export function FarmUpdate({ name, onDone }: { name: string; onDone: () => void }) {

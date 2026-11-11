@@ -8,6 +8,7 @@ import { RoundPicture } from '../rounds/Inspect';
 import { ROUND_PART_LABELS, type Round } from '../rounds/data';
 import { HAZARD_WORDS, type TrialHazard } from '../trials/model';
 import type { FixOption } from './data';
+import { money } from '../money';
 
 /* From Wakala Agent: after a right call in the farm world, pick the fix. One of three is right; a wrong one costs
    coins and says why it would not work, then the player picks again. The right one leads to the work by hand. */
@@ -37,7 +38,7 @@ export function Prescribe({
   cost: number;
   /** wrong fixes already picked for this farm today (from the save) */
   wrongBefore: number;
-  /** what the right fix leads to, as a sentence end, e.g. "walk over the weeds to cut them (30 coins)." */
+  /** what the right fix leads to, as a sentence end, e.g. "walk over the weeds to cut them (300 coins)." */
   then: string;
   onPick: (option: FixOption) => void;
   onDone: () => void;
@@ -55,9 +56,9 @@ export function Prescribe({
     if (!op.right) setTried(v => [...v, op.id]);
   };
 
-  let line = `${name}, what will fix ${farmName}? A wrong fix costs ${cost} coins.`;
-  if (wrongBefore > 0 && !picked) line = `Pick again, ${name}. A wrong fix costs ${cost} coins.`;
-  if (picked && !picked.right) line = `${picked.lesson} −${cost} coins. Pick again.`;
+  let line = `${name}, what will fix ${farmName}? A wrong fix costs ${money(cost)} coins.`;
+  if (wrongBefore > 0 && !picked) line = `Pick again, ${name}. A wrong fix costs ${money(cost)} coins.`;
+  if (picked && !picked.right) line = `${picked.lesson} −${money(cost)} coins. Pick again.`;
   if (right) line = `${right.lesson} Now ${then}`;
 
   return (
@@ -96,7 +97,7 @@ export function Prescribe({
                   {wrong ? '✕' : isRight ? '✓' : ''}
                 </span>
                 <span>{op.label}</span>
-                {wrong && <small>−{cost} coins</small>}
+                {wrong && <small>−{money(cost)} coins</small>}
               </button>
             );
           })}

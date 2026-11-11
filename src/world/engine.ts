@@ -27,6 +27,8 @@ import {
   careLeft,
   fixLeft,
   plotAt,
+  rowMask,
+  rowOf,
   BUTTON_JOBS,
   followUpLeft,
   type Carry,
@@ -1093,17 +1095,20 @@ export class FarmWorld {
     this.ev.mark(farm, key, bits, true, { tractor: rig.tractor, tool: rig.tool, job });
   }
 
-  /* ---------------- clearing and planting, a plot at a time (the button and timer are World.tsx's) ---------------- */
+  /* ---------------- clearing and planting, a row at a time (the button and timer are World.tsx's) ---------------- */
 
-  /** The plot the farmer stands on and the button job it is waiting for (clear or plant), or null. */
-  plotJobHere(): { farm: number; plot: number; job: 'prep' | 'sow'; fx: Fx } | null {
+  /** The row of plots the farmer stands in and the button job it is waiting for (clear or plant), or null. bits: the
+      row's plots still to do. */
+  plotJobHere(): { farm: number; plot: number; row: number; bits: number; job: 'prep' | 'sow'; fx: Fx } | null {
     if (!this.view || this.riding) return null;
     const at = plotAt(this.pos.x, this.pos.y);
     if (!at) return null;
     const j = this.jobAt(at.farm);
     if (!j || 'hint' in j || !(BUTTON_JOBS as readonly string[]).includes(j.job)) return null;
-    if (!(j.need & (1 << at.plot)) || this.marks(at.farm, j.job) & (1 << at.plot)) return null;
-    return { farm: at.farm, plot: at.plot, job: j.job as 'prep' | 'sow', fx: j.fx };
+    const row = rowOf(at.plot);
+    const bits = rowMask(row) & j.need & ~this.marks(at.farm, j.job);
+    if (!bits) return null;
+    return { farm: at.farm, plot: at.plot, row, bits, job: j.job as 'prep' | 'sow', fx: j.fx };
   }
 
   /** Stop walking where the farmer stands (they start work on the plot under them). */
@@ -1118,15 +1123,17 @@ export class FarmWorld {
     this.burst(fx, this.pos.x, this.pos.y, 2);
   }
 
-  /** A plot's clearing or planting is done: draw it at once (the state catches up) and report it. */
-  plotFinished(farm: number, plot: number, job: 'prep' | 'sow', fx: Fx) {
-    const bit = 1 << plot;
+  /** A row's clearing or planting is done: every plot of it is drawn at once (the state catches up) and reported. */
+  plotFinished(farm: number, bits: number, job: 'prep' | 'sow', fx: Fx) {
     const k = `${farm}:${job}`;
-    this.pending.set(k, (this.pending.get(k) ?? 0) | bit);
-    const c = tileCenter(farm, plot);
-    this.burst(fx, c.x, c.z, 8);
+    this.pending.set(k, (this.pending.get(k) ?? 0) | bits);
+    for (let i = 0; i < TILES; i++) {
+      if (!(bits & (1 << i))) continue;
+      const c = tileCenter(farm, i);
+      this.burst(fx, c.x, c.z, 4);
+    }
     this.dirty = true;
-    this.ev.mark(farm, job, bit, false);
+    this.ev.mark(farm, job, bits, false);
   }
 
   private fxOf(job: PlotJob): Fx {

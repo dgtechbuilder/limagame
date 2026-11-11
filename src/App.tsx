@@ -17,6 +17,7 @@ import { SettingsPage } from './screens/Settings';
 import { ClimatePage } from './screens/Climate';
 import { ArtContext, VoiceContext } from './art/style';
 import { speak, stopSpeaking } from './speech';
+import { setSoundOn, sfx, warmSfx } from './sfx';
 import { MainMenu } from './screens/MainMenu';
 import { NavBar, NavContext } from './components/Nav';
 import { reviewing, useGame } from './state';
@@ -110,6 +111,18 @@ export default function App() {
   useEffect(() => {
     if (!voiceOn) stopSpeaking();
   }, [voiceOn]);
+
+  // Sound effects (src/sfx.ts): a happy ping for each completed action, a fanfare for each completed flow
+  useLayoutEffect(() => setSoundOn(s.settings.sound !== false), [s.settings.sound]);
+  useEffect(() => {
+    if (s.sfx) sfx[s.sfx.kind]();
+  }, [s.sfx]);
+  // the cues are made once, after the first tap (browsers start sound only after one)
+  useEffect(() => {
+    if (s.settings.sound === false) return;
+    window.addEventListener('pointerdown', warmSfx, { once: true });
+    return () => window.removeEventListener('pointerdown', warmSfx);
+  }, [s.settings.sound]);
 
   useEffect(() => {
     if (!s.toast) return;

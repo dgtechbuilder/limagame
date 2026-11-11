@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { NavBar } from '../components/Nav';
 import { img } from '../assets';
 import { FarmMap } from '../components/FarmMap';
+import { TractorArt } from '../components/TractorArt';
 import { GuideLine } from '../first/Review';
 import { CHECK_DAYS, farmName, plotsOf, type Trial } from '../trials/model';
 import { TRACTORS, IMPL, type ImplId } from '../tractor/data';
 import { careLeft, isDone, setupLeft, type Field } from '../world/field';
 import { JOB_INFO, TOOL_JOB, TOOL_USE, TRACTOR_PLOT, prepNeed, toolName, tractorName, type PlotJob, type TractorId } from './data';
+import { money } from '../money';
 
 /* At the tractor: before the engine starts, the farmer picks the tractor type and the tool for the job. The tractor
    works every plot it drives over; the first type and tool on a farm are kept with its results, so a cycle's harvest
@@ -83,8 +85,15 @@ export function TractorPick({ tr, field, day, rig, onGo, onLeave }: { tr: Trial;
               const works = worksOf(k.id);
               return (
                 <button type="button" key={k.id} role="radio" aria-checked={tractor === k.id} className={`tp-card${tractor === k.id ? ' is-on' : ''}`} onClick={() => setTractor(k.id)}>
-                  <b>{k.name}</b>
-                  <span className="tp-hp">{k.hp} hp</span>
+                  <span className="tp-head">
+                    <span className="tp-pic">
+                      <TractorArt kind={k.id} width={k.id === 'compact' ? 64 : k.id === 'standard' ? 72 : 80} />
+                    </span>
+                    <span className="tp-name">
+                      <b>{k.name}</b>
+                      <span className="tp-hp">{k.hp} hp</span>
+                    </span>
+                  </span>
                   <span>{TRACTOR_PLOT[k.id].teach}</span>
                   <span className="tp-note">{k.note}</span>
                   <span className="tp-meters">
@@ -96,7 +105,7 @@ export function TractorPick({ tr, field, day, rig, onGo, onLeave }: { tr: Trial;
                     ))}
                   </span>
                   <span className="tp-meta">
-                    Fuel <b>{TRACTOR_PLOT[k.id].fuel} coins</b> a farm · speed {Math.round(TRACTOR_PLOT[k.id].speed * 100)}%
+                    Fuel <b>{money(TRACTOR_PLOT[k.id].fuel)} coins</b> a farm · speed {Math.round(TRACTOR_PLOT[k.id].speed * 100)}%
                   </span>
                   <small>{works.length ? `Works ${works.slice(0, 3).join(', ')}${works.length > 3 ? '…' : ''}` : 'Not used yet this cycle'}</small>
                 </button>

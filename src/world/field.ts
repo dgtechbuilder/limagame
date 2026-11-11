@@ -1,7 +1,8 @@
 /* The farm world's field work: what each of the six farms needs doing by hand, tile by tile.
 
-   A farm is 4 × 5 tiles, and each tile is one of its 20 plots (Plot 1 at the back left, plots/data.ts). Clearing and
-   planting are done a plot at a time with a button (PLOT_WORK_S each); the other jobs (fertilize, cut weeds, water,
+   A farm is 4 × 5 tiles, and each tile is one of its 20 plots (Plot 1 at the back left, plots/data.ts). The plots
+   make 4 rows of 5 (a row runs from the back of the farm to the front). Clearing and planting are done a row at a
+   time with a button (PLOT_WORK_S each); the other jobs (fertilize, cut weeds, water,
    spray, harvest…) by walking over the plots with the right tool or load. The work done is a bit mask per farm and
    job, one bit per plot.
    No pictures or three.js here, so the saved game can use it. */
@@ -50,9 +51,19 @@ export const plotMask = (plot: number) => 1 << plot;
 /** The plots in a mask. */
 export const plotsIn = (bits: number) => Array.from({ length: PLOTS_PER_FARM }, (_, p) => p).filter(p => bits & plotMask(p));
 
-/** Clearing and planting are done one plot at a time with a button: this long each (seconds). */
+/** A farm's plots in rows: 4 rows (one per tile column), each of 5 plots from the back of the farm to the front. */
+export const FARM_ROWS = COLS;
+/** The row a plot is in (0 = the left-hand row). */
+export const rowOf = (plot: number) => plot % COLS;
+/** Every plot of a row, as a mask. */
+export const rowMask = (row: number) => Array.from({ length: ROWS }, (_, r) => 1 << (r * COLS + row)).reduce((m, b) => m | b, 0);
+export const rowName = (row: number) => `Row ${row + 1}`;
+/** The rows with plots still to do, given the plots needed and those done. */
+export const rowsLeft = (need: number, done: number) => Array.from({ length: FARM_ROWS }, (_, r) => r).filter(r => rowMask(r) & need & ~done).length;
+
+/** Clearing and planting are done one row at a time with a button: this long each (seconds). */
 export const PLOT_WORK_S = 3;
-/** The jobs done plot by plot with a button, not by walking over the plots. */
+/** The jobs done row by row with a button, not by walking over the plots. */
 export const BUTTON_JOBS = ['prep', 'sow'] as const;
 /** The farm and plot a point of the world is on, or null. */
 export function plotAt(x: number, z: number): { farm: number; plot: number } | null {
@@ -115,7 +126,7 @@ export const TREAT_JOB: Partial<Record<TrialHazard, TreatJob>> = {
   wildlife: 'birds',
 };
 
-/** What each job needs carried. Planting needs nothing: the farmer plants a plot at a time with the button. */
+/** What each job needs carried. Planting needs nothing: the farmer plants a row at a time with the button. */
 export const JOB_CARRY: Partial<Record<string, Exclude<Carry, null>>> = {
   feed: 'fertilizer',
   setupFeed: 'fertilizer',
@@ -327,12 +338,12 @@ export function nextTask(f: Field, t: Trial | null, today: number, coins: number
     if (job === 'prep') {
       if (machinePrep(t.plans[i]))
         return { title: t.plans[i].land === 'tractor' ? 'Hire the tractor' : 'Hire the oxen', note: `to plough ${name(i)}`, icon: 'tractor', target: { place: 'hire' } };
-      const left = TILES - popcount(doneMask(f, t.cycle, i, 'prep'));
-      return { title: `Clear ${name(i)} for ${crop}`, note: `${left} of ${TILES} plots left · press Clear on each`, icon: 'hoe', target: { farm: i, at: 'plot' } };
+      const left = rowsLeft(FULL, doneMask(f, t.cycle, i, 'prep'));
+      return { title: `Clear ${name(i)} for ${crop}`, note: `${left} of ${FARM_ROWS} rows left · press Clear on each row`, icon: 'hoe', target: { farm: i, at: 'plot' } };
     }
     if (job === 'sow') {
-      const left = TILES - popcount(doneMask(f, t.cycle, i, 'sow'));
-      return { title: `Plant ${crop} on ${name(i)}`, note: `${left} of ${TILES} plots left · press Plant on each`, icon: 'seeds', target: { farm: i, at: 'plot' } };
+      const left = rowsLeft(FULL, doneMask(f, t.cycle, i, 'sow'));
+      return { title: `Plant ${crop} on ${name(i)}`, note: `${left} of ${FARM_ROWS} rows left · press Plant on each row`, icon: 'seeds', target: { farm: i, at: 'plot' } };
     }
     return needCarry(f, 'fertilizer', { title: `Fertilize ${name(i)}`, note: 'At planting', icon: 'fertilizer', target: { farm: i, at: 'plot' } });
   }

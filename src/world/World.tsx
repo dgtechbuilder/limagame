@@ -15,8 +15,9 @@ import { voiceFor } from '../care/voice';
 import {
   CARRY_NAME,
   PLOT_WORK_S,
-  TILES,
-  popcount,
+  FULL,
+  rowName,
+  rowsLeft,
   TREAT_JOB,
   allHarvested,
   careLeft,
@@ -39,8 +40,10 @@ import { useNav } from '../components/Nav';
 import { ClimateIcon } from '../components/Icons';
 import { rating } from '../climate/model';
 import { TRACTOR_BONUS } from '../tractor/data';
-import { JOB_INFO, KIND_WORDS, TOOL_JOB, plotName, toolName, tractorName, type PlotKind } from '../plots/data';
+import { JOB_INFO, KIND_WORDS, TOOL_JOB, toolName, tractorName, type PlotKind } from '../plots/data';
 import type { Rig } from '../plots/TractorPick';
+import { money } from '../money';
+import { sfx } from '../sfx';
 
 // from Wakala Agent: the screens after a right call, at the shed and at the Hire spot, loaded when first opened
 const Prescribe = lazy(() => import('../care/Prescribe').then(m => ({ default: m.Prescribe })));
@@ -212,7 +215,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     if (!s.trial && s.trialHistory.length === 0) dispatch({ type: 'trialNew' });
   }, [s.trial, s.trialHistory.length, dispatch]);
 
-  /* ---------------- clearing and planting: a button on each plot, then a 3-second timer ---------------- */
+  /* ---------------- clearing and planting: a button on each row of plots, then a 3-second timer ---------------- */
 
   function startPlot(p: PlotHere) {
     const w = eng.current;
@@ -226,20 +229,21 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     const id = window.setInterval(() => {
       const w = eng.current;
       if (!w) return;
-      // walking off the plot (or a screen opening on top) stops the work; the plot stays as it was
+      // walking off the row (or a screen opening on top) stops the work; the row stays as it was
       if (overlay || !samePlot(w.plotJobHere(), working)) {
         setWorking(null);
-        if (!overlay) say('Stay on the plot until the timer is done');
+        if (!overlay) say('Stay on the row until the timer is done');
         return;
       }
       w.plotWorking(working.fx);
       if (performance.now() - working.start < working.ms) return;
-      w.plotFinished(working.farm, working.plot, working.job, working.fx);
+      w.plotFinished(working.farm, working.bits, working.job, working.fx);
       setWorking(null);
       const st = sRef.current;
       const done = st.trial ? doneMask(st.field.cycle === st.trial.cycle ? st.field : { ...st.field, marks: {} }, st.trial.cycle, working.farm, working.job) : 0;
-      const left = TILES - popcount(done | (1 << working.plot));
-      say(`${plotName(working.plot)} ${working.job === 'prep' ? 'cleared' : 'planted'}${left ? ` · ${left} to go on ${farmName(working.farm)}` : ` · ${farmName(working.farm)} is ${working.job === 'prep' ? 'cleared' : 'planted'}!`}`);
+      const left = rowsLeft(FULL, done | working.bits);
+      sfx.action();
+      say(`${rowName(working.row)} ${working.job === 'prep' ? 'cleared' : 'planted'}${left ? ` · ${left} row${left === 1 ? '' : 's'} to go on ${farmName(working.farm)}` : ` · ${farmName(working.farm)} is ${working.job === 'prep' ? 'cleared' : 'planted'}!`}`);
     }, 120);
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -462,7 +466,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
           name={name}
           cost={WRONG_FIX_COST[h] ?? 0}
           wrongBefore={rec?.wrongFixes ?? 0}
-          then={job ? `${JOB_HINT[job]} (${treatCost(h)} coins).${FOLLOW_UP[h] ? ` ${FOLLOW_UP[h]!.why}` : ''}` : 'deal with it.'}
+          then={job ? `${JOB_HINT[job]} (${money(treatCost(h))} coins).${FOLLOW_UP[h] ? ` ${FOLLOW_UP[h]!.why}` : ''}` : 'deal with it.'}
           onPick={op => dispatch({ type: 'prescribe', farm: c.farm, day: c.day, pick: op.id, right: op.right })}
           onDone={() => {
             setCare(null);
@@ -550,7 +554,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     let then = '';
     if (h === 'hail') then = 'Nothing to treat: hail-damaged plants often recover.';
     else if (job && canTreat(h, plan) && PRESCRIBE[h]) then = 'Next: choose the fix.';
-    else if (job && canTreat(h, plan)) then = `Now ${JOB_HINT[job]} (${DAMAGE[h].treat} coins).`;
+    else if (job && canTreat(h, plan)) then = `Now ${JOB_HINT[job]} (${money(DAMAGE[h].treat)} coins).`;
     else if (DAMAGE[h].treat > 0) then = 'It stays untreated, so the damage goes on.';
     const voice = voiceFor(t.cycle, checking.farm, checking.day, h, !!returnedProblem(t, checking.farm, checking.day));
     return { r, voice, after: { right: [cause, h === 'healthy' ? '' : then].filter(Boolean).join(' '), wrong: DAMAGE[h].missed ? `Look again in ${CHECK_WAIT_S} seconds: until it is read right, it costs harvest.` : '' } };
@@ -660,7 +664,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       <div className="hud-pills">
         <span className="hud-pill" title="Coins">
           <img src={img.cash} alt="" width={26} height={26} />
-          <b>{fmt(s.coins)}</b>
+          <b>{money(s.coins)}</b>
           <button type="button" aria-label="Shop" onClick={() => dispatch({ type: 'open', modal: { kind: 'shop', tab: 'food' } })}>
             +
           </button>
@@ -694,7 +698,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
           {(task.coins !== undefined || task.points) && (
             <small className={task.coins !== undefined && task.coins < 0 ? 'is-cost' : ''}>
               <img src={task.points ? img.star : img.coin} alt="" width={10} height={10} />
-              {task.points ? `+${task.points}` : fmt(Math.abs(task.coins ?? 0))}
+              {task.points ? `+${task.points}` : money(Math.abs(task.coins ?? 0))}
             </small>
           )}
         </span>
@@ -722,19 +726,19 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       )}
 
       {/* clearing and planting: the button on the plot under the farmer, then its timer */}
-      {working && !overlay && <PlotTimer at={anchors.farmer} start={working.start} ms={working.ms} verb={working.job === 'prep' ? 'Clearing' : 'Planting'} plot={working.plot} />}
+      {working && !overlay && <PlotTimer at={anchors.farmer} start={working.start} ms={working.ms} verb={working.job === 'prep' ? 'Clearing' : 'Planting'} row={working.row} />}
       {!working && anchors.plot && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen) && (
         <button
           type="button"
           className={`hud-plot is-${anchors.plot.job}`}
           style={{ left: Math.min(STAGE_W - 90, Math.max(90, anchors.farmer.x)), top: Math.min(STAGE_H - 60, anchors.farmer.y + 70) }}
           onClick={() => startPlot(anchors.plot!)}
-          aria-label={`${anchors.plot.job === 'prep' ? 'Clear' : 'Plant'} ${plotName(anchors.plot.plot)} of ${farmName(anchors.plot.farm)} (${PLOT_WORK_S} seconds)`}
+          aria-label={`${anchors.plot.job === 'prep' ? 'Clear' : 'Plant'} ${rowName(anchors.plot.row)} of ${farmName(anchors.plot.farm)} (${PLOT_WORK_S} seconds)`}
         >
           <TaskGlyph icon={anchors.plot.job === 'prep' ? 'hoe' : 'seeds'} />
           <span>
             <b>{anchors.plot.job === 'prep' ? 'Clear' : 'Plant'}</b>
-            <i>{plotName(anchors.plot.plot)}</i>
+            <i>{rowName(anchors.plot.row)}</i>
           </span>
         </button>
       )}
@@ -802,9 +806,10 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
 
 
 /** The plot under the farmer that is waiting to be cleared or planted (its button shows). */
-type PlotHere = { farm: number; plot: number; job: 'prep' | 'sow'; fx: Fx };
+/** The row of plots under the farmer waiting for the button: its plots still to do are bits. */
+type PlotHere = { farm: number; plot: number; row: number; bits: number; job: 'prep' | 'sow'; fx: Fx };
 type Anchors = { farmer: { x: number; y: number }; sign: { x: number; y: number; visible: boolean } | null; riding: boolean; nearTractor: boolean; plot: PlotHere | null };
-const samePlot = (a: PlotHere | null, b: PlotHere | null) => a === b || (!!a && !!b && a.farm === b.farm && a.plot === b.plot && a.job === b.job);
+const samePlot = (a: PlotHere | null, b: PlotHere | null) => a === b || (!!a && !!b && a.farm === b.farm && a.row === b.row && a.job === b.job);
 const near = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.abs(a.x - b.x) < 1 && Math.abs(a.y - b.y) < 1;
 function sameAnchors(a: Anchors, b: Anchors) {
   if (a.riding !== b.riding || a.nearTractor !== b.nearTractor || !near(a.farmer, b.farmer) || !samePlot(a.plot, b.plot)) return false;
@@ -813,7 +818,7 @@ function sameAnchors(a: Anchors, b: Anchors) {
 }
 
 /** The timer over the farmer while a plot is cleared or planted: a stopwatch whose ring fills, and the seconds left. */
-function PlotTimer({ at, start, ms, verb, plot }: { at: { x: number; y: number }; start: number; ms: number; verb: string; plot: number }) {
+function PlotTimer({ at, start, ms, verb, row }: { at: { x: number; y: number }; start: number; ms: number; verb: string; row: number }) {
   const [now, setNow] = useState(performance.now());
   useEffect(() => {
     let raf = 0;
@@ -829,7 +834,7 @@ function PlotTimer({ at, start, ms, verb, plot }: { at: { x: number; y: number }
   const R = 15;
   const L = 2 * Math.PI * R;
   return (
-    <div className="hud-timer" role="timer" aria-live="polite" aria-label={`${verb} ${plotName(plot)}: ${left} seconds left`} style={{ left: Math.min(STAGE_W - 70, Math.max(70, at.x)), top: Math.max(70, at.y - 12) }}>
+    <div className="hud-timer" role="timer" aria-live="polite" aria-label={`${verb} ${rowName(row)}: ${left} seconds left`} style={{ left: Math.min(STAGE_W - 70, Math.max(70, at.x)), top: Math.max(70, at.y - 12) }}>
       <svg viewBox="-20 -24 40 44" width={46} height={50} aria-hidden="true">
         <rect x={-3} y={-23} width={6} height={5} rx={1.5} fill="#5b3418" />
         <path d="M11,-14 L15,-18" stroke="#5b3418" strokeWidth={3} strokeLinecap="round" />
@@ -841,7 +846,7 @@ function PlotTimer({ at, start, ms, verb, plot }: { at: { x: number; y: number }
         </text>
       </svg>
       <span>
-        {verb} {plotName(plot)}
+        {verb} {rowName(row)}
       </span>
     </div>
   );

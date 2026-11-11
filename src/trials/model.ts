@@ -28,6 +28,7 @@ import {
   type SeedId,
 } from '../plots/data';
 import type { ImplId } from '../tractor/data';
+import { money } from '../money';
 
 /* ---------------- the plan ---------------- */
 
@@ -733,7 +734,7 @@ export function explain(t: Trial, results: FarmResult[]): { best: number; worst:
   // the farm that grew most is not always the one that made most
   const rich = results.map((_, i) => i).sort((a, b) => results[b].profit - results[a].profit)[0];
   if (rich !== best) {
-    lines.push(`But ${farmName(rich)} made the most money: ${results[rich].profit.toLocaleString('en-US')} coins against ${B.profit.toLocaleString('en-US')}, because it cost less to grow.`);
+    lines.push(`But ${farmName(rich)} made the most money: ${money(results[rich].profit)} coins against ${money(B.profit)}, because it cost less to grow.`);
   }
   return { best, worst, lines };
 }
@@ -823,7 +824,7 @@ export function planProblem(t: Pick<Trial, 'plans' | 'plots'>, coins: number): s
     if (twin >= 0) return `${farmName(i)} has the same plan and plots as ${farmName(twin)}. Change at least one thing.`;
   }
   const cost = trialCost(t);
-  if (cost > coins) return `These plans cost ${cost.toLocaleString('en-US')} coins and you have ${coins.toLocaleString('en-US')}.`;
+  if (cost > coins) return `These plans cost ${money(cost)} coins and you have ${money(coins)}.`;
   return null;
 }
 

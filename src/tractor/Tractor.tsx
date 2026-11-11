@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type PointerEvent as RPointerEvent, type R
 import { img } from '../assets';
 import { FarmMap } from '../components/FarmMap';
 import { fmt } from '../components/ui';
+import { money } from '../money';
 import { SPEAKER } from '../care/voice';
 import { track } from '../first/track';
 import { farmName } from '../trials/model';
@@ -25,7 +26,8 @@ const STEPS: [Phase, string][] = [
 /** canvas pixels per game pixel: sharp on phones and when the stage is scaled up */
 const K = 2;
 
-const ksh = (n: number) => `KSh ${fmt(Math.abs(Math.round(n / 10) * 10))}`;
+/** shillings on screen: 10 times the stored value (src/money.ts), rounded to the nearest 100 */
+const ksh = (n: number) => `KSh ${money(Math.abs(Math.round(n / 10) * 10))}`;
 const acresText = `a sixth of an acre`;
 
 export interface TractorProps {
@@ -496,7 +498,7 @@ export function Tractor({ farm, cycle, best, name, demo, onFinish, onClose }: Tr
             <small>/100</small>
           </b>
           <span className="tc-earn">
-            <img src={img.coin} alt="" width={12} height={12} />+{res.coins}
+            <img src={img.coin} alt="" width={12} height={12} />+{money(res.coins)}
             {res.points > 0 && (
               <>
                 <img src={img.star} alt="" width={12} height={12} />+{res.points}
@@ -617,7 +619,7 @@ function Sources({ figures, onClose }: { figures: MoneyFigure[]; onClose: () => 
           .filter(f => !seen.has(f) && seen.add(f))
           .map(f => (
             <li key={f.what}>
-              <b>{f.what}:</b> {fmt(f.value)} {f.unit}.{' '}
+              <b>{f.what}:</b> {f.unit.startsWith('KSh') ? money(f.value) : fmt(f.value)} {f.unit}.{' '}
               {f.source ? (
                 <a href={f.source.url} target="_blank" rel="noreferrer">
                   {f.source.name}
@@ -628,7 +630,7 @@ function Sources({ figures, onClose }: { figures: MoneyFigure[]; onClose: () => 
             </li>
           ))}
         <li>
-          One farm is {acresText} ({FARM_ACRES.toFixed(2)} acre). Lima's coins are game money: these shillings are only to compare.
+          One farm is {acresText} ({FARM_ACRES.toFixed(2)} acre). Lima's coins are game money: these shillings are only to compare. Like every value in the game, they are shown at 10 times the source figures.
         </li>
       </ul>
       <button type="button" className="tc-btn" onClick={onClose}>

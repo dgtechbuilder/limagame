@@ -98,7 +98,7 @@ function project(pts: Pt[], cum: number[], x: number, y: number) {
 
 const pathD = (pts: Pt[]) => 'M' + pts.map(p => p.join(',')).join(' L');
 
-const SPEED = 52; // stage px per second: the first walk takes about 11 s
+const SPEED = 156; // stage px per second: three times the old pace, so the first walk takes about 4 s
 
 export function Village({
   look,

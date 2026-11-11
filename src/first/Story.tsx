@@ -8,6 +8,7 @@ import { Field, FIELD_H, FIELD_W, FarmerFigure, Hut, Kale, Tree } from './art';
 import { CallIcon } from './Review';
 import { ksh, say, STORY, STORY_STEP_S, type Cheer, type Look, type StoryPage } from './data';
 import { track } from './track';
+import { sfx } from '../sfx';
 
 /* The story so far: three pages between naming the farmer and the first walk, each with something to do.
    1 · the farmer bought this farm: they sign for it, and their name goes on the deed and the signpost
@@ -28,7 +29,16 @@ interface Progress {
   summed: boolean;
   /** page 3's mistakes turned over, by index */
   flipped: number[];
+  /** page 2's planting: the beds sown so far */
+  sown: Seed[];
 }
+
+/** The two seeds the farmer plants by hand on page 2. */
+type Seed = 'maize' | 'kale';
+const SEEDS: { id: Seed; name: string; bed: string }[] = [
+  { id: 'maize', name: 'Maize seeds', bed: 'Maize bed' },
+  { id: 'kale', name: 'Sukuma seeds', bed: 'Sukuma bed' },
+];
 
 /** page: 0-based, kept in the game state so each page has its own address (#/story/2). */
 export function Story({ name, look, page: at, onPage, onDone }: { name: string; look: Look; page: number; onPage: (page: number) => void; onDone: () => void }) {
@@ -36,20 +46,51 @@ export function Story({ name, look, page: at, onPage, onDone }: { name: string; 
   const page = STORY[i];
   const t = (line: string) => say(line, name);
   const last = i === STORY.length - 1;
-  const [p, setP] = useState<Progress>({ signed: false, steps: 0, summed: false, flipped: [] });
+  const [p, setP] = useState<Progress>({ signed: false, steps: 0, summed: false, flipped: [], sown: [] });
   const set = (patch: Partial<Progress>) => setP(v => ({ ...v, ...patch }));
   /** the replay step whose timer is running, and when it started */
   const [running, setRunning] = useState<{ step: number; start: number } | null>(null);
+  /** planting by hand: on while the player sows, and the bunch of seeds in their hand */
+  const [planting, setPlanting] = useState(false);
+  const [holding, setHolding] = useState<Seed | null>(null);
   /** the pop-up after an action, until Continue */
   const [cheer, setCheer] = useState<Cheer | null>(null);
   const voice = useVoice();
   const tell = (line: string) => voice && speak(line);
   const celebrate = (c: Cheer) => {
+    sfx.action();
     setCheer(c);
     tell(`${t(c.title)} ${t(c.line)}`);
   };
 
   useEffect(() => track('story_page', { page: page.id }), [page.id]);
+
+  // both beds sown: a moment to see the seed land, then the step is done
+  useEffect(() => {
+    if (!planting || p.sown.length < SEEDS.length) return;
+    const id = window.setTimeout(() => {
+      const step = page.replay?.[0];
+      setPlanting(false);
+      set({ steps: 1 });
+      track('story_step', { step: step?.id });
+      if (step) celebrate(step.cheer);
+    }, 700);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planting, p.sown.length]);
+
+  /** tap a bunch of seeds to pick it up; tap its bed to sow it */
+  const pickSeed = (seed: Seed) => {
+    if (p.sown.includes(seed)) return;
+    setHolding(seed);
+  };
+  const sowBed = (seed: Seed) => {
+    if (holding !== seed || p.sown.includes(seed)) return;
+    setHolding(null);
+    set({ sown: [...p.sown, seed] });
+    track('story_sow', { seed });
+    sfx.action();
+  };
 
   // Read aloud: the page's opening words
   useEffect(() => {
@@ -90,7 +131,7 @@ export function Story({ name, look, page: at, onPage, onDone }: { name: string; 
         </button>
 
         <div key={page.id} className="story-art" aria-hidden="true">
-          <StoryArt page={page} look={look} name={name} p={p} running={running?.step ?? null} />
+          <StoryArt page={page} look={look} name={name} p={p} running={running?.step ?? null} planting={planting} holding={holding} />
           {page.id === 'failed' && (running?.step ?? p.steps) === 2 && ARMYWORM && (
             <>
               {/* a close look, in a real photo: the caterpillar in the leaf funnel */}
@@ -104,6 +145,44 @@ export function Story({ name, look, page: at, onPage, onDone }: { name: string; 
           )}
         </div>
 
+        {page.id === 'failed' && planting && (
+          <div className="story-plant" role="group" aria-label="Plant the season by hand">
+            {SEEDS.map(sd => {
+              const sown = p.sown.includes(sd.id);
+              return (
+                <button
+                  key={`bed-${sd.id}`}
+                  type="button"
+                  className={`story-bed is-${sd.id}${holding === sd.id ? ' is-ready' : ''}${sown ? ' is-sown' : ''}`}
+                  aria-label={sown ? `${sd.bed}: sown` : `${sd.bed}: tap to sow`}
+                  disabled={sown}
+                  onClick={() => sowBed(sd.id)}
+                >
+                  {!sown && <span>{sd.bed}</span>}
+                </button>
+              );
+            })}
+            {SEEDS.map(sd => {
+              const sown = p.sown.includes(sd.id);
+              const turn = !sown && p.sown.length === SEEDS.findIndex(x => x.id === sd.id);
+              return (
+                <button
+                  key={`seed-${sd.id}`}
+                  type="button"
+                  className={`story-seed is-${sd.id}${holding === sd.id ? ' is-held' : ''}${turn && !holding ? ' is-turn' : ''}${sown ? ' is-used' : ''}`}
+                  aria-label={sd.name}
+                  aria-pressed={holding === sd.id}
+                  disabled={sown || !turn}
+                  onClick={() => pickSeed(sd.id)}
+                >
+                  <SeedBunch seed={sd.id} />
+                  <small>{sown ? 'Sown ✓' : sd.name}</small>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         <div key={`t-${page.id}`} className="story-text">
           {page.lines.map(l => (
             <p key={l}>{t(l)}</p>
@@ -115,10 +194,11 @@ export function Story({ name, look, page: at, onPage, onDone }: { name: string; 
               name={name}
               steps={p.steps}
               running={running}
+              planting={planting ? (p.sown.includes('maize') ? 'kale' : 'maize') : null}
               paused={!!cheer}
               summed={p.summed}
-              onStep={k => setRunning({ step: k, start: performance.now() })}
-              onSum={() => (set({ summed: true }), track('story_sum'), tell(`${page.sum!.done} ${ksh(page.ledger![2].ksh)} lost.`))}
+              onStep={k => (page.replay![k].plant ? (setPlanting(true), setHolding(null), set({ sown: [] })) : setRunning({ step: k, start: performance.now() }))}
+              onSum={() => (set({ summed: true }), track('story_sum'), sfx.action(), tell(`${page.sum!.done} ${ksh(page.ledger![2].ksh)} lost.`))}
             />
           )}
           {page.mistakes && (
@@ -230,6 +310,7 @@ function Replay({
   name,
   steps,
   running,
+  planting,
   paused,
   summed,
   onStep,
@@ -239,6 +320,8 @@ function Replay({
   name: string;
   steps: number;
   running: { step: number; start: number } | null;
+  /** planting by hand: the seed to sow next, or null */
+  planting: Seed | null;
   /** a pop-up is open: the next step waits for Continue */
   paused: boolean;
   summed: boolean;
@@ -249,19 +332,19 @@ function Replay({
   const [spent, earned, lost] = page.ledger!;
   const now = useNow(!!running);
   // once the financial result shows, the steps' words give way to it
-  const caption = running ? replay[running.step].doing : steps > 0 && (steps < 3 || paused) ? say(replay[steps - 1].after, name) : '';
+  const caption = planting ? replay[0].plant![planting] : running ? replay[running.step].doing : steps > 0 && (steps < 3 || paused) ? say(replay[steps - 1].after, name) : '';
   return (
     <div className="story-replay">
       <ol className="story-steps">
         {replay.map((st, k) => {
           const done = k < steps;
-          const on = running?.step === k;
-          const turn = !running && !paused && k === steps;
-          const frac = on ? Math.min(1, (now - running!.start) / (STORY_STEP_S * 1000)) : 0;
+          const on = running?.step === k || (!!planting && k === 0);
+          const turn = !running && !planting && !paused && k === steps;
+          const frac = running?.step === k ? Math.min(1, (now - running.start) / (STORY_STEP_S * 1000)) : 0;
           return (
             <li key={st.id}>
               <button type="button" className={`story-step${done ? ' is-done' : ''}${turn ? ' is-turn' : ''}${on ? ' is-on' : ''}`} disabled={!turn} onClick={() => onStep(k)}>
-                {on ? <Ring frac={frac} /> : <span className="story-step-n">{done ? '✓' : k + 1}</span>}
+                {on && !planting ? <Ring frac={frac} /> : <span className="story-step-n">{done ? '✓' : k + 1}</span>}
                 {st.button}
               </button>
             </li>
@@ -377,7 +460,7 @@ function Count({ to }: { to: number }) {
 /* ---------------- the pictures ---------------- */
 
 /** One picture per page, drawn in SVG with the first session's own art (300 × 220). It follows what the player has done. */
-function StoryArt({ page, look, name, p, running }: { page: StoryPage; look: Look; name: string; p: Progress; running: number | null }) {
+function StoryArt({ page, look, name, p, running, planting, holding }: { page: StoryPage; look: Look; name: string; p: Progress; running: number | null; planting: boolean; holding: Seed | null }) {
   if (page.id === 'bought')
     return (
       <svg viewBox="0 0 300 220" width={300} height={220}>
@@ -431,7 +514,7 @@ function StoryArt({ page, look, name, p, running }: { page: StoryPage; look: Loo
       <svg viewBox="0 0 300 220" width={300} height={220}>
         <rect width={300} height={220} fill="#e7d7b2" />
         <rect width={300} height={70} fill="#d9cfa8" />
-        {stage === 0 && <BareField />}
+        {stage === 0 && (planting ? <PlantBeds sown={p.sown} holding={holding} /> : <BareField />)}
         {stage === 1 && <Sprouts />}
         {stage === 2 && (
           <>
@@ -467,7 +550,7 @@ function StoryArt({ page, look, name, p, running }: { page: StoryPage; look: Loo
         <text x={48} y={13} textAnchor="middle" fontSize={9} fontWeight={800} fill="#fff">
           THIS SEASON
         </text>
-        {['Check often', 'Water by the soil', 'Time the sale'].map((l, k) => (
+        {['Every 2 days', 'Feel the soil', 'Store, sell later'].map((l, k) => (
           <g key={l} transform={`translate(8,${34 + k * 28})`}>
             {p.flipped.includes(k) ? (
               <path className="story-pop" d="M0,0 L4,5 L11,-5" stroke="#2f9b14" strokeWidth={2.4} fill="none" strokeLinecap="round" />
@@ -480,6 +563,78 @@ function StoryArt({ page, look, name, p, running }: { page: StoryPage; look: Loo
           </g>
         ))}
       </g>
+    </svg>
+  );
+}
+
+/** Page 2's planting, by hand: a maize bed at the front and a sukuma bed at the back. A bed fills with seed when
+    the player taps its bunch of seeds onto it, and the first shoots come up. */
+function PlantBeds({ sown, holding }: { sown: Seed[]; holding: Seed | null }) {
+  const beds: { id: Seed; rows: number[]; y0: number }[] = [
+    { id: 'kale', rows: [0, 1], y0: 70 },
+    { id: 'maize', rows: [2, 3, 4], y0: 128 },
+  ];
+  return (
+    <g>
+      <path d="M40,58 L260,58 L298,220 L2,220 Z" fill="#8a5a34" />
+      {/* the path between the two beds */}
+      <path d="M26,118 L274,118 L278,126 L22,126 Z" fill="#c9a26a" />
+      {beds.map(bed => (
+        <g key={bed.id} className={holding === bed.id ? 'story-bed-glow' : undefined}>
+          {bed.rows.map(r => {
+            const y = 78 + r * 30 + (r >= 2 ? 6 : 0);
+            const w = 110 + r * 26;
+            return <path key={r} d={`M${150 - w},${y} L${150 + w},${y}`} stroke="#6b4226" strokeWidth={6 + r} strokeLinecap="round" />;
+          })}
+          {sown.includes(bed.id) &&
+            bed.rows.map(r => {
+              const y = 76 + r * 30 + (r >= 2 ? 6 : 0);
+              const w = (bed.id === 'maize' ? 84 : 92) + r * 26;
+              const s = bed.id === 'maize' ? 0.6 + r * 0.12 : 1 + r * 0.2;
+              const n = bed.id === 'maize' ? 8 : 6;
+              return Array.from({ length: n + 1 }, (_, k) => {
+                const x = 150 - w + (k / n) * 2 * w;
+                return (
+                  <g key={`${r}-${k}`} transform={`translate(${x},${y}) scale(${s})`} className="story-pop" style={{ animationDelay: `${(k + r) * 30}ms` }}>
+                    {bed.id === 'maize' ? (
+                      <>
+                        <ellipse cx={0} cy={1} rx={3} ry={2.2} fill="#f2c230" />
+                        <path d="M0,0 Q-6,-8 -9,-12 M0,0 Q5,-9 9,-13 M0,0 L0,-6" stroke="#5fbf3a" strokeWidth={2.4} fill="none" strokeLinecap="round" />
+                      </>
+                    ) : (
+                      <>
+                        <circle cx={0} cy={1} r={1.8} fill="#3a2414" />
+                        <path d="M0,0 Q-8,-4 -7,-10 Q-1,-8 0,0 Q8,-4 7,-10 Q1,-8 0,0" fill="#4f9a3a" stroke="#2f6b22" strokeWidth={0.8} />
+                      </>
+                    )}
+                  </g>
+                );
+              });
+            })}
+        </g>
+      ))}
+    </g>
+  );
+}
+
+/** A bunch of seeds in the hand: maize kernels, or the small round seeds of sukuma wiki. */
+function SeedBunch({ seed }: { seed: Seed }) {
+  const maize = seed === 'maize';
+  const spots = maize
+    ? [[-10, 4], [-3, 6], [4, 5], [11, 3], [-7, -1], [0, 0], [7, -2], [-3, -6], [4, -7]]
+    : [[-9, 5], [-4, 6], [1, 6], [6, 5], [10, 3], [-7, 1], [-2, 1], [3, 1], [8, 0], [-4, -3], [1, -3], [5, -4], [-1, -7]];
+  return (
+    <svg viewBox="-20 -16 40 30" width={46} height={34} aria-hidden="true">
+      {/* an open palm under the seeds */}
+      <path d="M-18,6 Q-18,13 -8,13 L9,13 Q18,12 18,5 L18,2 L-18,2 Z" fill="#a46a43" />
+      <path d="M-18,4 Q0,10 18,4" fill="none" stroke="#7a4a2a" strokeWidth={1.2} />
+      {spots.map(([x, y], k) =>
+        maize ? (
+          <path key={k} d={`M${x - 3},${y + 2} Q${x},${y - 4} ${x + 3},${y + 2} Z`} fill="#f2c230" stroke="#b8901a" strokeWidth={0.8} />
+        ) : (
+          <circle key={k} cx={x} cy={y} r={1.9} fill="#4a2c18" stroke="#2a180c" strokeWidth={0.5} />
+        ),
+      )}
     </svg>
   );
 }

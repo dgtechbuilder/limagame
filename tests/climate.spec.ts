@@ -39,7 +39,7 @@ test('the CLIMATE button sits beside MISSION and opens the Climate page; Back, M
 test('a Farm Moja task is tracked: manure stores carbon, earns credits and shows in Activity', async ({ page }) => {
   await boot(page);
   await jump(page, { view: 'classic', modal: { kind: 'steps', step: 'landprep' } });
-  await page.getByRole('button', { name: 'Organic Manure, 40 coins' }).click();
+  await page.getByRole('button', { name: 'Organic Manure, 400 coins' }).click();
   await expect.poll(async () => (await climate(page)).total.stored).toBe(40);
   const c = await climate(page);
   expect(c.total.co2).toBeCloseTo(6, 5);
@@ -47,7 +47,7 @@ test('a Farm Moja task is tracked: manure stores carbon, earns credits and shows
   expect(c.log[0].label).toContain('Organic Manure');
 
   // a chemical task pollutes
-  await page.getByRole('button', { name: 'Herbicide, 40 coins' }).click();
+  await page.getByRole('button', { name: 'Herbicide, 400 coins' }).click();
   await expect.poll(async () => (await climate(page)).total.pollution).toBe(8);
 
   await act(page, { type: 'open', modal: { kind: 'climate', tab: 'activity' } });

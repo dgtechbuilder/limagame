@@ -10,6 +10,7 @@ import { CALL_GROUPS, HAZARDS, type HazardId } from '../rounds/hazards';
 import { REVIEW_BASE, initialState, type Action, type GameState } from '../state';
 import { LAYOUTS } from '../tractor/data';
 import { simClock } from '../tractor/sim';
+import { sfxLog } from '../sfx';
 import { wakalaCase, type WakalaCase } from '../trials/samples';
 import { PLACES } from '../world/engine';
 import { PLOTS, signOf, tileCenter } from '../world/field';
@@ -52,6 +53,8 @@ export function install(get: () => GameState, dispatch: Dispatch<Action>) {
     tile: tileCenter,
     events,
     clearEvents,
+    /** the sound effects played so far, newest last */
+    sfx: () => [...sfxLog],
     /** the tractor drive's game seconds run this many times faster */
     tractorClock(scale: number) {
       simClock.scale = scale;

@@ -9,6 +9,7 @@ import { hasSolar } from '../climate/track';
 import { GoldButton, Img, Partner, PriceChip } from '../components/ui';
 import { SHOP_TABS, STEP_META, STEPS, TASK_USES_ITEM, type ShopTab, type StepId } from '../data';
 import { stepIndex, tasksDone, type Action, type GameState } from '../state';
+import { money } from '../money';
 
 /* ================================================================== */
 /* Shop (Figma: Food / Fertilizer / Water tanks / Equipments)          */
@@ -70,7 +71,7 @@ export function ShopModal({ s, tab, dispatch }: { s: GameState; tab: ShopTab; di
                         ? dispatch({ type: 'sell', id: item.id, price: item.price, name: item.name })
                         : dispatch({ type: 'buy', id: item.id, price: item.price, name: item.name })
                     }
-                    aria-label={item.stock ? `Sell ${item.name}, ${left} of ${item.stock[1]} bags left, ${item.price} coins each` : `Buy ${item.name} for ${item.price} coins`}
+                    aria-label={item.stock ? `Sell ${item.name}, ${left} of ${item.stock[1]} bags left, ${money(item.price)} coins each` : `Buy ${item.name} for ${money(item.price)} coins`}
                   >
                     <span style={{ fontSize: def.nameFont, fontWeight: 700, lineHeight: 'normal', textAlign: 'center', ...(def.id === 'fertilizer' ? { maxWidth: 52 } : { whiteSpace: 'nowrap', margin: '0 -8px' }) }}>
                       {item.name}
@@ -221,7 +222,7 @@ function TaskGrid({ s, step, status, dispatch }: { s: GameState; step: StepId; s
             style={{ padding: '2px 8px 4px', minHeight: step === 'fertilizer' ? 87 : 99, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, opacity: status === 'locked' ? 0.6 : 1, cursor: disabled ? 'default' : 'pointer' }}
             onClick={() => !disabled && dispatch({ type: 'task', step, id: t.id, price: t.price, name: t.name })}
             aria-disabled={disabled}
-            aria-label={done ? `${t.name}, done` : status !== 'current' ? `${t.name}, not available` : `${t.name}, ${t.price} coins`}
+            aria-label={done ? `${t.name}, done` : status !== 'current' ? `${t.name}, not available` : `${t.name}, ${money(t.price)} coins`}
           >
             <Img src={t.icon} w={t.iconSize[0]} h={t.iconSize[1]} />
             <span style={{ fontSize: def.nameFont, fontWeight: 700, lineHeight: 1.15, maxWidth: step === 'landprep' ? 66 : 120, textAlign: 'center' }}>
@@ -290,7 +291,7 @@ function WaterBody({ s, status, dispatch }: { s: GameState; status: StepStatus; 
               style={{ width: 85, height: 101, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: 6, padding: '6px 6px 8px', opacity: status === 'locked' ? 0.6 : 1, cursor: disabled ? 'default' : 'pointer' }}
               onClick={() => !disabled && dispatch({ type: 'task', step: 'water', id: t.id, price: t.price, name: `${t.name} of water`, water: litres })}
               aria-disabled={disabled}
-              aria-label={done ? `${t.name}, added` : `Add ${t.name} of water for ${t.price} coins`}
+              aria-label={done ? `${t.name}, added` : `Add ${t.name} of water for ${money(t.price)} coins`}
             >
               <Img src={t.icon} w={t.iconSize[0]} h={t.iconSize[1]} />
               <span style={{ fontSize: 10, fontWeight: 700 }}>{t.name}</span>

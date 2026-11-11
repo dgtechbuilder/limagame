@@ -25,7 +25,7 @@ const FARMBIZ = { name: 'FarmBiz Africa: tractor services and farmer earnings', 
 /** Copied from Wakala Agent's README (4 Nov 2026). */
 export const MONEY = {
   diesel: { value: 228, unit: 'KSh a litre', what: 'Diesel, Nairobi pump price cap', source: EPRA },
-  wage: { value: 400, unit: 'KSh a person-day', what: 'Hand labour (KSh 300 to 500 a day; the game uses 400)', source: FARMBIZ },
+  wage: { value: 400, unit: 'KSh a person-day', what: 'Hand labour (KSh 3,000 to 5,000 a day, shown at 10 times; the game uses 4,000)', source: FARMBIZ },
   ploughHire: { value: 3000, unit: 'KSh an acre', what: 'Tractor ploughing hire', source: BEYOND },
   harrowHire: { value: 1500, unit: 'KSh an acre', what: 'Tractor harrowing hire', source: BEYOND },
   ridgeHire: { value: 2000, unit: 'KSh an acre', what: 'Tractor ridging hire', estimate: true },

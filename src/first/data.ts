@@ -1,6 +1,8 @@
 /* First session: farmer looks, the crops the player checks on their own farm, and every line they read.
    One review system drives every check; to add one, add an entry to SHAMBAS. */
 
+import { kshText } from '../money';
+
 export type Call =
   | 'healthy'
   | 'water'
@@ -171,6 +173,8 @@ export interface StoryStep {
   button: string;
   /** shown while its timer runs */
   doing: string;
+  /** planting is done by hand: tap a bunch of seeds, then the bed it goes on (the guide line for each crop) */
+  plant?: { maize: string; kale: string };
   /** what the step did, once its timer is done */
   after: string;
   /** the pop-up when it is done */
@@ -220,14 +224,18 @@ export const STORY: StoryPage[] = [
   },
   {
     id: 'failed',
-    title: 'The harvest that failed',
+    title: 'Last season’s Harvest results',
     lines: ['Last season, a step at a time. Press each step to play it, {name}.'],
     replay: [
       {
         id: 'plant',
         button: 'Plant the season',
         doing: 'Planting maize and sukuma wiki…',
-        after: 'Seed, fertiliser and labour went in: KSh 38,000 spent.',
+        plant: {
+          maize: 'Tap the maize seeds, then tap the maize bed to sow them.',
+          kale: 'Now tap the sukuma seeds, then tap the sukuma bed.',
+        },
+        after: 'Seed, fertiliser and labour went in: KSh 380,000 spent.',
         cheer: { title: 'Well done, {name}!', line: 'Your maize and sukuma wiki are in the ground. The season has begun.' },
       },
       {
@@ -241,7 +249,7 @@ export const STORY: StoryPage[] = [
         id: 'harvest',
         button: 'Harvest',
         doing: 'Harvesting…',
-        after: 'Only a little was left to sell: KSh 14,500.',
+        after: 'Only a little was left to sell: KSh 145,000.',
         cheer: { title: 'Congratulations!', line: 'Your first harvest is done, {name}.' },
       },
     ],
@@ -256,18 +264,19 @@ export const STORY: StoryPage[] = [
   {
     id: 'learn',
     title: 'What went wrong',
-    lines: ['This season {name} will farm smarter, starting with last season’s mistakes.'],
+    lines: ['This season, {name} learns from each of last season’s mistakes.'],
     tapHint: 'Tap each mistake to see what to do instead.',
     mistakes: [
-      { icon: 'pests', what: 'Checked the crops only now and then.', lesson: 'Check every bed often, and catch pests early.' },
-      { icon: 'water', what: 'Watered when it was easy.', lesson: 'Read the soil, and water when the crop needs it.' },
-      { icon: 'harvestEarly', what: 'Sold everything at harvest, at the lowest price.', lesson: 'Plan when to harvest, store and sell.' },
+      { icon: 'pests', what: 'Checked the crops only now and then.', lesson: 'Walk every bed every 2 days. Look in the leaf funnels and under the leaves, and treat pests that same day.' },
+      { icon: 'water', what: 'Watered when it was easy.', lesson: 'Feel the soil every 2 days; water at the roots when it is dry a finger deep. The soil changes after planting, weeding and top-dressing: check again after each.' },
+      { icon: 'harvestEarly', what: 'Sold everything at harvest, at the lowest price.', lesson: 'Dry the maize, store it in sealed bags, and sell in batches as the price rises.' },
     ],
     button: 'Start with my maize',
   },
 ];
 
-export const ksh = (n: number) => `KSh ${n.toLocaleString('en-US')}`;
+/** Shillings on screen: 10 times the stored value (src/money.ts). */
+export const ksh = kshText;
 
 /** How long each step of the story's replay of last season takes (seconds). */
 export const STORY_STEP_S = 2;

@@ -17,6 +17,7 @@ import {
   type Trial,
   type TrialHazard,
 } from '../trials/model';
+import { money } from '../money';
 
 /** Problems that come from outside the farm: the farmer's note tells what happened, not the plan. */
 const OUTSIDE: TrialHazard[] = ['hail', 'livestock'];
@@ -48,7 +49,7 @@ export function trialRounds(t: Trial, day: number): TrialRound[] {
     const d = DAMAGE[h];
     let treated = '';
     if (h === 'hail') treated = 'Nothing to treat: hail-damaged plants often recover.';
-    else if (d.treat > 0 && canTreat(h, plan)) treated = `${d.fix} for ${d.treat} coins: most of the damage is stopped.`;
+    else if (d.treat > 0 && canTreat(h, plan)) treated = `${d.fix} for ${money(d.treat)} coins: most of the damage is stopped.`;
     else if (d.treat > 0) treated = 'It stays untreated, so the damage goes on.';
     return {
       ...round,

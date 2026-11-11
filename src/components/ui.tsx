@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { img } from '../assets';
 import { StarIcon } from './Icons';
+import { money } from '../money';
 
 export const fmt = (n: number) => n.toLocaleString('en-US');
 
@@ -37,7 +38,7 @@ export function PriceChip({ price, width, font = 8 }: { price: number; width?: n
   return (
     <span className="chip" style={{ width, fontSize: font }}>
       <img src={img.cash} alt="" width={14} height={14} />
-      <span>{fmt(price)}</span>
+      <span>{money(price)}</span>
     </span>
   );
 }
