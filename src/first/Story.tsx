@@ -6,7 +6,7 @@ import { speak } from '../speech';
 import { photoByKey } from '../rounds/photos';
 import { Field, FIELD_H, FIELD_W, FarmerFigure, Hut, Kale, Tree } from './art';
 import { CallIcon } from './Review';
-import { ksh, say, STORY, STORY_STEP_S, type Look, type StoryPage } from './data';
+import { ksh, say, STORY, STORY_STEP_S, type Cheer, type Look, type StoryPage } from './data';
 import { track } from './track';
 
 /* The story so far: three pages between naming the farmer and the first walk, each with something to do.
@@ -14,7 +14,8 @@ import { track } from './track';
    2 · last season, replayed a step at a time (plant, look after the farm, harvest: each a button and a short timer),
        then the sum: spent − earned, and the = button shows the loss
    3 · what went wrong: tap each mistake to see what to do instead, then start with the maize.
-   Next shows once a page's part is done; Skip story is always there. */
+   Each action ends with a pop-up (Congratulations, Well done, Good job…) and Continue. Next shows once a page's part
+   is done; Skip story is always there. */
 
 const ARMYWORM = photoByKey('armyworm/pests');
 
@@ -39,8 +40,14 @@ export function Story({ name, look, page: at, onPage, onDone }: { name: string; 
   const set = (patch: Partial<Progress>) => setP(v => ({ ...v, ...patch }));
   /** the replay step whose timer is running, and when it started */
   const [running, setRunning] = useState<{ step: number; start: number } | null>(null);
+  /** the pop-up after an action, until Continue */
+  const [cheer, setCheer] = useState<Cheer | null>(null);
   const voice = useVoice();
   const tell = (line: string) => voice && speak(line);
+  const celebrate = (c: Cheer) => {
+    setCheer(c);
+    tell(`${t(c.title)} ${t(c.line)}`);
+  };
 
   useEffect(() => track('story_page', { page: page.id }), [page.id]);
 
@@ -58,13 +65,13 @@ export function Story({ name, look, page: at, onPage, onDone }: { name: string; 
       setRunning(null);
       set({ steps: running.step + 1 });
       track('story_step', { step: step?.id });
-      if (step) tell(t(step.after));
+      if (step) celebrate(step.cheer);
     }, STORY_STEP_S * 1000);
     return () => window.clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running]);
 
-  const ready = page.id === 'bought' ? p.signed : page.id === 'failed' ? p.summed : p.flipped.length === (page.mistakes?.length ?? 0);
+  const ready = !cheer && (page.id === 'bought' ? p.signed : page.id === 'failed' ? p.summed : p.flipped.length === (page.mistakes?.length ?? 0));
   const waiting = page.id === 'bought' ? 'Sign for your farm to go on' : page.id === 'failed' ? (p.steps < 3 ? 'Play each step of last season' : 'Press = to see how it went') : 'Tap each mistake to go on';
 
   const next = () => (last ? (track('story_done'), onDone()) : onPage(i + 1));
@@ -101,13 +108,14 @@ export function Story({ name, look, page: at, onPage, onDone }: { name: string; 
           {page.lines.map(l => (
             <p key={l}>{t(l)}</p>
           ))}
-          {page.deed && <Deed deed={page.deed} name={name} signed={p.signed} onSign={() => (set({ signed: true }), track('story_signed'), tell(t(page.deed!.done)))} />}
+          {page.deed && <Deed deed={page.deed} name={name} signed={p.signed} onSign={() => (set({ signed: true }), track('story_signed'), celebrate(page.deed!.cheer))} />}
           {page.replay && (
             <Replay
               page={page}
               name={name}
               steps={p.steps}
               running={running}
+              paused={!!cheer}
               summed={p.summed}
               onStep={k => setRunning({ step: k, start: performance.now() })}
               onSum={() => (set({ summed: true }), track('story_sum'), tell(`${page.sum!.done} ${ksh(page.ledger![2].ksh)} lost.`))}
@@ -163,9 +171,22 @@ export function Story({ name, look, page: at, onPage, onDone }: { name: string; 
               {page.button}
             </GoldButton>
           ) : (
-            <span className="story-wait">{waiting}</span>
+            !cheer && <span className="story-wait">{waiting}</span>
           )}
         </div>
+
+        {cheer && (
+          <div className="story-cheer" role="dialog" aria-modal="true" aria-label={t(cheer.title)}>
+            <div className="story-cheer-card">
+              <Burst />
+              <p className="story-cheer-title">{t(cheer.title)}</p>
+              <p className="story-cheer-line">{t(cheer.line)}</p>
+              <GoldButton font={13} height={38} style={{ minWidth: 170, marginTop: 6 }} onClick={() => (setCheer(null), track('story_cheer', { title: cheer.title }))} ariaLabel="Continue">
+                Continue
+              </GoldButton>
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );
@@ -209,6 +230,7 @@ function Replay({
   name,
   steps,
   running,
+  paused,
   summed,
   onStep,
   onSum,
@@ -217,6 +239,8 @@ function Replay({
   name: string;
   steps: number;
   running: { step: number; start: number } | null;
+  /** a pop-up is open: the next step waits for Continue */
+  paused: boolean;
   summed: boolean;
   onStep: (k: number) => void;
   onSum: () => void;
@@ -224,14 +248,15 @@ function Replay({
   const replay = page.replay!;
   const [spent, earned, lost] = page.ledger!;
   const now = useNow(!!running);
-  const caption = running ? replay[running.step].doing : steps > 0 ? say(replay[steps - 1].after, name) : '';
+  // once the financial result shows, the steps' words give way to it
+  const caption = running ? replay[running.step].doing : steps > 0 && (steps < 3 || paused) ? say(replay[steps - 1].after, name) : '';
   return (
     <div className="story-replay">
       <ol className="story-steps">
         {replay.map((st, k) => {
           const done = k < steps;
           const on = running?.step === k;
-          const turn = !running && k === steps;
+          const turn = !running && !paused && k === steps;
           const frac = on ? Math.min(1, (now - running!.start) / (STORY_STEP_S * 1000)) : 0;
           return (
             <li key={st.id}>
@@ -243,19 +268,23 @@ function Replay({
           );
         })}
       </ol>
-      <p className="story-caption" aria-live="polite">
-        {caption}
-      </p>
-      {steps >= 1 && (
+      {caption && (
+        <p className="story-caption" aria-live="polite">
+          {caption}
+        </p>
+      )}
+      {/* after the harvest and its pop-up: the season's financial result */}
+      {steps >= 3 && !paused && <p className="story-sum-title">{page.sum!.title}</p>}
+      {steps >= 3 && !paused && (
         <div className="story-sum" aria-label="The season's sum">
           <span className="is-out">
             <small>Spent</small>
             {ksh(spent.ksh)}
           </span>
           <b aria-hidden="true">−</b>
-          <span className={`is-in${steps >= 3 ? '' : ' is-wait'}`}>
+          <span className="is-in">
             <small>Earned</small>
-            {steps >= 3 ? ksh(earned.ksh) : '?'}
+            {ksh(earned.ksh)}
           </span>
           {summed ? (
             <>
@@ -266,15 +295,37 @@ function Replay({
               </span>
             </>
           ) : (
-            <button type="button" className="story-equals" disabled={steps < 3} onClick={onSum} aria-label="Equals: see how the season went">
+            <button type="button" className="story-equals" onClick={onSum} aria-label="Equals: see how the season went">
               =
             </button>
           )}
         </div>
       )}
-      {steps >= 3 && !summed && <p className="story-hint">{page.sum!.ask}</p>}
+      {steps >= 3 && !paused && !summed && <p className="story-hint">{page.sum!.ask}</p>}
       {summed && <p className="story-hint is-lost">{page.sum!.done}</p>}
     </div>
+  );
+}
+
+/** Stars bursting out behind a pop-up's title. */
+function Burst() {
+  return (
+    <svg className="story-burst" viewBox="-60 -60 120 120" width={120} height={120} aria-hidden="true">
+      {Array.from({ length: 10 }, (_, k) => {
+        const a = (k / 10) * Math.PI * 2;
+        const r = k % 2 ? 44 : 52;
+        return (
+          <path
+            key={k}
+            d="M0,-6 L1.8,-1.8 L6,0 L1.8,1.8 L0,6 L-1.8,1.8 L-6,0 L-1.8,-1.8 Z"
+            transform={`translate(${Math.cos(a) * r},${Math.sin(a) * r}) scale(${k % 2 ? 0.8 : 1.2})`}
+            fill={['#ffb005', '#2f9b14', '#e05a4a', '#22ade2'][k % 4]}
+          />
+        );
+      })}
+      <circle r={26} fill="#ffcf4d" stroke="#fff" strokeWidth={4} />
+      <path d="M-11,1 L-3,9 L12,-8" stroke="#fff" strokeWidth={5.5} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 

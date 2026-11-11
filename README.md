@@ -160,10 +160,13 @@ A new player never sees the farm screen first. Everything happens on their own f
    ([`src/first/Story.tsx`](src/first/Story.tsx); the words are `STORY` in [`src/first/data.ts`](src/first/data.ts)).
    Next shows once a page's part is done (*Sign for your farm to go on* until then); *Skip story* is always there,
    and *Previous* keeps what was done.
+   Every action ends with a pop-up and **Continue**: signing — *Congratulations! Hi Chebet, welcome to your farm*;
+   planting — *Well done, Chebet!*; weeding — *Good job!*; the harvest — *Congratulations! Your first harvest is
+   done*, then *Your first harvest: here is the financial result* above the sum.
    - *A farm of my own*: the farmer saved from a job in town and bought this farm. The signpost says FOR SALE and the
      title deed's owner line is blank: **Sign for my farm** writes the player's name onto the deed a letter at a
      time, and the signpost becomes *Chebet's farm* with a SOLD sticker.
-   - *The harvest that failed*: last season, played a step at a time. **Plant the season**, **Look after the farm**
+   - *The harvest that failed*: last season, played a step at a time. **Plant the season**, **Weed the farm**
      and **Harvest** each run a short timer (`STORY_STEP_S`, 2 seconds, a ring in the button) while the picture
      changes: bare rows, sprouts, ragged maize with a real armyworm photo (credited) and dry sukuma wiki, then
      stubble and one small sack. The sum fills in as it goes (Spent KSh 38,000 − Earned ?), and **=** reveals the

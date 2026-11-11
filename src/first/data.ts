@@ -173,6 +173,14 @@ export interface StoryStep {
   doing: string;
   /** what the step did, once its timer is done */
   after: string;
+  /** the pop-up when it is done */
+  cheer: Cheer;
+}
+
+/** A pop-up after a story action: a title, a line, and Continue. {name} is the farmer's name. */
+export interface Cheer {
+  title: string;
+  line: string;
 }
 
 export interface StoryPage {
@@ -180,10 +188,10 @@ export interface StoryPage {
   title: string;
   lines: string[];
   /** page 1: the farmer signs for the farm (their name is written onto the deed and the signpost) */
-  deed?: { title: string; owner: string; button: string; done: string };
+  deed?: { title: string; owner: string; button: string; done: string; cheer: Cheer };
   /** page 2: last season, played a step at a time, then the sum (the = button shows the loss) */
   replay?: StoryStep[];
-  sum?: { ask: string; done: string };
+  sum?: { title: string; ask: string; done: string };
   /** page 3: tap each mistake to see what to do instead */
   tapHint?: string;
   /** page 2: what the season cost, in shillings */
@@ -201,7 +209,13 @@ export const STORY: StoryPage[] = [
       'For years, {name} saved from a job in town. Last year, the savings bought this farm: red soil, a water tank and a small hut.',
       'The plan was simple: plant maize and sukuma wiki, come back at harvest, and sell.',
     ],
-    deed: { title: 'Title deed', owner: 'Owner', button: 'Sign for my farm', done: 'Signed. This farm is yours, {name}.' },
+    deed: {
+      title: 'Title deed',
+      owner: 'Owner',
+      button: 'Sign for my farm',
+      done: 'Signed. This farm is yours, {name}.',
+      cheer: { title: 'Congratulations!', line: 'Hi {name}, welcome to your farm.' },
+    },
     button: 'Next',
   },
   {
@@ -209,16 +223,29 @@ export const STORY: StoryPage[] = [
     title: 'The harvest that failed',
     lines: ['Last season, a step at a time. Press each step to play it, {name}.'],
     replay: [
-      { id: 'plant', button: 'Plant the season', doing: 'Planting maize and sukuma wiki…', after: 'Seed, fertiliser and labour went in: KSh 38,000 spent.' },
+      {
+        id: 'plant',
+        button: 'Plant the season',
+        doing: 'Planting maize and sukuma wiki…',
+        after: 'Seed, fertiliser and labour went in: KSh 38,000 spent.',
+        cheer: { title: 'Well done, {name}!', line: 'Your maize and sukuma wiki are in the ground. The season has begun.' },
+      },
       {
         id: 'care',
-        button: 'Look after the farm',
-        doing: 'Coming by now and then…',
-        after: 'The maize came up green, then went ragged: caterpillars were eating it. The sukuma wiki at the back dried out.',
+        button: 'Weed the farm',
+        doing: 'Pulling the weeds…',
+        after: 'The weeds were out, but nobody looked closely: caterpillars were eating the maize, and the sukuma wiki at the back dried out.',
+        cheer: { title: 'Good job!', line: 'The weeds are out of your farm, {name}.' },
       },
-      { id: 'harvest', button: 'Harvest', doing: 'Harvesting what is left…', after: 'Only a little was left to sell: KSh 14,500.' },
+      {
+        id: 'harvest',
+        button: 'Harvest',
+        doing: 'Harvesting…',
+        after: 'Only a little was left to sell: KSh 14,500.',
+        cheer: { title: 'Congratulations!', line: 'Your first harvest is done, {name}.' },
+      },
     ],
-    sum: { ask: 'Press = to see how the season went.', done: 'Most of the money was lost.' },
+    sum: { title: 'Your first harvest: here is the financial result', ask: 'Press = to see how the season went.', done: 'Most of the money was lost.' },
     ledger: [
       { label: 'Spent on seed, fertiliser and labour', ksh: 38000, kind: 'out' },
       { label: 'Earned from the harvest', ksh: 14500, kind: 'in' },

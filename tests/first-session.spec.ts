@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { boot, eventNames, flipMistakes, lookAtAll, playLastSeason, readStory, signStory, state, type Win } from './helpers';
+import { boot, closeCheer, eventNames, flipMistakes, lookAtAll, playLastSeason, readStory, state, type Win } from './helpers';
 
 /* Regression: the first session, read right first time and with a wrong call, and saving and resetting. None of
    this changed with the Wakala Agent work; these tests keep it that way. */
@@ -45,19 +45,28 @@ test('the story so far: sign for the farm, play last season, press =, turn over 
   await expect(card).toContainText('Wanjiku saved from a job in town');
   await expect(card.locator('.story-wait')).toHaveText('Sign for your farm to go on');
   await expect(next).toHaveCount(0);
-  await signStory(page);
+  // signing: the name goes on the deed, then a pop-up welcomes the farmer by name
+  await page.getByRole('button', { name: /Sign for my farm/ }).click();
+  await expect(page.locator('.story-cheer-line')).toHaveText('Hi Wanjiku, welcome to your farm.');
+  await expect(next).toHaveCount(0);
+  await closeCheer(page, 'Congratulations!');
   await expect(card.locator('.story-sign')).toHaveText('Wanjiku', { timeout: 5000 });
   await expect(card).toContainText('Signed. This farm is yours, Wanjiku.');
   await next.click();
 
   // page 2: the steps go in order, each with a timer; the sum's = shows the loss
   await expect(card.locator('.story-title')).toHaveText('The harvest that failed');
-  await expect(card.locator('.story-step', { hasText: 'Look after the farm' })).toBeDisabled();
+  await expect(card.locator('.story-step', { hasText: 'Weed the farm' })).toBeDisabled();
   await card.locator('.story-step', { hasText: 'Plant the season' }).click();
   await expect(page.getByRole('timer')).toBeVisible();
   await expect(card.locator('.story-caption')).toHaveText('Planting maize and sukuma wiki…');
-  await expect(card.locator('.story-caption')).toHaveText('Seed, fertiliser and labour went in: KSh 38,000 spent.', { timeout: 5000 });
-  await expect(card.locator('.story-equals')).toBeDisabled();
+  // the pop-up holds the next step until Continue
+  await expect(page.locator('.story-cheer-title')).toHaveText('Well done, Wanjiku!', { timeout: 5000 });
+  await expect(card.locator('.story-step', { hasText: 'Weed the farm' })).toBeDisabled();
+  await closeCheer(page, 'Well done, Wanjiku!');
+  await expect(card.locator('.story-caption')).toHaveText('Seed, fertiliser and labour went in: KSh 38,000 spent.');
+  // the financial result waits for the harvest
+  await expect(card.locator('.story-sum')).toHaveCount(0);
   await playLastSeason(page);
   await expect(card).toContainText('Most of the money was lost.');
 

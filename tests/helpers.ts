@@ -108,18 +108,34 @@ export async function workFarm(page: Page, farm: number, done: () => Promise<boo
 export async function signStory(page: Page) {
   await page.getByRole('button', { name: /Sign for my farm/ }).click();
   await expect(page.locator('.story-deed-done')).toBeVisible();
+  await closeCheer(page, 'Congratulations!');
+}
+
+/** Each story action ends with a pop-up: check its title, then Continue. */
+export async function closeCheer(page: Page, title: string | RegExp) {
+  const pop = page.locator('.story-cheer');
+  await expect(pop.locator('.story-cheer-title')).toHaveText(title, { timeout: 10_000 });
+  await pop.getByRole('button', { name: 'Continue', exact: true }).click();
+  await expect(pop).toBeHidden();
 }
 
 /** The story's page 2: play last season a step at a time (each a short timer), then press = to see the loss. */
 export async function playLastSeason(page: Page) {
-  for (const step of ['Plant the season', 'Look after the farm', 'Harvest']) {
+  const cheers: [string, RegExp][] = [
+    ['Plant the season', /^Well done/],
+    ['Weed the farm', /^Good job/],
+    ['Harvest', /^Congratulations/],
+  ];
+  for (const [step, cheer] of cheers) {
     const button = page.locator('.story-step', { hasText: step });
     // a step played already (by the test before calling this) is skipped
     if (/is-done/.test((await button.getAttribute('class')) ?? '')) continue;
     await expect(button).toBeEnabled({ timeout: 10_000 });
     await button.click();
     await expect(button).toHaveClass(/is-done/, { timeout: 10_000 });
+    await closeCheer(page, cheer);
   }
+  await expect(page.locator('.story-sum-title')).toHaveText('Your first harvest: here is the financial result');
   await page.getByRole('button', { name: 'Equals: see how the season went' }).click();
   await expect(page.locator('.story-sum .is-lost')).toContainText('KSh 23,500');
 }
