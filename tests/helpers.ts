@@ -104,4 +104,40 @@ export async function workFarm(page: Page, farm: number, done: () => Promise<boo
   expect(await done()).toBe(true);
 }
 
+/** The story's page 1: sign for the farm (Next shows once signed). */
+export async function signStory(page: Page) {
+  await page.getByRole('button', { name: /Sign for my farm/ }).click();
+  await expect(page.locator('.story-deed-done')).toBeVisible();
+}
+
+/** The story's page 2: play last season a step at a time (each a short timer), then press = to see the loss. */
+export async function playLastSeason(page: Page) {
+  for (const step of ['Plant the season', 'Look after the farm', 'Harvest']) {
+    const button = page.locator('.story-step', { hasText: step });
+    // a step played already (by the test before calling this) is skipped
+    if (/is-done/.test((await button.getAttribute('class')) ?? '')) continue;
+    await expect(button).toBeEnabled({ timeout: 10_000 });
+    await button.click();
+    await expect(button).toHaveClass(/is-done/, { timeout: 10_000 });
+  }
+  await page.getByRole('button', { name: 'Equals: see how the season went' }).click();
+  await expect(page.locator('.story-sum .is-lost')).toContainText('KSh 23,500');
+}
+
+/** The story's page 3: turn over each mistake to see what to do instead. */
+export async function flipMistakes(page: Page) {
+  const flips = page.locator('.story-flip');
+  for (let k = 0; k < (await flips.count()); k++) await flips.nth(k).click();
+}
+
+/** Play the whole story, ending on the walk to the maize. */
+export async function readStory(page: Page) {
+  await signStory(page);
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await playLastSeason(page);
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await flipMistakes(page);
+  await page.getByRole('button', { name: 'Start with my maize', exact: true }).click();
+}
+
 export type { Win };

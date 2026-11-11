@@ -165,10 +165,27 @@ export interface StoryMistake {
   lesson: string;
 }
 
+/** Page 2's replay of last season: each step a button and a short timer, then what it did. */
+export interface StoryStep {
+  id: 'plant' | 'care' | 'harvest';
+  button: string;
+  /** shown while its timer runs */
+  doing: string;
+  /** what the step did, once its timer is done */
+  after: string;
+}
+
 export interface StoryPage {
   id: 'bought' | 'failed' | 'learn';
   title: string;
   lines: string[];
+  /** page 1: the farmer signs for the farm (their name is written onto the deed and the signpost) */
+  deed?: { title: string; owner: string; button: string; done: string };
+  /** page 2: last season, played a step at a time, then the sum (the = button shows the loss) */
+  replay?: StoryStep[];
+  sum?: { ask: string; done: string };
+  /** page 3: tap each mistake to see what to do instead */
+  tapHint?: string;
   /** page 2: what the season cost, in shillings */
   ledger?: { label: string; ksh: number; kind: 'out' | 'in' | 'lost' }[];
   /** page 3: last season's mistakes, each with what to do instead */
@@ -184,14 +201,24 @@ export const STORY: StoryPage[] = [
       'For years, {name} saved from a job in town. Last year, the savings bought this farm: red soil, a water tank and a small hut.',
       'The plan was simple: plant maize and sukuma wiki, come back at harvest, and sell.',
     ],
+    deed: { title: 'Title deed', owner: 'Owner', button: 'Sign for my farm', done: 'Signed. This farm is yours, {name}.' },
     button: 'Next',
   },
   {
     id: 'failed',
     title: 'The harvest that failed',
-    lines: [
-      'The maize came up green, then went ragged. By the time {name} looked closely, caterpillars had eaten most of it, and the sukuma wiki at the back had dried out.',
+    lines: ['Last season, a step at a time. Press each step to play it, {name}.'],
+    replay: [
+      { id: 'plant', button: 'Plant the season', doing: 'Planting maize and sukuma wiki…', after: 'Seed, fertiliser and labour went in: KSh 38,000 spent.' },
+      {
+        id: 'care',
+        button: 'Look after the farm',
+        doing: 'Coming by now and then…',
+        after: 'The maize came up green, then went ragged: caterpillars were eating it. The sukuma wiki at the back dried out.',
+      },
+      { id: 'harvest', button: 'Harvest', doing: 'Harvesting what is left…', after: 'Only a little was left to sell: KSh 14,500.' },
     ],
+    sum: { ask: 'Press = to see how the season went.', done: 'Most of the money was lost.' },
     ledger: [
       { label: 'Spent on seed, fertiliser and labour', ksh: 38000, kind: 'out' },
       { label: 'Earned from the harvest', ksh: 14500, kind: 'in' },
@@ -203,6 +230,7 @@ export const STORY: StoryPage[] = [
     id: 'learn',
     title: 'What went wrong',
     lines: ['This season {name} will farm smarter, starting with last season’s mistakes.'],
+    tapHint: 'Tap each mistake to see what to do instead.',
     mistakes: [
       { icon: 'pests', what: 'Checked the crops only now and then.', lesson: 'Check every bed often, and catch pests early.' },
       { icon: 'water', what: 'Watered when it was easy.', lesson: 'Read the soil, and water when the crop needs it.' },
@@ -213,6 +241,9 @@ export const STORY: StoryPage[] = [
 ];
 
 export const ksh = (n: number) => `KSh ${n.toLocaleString('en-US')}`;
+
+/** How long each step of the story's replay of last season takes (seconds). */
+export const STORY_STEP_S = 2;
 
 /* ------------------------------------------------------------------ */
 /* The farm update: on arriving at the maize, before the first check, how this season is going. The numbers make one

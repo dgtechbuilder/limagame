@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { boot, state, type Win } from './helpers';
+import { boot, flipMistakes, signStory, state, type Win } from './helpers';
 
 /* Web addresses (src/route.ts): every page has its own address after the #. Typing one goes there if the player may,
    the browser's Back and Forward step through pages, and a reload keeps the page. */
@@ -20,6 +20,7 @@ test('first session: each step and story page has an address, and later steps ca
   await page.locator('.name-chip', { hasText: 'Chebet' }).click();
   await page.getByRole('button', { name: "Twende! Let's go", exact: true }).click();
   await expect.poll(() => hash(page)).toBe('#/story/1');
+  await signStory(page);
   await page.getByRole('button', { name: 'Next', exact: true }).click();
   await expect.poll(() => hash(page)).toBe('#/story/2');
   await expect(page.locator('.story-title')).toHaveText('The harvest that failed');
@@ -37,6 +38,7 @@ test('first session: each step and story page has an address, and later steps ca
   await expect(toast(page)).toContainText('no page at that address');
   await expect.poll(() => hash(page)).toBe('#/story/3');
 
+  await flipMistakes(page);
   await page.getByRole('button', { name: 'Start with my maize', exact: true }).click();
   await expect.poll(() => hash(page)).toBe('#/walk/maize');
 

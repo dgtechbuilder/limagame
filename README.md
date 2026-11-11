@@ -156,19 +156,25 @@ A new player never sees the farm screen first. Everything happens on their own f
 
 1. **Create the farmer** — name plus one of four looks, saved immediately. The name is used in every line
    from then on, and the farmer's portrait replaces the HUD avatar.
-2. **The story so far** — three pages, each with a picture drawn in the first session's own art
-   ([`src/first/Story.tsx`](src/first/Story.tsx); the words are `STORY` in [`src/first/data.ts`](src/first/data.ts)):
-   - *A farm of my own*: the farmer saved from a job in town and bought this farm. The plan was to plant maize and
-     sukuma wiki, come back at harvest, and sell.
-   - *The harvest that failed*: caterpillars ate the maize before anyone looked closely, and the sukuma wiki at
-     the back dried out. Spent KSh 38,000, earned KSh 14,500, lost KSh 23,500. A real photo of fall armyworm
-     (credited) shows the damage up close.
-   - *What went wrong*: three mistakes, each crossed out with what to do instead. These are the lessons the game
-     teaches next: check every bed often (the maize check), water by the soil (the sukuma wiki check), and plan
-     when to harvest, store and sell (the season). **Start with my maize** begins the walk.
+2. **The story so far** — three pages, each with something to do, in the first session's own art
+   ([`src/first/Story.tsx`](src/first/Story.tsx); the words are `STORY` in [`src/first/data.ts`](src/first/data.ts)).
+   Next shows once a page's part is done (*Sign for your farm to go on* until then); *Skip story* is always there,
+   and *Previous* keeps what was done.
+   - *A farm of my own*: the farmer saved from a job in town and bought this farm. The signpost says FOR SALE and the
+     title deed's owner line is blank: **Sign for my farm** writes the player's name onto the deed a letter at a
+     time, and the signpost becomes *Chebet's farm* with a SOLD sticker.
+   - *The harvest that failed*: last season, played a step at a time. **Plant the season**, **Look after the farm**
+     and **Harvest** each run a short timer (`STORY_STEP_S`, 2 seconds, a ring in the button) while the picture
+     changes: bare rows, sprouts, ragged maize with a real armyworm photo (credited) and dry sukuma wiki, then
+     stubble and one small sack. The sum fills in as it goes (Spent KSh 38,000 − Earned ?), and **=** reveals the
+     loss, counting up to KSh 23,500.
+   - *What went wrong*: three mistakes, each crossed out; tap one to turn it over and see what to do instead, and its
+     line is ticked in the farmer's notebook. These are the lessons the game teaches next: check every bed often
+     (the maize check), water by the soil (the sukuma wiki check), and plan when to harvest, store and sell (the
+     season). **Start with my maize** begins the walk once all three are turned over.
 
-   *Skip story* goes straight to the walk; *Previous* steps back a page; the top Back button goes from the story
-   to creating the farmer, and from the walk back to the story. Events: `story_page`, `story_done`, `story_skipped`.
+   The top Back button goes from the story to creating the farmer, and from the walk back to the story. Events:
+   `story_page`, `story_signed`, `story_step`, `story_sum`, `story_done`, `story_skipped`.
 3. **Walk to the maize** — on the Figma map: in along the dirt path, up the grass to the front maize bed.
    The first tap or drag moves the farmer; a pulsing ring shows where to tap. About 10–15 seconds.
    - **The farm update** (on arriving, before the first check): *week 7 of the season*. The farm has been running for

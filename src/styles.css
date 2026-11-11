@@ -451,14 +451,6 @@ button.card:active { transform: scale(0.98); }
 }
 .story-text { position: absolute; left: 346px; right: 26px; top: 46px; bottom: 74px; animation: fade 0.35s ease both; }
 .story-text p { margin: 0 0 8px; font-size: 13px; font-weight: 500; line-height: 1.4; }
-.story-ledger { margin: 10px 0 0; padding: 8px 12px; border-radius: 10px; background: #fff8ec; border: 1.5px solid var(--brown-20); }
-.story-ledger div { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; font-size: 12px; }
-.story-ledger dt { font-weight: 500; }
-.story-ledger dd { margin: 0; font-weight: 700; white-space: nowrap; }
-.story-ledger .is-in dd { color: var(--green-text); }
-.story-ledger .is-out dd { color: #a0522d; }
-.story-ledger .is-lost { margin-top: 4px; padding-top: 6px; border-top: 1.5px dashed var(--brown-20); font-size: 14px; }
-.story-ledger .is-lost dt, .story-ledger .is-lost dd { font-weight: 800; color: #c0392b; }
 .story-mistakes { margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 7px; }
 .story-mistakes li { display: flex; align-items: center; gap: 10px; padding: 5px 10px 5px 6px; border-radius: 10px; background: #fff8ec; border: 1.5px solid var(--brown-20); }
 .story-mistakes li > span:last-child { display: flex; flex-direction: column; gap: 1px; }
@@ -470,6 +462,60 @@ button.card:active { transform: scale(0.98); }
 .story-dots span { width: 9px; height: 9px; border-radius: 100px; background: var(--brown-20); transition: background 0.2s ease, width 0.2s ease; }
 .story-dots span.is-done { background: var(--gold-soft); }
 .story-dots span.is-on { width: 22px; background: var(--gold); }
+.story-wait { font-size: 11.5px; font-weight: 700; color: var(--brown-70); }
+.story-hint { margin: 6px 0 0 !important; font-size: 11.5px !important; font-weight: 700 !important; color: var(--brown-70); }
+.story-hint.is-lost { color: #c0392b; }
+.story-do {
+  display: inline-flex; align-items: center; gap: 6px; padding: 0 16px; height: 34px; border-radius: 100px;
+  background: linear-gradient(#ffcf4d, #f39c12); color: #fff; font-size: 12.5px; font-weight: 800;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25); box-shadow: 0 0 0 2px #fff, 0 3px 8px rgba(0, 0, 0, 0.25); animation: glowbtn 1.4s ease-in-out infinite;
+}
+@keyframes glowbtn { 50% { box-shadow: 0 0 0 2px #fff, 0 0 0 6px rgba(255, 174, 0, 0.35), 0 3px 8px rgba(0, 0, 0, 0.25); } }
+.story-pop { animation: pop 0.35s ease both; transform-box: fill-box; transform-origin: center; }
+/* page 1: the title deed */
+.story-deed { margin-top: 6px; padding: 10px 14px; border-radius: 10px; background: #fffdf6; border: 2px dashed #c9a46a; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.story-deed.is-signed { border-style: solid; border-color: #2f9b14; }
+.story-deed-title { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: #8a6a4a; }
+.story-deed-line { display: flex; align-items: baseline; gap: 8px; width: 100%; }
+.story-deed-line i { font-size: 11px; font-style: normal; color: var(--brown-70); }
+.story-sign { flex: 1; min-height: 26px; border-bottom: 1.5px solid #8a6a4a; font-family: 'Brush Script MT', 'Segoe Script', cursive; font-size: 22px; font-weight: 400; color: #1d3c8a; }
+.story-pen { display: inline-block; width: 2px; height: 18px; margin-left: 2px; background: #1d3c8a; animation: blink 0.5s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.story-deed-done { font-size: 12px; font-weight: 800; color: var(--green-text); }
+/* page 2: last season, step by step, then the sum */
+.story-steps { margin: 2px 0 0; padding: 0; list-style: none; display: flex; gap: 6px; }
+.story-step {
+  display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px 0 5px; border-radius: 100px; white-space: nowrap;
+  font-size: 11px; font-weight: 800; color: var(--brown-50); background: #f1e6d2; border: 1.5px solid var(--brown-20);
+}
+.story-step.is-turn { color: #fff; background: linear-gradient(#ffcf4d, #f39c12); border-color: #e08e0b; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25); animation: glowbtn 1.4s ease-in-out infinite; }
+.story-step.is-on { color: var(--brown); background: #fff3d6; border-color: #f39c12; }
+.story-step.is-done { color: var(--green-text); background: #eefbe8; border-color: #9fd58a; }
+.story-step-n { width: 22px; height: 22px; border-radius: 100px; display: grid; place-items: center; background: rgba(255, 255, 255, 0.85); color: var(--brown); font-size: 11px; }
+.story-step.is-done .story-step-n { background: #2f9b14; color: #fff; }
+.story-ring { flex-shrink: 0; }
+.story-caption { min-height: 34px; margin: 6px 0 0 !important; font-size: 12px !important; line-height: 1.35 !important; animation: fade 0.3s ease both; }
+.story-sum { margin-top: 6px; display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 10px; background: #fff8ec; border: 1.5px solid var(--brown-20); }
+.story-sum > span { display: flex; flex-direction: column; font-size: 13px; font-weight: 800; white-space: nowrap; animation: pop 0.3s ease both; }
+.story-sum small { font-size: 9.5px; font-weight: 700; color: var(--brown-70); }
+.story-sum .is-out { color: #a0522d; }
+.story-sum .is-in { color: var(--green-text); }
+.story-sum .is-wait { color: var(--brown-50); }
+.story-sum .is-lost { color: #c0392b; font-size: 16px; }
+.story-sum > b { font-size: 18px; font-weight: 800; color: var(--brown-70); }
+.story-equals {
+  width: 40px; height: 34px; border-radius: 10px; font-size: 22px; font-weight: 900; line-height: 1; color: #fff;
+  background: linear-gradient(#ffcf4d, #f39c12); box-shadow: 0 0 0 2px #fff, 0 3px 6px rgba(0, 0, 0, 0.25); animation: glowbtn 1.4s ease-in-out infinite;
+}
+.story-equals:disabled { background: #d8c9b0; animation: none; box-shadow: none; }
+.story-working { animation: workpulse 0.6s ease-in-out infinite alternate; }
+@keyframes workpulse { to { opacity: 0; } }
+/* page 3: mistakes to turn over */
+.story-flip { width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; padding: 0; background: none; }
+.story-flip > span:last-child { display: flex; flex-direction: column; gap: 1px; }
+.story-flip i { font-size: 11px; font-style: normal; font-weight: 800; color: #e08e0b; }
+.story-mistakes li:has(.story-flip:not(.is-open)) { border-color: #f3c46b; background: #fffaf0; cursor: pointer; }
+.story-flip.is-open b { animation: fade 0.3s ease both; }
 .story-back { padding: 0 14px; height: 40px; border-radius: 100px; font-size: 13px; font-weight: 700; color: var(--brown); border: 1.5px solid var(--brown-20); background: #fff8ec; }
 
 /* the farm update: on arriving at the maize, before the first check */
