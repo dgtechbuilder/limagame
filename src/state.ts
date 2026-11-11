@@ -32,7 +32,7 @@ import { trackClimate } from './climate/track';
 import { routeTo } from './route';
 import type { SfxKind } from './sfx';
 import { money } from './money';
-import { POINTS_A_FARMER, SHOP, hireOutDay, newBiz, partnerBlock, partnerOf, planDay, requestsFor, runDay, shopBlock, type Biz, type Bookings, type FleetItem, type PartnerId } from './business/model';
+import { PAYG, SHOP, activitiesDone, bizOf, contractDay, demoSlots, farmerAccepts, graduation, hireOutDay, offersFor, partnerBlock, partnerOf, planDay, requestsFor, runDay, scanFarm, shopBlock, type Biz, type Bookings, type Crop, type Drives, type FleetItem, type PartnerId } from './business/model';
 import {
   GROWING_STEPS,
   HARVEST_EFFECT,
@@ -383,10 +383,17 @@ export type Action =
   /** the tractor business: open or close it; run a day (the plan is worked out again here); hire the tractor out
       for a day; sign a partner; buy for the fleet */
   | { type: 'biz'; open: boolean }
-  | { type: 'bizRun'; bookings: Bookings; route: string[] }
+  | { type: 'bizRun'; bookings: Bookings; route: string[]; drives?: Drives }
   | { type: 'bizHireOut' }
   | { type: 'bizPartner'; id: PartnerId }
   | { type: 'bizBuy'; item: FleetItem }
+  /** deliver Campbell's advice to a farm (the farmer's answer is worked out here); ask the Hub Manager for a demo
+      plot; sign the PAYG agreement; take a marketplace contract for the day; Sasha's welcome read */
+  | { type: 'bizAdvise'; client: string }
+  | { type: 'bizDemo'; crop: Crop }
+  | { type: 'bizGraduate' }
+  | { type: 'bizContract'; id: string; bookings: Bookings }
+  | { type: 'bizIntro' }
   /** go to a web address (src/route.ts): the screen it names, if the player may go there now */
   | { type: 'route'; path: string };
 
@@ -416,9 +423,9 @@ export function reducer(s: GameState, a: Action): GameState {
 
 let sfxId = 0;
 /** Flows: finishing one of these ends a whole piece of play. */
-const FLOWS = new Set<Action['type']>(['completeSale', 'trialHarvest', 'bizRun', 'bizHireOut', 'tractorDone']);
+const FLOWS = new Set<Action['type']>(['completeSale', 'trialHarvest', 'bizRun', 'bizHireOut', 'bizContract', 'bizGraduate', 'tractorDone']);
 /** Actions: finishing one of these is one thing done. Some only count when they earned something (their message). */
-const ACTIONS = new Set<Action['type']>(['buy', 'sell', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy']);
+const ACTIONS = new Set<Action['type']>(['buy', 'sell', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo']);
 const EARNED = new Set<Action['type']>(['roundResult', 'trialCheck', 'fieldMark']);
 const FS_ORDER: FsPhase[] = ['create', 'story', 'walk1', 'update', 'review1', 'walkRetry', 'retry', 'walk2', 'review2', 'done'];
 
@@ -928,7 +935,7 @@ function play(s: GameState, a: Action): GameState {
       return {
         ...s,
         bizOpen: a.open,
-        biz: s.biz ?? newBiz(),
+        biz: bizOf(s.biz),
         roundsOpen: false,
         roundsTrial: false,
         trialsOpen: false,
@@ -937,32 +944,63 @@ function play(s: GameState, a: Action): GameState {
         plotSelected: false,
       };
     case 'bizRun': {
-      const b = s.biz ?? newBiz();
-      const plan = planDay(b, requestsFor(b), a.bookings, a.route);
+      const b = bizOf(s.biz);
+      const requests = requestsFor(b);
+      const plan = planDay(b, requests, a.bookings, a.route, a.drives ?? {});
       if (plan.problem) return { ...s, toast: toast(plan.problem) };
-      const { biz, result } = runDay(b, plan);
+      const { biz, result } = runDay(b, plan, activitiesDone(requests, a.bookings, plan));
       const helped = result.farmers + result.partnerFarmers;
-      return { ...s, biz, points: s.points + helped * POINTS_A_FARMER, ...gainXp(s, 0.02 * helped) };
+      return { ...s, biz, points: s.points + result.points, ...gainXp(s, 0.02 * helped) };
     }
     case 'bizHireOut': {
-      const b = s.biz ?? newBiz();
+      const b = bizOf(s.biz);
       if (!b.partners.includes('county')) return s;
       return { ...s, biz: hireOutDay(b, requestsFor(b).length).biz };
     }
+    case 'bizContract': {
+      const b = bizOf(s.biz);
+      const offer = offersFor(b).find(o => o.id === a.id);
+      if (!offer) return { ...s, toast: toast('That contract has gone.') };
+      const { biz, result } = contractDay(b, offer, requestsFor(b), a.bookings);
+      return { ...s, biz, points: s.points + result.points, ...gainXp(s, 0.02 * result.partnerFarmers) };
+    }
     case 'bizPartner': {
-      const b = s.biz ?? newBiz();
+      const b = bizOf(s.biz);
       const block = partnerBlock(b, a.id);
       if (block) return { ...s, toast: toast(`${partnerOf(a.id).name}: ${lowerFirst(block)}`) };
       return { ...s, biz: { ...b, cash: b.cash - partnerOf(a.id).fee, partners: [...b.partners, a.id] }, toast: toast(`Signed with ${partnerOf(a.id).name}`) };
     }
     case 'bizBuy': {
-      const b = s.biz ?? newBiz();
+      const b = bizOf(s.biz);
       const block = shopBlock(b, a.item);
       const item = SHOP.find(x => x.id === a.item)!;
       if (block) return { ...s, toast: toast(`${item.name}: ${lowerFirst(block)}`) };
       const next = a.item === 'large' ? { ...b, tractor: 'large' as const } : { ...b, tools: [...b.tools, a.item] };
       return { ...s, biz: { ...next, cash: b.cash - item.price }, toast: toast(`Bought: ${item.name}`) };
     }
+    case 'bizAdvise': {
+      const b = bizOf(s.biz);
+      if (a.client in b.advised) return s;
+      const scan = scanFarm(b, a.client, requestsFor(b));
+      if (!scan.rec) return s;
+      const yes = farmerAccepts(b, scan);
+      const biz: Biz = { ...b, advised: { ...b.advised, [a.client]: yes }, extra: yes ? [...b.extra, scan.rec.key] : b.extra };
+      return { ...s, biz, ...(yes ? gainXp(s, 0.01) : {}) };
+    }
+    case 'bizDemo': {
+      const b = bizOf(s.biz);
+      if (b.demos.includes(a.crop)) return s;
+      if (b.demos.length >= demoSlots(b)) return { ...s, toast: toast(`The Hub Manager runs one demo plot a level: ${b.demos.length} already.`) };
+      return { ...s, biz: { ...b, demos: [...b.demos, a.crop] }, toast: toast('The Hub Manager is planting the demo plot.') };
+    }
+    case 'bizGraduate': {
+      const b = bizOf(s.biz);
+      const g = graduation(b);
+      if (!g?.due) return s;
+      return { ...s, biz: { ...b, owned: [...b.owned, { hp: g.tier.hp as 45 | 75, price: g.tier.price, paid: 0, since: b.day, warn: 0 }], tractor: g.tier.tractor }, ...gainXp(s, 0.5), points: s.points + PAYG.tiers.indexOf(g.tier) * 100 + 200 };
+    }
+    case 'bizIntro':
+      return { ...s, biz: { ...bizOf(s.biz), intro: true } };
   }
 }
 
