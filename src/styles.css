@@ -1354,3 +1354,96 @@ button.card:active { transform: scale(0.98); }
 
 /* Settings · Help: the page address */
 .set-address { padding: 4px 8px; border-radius: 8px; background: var(--brown-05); border: 1px solid var(--brown-20); font-size: 10px; font-weight: 600; white-space: nowrap; }
+
+/* ================================================================== */
+/* The tractor business (business/Business.tsx)                         */
+/* ================================================================== */
+.hud-biz { left: 14px; top: 258px; }
+.hud-biz > svg { background: radial-gradient(circle at 50% 35%, #fff8e6, #f0dcb4); }
+.biz-head {
+  position: absolute; left: 16px; right: 16px; top: 50px; height: 36px; display: flex; align-items: center; gap: 10px;
+  padding: 0 10px; border-radius: 12px; background: var(--cream); box-shadow: 0 0 0 2.5px #eea660, 0 4px 10px rgba(0, 0, 0, 0.25);
+}
+.biz-level { display: flex; flex-direction: column; min-width: 210px; font-size: 10.5px; font-weight: 600; line-height: 1.1; }
+.biz-level b { font-weight: 900; color: #c0392b; }
+.biz-level small { font-size: 9px; color: var(--brown-70); }
+.biz-bar { display: block; height: 5px; margin: 2px 0; border-radius: 4px; background: var(--brown-10); overflow: hidden; }
+.biz-bar > span { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #ffb005, #f39c12); transition: width 0.4s ease; }
+.biz-stat { display: flex; flex-direction: column; font-size: 13px; font-weight: 900; line-height: 1.05; padding-left: 10px; border-left: 1.5px solid var(--brown-20); }
+.biz-stat small { font-size: 9px; font-weight: 700; color: var(--brown-70); }
+.biz-tabs { margin-left: auto; display: flex; gap: 4px; }
+.biz-tabs button { padding: 4px 12px; border-radius: 100px; font-size: 11px; font-weight: 800; background: var(--brown-05); border: 1.5px solid var(--brown-20); }
+.biz-tabs button.is-on { background: var(--gold); border-color: var(--gold-edge); color: #fff; }
+.biz-map { position: absolute; border-radius: 12px; overflow: hidden; box-shadow: 0 0 0 3px #eea660, 0 6px 14px rgba(0, 0, 0, 0.3); }
+.biz-map svg { display: block; }
+.biz-pin { transition: transform 0.15s ease; }
+.biz-pin.is-on { cursor: pointer; }
+.biz-pin.is-on:hover rect { filter: brightness(1.15); }
+.biz-route {
+  position: absolute; left: 8px; right: 8px; bottom: 6px; margin: 0; padding: 4px 6px; list-style: none; display: flex; flex-wrap: wrap; gap: 4px;
+  border-radius: 10px; background: rgba(255, 248, 236, 0.92); font-size: 10px; font-weight: 700;
+}
+.biz-route li { display: flex; align-items: center; gap: 3px; padding: 1px 6px; border-radius: 100px; background: #fff; border: 1px solid var(--brown-20); }
+.biz-route li b { width: 15px; height: 15px; border-radius: 100px; display: grid; place-items: center; background: #c0392b; color: #fff; font-size: 9px; }
+.biz-route li.is-yard { color: var(--brown-70); }
+.biz-route li button { width: 16px; height: 16px; border-radius: 100px; background: var(--gold); color: #fff; font-size: 10px; font-weight: 900; line-height: 1; }
+.biz-side { position: absolute; left: 548px; right: 16px; top: 92px; height: 252px; display: flex; flex-direction: column; gap: 6px; }
+.biz-farm, .biz-meters { padding: 7px 10px; border-radius: 12px; background: var(--cream); box-shadow: 0 0 0 2px #eea660; }
+.biz-farm { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 5px; }
+.biz-farm.is-empty p { margin: 0; font-size: 11px; font-weight: 600; line-height: 1.35; color: var(--brown-70); }
+.biz-farm-title { margin: 0; display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--brown-70); }
+.biz-farm-title b { font-size: 13px; color: var(--brown); }
+.biz-x { margin-left: auto; width: 20px; height: 20px; border-radius: 100px; background: var(--brown-10); font-size: 13px; font-weight: 900; line-height: 1; }
+.biz-part { display: flex; flex-direction: column; gap: 3px; padding: 5px 7px; border-radius: 9px; background: #fff8ec; border: 1.5px solid var(--brown-20); }
+.biz-part-text { display: flex; flex-direction: column; line-height: 1.15; }
+.biz-part-text b { font-size: 11.5px; }
+.biz-part-text small { font-size: 9.5px; color: var(--brown-70); font-weight: 600; }
+.biz-seg { display: flex; gap: 4px; }
+.biz-seg button { flex: 1; height: 24px; border-radius: 100px; font-size: 10px; font-weight: 800; background: #fff; border: 1.5px solid var(--brown-20); }
+.biz-seg button.is-on { background: var(--gold); border-color: var(--gold-edge); color: #fff; }
+.biz-seg button.is-on.is-partner { background: #2b7fb8; border-color: #1d5f8c; }
+.biz-seg button:disabled { opacity: 0.45; }
+.biz-meters { display: flex; flex-direction: column; gap: 4px; }
+.biz-meter span:first-child { display: flex; gap: 4px; align-items: baseline; font-size: 10px; font-weight: 600; color: var(--brown-70); }
+.biz-meter b { color: var(--brown); font-weight: 800; }
+.biz-meter i { margin-left: auto; font-style: normal; font-weight: 800; color: #e08e0b; }
+.biz-meter.is-good i { color: var(--green-text); }
+.biz-meter.is-warn .biz-bar > span { background: #c0392b; }
+.biz-meter.is-good .biz-bar > span { background: linear-gradient(90deg, #7fd35a, #2f9b14); }
+.biz-money { margin: 2px 0 0; display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 10px; font-weight: 600; color: var(--brown-70); }
+.biz-money b { color: var(--green-text); }
+.biz-money b.is-cost { color: #c0392b; }
+.biz-money .is-total { font-size: 11.5px; }
+.biz-money .is-total b { color: var(--brown); font-weight: 900; }
+.biz-actions { display: flex; gap: 6px; align-items: center; }
+.biz-link { padding: 0 8px; height: 30px; border-radius: 100px; font-size: 10px; font-weight: 800; background: #e8f3fb; border: 1.5px solid #2b7fb8; color: #1d5f8c; white-space: nowrap; }
+.biz-result { position: relative; width: 470px; padding: 14px 22px 16px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.biz-result-title { margin: 0; display: flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 900; }
+.biz-stars { color: #ffb005; font-size: 20px; letter-spacing: 1px; }
+.biz-stars i { font-style: normal; color: var(--brown-20); }
+.biz-result-line { margin: 6px 0 0; font-size: 12px; font-weight: 600; line-height: 1.35; }
+.biz-result-line.is-small { font-size: 11px; color: var(--brown-70); }
+.biz-sheet { width: 100%; margin: 8px 0 0; padding: 6px 12px; border-radius: 10px; background: #fff8ec; border: 1.5px solid var(--brown-20); }
+.biz-sheet div { display: flex; justify-content: space-between; padding: 2px 0; font-size: 12px; }
+.biz-sheet dt { font-weight: 600; }
+.biz-sheet dd { margin: 0; font-weight: 800; color: var(--green-text); }
+.biz-sheet dd.is-cost { color: #c0392b; }
+.biz-sheet .is-total { margin-top: 3px; padding-top: 4px; border-top: 1.5px dashed var(--brown-20); font-size: 14px; }
+.biz-sheet .is-total dd { color: var(--brown); font-weight: 900; }
+.biz-rose { margin: 6px 0 0; padding: 4px 14px; border-radius: 100px; background: var(--gold); color: #fff; font-size: 13px; font-weight: 900; animation: pop 0.4s ease both; }
+.biz-cards { position: absolute; left: 16px; right: 16px; top: 96px; bottom: 10px; display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 1fr; gap: 8px; }
+.biz-card { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 12px; background: var(--cream); box-shadow: 0 0 0 2px #eea660; }
+.biz-card.is-signed { box-shadow: 0 0 0 2px #2f9b14; }
+.biz-card small { font-size: 9px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--brown-70); }
+.biz-card b { font-size: 12.5px; font-weight: 900; }
+.biz-card p { margin: 0 0 4px; flex: 1; font-size: 10.5px; font-weight: 500; line-height: 1.3; }
+.biz-card .biz-totals { font-size: 10px; font-weight: 800; color: var(--green-text); }
+.biz-tag { display: block; padding: 4px 0; border-radius: 100px; text-align: center; font-size: 10px; font-weight: 800; background: #eefbe8; color: var(--green-text); }
+.biz-tag.is-off { background: var(--brown-05); color: var(--brown-50); }
+
+.biz .guide-line { height: 50px; }
+.biz .guide-face { width: 40px; height: 40px; }
+.biz-seg button { display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05; height: 30px !important; }
+.biz-seg button i { font-style: normal; font-size: 8.5px; font-weight: 700; opacity: 0.85; }
+.biz-seg button i.is-thin { color: #c0392b; }
+.biz-seg button.is-on i.is-thin { color: #fff; }

@@ -619,7 +619,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       )}
 
       {/* the HUD gives way to the full-screen rounds and six-farms screens, which have their own navigation */}
-      {!(s.roundsOpen || s.trialsOpen) && (
+      {!(s.roundsOpen || s.trialsOpen || s.bizOpen) && (
         <>
       {/* the farmer and their level */}
       <div className="hud-avatar">
@@ -645,6 +645,10 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       >
         <TractorBtnIcon />
         <span>{anchors.riding ? 'GET OFF' : 'TRACTOR'}</span>
+      </button>
+      <button type="button" className="hud-round hud-biz" onClick={() => dispatch({ type: 'biz', open: true })} aria-label="Tractor business: serve farms, plan routes, work with partners">
+        <BizIcon />
+        <span>BUSINESS</span>
       </button>
       {anchors.riding && t?.phase === 'growing' && (
         <button type="button" className="hud-rig" onClick={() => setCare({ kind: 'rig' })} aria-label="Change the tractor or tool">
@@ -719,7 +723,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
 
       {/* clearing and planting: the button on the plot under the farmer, then its timer */}
       {working && !overlay && <PlotTimer at={anchors.farmer} start={working.start} ms={working.ms} verb={working.job === 'prep' ? 'Clearing' : 'Planting'} plot={working.plot} />}
-      {!working && anchors.plot && !overlay && !(s.roundsOpen || s.trialsOpen) && (
+      {!working && anchors.plot && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen) && (
         <button
           type="button"
           className={`hud-plot is-${anchors.plot.job}`}
@@ -844,6 +848,20 @@ function PlotTimer({ at, start, ms, verb, plot }: { at: { x: number; y: number }
 }
 
 /* ---------------- icons ---------------- */
+
+/** The tractor business: a tractor beside a map pin. */
+function BizIcon() {
+  return (
+    <svg viewBox="-14 -14 28 28" width={30} height={30} aria-hidden="true">
+      <path d="M3,-11 C-1,-11 -3,-8 -3,-5 C-3,-1 3,4 3,4 C3,4 9,-1 9,-5 C9,-8 7,-11 3,-11 Z" fill="#c0392b" stroke="#fff" strokeWidth={1.4} />
+      <circle cx={3} cy={-5.5} r={2.2} fill="#fff" />
+      <rect x={-11} y={1} width={11} height={6} rx={1.5} fill="#2b7fb8" />
+      <rect x={-6} y={-3} width={5} height={5} rx={1} fill="#2b7fb8" />
+      <circle cx={-8} cy={8} r={3.6} fill="#333" />
+      <circle cx={-1} cy={8.5} r={2.6} fill="#333" />
+    </svg>
+  );
+}
 
 function GearIcon() {
   return (
