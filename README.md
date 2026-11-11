@@ -171,6 +171,15 @@ A new player never sees the farm screen first. Everything happens on their own f
    to creating the farmer, and from the walk back to the story. Events: `story_page`, `story_done`, `story_skipped`.
 3. **Walk to the maize** — on the Figma map: in along the dirt path, up the grass to the front maize bed.
    The first tap or drag moves the farmer; a pulsing ring shows where to tap. About 10–15 seconds.
+   - **The farm update** (on arriving, before the first check): *week 7 of the season*. The farm has been running for
+     7 weeks and has cost KSh 21,400 in seed, fertilizer and labour; at this rate the harvest brings back about
+     KSh 6,000, a loss of KSh 15,400 (a bar chart shows it). The maize (*some rows look ragged*) has KSh 10,000 at
+     stake and the sukuma wiki (*the back rows look dull*) KSh 5,000: catching both turns most of the loss around.
+     **Check my maize** opens the check. Words and numbers: `FARM_UPDATE` in `src/first/data.ts`; event
+     `farm_update_shown`.
+   - **What is at stake, on every check**: a red line at the top left while the player reads the crop, *This problem
+     will cost you about KSh 10,000 of harvest if it is left alone* (KSh 5,000 on the sukuma wiki: `atStake` on each
+     shamba), which turns green once it is caught: *Caught in time: about KSh 10,000 of harvest saved*.
 4. **First check (the aha moment)** — four steps, the template for every check in Lima:
    - **Look** at four pictures (the crop, pests & disease, soil & water, layout). Tap to zoom; the next one glows.
    - **Spot** the rows that look wrong in the field.
@@ -571,7 +580,7 @@ reload without losing their place, bookmark a page, and use the browser's **Back
 | --- | --- |
 | `#/start` | Name your farmer (first session) |
 | `#/story/1` · `/2` · `/3` | The story so far, page by page |
-| `#/walk/maize` · `#/check/maize` | Walk to the maize, and its check |
+| `#/walk/maize` · `#/farm-update` · `#/check/maize` | Walk to the maize, the farm update, and its check |
 | `#/walk/back-maize` · `#/check/back-maize` | The back maize, after a wrong call |
 | `#/walk/sukuma` · `#/check/sukuma` | The sukuma wiki, and its check |
 | `#/farm` | The farm |

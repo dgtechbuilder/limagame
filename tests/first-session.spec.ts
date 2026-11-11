@@ -17,7 +17,11 @@ async function createFarmer(page: Page, readStory = true) {
 
 async function walkToBed(page: Page) {
   await page.locator('.goal-hit').dispatchEvent('pointerdown');
-  await expect(page.locator('.review-steps')).toBeVisible({ timeout: 30_000 });
+  // at the front maize, the farm update comes first; the back maize (after a wrong call) goes straight to its check
+  const update = page.getByRole('button', { name: 'Check my maize', exact: true });
+  await expect(update.or(page.locator('.review-steps'))).toBeVisible({ timeout: 30_000 });
+  if (await update.isVisible()) await update.click();
+  await expect(page.locator('.review-steps')).toBeVisible();
 }
 
 /** Look at every part, spot a problem row, and make a call. */
@@ -55,6 +59,30 @@ test('the story so far: three pages, back, skip, and the Back button', async ({ 
   await page.getByRole('button', { name: 'Skip story', exact: true }).click();
   await expect.poll(async () => (await state(page)).fs.phase).toBe('walk1');
   expect(await eventNames(page)).toEqual(expect.arrayContaining(['story_page', 'story_done', 'story_skipped']));
+});
+
+test('the farm update on arriving at the maize, and what each problem puts at stake', async ({ page }) => {
+  await boot(page);
+  await createFarmer(page);
+  await page.locator('.goal-hit').dispatchEvent('pointerdown');
+  const card = page.locator('.update-card');
+  await expect(card).toBeVisible({ timeout: 30_000 });
+  await expect.poll(async () => (await state(page)).fs.phase).toBe('update');
+  await expect(card).toContainText('Week 7 of the season');
+  await expect(card).toContainText('running for 7 weeks this season, Wanjiku');
+  await expect(card).toContainText('KSh 21,400');
+  await expect(card).toContainText('lose most of that money');
+  await expect(card.locator('.update-crops li')).toHaveCount(2);
+  await expect(card).toContainText('KSh 10,000 at stake');
+  await expect(card).toContainText('KSh 5,000 at stake');
+  // Back from the update returns to the walk; on to the check, the stake shows while the player reads the maize
+  await page.locator('.nav-btn[aria-label="Back"]').click();
+  await expect.poll(async () => (await state(page)).fs.phase).toBe('walk1');
+  await walkToBed(page);
+  await expect(page.locator('.stake')).toHaveText('!This problem will cost you about KSh 10,000 of harvest if it is left alone.');
+  await review(page, 'first', true);
+  await expect(page.locator('.stake.is-saved')).toContainText('about KSh 10,000 of harvest saved', { timeout: 10_000 });
+  expect(await eventNames(page)).toContain('farm_update_shown');
 });
 
 test('first session, read right first time', async ({ page }) => {

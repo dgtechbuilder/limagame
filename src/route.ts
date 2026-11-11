@@ -37,6 +37,7 @@ const SIMPLE = {
 const FIRST: Record<Exclude<FsPhase, 'done' | 'story'>, string> = {
   create: 'start',
   walk1: 'walk/maize',
+  update: 'farm-update',
   review1: 'check/maize',
   walkRetry: 'walk/back-maize',
   retry: 'check/back-maize',
@@ -44,7 +45,7 @@ const FIRST: Record<Exclude<FsPhase, 'done' | 'story'>, string> = {
   review2: 'check/sukuma',
 };
 /** The early steps a player may step back between by address, as the Back button can. */
-const EARLY: FsPhase[] = ['create', 'story', 'walk1', 'review1'];
+const EARLY: FsPhase[] = ['create', 'story', 'walk1', 'update', 'review1'];
 
 const key = <T extends string>(map: Record<T, string>, word: string | undefined): T | undefined => (Object.keys(map) as T[]).find(k => map[k] === word);
 
@@ -144,6 +145,8 @@ export function routeTo(s: GameState, raw: string): Action[] {
     const to = key(FIRST, parts.join('/'));
     if (to === 'create') return early ? step('create') : say('Your farmer is ready: carry on with your crops.');
     if (to === 'walk1') return s.farmer && early ? step('walk1') : say('Read your story first, then walk to your maize.');
+    // the farm update comes on arriving at the maize: it can be read again from the first check
+    if (to === 'update') return phase === 'review1' ? step('update') : say('Walk to your maize first: the farm update is waiting there.');
     if (to || ['farm', 'rounds', 'mission'].includes(parts[0])) return say('Finish checking your first crops to open the rest of the farm.');
     return say(NOT_FOUND);
   }
