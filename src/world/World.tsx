@@ -36,7 +36,7 @@ import {
 } from './field';
 import { FarmWorld, PLACES, STAGE_H, STAGE_W, TRACTOR_BOARD, type Fx } from './engine';
 import { useNav } from '../components/Nav';
-import { ClimateIcon } from '../components/Icons';
+import { ClimateIcon, PartnersIcon } from '../components/Icons';
 import { rating } from '../climate/model';
 import { TRACTOR_BONUS } from '../tractor/data';
 import { JOB_INFO, KIND_WORDS, TOOL_JOB, plotName, toolName, tractorName, type PlotKind } from '../plots/data';
@@ -681,6 +681,10 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       <button type="button" className="hud-round hud-mission" onClick={() => dispatch({ type: 'trials', open: true })} aria-label="Mission: plan, progress and results of your farms">
         <ClipboardIcon />
         <span>MISSION</span>
+      </button>
+      <button type="button" className="hud-round hud-partners" onClick={() => dispatch({ type: 'open', modal: { kind: 'partners' } })} aria-label="Partnerships: ways for brands and services to partner with Lima">
+        <PartnersIcon />
+        <span>PARTNERS</span>
       </button>
       <button type="button" className="hud-round hud-shop" onClick={() => dispatch({ type: 'open', modal: { kind: 'shop', tab: 'food' } })} aria-label="Shop">
         <img src={img.cart} alt="" width={30} height={30} />

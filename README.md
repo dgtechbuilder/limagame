@@ -32,6 +32,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [The six farms](#the-six-farms)
 - [From Wakala Agent](#from-wakala-agent)
 - [The tractor business](#the-tractor-business)
+- [Partnerships](#partnerships)
 - [Plots and inputs](#plots-and-inputs)
 - [Navigation and the main menu](#navigation-and-the-main-menu)
 - [Page addresses](#page-addresses)
@@ -571,6 +572,30 @@ road speed and diesel, work rates, the driver's KSh 1,000 a day, the partner's s
 **game estimates**, marked in the code. The real margins are thin: ploughing and planting pay well, harrowing far away
 barely covers its diesel, so a good route and the right jobs to pass on matter.
 
+## Partnerships
+
+A page for brands, schools and services that want to partner with Lima: **PARTNERS** on the farm (beside SHOP, and
+beside Shop on the classic farm), **Partnerships** in the main menu, or `#/partners`. It opens before the farm does
+too, so a partner can visit without playing. Code: `src/partners/data.ts` (every word, for review without touching
+code) and `src/partners/Partners.tsx`.
+
+- **Overview**: who plays, the five areas, how a partnership starts, and the rules every partner keeps (fair play:
+  no partner pays for a better result; no personal data, only anonymous counts; advice checked by an agronomist;
+  rewards redeemed in shops are built with each partner).
+- **22 ways to partner in five areas**, each tied to the screen where players meet it, with what the partner gets:
+  - *Farm inputs*: seed, fertilizer, crop protection, safety kit.
+  - *Tools & machines*: hardware, equipment (tractors and implements), water tanks and irrigation, solar, fuel.
+  - *Transport & market*: trucks, buyers and off-takers, storage, millers and processors, co-ops and booking apps.
+  - *Learning*: training classes, agronomists and extension services, a sponsored mission.
+  - *Money & climate*: loans and mobile money, crop insurance, carbon partners, a weather service, telcos.
+- **Status, honestly**: *In the game now* (the moment exists; a brand goes onto it), *Small build* (the moment exists;
+  a short new step adds the partner's part), *New idea* (a new part of the game).
+- **See it in the game** opens that moment (the Shop tab, Rewards, Climate) once the farm is open; *Back* returns to
+  the same area of Partnerships.
+- **Shortlist**: *+ Interested* on any option builds a shortlist, saved with the game. *Copy the shortlist* puts it
+  on the clipboard as text. Set `VITE_PARTNER_EMAIL` at build time to add an *Email it to the Lima team* button.
+- **Try it**: `?review=1`, group **Partnerships**. Tests: `tests/partners.spec.ts`.
+
 ## Plots and inputs
 
 **Every farm is 20 plots**: its 4 × 5 tiles, Plot 1 at the back left to Plot 20 at the front right
@@ -638,6 +663,7 @@ reload without losing their place, bookmark a page, and use the browser's **Back
 | `#/tractor-business` | The tractor business |
 | `#/settings/my-farmer` · `game` · `display` · `help` | Settings, by section |
 | `#/climate/overview` · `emissions` · `water-and-soil` · `shocks` · `activity` | Climate, by section |
+| `#/partners/overview` · `farm-inputs` · `tools-and-machines` · `transport-and-market` · `learning` · `money-and-climate` · `shortlist` | Partnerships, by area (open before the farm too) |
 | `#/shop/food` · `fertilizer` · `water-tanks` · `equipment` | Shop, by tab |
 | `#/steps/land-prep` · `planting` · `fertilizer` · `pesticides` · `water` · `harvest` | Farming steps |
 | `#/harvest-timing` · `#/sale` · `#/storage` · `#/value-addition` · `#/process` | The season after harvest |

@@ -102,3 +102,17 @@ export function ClimateIcon({ size = 26 }: { size?: number }) {
     </svg>
   );
 }
+
+/** Partnerships: two hands shaking. */
+export function PartnersIcon({ size = 30 }: { size?: number }) {
+  return (
+    <svg viewBox="-14 -14 28 28" width={size} height={size} aria-hidden="true">
+      {/* the two sleeves */}
+      <path d="M-13,-3 L-7,-7 L-4,-2 L-10,3 Z" fill="#2b7fb8" stroke="#fff" strokeWidth={1.1} strokeLinejoin="round" />
+      <path d="M13,-3 L7,-7 L4,-2 L10,3 Z" fill="#e0892b" stroke="#fff" strokeWidth={1.1} strokeLinejoin="round" />
+      {/* the hands, clasped */}
+      <path d="M-6,-4 C-3,-7 1,-7 4,-4 L8,0 C9,1 8,3 6.5,2.5 L5,4 C5.5,5.5 3.8,6.8 2.6,5.8 L1.6,6.8 C1.6,8.2 -0.4,8.8 -1.4,7.6 L-6.5,2.5 Z" fill="#c98a5a" stroke="#fff" strokeWidth={1.1} strokeLinejoin="round" />
+      <path d="M-1,-4.5 L3,-1 M1.4,1.2 L4.4,3.8 M-0.6,3.4 L2,5.8" stroke="#8a5530" strokeWidth={0.9} strokeLinecap="round" fill="none" />
+    </svg>
+  );
+}

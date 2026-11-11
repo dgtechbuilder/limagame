@@ -30,6 +30,7 @@ import { TRACTOR_PLOT, plotCost, setPlotInput, toolName, type PlotJob, type Plot
 import { initialClimate, type ClimateState } from './climate/model';
 import { trackClimate } from './climate/track';
 import { routeTo } from './route';
+import type { PartnerTab } from './partners/data';
 import { POINTS_A_FARMER, SHOP, hireOutDay, newBiz, partnerBlock, partnerOf, planDay, requestsFor, runDay, shopBlock, type Biz, type Bookings, type FleetItem, type PartnerId } from './business/model';
 import {
   GROWING_STEPS,
@@ -61,7 +62,8 @@ export type Modal =
   | { kind: 'rewards' }
   | { kind: 'value' }
   | { kind: 'process' }
-  | { kind: 'info' };
+  | { kind: 'info' }
+  | { kind: 'partners'; tab?: PartnerTab };
 
 /** Player settings. They are kept on this device and survive Reset progress. */
 export interface Settings {
@@ -173,6 +175,10 @@ export interface GameState {
   stock: Record<string, number>;
   inventory: string[]; // shop items owned (one entry per unit)
   redeemed: string[];
+  /** Partnerships: the options a partner tapped Interested on (src/partners/data.ts) */
+  partnerPicks: string[];
+  /** a screen opened from another one to show something (Partnerships · See it in the game): Back returns there */
+  backTo: { modal: Modal; fromMenu: boolean } | null;
   collectedDay: Record<string, string>; // milk/eggs → date last collected
   // season
   season: number;
@@ -242,6 +248,8 @@ export const initialState: GameState = {
   stock: initialStock,
   inventory: [],
   redeemed: [],
+  partnerPicks: [],
+  backTo: null,
   collectedDay: {},
   season: 1,
   ...freshSeason,
@@ -310,7 +318,10 @@ export const today = () => new Date().toISOString().slice(0, 10);
 /* ------------------------------------------------------------------ */
 
 export type Action =
-  | { type: 'open'; modal: Modal }
+  /** back: Back on the new screen returns to the one open now */
+  | { type: 'open'; modal: Modal; back?: boolean }
+  /** Partnerships: tap Interested on an option, or tap again to take it off the shortlist */
+  | { type: 'partnerPick'; id: string }
   | { type: 'close' }
   /** back to the farm from anywhere: closes every screen on top of it */
   | { type: 'home' }
@@ -408,14 +419,17 @@ function play(s: GameState, a: Action): GameState {
   switch (a.type) {
     case 'open':
       // another section of the same screen (a Settings tab, a Shop tab) keeps where Back goes
-      return { ...s, modal: a.modal, fromMenu: s.modal?.kind === a.modal.kind ? s.fromMenu : s.modal?.kind === 'menu' && a.modal.kind !== 'menu', plotSelected: false };
+      if (a.back && s.modal) return { ...s, modal: a.modal, backTo: { modal: s.modal, fromMenu: s.fromMenu }, fromMenu: false, plotSelected: false };
+      return { ...s, modal: a.modal, fromMenu: s.modal?.kind === a.modal.kind ? s.fromMenu : s.modal?.kind === 'menu' && a.modal.kind !== 'menu', backTo: s.modal?.kind === a.modal.kind ? s.backTo : null, plotSelected: false };
     case 'close':
+      // a screen opened to show something goes back to the screen it was opened from
+      if (s.backTo && s.modal) return { ...s, modal: s.backTo.modal, fromMenu: s.backTo.fromMenu, backTo: null };
       // a screen opened from the main menu goes back to the menu
       return s.fromMenu && s.modal && s.modal.kind !== 'menu' ? { ...s, modal: { kind: 'menu' }, fromMenu: false } : { ...s, modal: null, fromMenu: false };
     case 'ride':
-      return { ...s, modal: null, fromMenu: false, plotSelected: false, roundsOpen: false, roundsTrial: false, roundsView: null, roundsDemo: null, trialsOpen: false, bizOpen: false, worldDemo: null, navSeq: s.navSeq + 1, rideReq: s.rideReq + 1, toast: s.view === 'world' ? s.toast : toast('The tractor is on the 3D farm: switch the farm view in Settings') };
+      return { ...s, modal: null, fromMenu: false, plotSelected: false, roundsOpen: false, roundsTrial: false, roundsView: null, roundsDemo: null, trialsOpen: false, bizOpen: false, worldDemo: null, backTo: null, navSeq: s.navSeq + 1, rideReq: s.rideReq + 1, toast: s.view === 'world' ? s.toast : toast('The tractor is on the 3D farm: switch the farm view in Settings') };
     case 'home':
-      return { ...s, modal: null, fromMenu: false, plotSelected: false, roundsOpen: false, roundsTrial: false, roundsView: null, roundsDemo: null, trialsOpen: false, bizOpen: false, worldDemo: null, navSeq: s.navSeq + 1 };
+      return { ...s, modal: null, fromMenu: false, plotSelected: false, roundsOpen: false, roundsTrial: false, roundsView: null, roundsDemo: null, trialsOpen: false, bizOpen: false, worldDemo: null, backTo: null, navSeq: s.navSeq + 1 };
     case 'selectPlot':
       return { ...s, plotSelected: a.on };
     case 'onboarded':
@@ -551,6 +565,8 @@ function play(s: GameState, a: Action): GameState {
         modal: { kind: 'steps', step: 'landprep' },
         toast: toast(`Season ${s.season + 1} started · prepare your land`),
       };
+    case 'partnerPick':
+      return { ...s, partnerPicks: s.partnerPicks.includes(a.id) ? s.partnerPicks.filter(x => x !== a.id) : [...s.partnerPicks, a.id] };
     case 'redeem': {
       const r = REWARDS.find(x => x.id === a.id)!;
       if (s.redeemed.includes(a.id)) return s;
@@ -935,7 +951,7 @@ function play(s: GameState, a: Action): GameState {
 /* ------------------------------------------------------------------ */
 
 const SAVE_KEY = 'lima-farming-game:v2';
-const TRANSIENT: (keyof GameState)[] = ['fromMenu', 'navSeq', 'rideReq', 'modal', 'plotSelected', 'toast', 'roundsOpen', 'roundsView', 'roundsDemo', 'worldDemo', 'trialsOpen', 'roundsTrial', 'bizOpen'];
+const TRANSIENT: (keyof GameState)[] = ['fromMenu', 'navSeq', 'rideReq', 'modal', 'plotSelected', 'toast', 'roundsOpen', 'roundsView', 'roundsDemo', 'worldDemo', 'trialsOpen', 'roundsTrial', 'bizOpen', 'backTo'];
 
 /** Design-review links (?review or ?screen) use a throwaway game so they never touch a player's save. */
 export const reviewing = () => {
@@ -964,7 +980,7 @@ function loadSaved(): GameState {
     const saved = JSON.parse(raw);
     // Saves from before the farm had one owner may carry a reminder about neighbours.
     if (typeof saved.note === 'string' && /Achieng|neighbour/i.test(saved.note)) saved.note = 'Check every bed on your farm often: open Rounds on the farm.';
-    return { ...initialState, ...saved, fromMenu: false, navSeq: 0, rideReq: 0, modal: null, plotSelected: false, toast: null, roundsOpen: false, roundsView: null, roundsDemo: null, worldDemo: null, trialsOpen: false, bizOpen: false, roundsTrial: false, rounds: { ...initialState.rounds, ...(saved.rounds ?? {}) }, settings: { ...DEFAULT_SETTINGS, ...(saved.settings ?? {}) }, climate: { ...initialClimate, ...(saved.climate ?? {}) } };
+    return { ...initialState, ...saved, fromMenu: false, navSeq: 0, rideReq: 0, modal: null, plotSelected: false, toast: null, roundsOpen: false, roundsView: null, roundsDemo: null, worldDemo: null, trialsOpen: false, bizOpen: false, roundsTrial: false, backTo: null, rounds: { ...initialState.rounds, ...(saved.rounds ?? {}) }, settings: { ...DEFAULT_SETTINGS, ...(saved.settings ?? {}) }, climate: { ...initialClimate, ...(saved.climate ?? {}) } };
   } catch {
     return initialState;
   }

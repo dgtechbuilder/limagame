@@ -117,6 +117,13 @@ const SCREENS: { label: string; group: string; state: Partial<GameState> }[] = [
   { group: 'Climate', label: 'Climate · Shocks', state: { climate: CLIMATE_SAMPLE, modal: { kind: 'climate', tab: 'shocks' } } },
   { group: 'Climate', label: 'Climate · Activity', state: { climate: CLIMATE_SAMPLE, modal: { kind: 'climate', tab: 'activity' } } },
   { group: 'Climate', label: 'Climate · New game', state: { modal: { kind: 'climate', tab: 'overview' } } },
+  { group: 'Partnerships', label: 'Partnerships · Overview', state: { modal: { kind: 'partners', tab: 'overview' } } },
+  { group: 'Partnerships', label: 'Partnerships · Farm inputs', state: { partnerPicks: ['seed'], modal: { kind: 'partners', tab: 'inputs' } } },
+  { group: 'Partnerships', label: 'Partnerships · Tools & machines', state: { modal: { kind: 'partners', tab: 'machines' } } },
+  { group: 'Partnerships', label: 'Partnerships · Transport & market', state: { modal: { kind: 'partners', tab: 'market' } } },
+  { group: 'Partnerships', label: 'Partnerships · Learning', state: { modal: { kind: 'partners', tab: 'learning' } } },
+  { group: 'Partnerships', label: 'Partnerships · Money & climate', state: { modal: { kind: 'partners', tab: 'money' } } },
+  { group: 'Partnerships', label: 'Partnerships · Shortlist', state: { partnerPicks: ['seed', 'fertilizer', 'truck', 'training'], modal: { kind: 'partners', tab: 'shortlist' } } },
 ];
 
 export function ReviewPicker({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {

@@ -9,6 +9,8 @@ import { FarmMap } from './components/FarmMap';
 const Rounds = lazy(() => import('./rounds/Rounds').then(m => ({ default: m.Rounds })));
 const Trials = lazy(() => import('./trials/Trials').then(m => ({ default: m.Trials })));
 const Business = lazy(() => import('./business/Business').then(m => ({ default: m.Business })));
+// Partnerships are for partners, so players never download them unless they open the page
+const PartnersPage = lazy(() => import('./partners/Partners').then(m => ({ default: m.PartnersPage })));
 const World = lazy(() => import('./world/World').then(m => ({ default: m.World })));
 // design review (?review=1) only: its sample screens are computed when it is opened, never for players
 const ReviewPicker = lazy(() => import('./review/Review').then(m => ({ default: m.ReviewPicker })));
@@ -178,6 +180,11 @@ export default function App() {
         {m?.kind === 'welcome' && <WelcomeModal s={s} dispatch={dispatch} />}
         {m?.kind === 'settings' && <SettingsPage s={s} dispatch={dispatch} tab={m.tab} />}
         {m?.kind === 'climate' && <ClimatePage s={s} dispatch={dispatch} tab={m.tab} />}
+        {m?.kind === 'partners' && (
+          <Suspense fallback={null}>
+            <PartnersPage s={s} dispatch={dispatch} tab={m.tab} />
+          </Suspense>
+        )}
         {m?.kind === 'shop' && <ShopModal s={s} tab={m.tab} dispatch={dispatch} />}
         {m?.kind === 'steps' && <StepsModal s={s} step={m.step} dispatch={dispatch} />}
         {m?.kind === 'sale' && <SaleModal s={s} dispatch={dispatch} />}

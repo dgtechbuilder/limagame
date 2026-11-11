@@ -16,6 +16,7 @@ export function MainMenu({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
     ? [
         { label: 'Back to the game', note: 'Carry on where you were', run: () => dispatch({ type: 'close' }) },
         { label: 'How the farm works', note: 'A quick guide', run: () => open({ kind: 'welcome' }) },
+        { label: 'Partnerships', note: 'Ways to partner with Lima', run: () => open({ kind: 'partners' }) },
         { label: 'Settings', note: 'Full screen, reset', run: () => open({ kind: 'settings' }) },
       ]
     : [
@@ -27,6 +28,7 @@ export function MainMenu({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
         { label: 'Shop', note: 'Seeds, fertilizer, tools', run: () => open({ kind: 'shop', tab: 'food' }) },
         { label: 'Climate', note: 'Emissions, water, soil, credits', run: () => open({ kind: 'climate' }) },
         { label: 'Rewards', note: 'Points for real discounts', run: () => open({ kind: 'rewards' }) },
+        { label: 'Partnerships', note: 'Seed, fertilizer, trucks, training…', run: () => open({ kind: 'partners' }) },
         { label: 'Farming steps', note: 'The classic maize season', run: () => open({ kind: 'steps', step: 'landprep' }) },
         { label: 'Settings', note: 'Farm view, full screen', run: () => open({ kind: 'settings' }) },
       ];

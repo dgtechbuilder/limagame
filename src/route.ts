@@ -1,5 +1,6 @@
 import type { ShopTab, StepId } from './data';
 import { STORY } from './first/data';
+import type { PartnerTab } from './partners/data';
 import { CHECK_DAYS, currentDay } from './trials/model';
 import { dayNumber } from './rounds/farms';
 import type { Action, ClimateTab, FsPhase, GameState, Modal, SettingsTab } from './state';
@@ -18,6 +19,15 @@ const STORY_PAGES = STORY.length;
 const SETTINGS: Record<SettingsTab, string> = { farmer: 'my-farmer', game: 'game', display: 'display', help: 'help' };
 const CLIMATE: Record<ClimateTab, string> = { overview: 'overview', emissions: 'emissions', water: 'water-and-soil', shocks: 'shocks', activity: 'activity' };
 const SHOP: Record<ShopTab, string> = { food: 'food', fertilizer: 'fertilizer', tank: 'water-tanks', equipment: 'equipment' };
+const PARTNERS: Record<PartnerTab, string> = {
+  overview: 'overview',
+  inputs: 'farm-inputs',
+  machines: 'tools-and-machines',
+  market: 'transport-and-market',
+  learning: 'learning',
+  money: 'money-and-climate',
+  shortlist: 'shortlist',
+};
 const STEPS: Record<StepId, string> = { landprep: 'land-prep', planting: 'planting', fertilizer: 'fertilizer', pesticides: 'pesticides', water: 'water', harvest: 'harvest' };
 /** Screens with no sections, by address. */
 const SIMPLE = {
@@ -64,6 +74,8 @@ function modalPath(s: GameState, m: Modal): string {
       return `/shop/${SHOP[m.tab]}`;
     case 'steps':
       return `/steps/${STEPS[m.step]}`;
+    case 'partners':
+      return `/partners/${PARTNERS[m.tab ?? 'overview']}`;
     default:
       return `/${SIMPLE[m.kind]}`;
   }
@@ -113,6 +125,10 @@ function modalFor(s: GameState, parts: string[]): Modal | null | 'bad' {
     const t = tab(STEPS);
     return t === 'bad' ? 'bad' : { kind: 'steps', step: t ?? 'landprep' };
   }
+  if (first === 'partners') {
+    const t = tab(PARTNERS);
+    return t === 'bad' ? 'bad' : { kind: 'partners', tab: t ?? 'overview' };
+  }
   const simple = key(SIMPLE, first);
   if (!simple) return null;
   return second === undefined ? ({ kind: simple } as Modal) : 'bad';
@@ -129,8 +145,8 @@ export function routeTo(s: GameState, raw: string): Action[] {
 
   /* ---------- the first session ---------- */
   if (phase !== 'done') {
-    // the menu and Settings are open during the first session, as their buttons are
-    if (modal) return modal.kind === 'menu' || modal.kind === 'settings' ? [{ type: 'open', modal }] : say('Finish checking your first crops to open the rest of the farm.');
+    // the menu, Settings and Partnerships are open during the first session, as their buttons are
+    if (modal) return modal.kind === 'menu' || modal.kind === 'settings' || modal.kind === 'partners' ? [{ type: 'open', modal }] : say('Finish checking your first crops to open the rest of the farm.');
     const close: Action[] = s.modal ? [{ type: 'close' }, { type: 'close' }] : [];
     const step = (to: FsPhase, page?: number): Action[] => [...close, { type: 'fs', phase: to, page }];
     // the step the player is on (e.g. Back from the menu to it)
