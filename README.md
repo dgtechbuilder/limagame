@@ -346,10 +346,11 @@ WASD. The **task card** at the top says what to do next; tap it and the farmer w
 ![The farm world](docs/farm-world.webp)
 
 - **The six farms** each have **20 plots** (4 × 5 tiles, Plot 1 at the back left), Farms 1–3 at the back and 4–6 in
-  front, each with a sign. **Clearing and planting are done one plot at a time**: the farmer stands on a plot, a
-  **Clear** or **Plant** button shows under them, and pressing it starts a **3-second timer** (a stopwatch over the
-  farmer, its ring filling). Walking off the plot stops the timer and the plot stays as it was. The task card counts
-  the plots left and walks the farmer to the next one. The other jobs are done by walking over the plots with the tool
+  front, each with a sign. The plots make **4 rows of 5** (each row runs from the back of the farm to the front).
+  **Clearing and planting are done a row at a time**: the farmer stands anywhere in a row, a **Clear Row 1** or
+  **Plant Row 1** button shows under them, and pressing it starts a **3-second timer** (a stopwatch over the farmer,
+  its ring filling) that does all 5 plots of the row. Walking off the row stops the timer and the row stays as it
+  was. The task card counts the rows left (*4 of 4 rows left*) and walks the farmer to the next one. The other jobs are done by walking over the plots with the tool
   or load they need:
   - **land prep** by hand is the Clear button (the plan says how: hoe, sickle or mulch); **tractor hire** and
     **oxen** are hired at the **Hire** spot by the shed, and plough the farms themselves while the farmer works elsewhere;
@@ -595,8 +596,9 @@ barely covers its diesel, so a good route and the right jobs to pass on matter.
 
 **Every farm is 20 plots**: its 4 × 5 tiles, Plot 1 at the back left to Plot 20 at the front right
 (`PLOTS_PER_FARM` in `src/plots/data.ts`; `plotAt` in `src/world/field.ts` finds the plot under the farmer). The work
-done is a 20-bit mask per farm and job, one bit per plot. **Clearing and planting are done a plot at a time** with the
-Clear and Plant buttons and a 3-second timer (`PLOT_WORK_S`); the other jobs by walking over the plots.
+done is a 20-bit mask per farm and job, one bit per plot. The plots make 4 rows of 5 (`FARM_ROWS`, `rowMask` in
+`src/world/field.ts`). **Clearing and planting are done a row at a time** with the Clear and Plant buttons and a
+3-second timer (`PLOT_WORK_S`), which marks every plot of the row; the other jobs by walking over the plots.
 
 **Inputs are one set per farm**: one seed, one fertilizer and one sprayer for all 20 plots, so the six farms compare
 them. Every word and number is in `src/plots/data.ts`, for an agronomist's review.
