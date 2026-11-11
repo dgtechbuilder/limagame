@@ -77,6 +77,7 @@ export function pathOf(s: GameState): string {
   if (phase !== 'done') return `/${FIRST[phase]}`;
   if (s.roundsOpen) return s.roundsTrial ? '/rounds/six-farms' : '/rounds';
   if (s.trialsOpen) return '/mission';
+  if (s.bizOpen) return '/tractor-business';
   return '/farm';
 }
 
@@ -147,7 +148,7 @@ export function routeTo(s: GameState, raw: string): Action[] {
     if (to === 'walk1') return s.farmer && early ? step('walk1') : say('Read your story first, then walk to your maize.');
     // the farm update comes on arriving at the maize: it can be read again from the first check
     if (to === 'update') return phase === 'review1' ? step('update') : say('Walk to your maize first: the farm update is waiting there.');
-    if (to || ['farm', 'rounds', 'mission'].includes(parts[0])) return say('Finish checking your first crops to open the rest of the farm.');
+    if (to || ['farm', 'rounds', 'mission', 'tractor-business'].includes(parts[0])) return say('Finish checking your first crops to open the rest of the farm.');
     return say(NOT_FOUND);
   }
 
@@ -157,6 +158,7 @@ export function routeTo(s: GameState, raw: string): Action[] {
   if (path === '/rounds') return [{ type: 'home' }, { type: 'rounds', open: true, trial: false }];
   if (path === '/rounds/six-farms') return sixFarmsDue(s) ? [{ type: 'home' }, { type: 'rounds', open: true, trial: true }] : say('Your six farms have no checks today: plant them from Mission first.');
   if (path === '/mission') return [{ type: 'home' }, { type: 'trials', open: true }];
+  if (path === '/tractor-business') return [{ type: 'home' }, { type: 'biz', open: true }];
   if (parts[0] === 'story' || key(FIRST, parts.join('/'))) return say('You have finished your first crop checks: welcome back to your farm.');
   return say(NOT_FOUND);
 }

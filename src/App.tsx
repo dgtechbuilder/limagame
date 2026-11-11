@@ -8,6 +8,7 @@ import { FarmMap } from './components/FarmMap';
 // the field rounds are loaded only when opened, so the first session stays as small as before
 const Rounds = lazy(() => import('./rounds/Rounds').then(m => ({ default: m.Rounds })));
 const Trials = lazy(() => import('./trials/Trials').then(m => ({ default: m.Trials })));
+const Business = lazy(() => import('./business/Business').then(m => ({ default: m.Business })));
 const World = lazy(() => import('./world/World').then(m => ({ default: m.World })));
 // design review (?review=1) only: its sample screens are computed when it is opened, never for players
 const ReviewPicker = lazy(() => import('./review/Review').then(m => ({ default: m.ReviewPicker })));
@@ -152,10 +153,10 @@ export default function App() {
             {s.view === 'world' ? (
               <Suspense fallback={<div className="abs world" style={{ inset: 0 }} />}>
                 {/* a new farm is built when the character style or the graphics change */}
-                <World key={`${s.settings.art}-${s.settings.graphics}`} s={s} dispatch={dispatch} paused={s.roundsOpen || s.trialsOpen || !!m} />
+                <World key={`${s.settings.art}-${s.settings.graphics}`} s={s} dispatch={dispatch} paused={s.roundsOpen || s.trialsOpen || s.bizOpen || !!m} />
               </Suspense>
             ) : (
-              !s.roundsOpen && !s.trialsOpen && <FarmScene s={s} dispatch={dispatch} />
+              !s.roundsOpen && !s.trialsOpen && !s.bizOpen && <FarmScene s={s} dispatch={dispatch} />
             )}
             {s.roundsOpen ? (
               <Suspense fallback={<FarmMap />}>
@@ -164,6 +165,10 @@ export default function App() {
             ) : s.trialsOpen ? (
               <Suspense fallback={<FarmMap />}>
                 <Trials s={s} dispatch={dispatch} />
+              </Suspense>
+            ) : s.bizOpen ? (
+              <Suspense fallback={<FarmMap />}>
+                <Business s={s} dispatch={dispatch} />
               </Suspense>
             ) : null}
           </>

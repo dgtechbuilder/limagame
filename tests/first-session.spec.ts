@@ -1,17 +1,15 @@
 import { expect, test, type Page } from '@playwright/test';
-import { boot, eventNames, lookAtAll, state, type Win } from './helpers';
+import { boot, closeCheer, eventNames, flipMistakes, lookAtAll, playLastSeason, readStory, state, type Win } from './helpers';
 
 /* Regression: the first session, read right first time and with a wrong call, and saving and resetting. None of
    this changed with the Wakala Agent work; these tests keep it that way. */
 
-async function createFarmer(page: Page, readStory = true) {
+async function createFarmer(page: Page, read = true) {
   await page.locator('.name-chip', { hasText: 'Wanjiku' }).click();
   await page.getByRole('button', { name: "Twende! Let's go", exact: true }).click();
   await expect.poll(async () => (await state(page)).fs.phase).toBe('story');
-  if (!readStory) return;
-  await page.getByRole('button', { name: 'Next', exact: true }).click();
-  await page.getByRole('button', { name: 'Next', exact: true }).click();
-  await page.getByRole('button', { name: 'Start with my maize', exact: true }).click();
+  if (!read) return;
+  await readStory(page);
   await expect.poll(async () => (await state(page)).fs.phase).toBe('walk1');
 }
 
@@ -36,29 +34,63 @@ async function review(page: Page, shamba: string, right: boolean) {
   await page.locator('.calls .call-btn', { hasText: new RegExp(`^${call}$`) }).click();
 }
 
-test('the story so far: three pages, back, skip, and the Back button', async ({ page }) => {
+test('the story so far: sign for the farm, play last season, press =, turn over the mistakes', async ({ page }) => {
   await boot(page);
   await createFarmer(page, false);
   const card = page.locator('.story-card');
+  const next = page.getByRole('button', { name: 'Next', exact: true });
+
+  // page 1: the sign says FOR SALE and Next waits until the farmer signs; then their name is written on the deed
   await expect(card.locator('.story-title')).toHaveText('A farm of my own');
   await expect(card).toContainText('Wanjiku saved from a job in town');
-  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(card.locator('.story-wait')).toHaveText('Sign for your farm to go on');
+  await expect(next).toHaveCount(0);
+  // signing: the name goes on the deed, then a pop-up welcomes the farmer by name
+  await page.getByRole('button', { name: /Sign for my farm/ }).click();
+  await expect(page.locator('.story-cheer-line')).toHaveText('Hi Wanjiku, welcome to your farm.');
+  await expect(next).toHaveCount(0);
+  await closeCheer(page, 'Congratulations!');
+  await expect(card.locator('.story-sign')).toHaveText('Wanjiku', { timeout: 5000 });
+  await expect(card).toContainText('Signed. This farm is yours, Wanjiku.');
+  await next.click();
+
+  // page 2: the steps go in order, each with a timer; the sum's = shows the loss
   await expect(card.locator('.story-title')).toHaveText('The harvest that failed');
-  await expect(card.locator('.story-ledger .is-lost')).toContainText('KSh 23,500');
+  await expect(card.locator('.story-step', { hasText: 'Weed the farm' })).toBeDisabled();
+  await card.locator('.story-step', { hasText: 'Plant the season' }).click();
+  await expect(page.getByRole('timer')).toBeVisible();
+  await expect(card.locator('.story-caption')).toHaveText('Planting maize and sukuma wiki…');
+  // the pop-up holds the next step until Continue
+  await expect(page.locator('.story-cheer-title')).toHaveText('Well done, Wanjiku!', { timeout: 5000 });
+  await expect(card.locator('.story-step', { hasText: 'Weed the farm' })).toBeDisabled();
+  await closeCheer(page, 'Well done, Wanjiku!');
+  await expect(card.locator('.story-caption')).toHaveText('Seed, fertiliser and labour went in: KSh 38,000 spent.');
+  // the financial result waits for the harvest
+  await expect(card.locator('.story-sum')).toHaveCount(0);
+  await playLastSeason(page);
+  await expect(card).toContainText('Most of the money was lost.');
+
+  // Previous keeps what was done: page 1 stays signed
   await page.getByRole('button', { name: 'Previous', exact: true }).click();
-  await expect(card.locator('.story-title')).toHaveText('A farm of my own');
-  await page.getByRole('button', { name: 'Next', exact: true }).click();
-  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(card.locator('.story-deed-done')).toBeVisible();
+  await next.click();
+  await next.click();
+
+  // page 3: Start waits until every mistake is turned over
   await expect(card.locator('.story-title')).toHaveText('What went wrong');
   await expect(card.locator('.story-mistakes li')).toHaveCount(3);
+  await expect(page.getByRole('button', { name: 'Start with my maize', exact: true })).toHaveCount(0);
+  await flipMistakes(page);
+  await expect(card.locator('.story-mistakes b')).toHaveCount(3);
   await page.getByRole('button', { name: 'Start with my maize', exact: true }).click();
   await expect.poll(async () => (await state(page)).fs.phase).toBe('walk1');
+
   // Back from the walk returns to the story; Skip goes straight to the walk
   await page.locator('.nav-btn[aria-label="Back"]').click();
   await expect.poll(async () => (await state(page)).fs.phase).toBe('story');
   await page.getByRole('button', { name: 'Skip story', exact: true }).click();
   await expect.poll(async () => (await state(page)).fs.phase).toBe('walk1');
-  expect(await eventNames(page)).toEqual(expect.arrayContaining(['story_page', 'story_done', 'story_skipped']));
+  expect(await eventNames(page)).toEqual(expect.arrayContaining(['story_page', 'story_signed', 'story_step', 'story_sum', 'story_done', 'story_skipped']));
 });
 
 test('the farm update on arriving at the maize, and what each problem puts at stake', async ({ page }) => {

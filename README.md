@@ -31,6 +31,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [The farm world](#the-farm-world)
 - [The six farms](#the-six-farms)
 - [From Wakala Agent](#from-wakala-agent)
+- [The tractor business](#the-tractor-business)
 - [Plots and inputs](#plots-and-inputs)
 - [Navigation and the main menu](#navigation-and-the-main-menu)
 - [Page addresses](#page-addresses)
@@ -156,19 +157,28 @@ A new player never sees the farm screen first. Everything happens on their own f
 
 1. **Create the farmer** — name plus one of four looks, saved immediately. The name is used in every line
    from then on, and the farmer's portrait replaces the HUD avatar.
-2. **The story so far** — three pages, each with a picture drawn in the first session's own art
-   ([`src/first/Story.tsx`](src/first/Story.tsx); the words are `STORY` in [`src/first/data.ts`](src/first/data.ts)):
-   - *A farm of my own*: the farmer saved from a job in town and bought this farm. The plan was to plant maize and
-     sukuma wiki, come back at harvest, and sell.
-   - *The harvest that failed*: caterpillars ate the maize before anyone looked closely, and the sukuma wiki at
-     the back dried out. Spent KSh 38,000, earned KSh 14,500, lost KSh 23,500. A real photo of fall armyworm
-     (credited) shows the damage up close.
-   - *What went wrong*: three mistakes, each crossed out with what to do instead. These are the lessons the game
-     teaches next: check every bed often (the maize check), water by the soil (the sukuma wiki check), and plan
-     when to harvest, store and sell (the season). **Start with my maize** begins the walk.
+2. **The story so far** — three pages, each with something to do, in the first session's own art
+   ([`src/first/Story.tsx`](src/first/Story.tsx); the words are `STORY` in [`src/first/data.ts`](src/first/data.ts)).
+   Next shows once a page's part is done (*Sign for your farm to go on* until then); *Skip story* is always there,
+   and *Previous* keeps what was done.
+   Every action ends with a pop-up and **Continue**: signing — *Congratulations! Hi Chebet, welcome to your farm*;
+   planting — *Well done, Chebet!*; weeding — *Good job!*; the harvest — *Congratulations! Your first harvest is
+   done*, then *Your first harvest: here is the financial result* above the sum.
+   - *A farm of my own*: the farmer saved from a job in town and bought this farm. The signpost says FOR SALE and the
+     title deed's owner line is blank: **Sign for my farm** writes the player's name onto the deed a letter at a
+     time, and the signpost becomes *Chebet's farm* with a SOLD sticker.
+   - *The harvest that failed*: last season, played a step at a time. **Plant the season**, **Weed the farm**
+     and **Harvest** each run a short timer (`STORY_STEP_S`, 2 seconds, a ring in the button) while the picture
+     changes: bare rows, sprouts, ragged maize with a real armyworm photo (credited) and dry sukuma wiki, then
+     stubble and one small sack. The sum fills in as it goes (Spent KSh 38,000 − Earned ?), and **=** reveals the
+     loss, counting up to KSh 23,500.
+   - *What went wrong*: three mistakes, each crossed out; tap one to turn it over and see what to do instead, and its
+     line is ticked in the farmer's notebook. These are the lessons the game teaches next: check every bed often
+     (the maize check), water by the soil (the sukuma wiki check), and plan when to harvest, store and sell (the
+     season). **Start with my maize** begins the walk once all three are turned over.
 
-   *Skip story* goes straight to the walk; *Previous* steps back a page; the top Back button goes from the story
-   to creating the farmer, and from the walk back to the story. Events: `story_page`, `story_done`, `story_skipped`.
+   The top Back button goes from the story to creating the farmer, and from the walk back to the story. Events:
+   `story_page`, `story_signed`, `story_step`, `story_sum`, `story_done`, `story_skipped`.
 3. **Walk to the maize** — on the Figma map: in along the dirt path, up the grass to the front maize bed.
    The first tap or drag moves the farmer; a pulsing ring shows where to tap. About 10–15 seconds.
    - **The farm update** (on arriving, before the first check): *week 7 of the season*. The farm has been running for
@@ -523,6 +533,44 @@ read right and wrong, saving and *Reset progress*, the tractor's type and tool o
 seed shed and in the plan, the results by plot, and a tour on a 740 × 340 touch screen that saves screenshots to
 `test-results/tour/`. They run on every pull request (`.github/workflows/tests.yml`).
 
+## The tractor business
+
+Wakala's tractor work, grown into a business the player runs: **Tractor business** in the main menu, or
+**BUSINESS** on the farm (under TRACTOR); address `#/tractor-business`. The goal is to build a tractor service that
+helps more farmers, more efficiently. Code: `src/business/model.ts` (every rule and number, no screens) and
+`src/business/Business.tsx`.
+
+**A day** (the *Today* tab)
+
+- **Bookings.** A village map: the player's tractor yard and the farms around it (12 km across). Each day some
+  farmers book work on one or two **parts of their farm** (*Top field: disc plough, 1.5 acres*), the same farms for
+  the same day on a reload. More farms book as the business grows, and two more with the co-op.
+- **My tractor or a partner.** Tap a farm, and book each part for **my tractor** or pass it to a **partner**. Each
+  button shows what that choice leaves the business: the hire less the job's diesel (in red when it's thin), or the
+  partner's 10%. A job needs its implement on the player's tractor; without one it can still go to the partner.
+- **The route.** The farms booked for the tractor make the route (yard → stops → yard), drawn on the map; **↑**
+  moves a stop earlier. Live meters: hours (a day is 9: driving at 14 km/h plus the work), the route's km against the
+  **shortest possible**, as an efficiency %, and the day's hire, diesel, driver and profit.
+- **Start the day.** The tractor drives the route on the map, then the day's result: stars (any work; a route within
+  5% of the shortest; no farmer left waiting), the money, what the farmers saved against doing the work by hand,
+  and the jobs nobody took. Each farmer helped pays the player 20 points (Lima's rewards).
+
+**Partners**: Kimani Tractor Hire (takes passed-on bookings, 10% to the player; signed from the start), Lake Farmers'
+Co-op (two more farms a day), Rafiki Fuel (diesel 10% cheaper), County Roads Office (rents the tractor for a whole
+day, KSh 12,000), Shamba Booking App (**Shortest route** in one tap). Most open at a business level, some for a fee.
+
+**Fleet**: the standard tractor with a disc plough and harrow to start; buy a ridger, a boom sprayer, a maize planter,
+or a large tractor (30% faster work, 50% more diesel).
+
+**Levels** by farmers helped: 1 *One tractor, one driver*, 2 *Known in the village* (8), 3 *The ward's tractor
+service* (20), 4 *A tractor business* (40), 5 *The county's tractor service* (80).
+
+**Numbers.** The business keeps its own account in shillings (it starts with KSh 20,000). Hire per acre, diesel
+(KSh 228 a litre) and hand-work days are Wakala's figures (`tractor/data.ts` `MONEY`, `IMPL`), with their sources;
+road speed and diesel, work rates, the driver's KSh 1,000 a day, the partner's share and the shop's prices are
+**game estimates**, marked in the code. The real margins are thin: ploughing and planting pay well, harrowing far away
+barely covers its diesel, so a good route and the right jobs to pass on matter.
+
 ## Plots and inputs
 
 **Every farm is 20 plots**: its 4 × 5 tiles, Plot 1 at the back left to Plot 20 at the front right
@@ -587,6 +635,7 @@ reload without losing their place, bookmark a page, and use the browser's **Back
 | `#/menu` | Main menu |
 | `#/rounds` · `#/rounds/six-farms` | Field rounds: every bed, or today's checks of the six farms |
 | `#/mission` | Mission: the six farms |
+| `#/tractor-business` | The tractor business |
 | `#/settings/my-farmer` · `game` · `display` · `help` | Settings, by section |
 | `#/climate/overview` · `emissions` · `water-and-soil` · `shocks` · `activity` | Climate, by section |
 | `#/shop/food` · `fertilizer` · `water-tanks` · `equipment` | Shop, by tab |

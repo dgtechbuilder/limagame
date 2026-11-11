@@ -30,6 +30,7 @@ import { TRACTOR_PLOT, plotCost, setPlotInput, toolName, type PlotJob, type Plot
 import { initialClimate, type ClimateState } from './climate/model';
 import { trackClimate } from './climate/track';
 import { routeTo } from './route';
+import { POINTS_A_FARMER, SHOP, hireOutDay, newBiz, partnerBlock, partnerOf, planDay, requestsFor, runDay, shopBlock, type Biz, type Bookings, type FleetItem, type PartnerId } from './business/model';
 import {
   GROWING_STEPS,
   HARVEST_EFFECT,
@@ -137,6 +138,9 @@ export interface GameState {
   /** the plan the player kept from an earlier cycle; the next cycle starts from it */
   recipe: Plan | null;
   trialsOpen: boolean;
+  /** the tractor business (business/model.ts); missing in saves from before it */
+  biz?: Biz;
+  bizOpen: boolean;
   /** the field rounds are checking the six farms (not the everyday beds) */
   roundsTrial: boolean;
   // field rounds
@@ -215,6 +219,7 @@ export const initialState: GameState = {
   trialHistory: [],
   recipe: null,
   trialsOpen: false,
+  bizOpen: false,
   roundsTrial: false,
   rounds: { start: null, day: 0, done: {} },
   roundsOpen: false,
@@ -368,6 +373,13 @@ export type Action =
   /** farm world: a before-planting tractor drive finished (the drive's coins and points are worked out by the screen) */
   | { type: 'tractorDone'; farm: number; score: number; stars: number; Q: number; coins: number; points: number; diesel?: number; co2?: number; clim?: number }
   | { type: 'fs'; phase: FsPhase; at?: 'first' | 'lower'; opened?: boolean; note?: string; page?: number }
+  /** the tractor business: open or close it; run a day (the plan is worked out again here); hire the tractor out
+      for a day; sign a partner; buy for the fleet */
+  | { type: 'biz'; open: boolean }
+  | { type: 'bizRun'; bookings: Bookings; route: string[] }
+  | { type: 'bizHireOut' }
+  | { type: 'bizPartner'; id: PartnerId }
+  | { type: 'bizBuy'; item: FleetItem }
   /** go to a web address (src/route.ts): the screen it names, if the player may go there now */
   | { type: 'route'; path: string };
 
@@ -383,6 +395,8 @@ const gainXp = (s: GameState, amount: number) => {
   return { xp, level };
 };
 const fmt = (n: number) => n.toLocaleString('en-US');
+/** A message's first letter lowered, so names and units like KSh keep their capitals. */
+const lowerFirst = (x: string) => x.charAt(0).toLowerCase() + x.slice(1);
 
 /** Every action, then the climate it changed (src/climate/track.ts). */
 export function reducer(s: GameState, a: Action): GameState {
@@ -399,9 +413,9 @@ function play(s: GameState, a: Action): GameState {
       // a screen opened from the main menu goes back to the menu
       return s.fromMenu && s.modal && s.modal.kind !== 'menu' ? { ...s, modal: { kind: 'menu' }, fromMenu: false } : { ...s, modal: null, fromMenu: false };
     case 'ride':
-      return { ...s, modal: null, fromMenu: false, plotSelected: false, roundsOpen: false, roundsTrial: false, roundsView: null, roundsDemo: null, trialsOpen: false, worldDemo: null, navSeq: s.navSeq + 1, rideReq: s.rideReq + 1, toast: s.view === 'world' ? s.toast : toast('The tractor is on the 3D farm: switch the farm view in Settings') };
+      return { ...s, modal: null, fromMenu: false, plotSelected: false, roundsOpen: false, roundsTrial: false, roundsView: null, roundsDemo: null, trialsOpen: false, bizOpen: false, worldDemo: null, navSeq: s.navSeq + 1, rideReq: s.rideReq + 1, toast: s.view === 'world' ? s.toast : toast('The tractor is on the 3D farm: switch the farm view in Settings') };
     case 'home':
-      return { ...s, modal: null, fromMenu: false, plotSelected: false, roundsOpen: false, roundsTrial: false, roundsView: null, roundsDemo: null, trialsOpen: false, worldDemo: null, navSeq: s.navSeq + 1 };
+      return { ...s, modal: null, fromMenu: false, plotSelected: false, roundsOpen: false, roundsTrial: false, roundsView: null, roundsDemo: null, trialsOpen: false, bizOpen: false, worldDemo: null, navSeq: s.navSeq + 1 };
     case 'selectPlot':
       return { ...s, plotSelected: a.on };
     case 'onboarded':
@@ -874,6 +888,45 @@ function play(s: GameState, a: Action): GameState {
       };
     case 'route':
       return routeTo(s, a.path).reduce(play, s);
+    case 'biz':
+      return {
+        ...s,
+        bizOpen: a.open,
+        biz: s.biz ?? newBiz(),
+        roundsOpen: false,
+        roundsTrial: false,
+        trialsOpen: false,
+        modal: !a.open && s.fromMenu ? { kind: 'menu' } : null,
+        fromMenu: a.open ? s.modal?.kind === 'menu' || s.fromMenu : false,
+        plotSelected: false,
+      };
+    case 'bizRun': {
+      const b = s.biz ?? newBiz();
+      const plan = planDay(b, requestsFor(b), a.bookings, a.route);
+      if (plan.problem) return { ...s, toast: toast(plan.problem) };
+      const { biz, result } = runDay(b, plan);
+      const helped = result.farmers + result.partnerFarmers;
+      return { ...s, biz, points: s.points + helped * POINTS_A_FARMER, ...gainXp(s, 0.02 * helped) };
+    }
+    case 'bizHireOut': {
+      const b = s.biz ?? newBiz();
+      if (!b.partners.includes('county')) return s;
+      return { ...s, biz: hireOutDay(b, requestsFor(b).length).biz };
+    }
+    case 'bizPartner': {
+      const b = s.biz ?? newBiz();
+      const block = partnerBlock(b, a.id);
+      if (block) return { ...s, toast: toast(`${partnerOf(a.id).name}: ${lowerFirst(block)}`) };
+      return { ...s, biz: { ...b, cash: b.cash - partnerOf(a.id).fee, partners: [...b.partners, a.id] }, toast: toast(`Signed with ${partnerOf(a.id).name}`) };
+    }
+    case 'bizBuy': {
+      const b = s.biz ?? newBiz();
+      const block = shopBlock(b, a.item);
+      const item = SHOP.find(x => x.id === a.item)!;
+      if (block) return { ...s, toast: toast(`${item.name}: ${lowerFirst(block)}`) };
+      const next = a.item === 'large' ? { ...b, tractor: 'large' as const } : { ...b, tools: [...b.tools, a.item] };
+      return { ...s, biz: { ...next, cash: b.cash - item.price }, toast: toast(`Bought: ${item.name}`) };
+    }
   }
 }
 
@@ -882,7 +935,7 @@ function play(s: GameState, a: Action): GameState {
 /* ------------------------------------------------------------------ */
 
 const SAVE_KEY = 'lima-farming-game:v2';
-const TRANSIENT: (keyof GameState)[] = ['fromMenu', 'navSeq', 'rideReq', 'modal', 'plotSelected', 'toast', 'roundsOpen', 'roundsView', 'roundsDemo', 'worldDemo', 'trialsOpen', 'roundsTrial'];
+const TRANSIENT: (keyof GameState)[] = ['fromMenu', 'navSeq', 'rideReq', 'modal', 'plotSelected', 'toast', 'roundsOpen', 'roundsView', 'roundsDemo', 'worldDemo', 'trialsOpen', 'roundsTrial', 'bizOpen'];
 
 /** Design-review links (?review or ?screen) use a throwaway game so they never touch a player's save. */
 export const reviewing = () => {
@@ -911,7 +964,7 @@ function loadSaved(): GameState {
     const saved = JSON.parse(raw);
     // Saves from before the farm had one owner may carry a reminder about neighbours.
     if (typeof saved.note === 'string' && /Achieng|neighbour/i.test(saved.note)) saved.note = 'Check every bed on your farm often: open Rounds on the farm.';
-    return { ...initialState, ...saved, fromMenu: false, navSeq: 0, rideReq: 0, modal: null, plotSelected: false, toast: null, roundsOpen: false, roundsView: null, roundsDemo: null, worldDemo: null, trialsOpen: false, roundsTrial: false, rounds: { ...initialState.rounds, ...(saved.rounds ?? {}) }, settings: { ...DEFAULT_SETTINGS, ...(saved.settings ?? {}) }, climate: { ...initialClimate, ...(saved.climate ?? {}) } };
+    return { ...initialState, ...saved, fromMenu: false, navSeq: 0, rideReq: 0, modal: null, plotSelected: false, toast: null, roundsOpen: false, roundsView: null, roundsDemo: null, worldDemo: null, trialsOpen: false, bizOpen: false, roundsTrial: false, rounds: { ...initialState.rounds, ...(saved.rounds ?? {}) }, settings: { ...DEFAULT_SETTINGS, ...(saved.settings ?? {}) }, climate: { ...initialClimate, ...(saved.climate ?? {}) } };
   } catch {
     return initialState;
   }
