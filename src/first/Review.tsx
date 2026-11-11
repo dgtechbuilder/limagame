@@ -19,7 +19,7 @@ const PARTS: PartId[] = ['crop', 'pests', 'soil', 'layout'];
 type Step = 'look' | 'spot' | 'judge' | 'right' | 'wrong';
 
 /** One-sentence line from the guide, with an optional button. Used on every first-session screen. */
-export function GuideLine({ text, action, style }: { text: ReactNode; action?: { label: string; onClick: () => void; aria?: string }; style?: CSSProperties }) {
+export function GuideLine({ text, action, style, face }: { text: ReactNode; action?: { label: string; onClick: () => void; aria?: string }; style?: CSSProperties; face?: ReactNode }) {
   // Read aloud: the guide says each new line
   const voice = useVoice();
   const line = typeof text === 'string' ? text : '';
@@ -28,9 +28,7 @@ export function GuideLine({ text, action, style }: { text: ReactNode; action?: {
   }, [voice, line]);
   return (
     <div className="guide-line" style={style}>
-      <span className="guide-face">
-        <GuideFace />
-      </span>
+      <span className="guide-face">{face ?? <GuideFace />}</span>
       <p key={String(text)} className="guide-text" role="status">
         {text}
       </p>

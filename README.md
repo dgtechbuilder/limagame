@@ -543,54 +543,122 @@ seed shed and in the plan, the results by plot, and a tour on a 740 × 340 touch
 
 ## The tractor business
 
-Wakala's tractor work, grown into a business the player runs: **Tractor business** in the main menu, or
-**BUSINESS** on the farm (under TRACTOR); address `#/tractor-business`. The goal is to build a tractor service that
-helps more farmers, more efficiently. Code: `src/business/model.ts` (every rule and number, no screens) and
-`src/business/Business.tsx`.
+Built to Hello Tractor's game brief (*Tractor Wars: from Booking Agent to Tractor Owner*): **Tractor business** in
+the main menu, or **BUSINESS** on the farm (under TRACTOR); address `#/tractor-business`. The player is a **Booking
+Agent** in the **Narok hub territory**, with no land and no machine: they scout farms, book mechanised work on the
+hub's tractor (or pass it to a partner), drive the tractor at every stop, and build a book of business dense and
+reliable enough to be financed into a tractor of their own. Code: `src/business/model.ts` (every rule and number, no
+screens; every value the brief calls tunable is a named constant), `src/business/drive.ts` (the minigame's rules),
+`src/business/Business.tsx` and `src/business/DriveGame.tsx` (the screens), `src/business/Cast.tsx` and `cast/` (the
+brand's five characters).
+
+![Campbell scouts a farm](docs/business-campbell.webp)
+![The ten-second drive at a farm](docs/business-drive.webp)
+![The day's result with the efficiency score and the SER](docs/business-result.webp)
 
 **A day** (the *Today* tab)
 
-- **Bookings.** A village map: the player's tractor yard and the farms around it (about 13 km across). **The village
-  is laid out afresh every day**: the yard, the nine farms and up to three crossroads are scattered at random (seeded
-  by the day, so a reload shows the same map), and **winding murram roads join every farm to every other**. Roads
-  are laid shortest first, never crossing another road or running through a farm, then some are dropped so the
-  network has loops and dead ends to think about (`mapFor` in `model.ts`). Distances are along the roads (a curve's
-  length, not the straight line), so the shortest way round is not always the obvious one. Each day some
-  farmers book work on one or two **parts of their farm** (*Top field: disc plough, 1.5 acres*), the same farms for
-  the same day on a reload. More farms book as the business grows, and two more with the co-op.
-- **My tractor or a partner.** Tap a farm, and book each part for **my tractor** or pass it to a **partner**. Each
-  button shows what that choice leaves the business: the hire less the job's diesel (in red when it's thin), or the
-  partner's 10%. A job needs its implement on the player's tractor; without one it can still go to the partner.
-- **At least three farms.** The player's tractor must visit at least **three farms** a day (`MIN_STOPS`; fewer only
-  on a day when fewer farms have a job its implements can do, or when even the quickest three can't fit in a day).
-  Meters: *Farms for your tractor, 2 of 3 needed* and the work hours of a 9-hour day (*+ driving*).
-- **Plan the route.** **Next: plan the route**, then tap the farms in the order the tractor will visit them (yard →
-  stops → yard); the strip under the map fills in *1 Akinyi, 2 Mutua, ?*. **Undo last stop** and **Clear route**
-  start over. There is **no route line, no km and no "shortest" hint** while planning: the player judges distance
-  from the roads alone. The day only has to fit with the shortest way round (work + shortest drive ≤ 9 hours); a
-  longer route costs more diesel and, past 9 hours, the driver's overtime (1.5× their hourly pay).
-- **Start the day.** The tractor drives the roads on the map, then the day's result with the **efficiency score**
-  (out of 100: the shortest route's km against the player's): *The most efficient route!* or *Not the most
-  efficient route: yours was 28.5 km; the best was 23.4 km*, with both orders written out. Stars: any work; the most
-  efficient route (99.5% or better); no farmer left waiting. Then the money, what the farmers saved against doing the
-  work by hand, and the jobs nobody took. Each farmer helped pays the player 20 points (Lima's rewards).
+- **The territory.** A map of the Narok hub: the yard and nine farms, six **inside the territory** (a sage ellipse
+  with a dashed Sunset Blaze edge) and three outside it, placed near the map's edges and marked with a dashed
+  Hibiscus border. **The map is laid out afresh every day** (seeded by the day, so a reload shows the same map), with
+  winding murram roads joining every farm to every other; distances are along the roads, and there is no route line,
+  no km and no "shortest" hint while planning (`mapFor` in `model.ts`). Farms inside the territory book more often.
+- **Narok's calendar and the Knowledge Graph.** Three business days make a month, and the game opens in February
+  (`DAYS_A_MONTH`, `START_MONTH`): 36 days are a year. Each part of a farm grows a crop (maize, wheat, barley, beans
+  or potatoes), and each day's bookings are **in window for that crop this month** (`CROPS`: land preparation,
+  planting, fertilizer application, harvest; transport all year). The windows are seeded from public agronomy for
+  Narok County and are to be signed off by Hello Tractor's agronomy team before the territory ships (the brief, §7.1).
+- **Project Campbell (Loop A).** Tap a farm and Campbell scouts it: the crop on its first booked part, what is in
+  window this month, the **practice it flags** (*plans to plant by hand two weeks after the land is ready*) and the
+  recommendation (*plant with the tractor right after land prep, inside the window*). **Deliver the advice** and the
+  farmer answers in Wekeza's voice: a yes adds the recommended job to today's bookings (*on your advice*); a no says
+  why. One recommendation a farm a day. If the next activity is out of window, Campbell says when the window opens:
+  the lesson is the window, by consequence, not by quiz.
+- **The territory advantage (Loop B).** How likely a farmer is to take the advice (`ACCEPT`): inside the territory
+  55%, plus 25 points for the **Hub Manager's demo plot** on that crop and 15 for the **CX Team's follow-up call**
+  (95% with both); outside the territory 25%, with neither. The *Hub* tab lets the player ask the Hub Manager for one
+  demo plot per business level, and explains the CX Team in Caro's voice.
+- **My tractor or a partner.** Each part of the farm is booked for **the hub tractor** the agent dispatches, or
+  passed to a **partner**. Each button shows what that choice leaves the business: the hire less the job's diesel and
+  **the hub's 25% share of its tractor** (`HUB_SHARE`, until the agent owns one), or the partner's 10%. A job needs its
+  tool on the tractor: a plough, a harrow and a trailer to start; the planter, spreader and harvester are bought in
+  Fleet. Wheat and barley harvests need a combine (below): pass them on for the commission.
+- **At least three farms, then the route**, as before: tap the farms in the order the tractor visits them (yard →
+  stops → yard). The day only has to fit with the shortest way round (work + shortest drive ≤ 9 hours).
+- **Density: the Service Efficiency Ratio (Loop C, §5.1).** `SER = acres serviced ÷ km driven`. The *Density* meter
+  shows the band while booking (from the shortest route, which stays hidden). Below the **floor** the sparsest stop
+  (the one whose acres are least worth the km driven for them) is **dropped as unserviceable**, then the next, until
+  the rest clear the floor: the farmer waits, the booking does not close, and the day's counted acres are halved.
+  The brief's real-world v1 values (1.0 and 4.0 acres a km) are scaled to the game's sprawling 13 km map: `SER =
+  { floor: 0.1, healthy: 0.3 }`, tunable (the median day sits near 0.25).
+- **Start the day: drive the tractor at every stop.** The tractor drives each leg along the roads on the map; at
+  each farm the **ten-second drive** opens (`DriveGame.tsx`, rules in `drive.ts`):
+  - **A field job** (plough, harrow, ridge, plant, spread, harvest): the farmer's field from above, four passes of
+    the implement tall, with a rock, a tree or a stump in the way. Tap and hold where the tractor should go (or steer
+    with the arrow keys): the implement works a swath behind it. The **field efficiency** is the share of the field
+    worked when the time is up; a tidy serpentine makes 85–95% in about seven seconds; knocks stop the tractor.
+  - **A transport job** (the trailer): a haulage run down a murram road with potholes, puddles and ruts, three
+    lanes, ten bags on the trailer. Tap a lane (or the arrow keys) to miss them; every hit drops a bag.
+  - **Let the driver do it** hands the stop to the hub driver at the brief's **65–75% field efficiency on small,
+    irregular plots** (`BASELINE` = 0.7), which is exactly the planned job. A drive at or above the baseline closes
+    the job; a better one saves up to 25% of its diesel and, at 90% or more, pays 15 points for *a clean drive*; one
+    under 80% of the baseline leaves the job **unfinished**: the hire is cut to the share done and the booking does
+    not close. The drives are seeded by the day and the farm, and the main menu pauses them.
+- **The result.** The efficiency score (the shortest route's km against the player's) as before, now with the
+  day's **SER** beside it, the farmers helped, clean drives, a **neighbourhood synchronised** (three or more farms
+  booked on the same activity the same day: +30 points), anything dropped or unfinished, the money (hire, partner
+  commissions, diesel, driver, the hub's share, and the PAYG instalment once the agent owns a tractor), the
+  fulfilment of the day and the counted acres earned.
 
-**Partners**: Kimani Tractor Hire (takes passed-on bookings, 10% to the player; signed from the start), Lake Farmers'
-Co-op (two more farms a day), Rafiki Fuel (diesel 10% cheaper), County Roads Office (rents the tractor for a whole
-day, KSh 120,000), Shamba Booking App (**Shortest route** in one tap, on the route step). Most open at a business level, some for a fee.
+**The two numbers (§5)**, computed every day and shown in the header: the **fulfilment rate** (bookings closed
+against every booking there was: unbooked requests expire, dropped and unfinished jobs do not close) and the **SER**
+over the last week. Fulfilment is the agent's reputation: the *Hub* tab's **community leaderboard** ranks the player
+among seven other agents (simulated, their rates drifting slowly); at 90% or better one more farm books each day, under
+60% one fewer (`REPUTATION`).
 
-**Fleet**: the standard tractor with a disc plough and harrow to start; buy a ridger, a boom sprayer, a maize planter,
-or a large tractor (30% faster work, 50% more diesel).
+**Counted acres (Loop D)** = physical acres × unique activities on each part of a farm this year (`Biz.done`): 100
+acres of land prep alone count 100; the same acres prepared, planted, fertilised and harvested count 400. Every job the
+agent books counts, on the tractor or through a partner; a repeat of the same activity on the same part counts
+nothing more; the record starts afresh each year. The header's bar shows the way to the next threshold.
 
-**Levels** by farmers helped: 1 *One tractor, one driver*, 2 *Known in the village* (8), 3 *The ward's tractor
-service* (20), 4 *A tractor business* (40), 5 *The county's tractor service* (80).
+**Graduation and PAYG (§2.2, §5.4, §7.2)**, all in `PAYG`: at **700 counted acres and 80% fulfilment** Sasha delivers
+the graduation moment and the agent signs for a **45HP tractor** (4 acres of field work a day; KSh 1,800,000 on screen,
+paid from 30% of each day's hire); at **1,235** the **75HP** (10 acres a day). The hub's share ends; the capacity rule
+begins (*Your 45HP tractor can do 4 acres of field work a day*; transport does not count against it). Utilisation of
+the capacity under 50% over a rolling week, or fulfilment under 60%, puts the tractor in a **warning state**; five days
+in a row and it is **repossessed** (seven days before the agent can qualify again). The *Fleet* tab shows the loan;
+the *Calendar* tab shows each month's utilisation as a bar, with Gitonga's and Aziza's lines.
+
+**The Marketplace (Loop E).** Once the agent owns a tractor, agents in Hello Tractor's other hubs (Nakuru, Kisumu,
+Meru, Eldoret, their seasons offset from Narok's by `HUBS`) post **contracts** for the day: a day's work away in an
+activity in window there. Offers appear on *Today* when nothing is on the player's tractor; taking one runs the day
+away (the tractor's acres count toward utilisation and the loan; Narok's bookings that day can still be passed to a
+partner). The brief wants peer-to-peer trading between live agents at launch; this game has no accounts or server,
+so simulated peers stand in (the brief's "liquidity backstop"), and the data shape (`Offer`) is ready for a live feed.
+
+**The combine** is a separate asset, not financed under PAYG: it opens in *Fleet* once the agent owns both tractors
+(`shopBlock`), and takes the wheat and barley harvests that otherwise go to partners for a commission.
+
+**Partners** (Kimani Tractor Hire, the Narok Farmers' Co-op, Rafiki Fuel, the County Roads Office, the Hello Tractor
+app), **Fleet** (ridger, fertilizer spreader, maize planter, tractor harvester, the hub's large tractor, the combine)
+and **levels** by farmers helped are as before.
+
+**Hello Tractor's voice (§6).** The business screens use the brand's palette (Sunset Blaze `#FF461E`, Hibiscus
+`#F8285F`, Plum `#2F1C54`, Sage `#93C393`, Summer Breeze `#93C2C6`, Charcoal `#161616`) and type (Merriweather for
+headings, Manrope for body copy: the brand's web fallbacks, fetched from Google Fonts only when the business opens, so
+the game's first screen stays as light as before), the speech-bubble supergraphic for every character's line, and a
+Sunset Blaze → Plum gradient for the graduation moment. The five characters from the brief are in-game guides:
+**Sasha** (the welcome, graduation), **Caro** (the coach on the guide line, the CX Team), **Aziza** (the path to
+ownership, PAYG), **Wekeza** (the farmer's answer to advice) and **Gitonga** (the owner, on the calendar and fleet).
+Their pictures are cropped below the head and never rotated, on palette colours (`src/business/cast/*.webp`, 2–5 KB
+each).
 
 **Numbers.** The business keeps its own account in shillings (it starts with KSh 200,000 on screen). Hire per acre,
 diesel and hand-work days are Wakala's figures (`tractor/data.ts` `MONEY`, `IMPL`), with their sources, shown at
-10 times like every value in the game (see *Money on screen*); road speed (20 km/h) and diesel, work rates, the
-driver's KSh 10,000 a day, the partner's share and the shop's prices are
-**game estimates**, marked in the code. The real margins are thin: ploughing and planting pay well, harrowing far away
-barely covers its diesel, so a good route and the right jobs to pass on matter.
+10 times like every value in the game (see *Money on screen*); the trailer's and the combine's hire, road speed
+(20 km/h) and diesel, work rates, the driver's KSh 10,000 a day, the hub's and the partner's shares, the shop's
+prices, the SER thresholds, the acceptance chances and the PAYG prices are **game estimates**, marked in the code.
+Saves from before the brief gain the new fields (`bizOf`).
 
 ## Plots and inputs
 
@@ -826,6 +894,14 @@ player's saved game or events.
 - Design review's sample screens are a separate chunk: players do not build them at start (about 25 ms on a
   computer, several times that on a phone). The farm world is fetched in the background a few seconds after the
   game opens, so it is ready when the farm does. The Poppins font no longer holds up the first picture.
+- **The tractor business and its drive minigame** (`tests/perf.spec.ts`, the CPU slowed 4× over the software
+  renderer): the business is its own chunk (about 31 KB compressed, the five characters' pictures included), fetched
+  when it opens; the brand fonts load only then. While the tractor drives a road leg on the map, its position is set
+  straight on a composited element each frame (no React re-render, the SVG map underneath not repainted): about 18
+  frames a second here. The ten-second drive draws one small canvas (420 × 224 or less, at 2×): the field's
+  background is painted once, only the cells the implement just worked are repainted, and the clock and the count
+  are written straight into the HUD, not through React state: about 23 frames a second here, with no long task
+  over 140 ms. A real phone rasterises on its GPU, so both run far smoother there.
 - A service worker (`public/sw.js`, published game only) keeps the game on the phone: a second visit opens without
   downloading it again, and the game plays on a weak signal. The page is fetched fresh when there is a connection,
   so an update shows at once.

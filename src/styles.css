@@ -1530,3 +1530,145 @@ button.card:active { transform: scale(0.98); }
 .biz-result .biz-sheet div { padding: 1px 0; font-size: 11px; }
 .biz-result .biz-sheet .is-total { font-size: 12.5px; }
 .biz-meters { gap: 3px; }
+
+/* ---------------- tractor business: Hello Tractor's brand system (the brief, §6) ---------------- */
+/* Palette: Sunset Blaze, Hibiscus, Plum, Sage, Summer Breeze, Charcoal. Type: Merriweather (headings) and Manrope
+   (body), the brand's web fallbacks, fetched when the business opens. Characters sit on palette colours only. */
+.biz.ht {
+  --ht-blaze: #ff461e; --ht-hibiscus: #f8285f; --ht-plum: #2f1c54; --ht-sage: #93c393; --ht-breeze: #93c2c6; --ht-charcoal: #161616;
+  font-family: Manrope, Poppins, system-ui, sans-serif;
+}
+.biz.ht .biz-result-title, .biz.ht .ht-grad-title, .biz.ht .biz-card > b, .biz.ht .biz-farm-title b, .biz.ht .biz-eff-text > b { font-family: Merriweather, Georgia, serif; }
+.biz.ht .biz-level b { color: var(--ht-blaze); }
+.biz.ht .biz-bar > span { background: linear-gradient(90deg, var(--ht-blaze), var(--ht-hibiscus)); }
+.biz.ht .biz-tabs button.is-on { background: var(--ht-blaze); border-color: #c93414; }
+.biz.ht .biz-seg button.is-on { background: var(--ht-blaze); border-color: #c93414; }
+.biz.ht .biz-seg button.is-on.is-partner { background: var(--ht-plum); border-color: #1d1035; }
+.biz.ht .biz-pin.is-next > rect { animation-name: htNext; }
+@keyframes htNext { from { stroke: #fff; } to { stroke: var(--ht-blaze); stroke-width: 3.5px; } }
+.biz.ht .biz-route li b { background: var(--ht-blaze); }
+.biz.ht .biz-route li.is-drop { border-color: var(--ht-hibiscus); color: var(--ht-hibiscus); }
+.biz.ht .biz-route li.is-drop b { background: var(--ht-hibiscus); }
+.biz-head { gap: 8px; }
+.biz-level { min-width: 150px; }
+.biz-stat { padding-left: 8px; white-space: nowrap; }
+.biz-tractor { position: absolute; left: -14px; top: -14px; width: 28px; height: 28px; pointer-events: none; will-change: transform; }
+.biz-tractor svg { display: block; }
+.biz-meter-row { display: flex; gap: 10px; }
+.biz-meter-row .biz-meter { flex: 1; min-width: 0; }
+.biz-meter-row .biz-meter span:first-child { white-space: nowrap; overflow: hidden; }
+.biz-counted { min-width: 92px; max-width: 150px; }
+.biz-counted small { overflow: hidden; text-overflow: ellipsis; }
+.biz-counted .biz-bar { width: 100%; margin: 2px 0 0; }
+.biz-two { min-width: 44px; }
+.biz-two.is-good { color: #2f7d27; }
+.biz-two.is-ok { color: #e08e0b; }
+.biz-two.is-low { color: var(--ht-hibiscus); }
+.biz-tabs button { padding: 4px 9px; }
+.biz-part.is-extra { border-color: var(--ht-sage); background: #eef7ea; }
+.ht-tag { margin-left: 4px; padding: 1px 6px; border-radius: 100px; font-size: 8.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; }
+.ht-tag.is-out { background: #fde3ea; color: var(--ht-hibiscus); }
+.biz-stop { display: inline-block; margin: 0 6px 2px 0; padding: 1px 6px; border-radius: 100px; background: #fff; border: 1px solid var(--brown-20); }
+.biz-stop.is-done { background: #eefbe8; border-color: var(--ht-sage); }
+.biz-stop.is-now { background: var(--ht-blaze); border-color: #c93414; color: #fff; }
+.biz-stop i { font-style: normal; font-weight: 800; }
+.biz-result-line.is-warn { color: var(--ht-hibiscus); }
+
+/* the characters and the speech-bubble supergraphic */
+.ht-face { display: block; border-radius: 10px; object-fit: cover; object-position: top; flex-shrink: 0; }
+.guide-face .ht-face { border-radius: 100px; width: 100%; height: 100%; }
+.ht-says { display: flex; align-items: flex-start; gap: 8px; }
+.ht-says-face { display: flex; flex-direction: column; align-items: center; gap: 1px; flex-shrink: 0; }
+.ht-says-face small { font-size: 8.5px; font-weight: 800; color: var(--ht-plum); }
+.ht-bubble { position: relative; flex: 1; padding: 8px 12px; border-radius: 18px; font-size: 11px; font-weight: 600; line-height: 1.38; }
+.ht-bubble::before { content: ''; position: absolute; left: -7px; top: 10px; width: 14px; height: 14px; border-radius: 3px; transform: rotate(45deg); background: inherit; }
+.ht-says.is-white .ht-bubble { background: #fff; color: var(--ht-charcoal); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12); }
+.ht-says.is-blaze .ht-bubble { background: var(--ht-blaze); color: #fff; }
+.ht-says.is-plum .ht-bubble { background: var(--ht-plum); color: #fff; }
+.ht-says.is-sage .ht-bubble { background: #e4f1e1; color: var(--ht-charcoal); }
+
+/* Sasha's welcome, and the graduation moment (a Sunset Blaze → Plum gradient, the brief's big-moment device) */
+.ht-card { position: relative; width: 560px; padding: 14px 20px 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: left; }
+.ht-card .ht-says { width: 100%; }
+.ht-card .gold-btn { align-self: center; }
+.ht-plum { background: linear-gradient(160deg, #fff5f0, #efe8f6); }
+.ht-steps { width: 100%; margin: 0; padding: 0 0 0 4px; list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 3px 12px; font-size: 10.5px; line-height: 1.3; }
+.ht-steps li b { color: var(--ht-blaze); }
+.ht-grad { background: linear-gradient(135deg, var(--ht-blaze), var(--ht-plum)); color: #fff; box-shadow: 0 0 0 4px #fff, 0 0 0 7px var(--ht-plum), 0 10px 24px rgba(0, 0, 0, 0.3); }
+.ht-grad-title { margin: 0; font-size: 22px; font-weight: 900; }
+.ht-grad .ht-says-face small { color: #fff; }
+
+/* Campbell's scan on the farm panel */
+.ht-campbell { padding: 6px 8px; border-radius: 10px; background: #fff; border: 1.5px solid var(--ht-breeze); display: flex; flex-direction: column; gap: 3px; }
+.ht-campbell-head { margin: 0; font-size: 9.5px; font-weight: 700; color: var(--ht-plum); line-height: 1.3; }
+.ht-campbell-head b { color: var(--ht-blaze); }
+.ht-campbell-flag { margin: 0; font-size: 10px; font-weight: 600; line-height: 1.3; }
+.ht-campbell-flag i { font-style: normal; color: #2f7d27; }
+.ht-deliver { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 4px 9px; border-radius: 100px; background: var(--ht-blaze); color: #fff; font-size: 10px; font-weight: 800; text-align: left; }
+.ht-deliver i { font-style: normal; font-size: 9px; opacity: 0.9; white-space: nowrap; }
+.ht-campbell-why { font-size: 8.5px; font-weight: 600; color: var(--brown-70); line-height: 1.3; }
+.ht-answer { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 600; line-height: 1.3; }
+.ht-answer.is-yes { color: #2f7d27; }
+.ht-answer.is-no { color: var(--ht-hibiscus); }
+
+/* the marketplace offers on a quiet day */
+.ht-offers { display: flex; flex-direction: column; gap: 3px; margin-top: 2px; }
+.ht-offers > small { font-size: 8.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ht-plum); }
+.ht-offer { display: flex; flex-direction: column; align-items: flex-start; padding: 4px 8px; border-radius: 9px; background: #fff; border: 1.5px solid var(--ht-breeze); font-size: 10px; text-align: left; line-height: 1.25; }
+.ht-offer b { color: var(--ht-plum); }
+.ht-offer:disabled { opacity: 0.5; }
+
+/* the SER on the result */
+.ht-ser { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; line-height: 1; padding-left: 10px; border-left: 1.5px solid var(--brown-20); }
+.ht-ser small { font-size: 8.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--brown-70); }
+.ht-ser b { font-size: 20px; font-weight: 900; }
+.ht-ser i { font-style: normal; font-size: 8.5px; font-weight: 700; }
+.ht-ser.is-healthy b { color: #2f7d27; }
+.ht-ser.is-ok b { color: #e08e0b; }
+.ht-ser.is-low b { color: var(--ht-hibiscus); }
+
+/* the Hub: demo plots, the CX Team, the leaderboard */
+.ht-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.ht-chip { padding: 3px 9px; border-radius: 100px; font-size: 10px; font-weight: 800; background: #fff; border: 1.5px solid var(--ht-breeze); color: var(--ht-plum); }
+.ht-chip.is-on { background: var(--ht-sage); border-color: #6ea56e; color: var(--ht-charcoal); }
+.ht-chip:disabled:not(.is-on) { opacity: 0.45; }
+.ht-rank { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 1px; font-size: 10px; }
+.ht-rank li { display: flex; align-items: center; gap: 6px; padding: 1px 6px; border-radius: 6px; }
+.ht-rank li.is-you { background: #fff0ec; font-weight: 800; color: var(--ht-blaze); }
+.ht-rank i { font-style: normal; width: 12px; font-weight: 800; color: var(--brown-70); }
+.ht-rank span { flex: 1; }
+.ht-rank small { font-size: 8.5px; color: var(--brown-70); margin-left: 3px; }
+.ht-board p { margin-top: 3px; }
+
+/* the Calendar: Narok's year */
+.ht-cal { position: absolute; left: 16px; right: 16px; top: 96px; bottom: 10px; display: grid; grid-template-columns: 1.7fr 1fr 1fr; grid-template-rows: 1fr; gap: 8px; }
+.ht-cal .biz-card p { margin-top: 2px; }
+.ht-months { width: 100%; border-collapse: collapse; font-size: 8.5px; table-layout: fixed; }
+.ht-months th { font-weight: 800; text-align: left; padding: 1px 2px; color: var(--ht-plum); white-space: nowrap; }
+.ht-months thead th { text-align: center; }
+.ht-months thead th.is-now { color: var(--ht-blaze); }
+.ht-months td { height: 15px; text-align: center; font-weight: 800; color: #fff; border: 1px solid #fff; border-radius: 3px; background: var(--brown-05); }
+.ht-months td.is-landprep { background: #a67c52; }
+.ht-months td.is-planting { background: var(--ht-sage); color: var(--ht-charcoal); }
+.ht-months td.is-fertilizer { background: var(--ht-breeze); color: var(--ht-charcoal); }
+.ht-months td.is-harvest { background: #e0a23a; }
+.ht-months td.is-now { outline: 2px solid var(--ht-blaze); outline-offset: -2px; }
+.ht-months tbody th:first-child { width: 54px; }
+.ht-worked td { position: relative; color: var(--ht-charcoal); background: #fff; vertical-align: bottom; }
+.ht-util { position: absolute; left: 3px; right: 3px; bottom: 0; background: var(--ht-sage); border-radius: 2px 2px 0 0; }
+.ht-util.is-low { background: var(--ht-hibiscus); }
+.ht-legend { margin: 3px 0 0; font-size: 8.5px; font-weight: 600; color: var(--brown-70); line-height: 1.3; }
+.ht-hub .biz-card .ht-says { margin-top: 2px; }
+
+/* ---------------- tractor business: the ten-second drive at a farm ---------------- */
+.drv { position: absolute; inset: 0; background: rgba(22, 22, 22, 0.78); border-radius: 12px; }
+.drv-hud { position: absolute; left: 0; right: 0; top: 0; height: 24px; display: flex; align-items: center; gap: 8px; padding: 0 10px; color: #fff; font-size: 11px; font-weight: 800; }
+.drv-clock { width: 40px; font-variant-numeric: tabular-nums; }
+.drv-bar { flex: 1; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.25); overflow: hidden; }
+.drv-bar > span { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #ff461e, #f8285f); }
+.drv-stat { min-width: 70px; text-align: right; font-variant-numeric: tabular-nums; }
+.drv-note { position: absolute; left: 50%; top: 30px; transform: translateX(-50%); padding: 2px 10px; border-radius: 100px; background: #f8285f; color: #fff; font-size: 10.5px; white-space: nowrap; pointer-events: none; }
+.drv-note:empty { display: none; }
+.drv-canvas { position: absolute; border-radius: 8px; touch-action: none; cursor: crosshair; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5); }
+.drv-canvas.is-haul { cursor: pointer; }
+.drv-tip { position: absolute; left: 10px; right: 10px; bottom: 2px; margin: 0; color: rgba(255, 255, 255, 0.85); font-size: 9px; font-weight: 600; text-align: center; line-height: 1.2; pointer-events: none; }

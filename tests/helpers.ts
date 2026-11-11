@@ -19,6 +19,7 @@ type Win = Window & {
     sfx: () => ('action' | 'flow')[];
     clearEvents: () => void;
     tractorClock: (scale: number) => void;
+    driveClock: (scale: number) => void;
     plots: { x: number; z: number }[];
   };
   __limaWorld?: {

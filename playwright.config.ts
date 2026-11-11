@@ -25,8 +25,9 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 874, height: 402 },
-        // the 3D farm needs WebGL: software rendering on machines without a GPU
-        launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] },
+        // the 3D farm needs WebGL: software rendering on machines without a GPU (LIMA_CHROMIUM: a Chromium already
+        // on the machine, instead of Playwright's own)
+        launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'], ...(process.env.LIMA_CHROMIUM ? { executablePath: process.env.LIMA_CHROMIUM } : {}) },
       },
     },
   ],
