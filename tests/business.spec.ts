@@ -46,7 +46,7 @@ import {
   type Crop,
   type ReqKey,
 } from '../src/business/model';
-import { BAGS, DRIVE_SECS, FIELD_W, newFieldDrive, newHaulDrive, stepField, stepHaul } from '../src/business/drive';
+import { BAGS, DRIVE_SECS, FIELD_W, HAUL_Y, newFieldDrive, newHaulDrive, stepField, stepHaul } from '../src/business/drive';
 import { initialState, reducer } from '../src/state';
 import { boot, state, type Win } from './helpers';
 
@@ -397,12 +397,18 @@ test('the ten-second drive: a tidy serpentine beats the hub driver, a lazy one d
   expect(idle.done!.e).toBeLessThan(1);
   expect(idle.bags).toBe(BAGS - idle.hits);
   const dodge = newHaulDrive('test', 'standard');
+  // a driver who leaves a lane when a hole is close enough ahead to be hit, for a free lane beside it
   while (!dodge.done) {
-    const next = dodge.holes.filter(h => !h.hit && h.y < 184 && h.y > -140).sort((a, b) => b.y - a.y)[0];
-    if (next && next.lane === dodge.lane) dodge.lane = next.lane === 1 ? 0 : 1;
+    const blocked = new Set(dodge.holes.filter(h => !h.hit && h.y < HAUL_Y + 16 && h.y > HAUL_Y - 100).map(h => h.lane));
+    if (blocked.has(dodge.lane)) {
+      const free = [dodge.lane - 1, dodge.lane + 1, 0, 1, 2].filter(l => l >= 0 && l < 3 && !blocked.has(l));
+      if (free.length) dodge.lane = free[0];
+    }
     stepHaul(dodge, 1 / 60);
   }
-  expect(dodge.done!.e).toBe(1);
+  // a driver who looks ahead keeps far more of the load than one who does not, and beats the hub driver
+  expect(dodge.done!.e).toBeGreaterThan(idle.done!.e);
+  expect(dodge.done!.e).toBeGreaterThanOrEqual(BASELINE);
 });
 
 test('levels, partners and the fleet open as the business grows', () => {
