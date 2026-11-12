@@ -4,6 +4,9 @@ import { boot, eventNames, lookAndCall, scenario, state, tapTask, workFarm, type
 /* From Wakala Agent, in the farm world: the fix after a right call, the work by hand, follow-up care, a missed
    follow-up, and the safety kit before spraying. */
 
+/** The sheds' doors (PLACES in world/engine.ts). */
+const SHEDS = { fertilizer: { x: -14.2, z: 0 }, sprayer: { x: -14.2, z: 1.9 } };
+
 test('a world check: right call, a wrong fix, the right fix, then the work by hand', async ({ page }) => {
   await boot(page);
   const c = await scenario(page, 'voice');
@@ -88,6 +91,20 @@ test('a spray job: the safety kit, then the product', async ({ page }) => {
   await expect(page.locator('.pb-grid .pb-cell')).toContainText('Knapsack');
   await page.getByRole('button', { name: 'Pick up the sprayer', exact: true }).click();
   await expect.poll(async () => (await state(page)).field.carry).toBe('sprayer');
+  // from the sprayer shed's door to Farm 1's first plot, the path crosses the fertilizer shed's door: walking through
+  // on the way keeps the sprayer (it used to be swapped for fertilizer, and the spray never started)
+  await page.evaluate(at => {
+    const w = (window as unknown as Win).__limaWorld!;
+    w.spawn(at.x, at.z);
+    const t = w.nextTile(0);
+    w.walkTo(t.x, t.z);
+  }, SHEDS.sprayer);
+  // past the fertilizer shed (its door is at z = 0) and on the way into Farm 1
+  await page.waitForFunction(() => (window as unknown as Win).__limaWorld!.farmerAt().z < -3);
+  expect((await state(page)).field.carry).toBe('sprayer');
   await workFarm(page, 0, async () => !!(await state(page)).trial.checks[`0:${c.day}`]?.treated, 120);
   expect(await eventNames(page)).toEqual(expect.arrayContaining(['kit_on', 'product']));
+  // walking to a shed on purpose still hands over its load
+  await page.evaluate(p => (window as unknown as Win).__limaWorld!.walkTo(p.x, p.z), SHEDS.fertilizer);
+  await expect(page.locator('.hud-hint')).toHaveText('Picked up: fertilizer bag');
 });

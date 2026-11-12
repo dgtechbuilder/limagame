@@ -1321,7 +1321,12 @@ export class FarmWorld {
   private places() {
     let now: Place | null = null;
     for (const [k, p] of Object.entries(PLACES) as [Place, (typeof PLACES)[Place]][]) {
-      if (Math.hypot(this.pos.x - p.x, this.pos.y - p.z) < p.r) now = k;
+      if (Math.hypot(this.pos.x - p.x, this.pos.y - p.z) >= p.r) continue;
+      // walking through on the way to a tapped spot elsewhere is not a visit: the sheds sit close together, and the
+      // path from one to a farm can cross the next one's door (it would swap the sprayer for fertilizer). Stopping
+      // there, or steering in with the joystick or keys, still counts.
+      if (this.target && Math.hypot(this.target.x - p.x, this.target.y - p.z) >= p.r) continue;
+      now = k;
     }
     if (now !== this.inPlace) {
       this.inPlace = now;
