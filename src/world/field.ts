@@ -8,7 +8,7 @@
    No pictures or three.js here, so the saved game can use it. */
 
 import { PRESCRIBE, followUpTitle } from '../care/data';
-import { PLOTS_PER_FARM, type PlotKind } from '../plots/data';
+import { PLOTS_PER_FARM, ROUTINE, ROUTINE_JOBS, type PlotKind, type RoutineJob } from '../plots/data';
 import {
   CHECK_DAYS,
   DAMAGE,
@@ -19,6 +19,8 @@ import {
   currentDay,
   hazardFor,
   plotsOf,
+  routineApplies,
+  routineDone,
   type FollowUp,
   type Plan,
   type Trial,
@@ -132,6 +134,9 @@ export const JOB_CARRY: Partial<Record<string, Exclude<Carry, null>>> = {
   setupFeed: 'fertilizer',
   water: 'water',
   spray: 'sprayer',
+  // scheduled care (ROUTINE): weeding needs nothing carried
+  borer: 'sprayer',
+  topdress: 'fertilizer',
 };
 
 function hash(text: string) {
@@ -201,7 +206,7 @@ export function sprayDone(f: Field, t: Trial, farm: number): boolean {
     if (t.followUps?.some(u => u.farm === farm && u.day === day && u.job === 'spray' && u.done)) return true;
     if (doneMask(f, t.cycle, farm, `t${day}`) && TREAT_JOB[hazardFor(t, farm, day)] === 'spray') return true;
   }
-  return false;
+  return routineDone(t, farm, 'borer');
 }
 
 /** Why a farm's input can no longer be changed (some of it is in the ground), or null. */
@@ -253,6 +258,17 @@ export function followUpLeft(f: Field, t: Trial, farm: number, day: number): { j
 /** The work by hand a farm is waiting for today: its treatment first, then its follow-up. */
 export const careLeft = (f: Field, t: Trial, farm: number, day: number) => treatLeft(f, t, farm, day) ?? followUpLeft(f, t, farm, day);
 
+/** The scheduled care a farm is due today and has not done yet (plots/data.ts ROUTINE), in calendar order: on
+    either of its days, once the farm is planted. Its work is marked under the job's name, on all 20 plots. */
+export function routineLeft(f: Field, t: Trial, farm: number, day: number): { job: RoutineJob; key: string; need: number }[] {
+  if (!t.routine || day < 1 || day > CHECK_DAYS || setupLeft(f, t, farm)) return [];
+  return ROUTINE_JOBS.filter(job => ROUTINE[job].from <= day && day <= ROUTINE[job].by && routineApplies(t, farm, job) && !routineDone(t, farm, job)).map(job => ({
+    job,
+    key: job,
+    need: FULL,
+  }));
+}
+
 export const treatCost = (h: TrialHazard) => DAMAGE[h].treat;
 
 /** Whether any job left today still uses what the farmer is carrying (if not, it is put down). */
@@ -263,19 +279,24 @@ export function carryNeeded(f: Field, t: Trial, day: number): boolean {
     if (setup) return JOB_CARRY[setup] === f.carry;
     const tr = treatLeft(f, t, farm, day);
     const fu = followUpLeft(f, t, farm, day);
-    return (!!tr && JOB_CARRY[tr.job] === f.carry) || (!!fu && JOB_CARRY[fu.job] === f.carry);
+    if ((!!tr && JOB_CARRY[tr.job] === f.carry) || (!!fu && JOB_CARRY[fu.job] === f.carry)) return true;
+    return routineLeft(f, t, farm, day).some(r => JOB_CARRY[r.job] === f.carry);
   });
 }
 
+/** What a spray job is against: a problem a check found, or stalk borer (scheduled care). */
+export type SprayFor = TrialHazard | 'borer';
+
 /** The spray jobs waiting today, by farm: what the safety kit and product questions at the shed are for. */
-export function sprayJobs(f: Field, t: Trial, day: number): { farm: number; hazard: TrialHazard }[] {
-  const out: { farm: number; hazard: TrialHazard }[] = [];
+export function sprayJobs(f: Field, t: Trial, day: number): { farm: number; hazard: SprayFor }[] {
+  const out: { farm: number; hazard: SprayFor }[] = [];
   t.plans.forEach((_, farm) => {
     if (setupLeft(f, t, farm)) return;
     const tr = treatLeft(f, t, farm, day);
     if (tr?.job === 'spray') out.push({ farm, hazard: tr.hazard });
     const fu = followUpLeft(f, t, farm, day);
     if (fu?.job === 'spray') out.push({ farm, hazard: fu.hazard });
+    if (routineLeft(f, t, farm, day).some(r => r.job === 'borer')) out.push({ farm, hazard: 'borer' });
   });
   return out;
 }
@@ -302,6 +323,9 @@ export interface Task {
 export type Place = 'mission' | 'shed-seeds' | 'shed-fertilizer' | 'shed-sprayer' | 'pond' | 'hire' | 'market' | 'house';
 export type TaskIcon = 'plan' | 'hoe' | 'seeds' | 'fertilizer' | 'check' | 'weed' | 'water' | 'spray' | 'drain' | 'goat' | 'birds' | 'tractor' | 'corn' | 'sleep' | 'wait' | 'results';
 
+/** The task card's icon for each scheduled care job. */
+export const ROUTINE_ICON: Record<RoutineJob, TaskIcon> = { weeding: 'weed', borer: 'spray', topdress: 'fertilizer' };
+
 export const JOB_WORDS: Record<string, { title: string; icon: TaskIcon }> = {
   weed: { title: 'Cut the weeds on', icon: 'weed' },
   water: { title: 'Water', icon: 'water' },
@@ -311,6 +335,9 @@ export const JOB_WORDS: Record<string, { title: string; icon: TaskIcon }> = {
   goat: { title: 'Chase the goat off', icon: 'goat' },
   birds: { title: 'Scare the birds off', icon: 'birds' },
 };
+
+/** Points for a farm's scheduled care done. */
+export const ROUTINE_POINTS = 40;
 
 const PICK: Record<Exclude<Carry, null>, Place> = { seeds: 'shed-seeds', fertilizer: 'shed-fertilizer', water: 'pond', sprayer: 'shed-sprayer' };
 
@@ -378,6 +405,22 @@ export function nextTask(f: Field, t: Trial | null, today: number, coins: number
   }
   const unchecked = t.plans.findIndex((_, i) => !t.checks[checkKey(i, day)]);
   if (unchecked >= 0) return { title: `Check ${name(unchecked)}`, note: `Day ${day} of ${CHECK_DAYS}`, points: 100, icon: 'check', target: { farm: unchecked, at: 'sign' } };
+  // scheduled care (weeding, the stalk-borer spray, the top-dress): what the farmer carries first, so one trip to
+  // the shed does every farm
+  const due = t.plans.flatMap((_, i) => routineLeft(f, t, i, day).map(r => ({ ...r, farm: i })));
+  const r = due.find(x => JOB_CARRY[x.job] && JOB_CARRY[x.job] === f.carry) ?? due[0];
+  if (r) {
+    const last = ROUTINE[r.job].by === day;
+    const then: Task = {
+      title: `${ROUTINE[r.job].title} ${name(r.farm)}`,
+      note: last ? `Last day: day ${day}` : `Day ${ROUTINE[r.job].from} or ${ROUTINE[r.job].by}`,
+      points: ROUTINE_POINTS,
+      icon: ROUTINE_ICON[r.job],
+      target: { farm: r.farm, at: 'plot' },
+    };
+    const item = JOB_CARRY[r.job];
+    return item ? needCarry(f, item, then) : then;
+  }
   if (t.clock === 'fast') return { title: day >= CHECK_DAYS ? 'Sleep till harvest' : `Sleep till day ${day + 1}`, note: 'Every farm is checked', icon: 'sleep', target: { place: 'house' } };
   return { title: 'Come back tomorrow', note: `Day ${day + 1} starts tomorrow`, icon: 'wait', target: { place: 'mission' } };
 }

@@ -142,7 +142,7 @@ export const FACTORS = {
 const N = FACTORS.nitrogen.value;
 const FARM_ACRES = 1 / 6;
 /** litres of diesel an acre for each job a tractor can do (the tractor drive's implements: plough + harrow, planter, harvester) */
-export const TRACTOR_LPA: Record<string, number> = { prep: 13, sow: 4, setupFeed: 4, spray: 3, harvest: 10 };
+export const TRACTOR_LPA: Record<string, number> = { prep: 13, sow: 4, setupFeed: 4, weeding: 3, borer: 3, topdress: 2, spray: 3, harvest: 10 };
 /** how much diesel each tractor type burns next to the standard one: its fuel cost a plot (6, 9, 14) over the standard's 9 */
 export const TRACTOR_FUEL: Record<string, number> = { compact: 6 / 9, standard: 1, large: 14 / 9 };
 
@@ -237,6 +237,15 @@ export function treatDelta(job: string, solar: boolean): Delta {
     default:
       return {};
   }
+}
+
+/** Scheduled care done on a farm (plots/data.ts ROUTINE). Weeding by hand keeps herbicide off (from the seat, the
+    diesel is counted with the tractor's work); the stalk-borer spray is one spray. The top-dress's CAN is already
+    counted with the plan's fertilizer at planting. */
+export function routineDelta(job: string, byTractor: boolean, solar: boolean): Delta {
+  if (job === 'weeding') return byTractor ? {} : treatDelta('weed', solar);
+  if (job === 'borer') return treatDelta('spray', solar);
+  return {};
 }
 
 /** A wrong fix that still went on the field. */

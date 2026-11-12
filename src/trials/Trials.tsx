@@ -10,7 +10,7 @@ import { say } from '../first/data';
 import { GuideLine } from '../first/Review';
 import { dayNumber } from '../rounds/farms';
 import { PlotBoard, plotsLine } from '../plots/PlotBoard';
-import { OPTIONS, seedOf } from '../plots/data';
+import { OPTIONS, ROUTINE, seedOf } from '../plots/data';
 import type { Action, GameState } from '../state';
 import {
   CROP_WORDS,
@@ -480,6 +480,18 @@ function Compare({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) {
               {money(r.profit)}
             </div>
           ))}
+          {results.some(r => r.care?.length) && (
+            <Row label="Care">
+              {results.map((r, i) => {
+                const missed = (r.care ?? []).filter(c => !c.done);
+                return (
+                  <div key={i} className={`tr-val tr-small${missed.length ? ' is-neg' : ''}`} title={(r.care ?? []).map(c => `${ROUTINE[c.job].title}: ${c.done ? 'done' : 'missed'}`).join(' · ')}>
+                    {!r.care?.length ? '—' : missed.length ? `Missed: ${missed.map(c => ROUTINE[c.job].short).join(', ')}` : 'All done'}
+                  </div>
+                );
+              })}
+            </Row>
+          )}
           {differing.map(step => (
             <Row key={step.key} label={step.label}>
               {tr.plans.map((p, i) => (

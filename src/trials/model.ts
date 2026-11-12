@@ -9,7 +9,11 @@ import {
   FERTS,
   MISFIT_COST,
   PLOT_SHARE,
+  ROUTINE,
+  ROUTINE_JOBS,
   SEEDS,
+  STALK_BORER,
+  WEEDS_MISSED,
   TRACTOR_LAND_FACTOR,
   TRACTOR_PLOT,
   defaultPlots,
@@ -25,6 +29,7 @@ import {
   type FertId,
   type PlotJob,
   type PlotRecord,
+  type RoutineJob,
   type SeedId,
 } from '../plots/data';
 import type { ImplId } from '../tractor/data';
@@ -327,7 +332,8 @@ export interface PlotResult {
   quality: number;
   income: number;
   /** what the plot's own inputs did to its yield (1 = no change) */
-  factors: { land: number; seed: number; fert: number; tools: number };
+  /** what the plot's own inputs did to its yield (1 = no change); care: weeding missed (cycles with scheduled care) */
+  factors: { land: number; seed: number; fert: number; tools: number; care?: number };
   /** share of the plot's yield lost to problems */
   lost: number;
   inputs: PlotRecord;
@@ -348,6 +354,9 @@ export interface FarmResult {
   problems: { hazard: TrialHazard; day: number; caught: boolean; loss: number }[];
   /** the farm's input set (one; four, A to D, in results saved before plots became tiles; missing before plots) */
   plots?: PlotResult[];
+  /** the scheduled care the farm was due, done or missed, and the share of its harvest each miss cost (missing in
+      cycles without scheduled care) */
+  care?: { job: RoutineJob; done: boolean; loss: number }[];
   /** what the plots' own inputs did to the farm's yield, together (1 = as planned) */
   plotFactor?: number;
 }
@@ -383,6 +392,10 @@ export interface Trial {
   cleared?: number[];
   /** coins spent on tractor fuel, by farm */
   fuel?: number[];
+  /** farm world, from the second cycle: the scheduled care done (weeding, the stalk-borer spray, the CAN top-dress:
+      plots/data.ts ROUTINE), as `${farm}:${job}`. Missing: this cycle has no scheduled care (the guided first cycle,
+      farms planted from the six farms screen, and saves from before it). */
+  routine?: string[];
 }
 
 /** The crops a farm can grow in this model. Sukuma wiki uses maize's numbers for yield and price until an agronomist
@@ -495,8 +508,36 @@ function farmProblems(t: Trial, farm: number, lastDay: number) {
   return out;
 }
 
-/** What one problem costs one plot: the farm's loss, changed by the plot's seed, fertilizer and sprayer. */
-export function plotLoss(h: TrialHazard, caught: boolean, treated: boolean, r: PlotRecord): number {
+/* ---------------- scheduled care (plots/data.ts ROUTINE) ---------------- */
+
+/** Whether a farm is due this scheduled care at all: weeding on every farm, the stalk-borer spray on maize with a
+    sprayer, the top-dress on a fertilizer that has one. */
+export function routineApplies(t: Pick<Trial, 'routine' | 'plots' | 'plans' | 'crops'>, farm: number, job: RoutineJob): boolean {
+  if (!t.routine || farm >= t.plans.length) return false;
+  const r = plotsOf(t, farm)[0];
+  if (job === 'topdress') return !!fertOf(r.fert).withoutTop;
+  if (job === 'borer') return cropOf(t, farm) === 'maize' && (r.sprayer ?? 'knapsack') !== 'none';
+  return true;
+}
+
+export const routineDone = (t: Pick<Trial, 'routine'>, farm: number, job: RoutineJob) => !!t.routine?.includes(`${farm}:${job}`);
+
+/** Scheduled care whose last day is over by `day` and was not done. */
+export function routineMissed(t: Pick<Trial, 'routine' | 'plots' | 'plans' | 'crops'>, farm: number, job: RoutineJob, day = CHECK_DAYS + 1): boolean {
+  return routineApplies(t, farm, job) && ROUTINE[job].by < day && !routineDone(t, farm, job);
+}
+
+/** The share of a maize farm's harvest stalk borer takes, once its spray days are over by `day`: all of STALK_BORER
+    unless the farm was sprayed, and then what its sprayer misses. A farm with no sprayer loses it all. */
+export function borerLoss(t: Pick<Trial, 'routine' | 'plots' | 'plans' | 'crops'>, farm: number, r: PlotRecord, day = CHECK_DAYS + 1): number {
+  if (!t.routine || cropOf(t, farm) !== 'maize' || ROUTINE.borer.by >= day) return 0;
+  if (r.sprayer && r.sprayer !== 'none' && routineDone(t, farm, 'borer')) return STALK_BORER * (1 - sprayerOf(r.sprayer).cover.armyworm);
+  return STALK_BORER;
+}
+
+/** What one problem costs one plot: the farm's loss, changed by the plot's seed, fertilizer and sprayer. `untopped`:
+    the fertilizer's top-dress was missed, so the plot is as hungry as without it. */
+export function plotLoss(h: TrialHazard, caught: boolean, treated: boolean, r: PlotRecord, untopped = false): number {
   const d = DAMAGE[h];
   let loss = caught ? d.caught : d.missed;
   // a pest or disease treated by spraying: each plot is saved as well as its sprayer covers it
@@ -508,7 +549,7 @@ export function plotLoss(h: TrialHazard, caught: boolean, treated: boolean, r: P
   const seed = seedOf(r.seed);
   if (h === 'drought') loss *= seed.drought;
   if (h === 'disease') loss *= seed.rust;
-  if (h === 'nitrogen') loss *= fertOf(r.fert).hunger;
+  if (h === 'nitrogen') loss *= untopped ? fertOf(r.fert).withoutTop!.hunger : fertOf(r.fert).hunger;
   return Math.min(0.6, loss);
 }
 
@@ -520,42 +561,51 @@ export function toolsFactor(r: PlotRecord, farm: number): number {
     if (tool) k *= 1 - MISFIT_COST[job] * (1 - toolFit(job, tool, farm));
   }
   if (r.tractor) k *= TRACTOR_PLOT[r.tractor].compaction;
-  if (r.sprayer && r.tools?.spray === 'sprayer') k *= sprayerOf('boom').damage;
+  // the boom sprayer's wheels and drift, once it has sprayed from the seat (a problem, or stalk borer)
+  if (r.sprayer && (r.tools?.spray === 'sprayer' || r.tools?.borer === 'sprayer')) k *= sprayerOf('boom').damage;
   return k;
 }
 
 const round1 = (x: number) => Math.round(x * 10) / 10;
 
-/** What the farm plan and the farm's problems give its input set. */
-function farmContext(t: Trial, farm: number, lastDay: number) {
+/** What the farm plan and the farm's problems give its input set. `careDay`: scheduled care whose last day is before
+    it counts as missed (by default, every job due by lastDay). */
+function farmContext(t: Trial, farm: number, lastDay: number, careDay = lastDay + 1) {
   const p = t.plans[farm];
   const factors = Object.fromEntries(PLAN_STEPS.map(s => [s.key, stepFactor(s.key, p, t.forecast)])) as Record<StepKey, number>;
   // proposed effects from Wakala Agent, off until the agronomist's review (see WAKALA_YIELD_EFFECTS)
   const drive = t.tractor?.[farm];
   if (WAKALA_YIELD_EFFECTS && p.land === 'tractor' && drive) factors.land *= TRACTOR_Q_FACTOR.base + TRACTOR_Q_FACTOR.span * drive.Q;
   const farmShare = FARM_STEP_KEYS.reduce((n, k) => n * factors[k], 1);
-  return { p, factors, farmShare, found: farmProblems(t, farm, lastDay) };
+  return { p, factors, farmShare, found: farmProblems(t, farm, lastDay), careDay };
 }
 
-/** One plot's harvest from its inputs, before rounding. */
+/** One plot's harvest from its inputs, before rounding. Scheduled care counts once its last day is past the farm's
+    last day so far: a missed weeding takes WEEDS_MISSED, a missed top-dress leaves the fertilizer without its CAN,
+    and stalk borer takes its share unless the farm was sprayed. */
 function growPlot(t: Trial, farm: number, r: PlotRecord, ctx: ReturnType<typeof farmContext>) {
   const seed = seedOf(r.seed);
+  const day = ctx.careDay;
   // land turned by the tractor from the seat gets the tractor's land prep instead of the plan's
   const land = r.tractor && r.tools?.prep ? TRACTOR_LAND_FACTOR / ctx.factors.land : 1;
-  const own = { land, seed: seed.factor[t.forecast], fert: fertOf(r.fert).factor, tools: toolsFactor(r, farm) };
-  const keep = ctx.found.reduce((n, q) => n * (1 - plotLoss(q.hazard, q.caught, q.treated, r)), 1);
-  const bags = POTENTIAL_BAGS * PLOT_SHARE * ctx.farmShare * own.land * own.seed * own.fert * own.tools * keep;
-  return { bags, keep, own, seed };
+  const fert = fertOf(r.fert);
+  const untopped = !!fert.withoutTop && routineMissed(t, farm, 'topdress', day);
+  const care = routineMissed(t, farm, 'weeding', day) ? 1 - WEEDS_MISSED : 1;
+  const own = { land, seed: seed.factor[t.forecast], fert: untopped ? fert.withoutTop!.factor : fert.factor, tools: toolsFactor(r, farm), care };
+  const keep = ctx.found.reduce((n, q) => n * (1 - plotLoss(q.hazard, q.caught, q.treated, r, untopped)), 1) * (1 - borerLoss(t, farm, r, day));
+  const bags = POTENTIAL_BAGS * PLOT_SHARE * ctx.farmShare * own.land * own.seed * own.fert * own.tools * own.care * keep;
+  return { bags, keep, own, seed, untopped };
 }
 
 /** How each plot of a farm is growing so far, as a share of the best possible plot (1 = as good as it gets), for the
-    crop's height and colour on the field. Problems seen so far count. */
-export function plotGrowth(t: Trial, farm: number, lastDay = CHECK_DAYS): number[] {
+    crop's height and colour on the field. Problems seen so far count. `today`: scheduled care counts once its last
+    day is before it (by default, all of it). */
+export function plotGrowth(t: Trial, farm: number, lastDay = CHECK_DAYS, today = lastDay + 1): number[] {
   if (farm >= t.plans.length) return [1, 1, 1, 1];
-  const ctx = farmContext(t, farm, lastDay);
+  const ctx = farmContext(t, farm, lastDay, today);
   return plotsOf(t, farm).map(r => {
     const g = growPlot(t, farm, r, ctx);
-    return Math.max(0.2, Math.min(1.2, (g.own.land * g.own.seed * g.own.fert * g.own.tools * g.keep) / 1.05));
+    return Math.max(0.2, Math.min(1.2, (g.own.land * g.own.seed * g.own.fert * g.own.tools * g.own.care * g.keep) / 1.05));
   });
 }
 
@@ -583,13 +633,25 @@ export function harvestFarm(t: Trial, farm: number, lastDay = CHECK_DAYS): FarmR
   const lost = plots.reduce((n, x) => n + x.lost, 0) / plots.length;
   // the plots' own inputs together, and the farm-level seed and fertilizer as their average (for the comparison)
   const geo = (f: (x: PlotResult) => number) => Math.exp(plots.reduce((n, x) => n + Math.log(Math.max(1e-6, f(x))), 0) / plots.length);
-  const plotFactor = geo(x => x.factors.land * x.factors.seed * x.factors.fert * x.factors.tools);
+  const plotFactor = geo(x => x.factors.land * x.factors.seed * x.factors.fert * x.factors.tools * (x.factors.care ?? 1));
   const out = { ...factors, seed: geo(x => x.factors.seed), fert: geo(x => x.factors.fert) };
   const costs = farmCost(t, farm) + (t.treatments[farm] ?? 0) + (t.fuel?.[farm] ?? 0);
+  const untopped = routineMissed(t, farm, 'topdress', lastDay + 1);
   const problems = found
-    .map(q => ({ hazard: q.hazard, day: q.day, caught: q.caught, loss: plots.reduce((n, x) => n + plotLoss(q.hazard, q.caught, q.treated, x.inputs), 0) / plots.length }))
+    .map(q => ({ hazard: q.hazard, day: q.day, caught: q.caught, loss: plots.reduce((n, x) => n + plotLoss(q.hazard, q.caught, q.treated, x.inputs, untopped), 0) / plots.length }))
     .sort((a, b) => b.loss - a.loss);
-  return { bags, beans, quality, income, costs, profit: income - costs, factors: out, lost, problems, plots, plotFactor };
+  return { bags, beans, quality, income, costs, profit: income - costs, factors: out, lost, problems, plots, plotFactor, ...(t.routine ? { care: careOf(t, farm, rows[0], lastDay + 1) } : {}) };
+}
+
+/** The scheduled care a farm was due by `day`: done or missed, and what each miss cost its harvest. */
+function careOf(t: Trial, farm: number, r: PlotRecord, day: number): NonNullable<FarmResult['care']> {
+  const fert = fertOf(r.fert);
+  return ROUTINE_JOBS.filter(job => ROUTINE[job].by < day && (routineApplies(t, farm, job) || (job === 'borer' && cropOf(t, farm) === 'maize'))).map(job => {
+    const done = routineDone(t, farm, job);
+    const loss =
+      job === 'weeding' ? (done ? 0 : WEEDS_MISSED) : job === 'topdress' ? (done || !fert.withoutTop ? 0 : 1 - fert.withoutTop.factor / fert.factor) : borerLoss(t, farm, r, day);
+    return { job, done, loss };
+  });
 }
 
 /* ---------------- what the plots showed ---------------- */
@@ -730,6 +792,12 @@ export function explain(t: Trial, results: FarmResult[]): { best: number; worst:
       lines.push(`${step.label}: ${lower(optionOf(key, pb).label)} instead of ${lower(optionOf(key, pw).label)} gave ${bagsText(x.bags)} more.`);
       if (key === 'water') lines.push(`Maize needs about ${WATER_NEED} L/m² a week; the rain gave about ${FORECASTS[t.forecast].rain}.`);
     }
+  }
+  // scheduled care the farm that grew least missed, and what it cost
+  const missed = (W.care ?? []).filter(c => !c.done && c.loss > 0);
+  if (missed.length && !(B.care ?? []).some(c => !c.done)) {
+    const loss = 1 - missed.reduce((n, c) => n * (1 - c.loss), 1);
+    lines.push(`Care: ${farmName(worst)} missed its ${missed.map(c => ROUTINE[c.job].short).join(' and ')}, about ${pct(loss)} of its harvest. ${ROUTINE[missed[0].job].missed}`);
   }
   // the farm that grew most is not always the one that made most
   const rich = results.map((_, i) => i).sort((a, b) => results[b].profit - results[a].profit)[0];

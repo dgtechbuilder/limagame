@@ -24,9 +24,9 @@ import {
   type TrialSummary,
 } from './trials/model';
 import { FOLLOW_UP } from './care/data';
-import { FULL, carryNeeded, emptyField, followUpLeft, plotLocked, treatCost, treatLeft, type Carry, type Field } from './world/field';
+import { FULL, ROUTINE_POINTS, carryNeeded, emptyField, followUpLeft, plotLocked, routineLeft, treatCost, treatLeft, type Carry, type Field } from './world/field';
 import { TRACTOR_BONUS, type ImplId } from './tractor/data';
-import { TRACTOR_PLOT, plotCost, setPlotInput, toolName, type PlotJob, type PlotKind, type TractorId } from './plots/data';
+import { ROUTINE, TRACTOR_PLOT, plotCost, setPlotInput, toolName, type PlotJob, type PlotKind, type TractorId } from './plots/data';
 import { initialClimate, type ClimateState } from './climate/model';
 import { trackClimate } from './climate/track';
 import { routeTo } from './route';
@@ -702,7 +702,9 @@ function play(s: GameState, a: Action): GameState {
       return {
         ...s,
         coins: s.coins - cost,
-        trial: { ...t, phase: 'growing', clock: a.clock, planted: dayNumber(), day: 1 },
+        // scheduled care (weeding, the stalk-borer spray, the top-dress) from the second cycle, when the farms are worked
+        // in the farm world: the six farms screen has no field work to do it with
+        trial: { ...t, phase: 'growing', clock: a.clock, planted: dayNumber(), day: 1, ...(!t.guided && s.view === 'world' ? { routine: [] } : {}) },
         field: emptyField(t.cycle),
         ...gainXp(s, 0.1),
         toast: toast(s.view === 'world' ? `${t.plans.length} farm plans paid: ${money(cost)} coins · now get them planted` : `${t.plans.length} farms planted for ${money(cost)} coins · day 1: check every farm`),
@@ -789,7 +791,7 @@ function play(s: GameState, a: Action): GameState {
           fuel = Math.min(s.coins, TRACTOR_PLOT[a.rig.tractor].fuel);
           let next = rows.map((r, i) => (i === 0 ? { ...r, tractor: r.tractor ?? a.rig!.tractor, tools: { ...(r.tools ?? {}), [a.rig!.job]: a.rig!.tool } } : r));
           // spraying from the seat is the boom sprayer's work
-          if (a.rig.job === 'spray' && here.sprayer !== 'boom') next = setPlotInput(next, 'sprayer', 0, 'boom');
+          if ((a.rig.job === 'spray' || a.rig.job === 'borer') && here.sprayer !== 'boom') next = setPlotInput(next, 'sprayer', 0, 'boom');
           const plots = t.plans.map((_, i) => (i === a.farm ? next : plotsOf(t!, i)));
           const spent = t.plans.map((_, i) => (t!.fuel?.[i] ?? 0) + (i === a.farm ? fuel : 0));
           t = { ...t, plots, fuel: spent };
@@ -853,6 +855,14 @@ function play(s: GameState, a: Action): GameState {
           field = putDown(trial);
           return { ...s1, field, trial, ...gainXp(s1, 0.03), toast: toast(`${farmName(a.farm)}: follow-up done · the problem stays away`) };
         }
+      }
+      // scheduled care counts once its last plot is done
+      const due = routineLeft(f, t, a.farm, currentDay(t, dayNumber())).find(r => r.key === a.job);
+      if (due && (after & due.need) === due.need) {
+        const trial: Trial = { ...t, routine: [...(t.routine ?? []), `${a.farm}:${due.job}`] };
+        field = putDown(trial);
+        const points = ROUTINE_POINTS + bonus;
+        return { ...s1, field, trial, points: s1.points + points, ...gainXp(s1, 0.03), toast: toast(`${farmName(a.farm)} ${ROUTINE[due.job].done} · +${points} points`) };
       }
       if (bonus) return { ...s1, field, points: s1.points + bonus, ...gainXp(s1, 0.02), toast: toast(`Tractor bonus · +${bonus} points · all 20 plots of ${farmName(a.farm)} done from the seat${fuel ? ` · −${money(fuel)} coins of fuel` : ''}`) };
       if (fuel && a.rig) return { ...s1, field, toast: toast(`${farmName(a.farm)}: the ${a.rig.tractor} tractor's ${toolName(a.rig.tool).toLowerCase()} at work · −${money(fuel)} coins of fuel`) };

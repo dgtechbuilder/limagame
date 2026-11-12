@@ -89,7 +89,7 @@ function findCase(plans: Plan[], want: TrialHazard, minDay = 2): { trial: Trial;
   throw new Error(`No cycle shows ${want}`);
 }
 
-export type WakalaCase = 'fix' | 'spray' | 'followUp' | 'cameBack' | 'tractor' | 'voice' | 'plots';
+export type WakalaCase = 'fix' | 'spray' | 'followUp' | 'cameBack' | 'tractor' | 'voice' | 'plots' | 'routine';
 
 /** A cycle set up for one of the new moments in the farm world: the trial, its field, the day and Farm 1's problem. */
 export function wakalaCase(kind: WakalaCase): { trial: Trial; field: Field; day: number; hazard: TrialHazard } {
@@ -98,6 +98,14 @@ export function wakalaCase(kind: WakalaCase): { trial: Trial; field: Field; day:
     const plans = [COMMON_PLAN, { ...COMMON_PLAN, pest: 'scout' } as Plan];
     const trial: Trial = { ...newTrial(2, false, plans[0]), plans, plots: newTrial(2, true, plans[0]).plots, treatments: [0, 0], phase: 'growing', clock: 'fast', planted: 0, day: 1 };
     return { trial, field: emptyField(2), day: 1, hazard: hazardFor(trial, 0, 1) };
+  }
+  if (kind === 'routine') {
+    // scheduled care: day 3 of a cycle on two maize farms, every check so far done. Weeding is on its last day and
+    // the stalk-borer spray on its first; Farm 1 is on DAP + CAN, so its top-dress follows on day 4
+    const plans = [COMMON_PLAN, { ...COMMON_PLAN, pest: 'scout' } as Plan];
+    const base: Trial = { ...newTrial(2, false, plans[0]), plans, treatments: [0, 0], phase: 'growing', clock: 'fast', planted: 0, day: 3, routine: [] };
+    const trial: Trial = { ...play(base, 3), plots: [[{ seed: 'certified', fert: 'basalTop', sprayer: 'knapsack' }], [{ seed: 'certified', fert: 'basal', sprayer: 'knapsack' }]] };
+    return { trial, field: fieldOf(trial), day: 3, hazard: hazardFor(trial, 0, 3) };
   }
   if (kind === 'tractor') {
     const plans = [{ ...COMMON_PLAN, land: 'tractor' } as Plan, { ...OTHER_PLAN, land: 'ox' } as Plan];

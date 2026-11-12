@@ -121,6 +121,12 @@ export const PRODUCTS: Record<string, Product[]> = {
     { id: 'glyphosate', name: 'Glyphosate', kind: 'weed killer', right: false, lesson: 'Glyphosate kills plants. It would kill the crop, not the aphids.' },
     { id: 'mancozeb', name: 'Mancozeb', kind: 'fungicide', right: false, lesson: 'Mancozeb treats leaf disease. It does not kill aphids.' },
   ],
+  // new: stalk borer on maize (scheduled care, plots/data.ts ROUTINE), sprayed into the leaf funnels
+  borer: [
+    { id: 'lambda', name: 'Lambda-cyhalothrin', kind: 'insecticide for stem borers', right: true, lesson: 'Sprayed into the leaf funnels, it kills the young borers before they tunnel into the stem.' },
+    { id: 'glyphosate', name: 'Glyphosate', kind: 'weed killer', right: false, lesson: 'Glyphosate kills plants. It would kill the maize, not the borers.' },
+    { id: 'mancozeb', name: 'Mancozeb', kind: 'fungicide', right: false, lesson: 'Mancozeb treats leaf disease. It does not kill stem borers.' },
+  ],
   // new: leaf rust on maize
   disease: [
     { id: 'mancozeb', name: 'Mancozeb', kind: 'fungicide for leaf disease', right: true, lesson: 'A fungicide protects the leaves the rust has not reached yet.' },

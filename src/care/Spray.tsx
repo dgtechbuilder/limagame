@@ -4,14 +4,18 @@ import { img } from '../assets';
 import { FarmMap } from '../components/FarmMap';
 import { GuideLine } from '../first/Review';
 import { track } from '../first/track';
-import { HAZARD_WORDS, type TrialHazard } from '../trials/model';
+import { HAZARD_WORDS } from '../trials/model';
+import type { SprayFor } from '../world/field';
 import { KIT, KIT_LESSON, PRODUCTS, type Product } from './data';
+
+/** What a spray is against, in words: a problem a check found, or stalk borer (scheduled care). */
+const sprayWords = (h: SprayFor) => (h === 'borer' ? 'stalk borer' : HAZARD_WORDS[h]);
 
 /* From Wakala Agent: at the shed, before the sprayer is picked up for a spray job, the safety kit goes on (gloves,
    face mask, boots), then the right product goes in the sprayer: one question for each problem being sprayed
    today. A wrong product says why and goes back on the shelf; it costs nothing. */
 
-export function Spray({ jobs, name, onDone, onLeave }: { jobs: { farm: number; hazard: TrialHazard }[]; name: string; onDone: () => void; onLeave: () => void }) {
+export function Spray({ jobs, name, onDone, onLeave }: { jobs: { farm: number; hazard: SprayFor }[]; name: string; onDone: () => void; onLeave: () => void }) {
   // one product question per problem (two farms with armyworm share one)
   const asks = jobs.filter((j, i) => PRODUCTS[j.hazard] && jobs.findIndex(x => x.hazard === j.hazard) === i);
   const [kit, setKit] = useState<string[]>([]);
@@ -21,7 +25,7 @@ export function Spray({ jobs, name, onDone, onLeave }: { jobs: { farm: number; h
   const kitOn = kit.length === KIT.length;
   const ask = kitOn ? asks[at] : undefined;
   const ready = kitOn && at >= asks.length;
-  const farmsOf = (h: TrialHazard) =>
+  const farmsOf = (h: SprayFor) =>
     jobs
       .filter(j => j.hazard === h)
       .map(j => `Farm ${j.farm + 1}`)
@@ -45,7 +49,7 @@ export function Spray({ jobs, name, onDone, onLeave }: { jobs: { farm: number; h
 
   let line = `Safety first, ${name}. Put on the safety kit.`;
   if (!kitOn && kit.length) line = KIT_LESSON;
-  if (ask) line = said && !said.right ? `${said.lesson} Pick again.` : `${said?.right ? `Right: ${said.lesson} ` : ''}Which product goes in the sprayer for ${farmsOf(ask.hazard)} (${HAZARD_WORDS[ask.hazard]})?`;
+  if (ask) line = said && !said.right ? `${said.lesson} Pick again.` : `${said?.right ? `Right: ${said.lesson} ` : ''}Which product goes in the sprayer for ${farmsOf(ask.hazard)} (${sprayWords(ask.hazard)})?`;
   if (ready) line = `${said?.right ? `Right: ${said.lesson} ` : ''}Kit on, sprayer filled. Take it to the farm and spray every row.`;
 
   return (

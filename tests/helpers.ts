@@ -6,6 +6,8 @@ import { expect, type Page } from '@playwright/test';
 type Win = Window & {
   __lima: {
     state: any;
+    dispatch: (a: Record<string, unknown>) => void;
+    places: Record<string, { x: number; z: number; r: number }>;
     scenario: (kind: string) => { day: number; hazard: string; cycle: number };
     jump: (s: Record<string, unknown>) => void;
     callFor: (h: string) => { group: string; label: string; single: boolean };

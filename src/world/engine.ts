@@ -5,7 +5,7 @@
 
 import * as THREE from 'three';
 import { RIDE_SPEED, TRACTOR_EDGE, type ImplId } from '../tractor/data';
-import { JOB_INFO, TOOL_JOB, TRACTOR_PLOT, toolName, type PlotJob, type TractorId } from '../plots/data';
+import { JOB_INFO, ROUTINE, TRACTOR_PLOT, toolJobs, toolName, type PlotJob, type TractorId } from '../plots/data';
 import { CHECK_DAYS, CROP_WORDS, checkKey, cropOf, farmName, harvestFarm, hazardFor, plotGrowth, type Trial, type TrialHazard } from '../trials/model';
 import {
   FULL,
@@ -31,6 +31,7 @@ import {
   rowOf,
   BUTTON_JOBS,
   followUpLeft,
+  routineLeft,
   type Carry,
   type Field,
   type Place,
@@ -926,7 +927,7 @@ export class FarmWorld {
     if (c.t !== t || c.day !== day) this.grownCache = { t, day, farms: new Map() };
     let r = this.grownCache.farms.get(farm);
     if (!r) {
-      r = { lost: day > 1 ? harvestFarm(t, farm, Math.min(day - 1, CHECK_DAYS)).lost : 0, plots: plotGrowth(t, farm) };
+      r = { lost: day > 1 ? harvestFarm(t, farm, Math.min(day - 1, CHECK_DAYS)).lost : 0, plots: plotGrowth(t, farm, CHECK_DAYS, day) };
       this.grownCache.farms.set(farm, r);
     }
     return r;
@@ -985,7 +986,15 @@ export class FarmWorld {
     if (setup === 'setupFeed') return carry === 'fertilizer' ? { job: 'setupFeed', need: needOf('setupFeed', t, farm), fx: 'fert' } : { hint: 'Get fertilizer from the shed: this farm gets it at planting' };
     if (day > CHECK_DAYS) return { job: 'harvest', need: FULL, fx: 'harvest' };
     const tr = careLeft(f, t, farm, day);
-    if (!tr) return null;
+    if (!tr) {
+      // scheduled care: what the farmer carries first, then weeding, which needs nothing carried
+      const due = routineLeft(f, t, farm, day);
+      const r = due.find(x => (x.job === 'borer' && carry === 'sprayer') || (x.job === 'topdress' && carry === 'fertilizer')) ?? due.find(x => x.job === 'weeding') ?? due[0];
+      if (!r) return null;
+      if (r.job === 'weeding') return { job: r.key, need: r.need, fx: 'weed' };
+      if (r.job === 'borer') return carry === 'sprayer' ? { job: r.key, need: r.need, fx: 'spray' } : { hint: `Get the sprayer from the shed: ${ROUTINE.borer.teach}` };
+      return carry === 'fertilizer' ? { job: r.key, need: r.need, fx: 'fert' } : { hint: `Get fertilizer from the shed: ${ROUTINE.topdress.teach}` };
+    }
     if (tr.job === 'weed') return { job: tr.key, need: tr.need, fx: 'weed' };
     if (tr.job === 'drain') return { job: tr.key, need: tr.need, fx: 'drain' };
     if (tr.job === 'water') return carry === 'water' ? { job: tr.key, need: tr.need, fx: 'water' } : { hint: 'Fill the watering can at the pond' };
@@ -1053,27 +1062,35 @@ export class FarmWorld {
     if (!t || t.phase !== 'growing' || !rig || farm >= t.plans.length) return;
     const f = this.liveField();
     const day = fieldDay(t, v.today);
-    const job = TOOL_JOB[rig.tool];
+    // the tool decides the job: its first one that the farm is waiting for (the spreader feeds at planting, then
+    // top-dresses; the boom sprayer sprays a problem first, then against stalk borer)
+    const jobs = toolJobs(rig.tool);
+    let job = jobs[0];
     const tool = toolName(rig.tool).toLowerCase();
     const setup = setupLeft(f, t, farm);
+    const routine = routineLeft(f, t, farm, day);
+    const care = day >= 1 && day <= CHECK_DAYS ? careLeft(f, t, farm, day) : null;
+    const due = routine.find(r => jobs.includes(r.job));
     let key: string | null = null;
     let need = 0;
-    if (job === 'prep' || job === 'sow' || job === 'setupFeed') {
-      if (setup === job) {
-        key = job;
-        need = needOf(job, t, farm);
-      } else if (setup) return this.rideHint(`${farmName(farm)} needs to ${JOB_INFO[setup as PlotJob].name.toLowerCase()} first: the ${tool} is for later`);
-      else return this.rideHint(`${farmName(farm)} is planted: nothing for the ${tool} here now`);
+    if (setup && jobs.includes(setup as PlotJob)) {
+      job = setup as PlotJob;
+      key = job;
+      need = needOf(job, t, farm);
+    } else if (setup) return this.rideHint(`${farmName(farm)} needs to ${JOB_INFO[setup as PlotJob].name.toLowerCase()} first: the ${tool} is for later`);
+    else if (jobs.includes('spray') && care?.job === 'spray') {
+      key = care.key;
+      need = care.need;
+    } else if (due) {
+      job = due.job;
+      key = due.key;
+      need = due.need;
     } else if (job === 'harvest') {
-      if (setup || day <= CHECK_DAYS) return this.rideHint(`The ${CROP_WORDS[cropOf(t, farm)].name} on ${farmName(farm)} is not ready to harvest yet`);
+      if (day <= CHECK_DAYS) return this.rideHint(`The ${CROP_WORDS[cropOf(t, farm)].name} on ${farmName(farm)} is not ready to harvest yet`);
       key = 'harvest';
       need = FULL;
-    } else {
-      const c = day >= 1 && day <= CHECK_DAYS ? careLeft(f, t, farm, day) : null;
-      if (c?.job !== 'spray') return this.rideHint(`Nothing to spray on ${farmName(farm)} today`);
-      key = c.key;
-      need = c.need;
-    }
+    } else if (job === 'prep' || job === 'sow') return this.rideHint(`${farmName(farm)} is planted: nothing for the ${tool} here now`);
+    else return this.rideHint(`Nothing for the ${tool} on ${farmName(farm)} today (${jobs.map(j => `${JOB_INFO[j].name.toLowerCase()}: ${JOB_INFO[j].when}`).join('; ')})`);
     if (!need) return this.rideHint(job === 'setupFeed' ? `${farmName(farm)} gets no fertilizer` : `${farmName(farm)} needs no ${tool} work`);
     const done = this.marks(farm, key);
     let bits = 0;
@@ -1139,7 +1156,7 @@ export class FarmWorld {
   private fxOf(job: PlotJob): Fx {
     const plan = this.view?.trial?.plans[0];
     void plan;
-    return ({ prep: 'dig', sow: 'seed', setupFeed: 'fert', spray: 'spray', harvest: 'harvest' } as const)[job];
+    return ({ prep: 'dig', sow: 'seed', setupFeed: 'fert', weeding: 'weed', borer: 'spray', topdress: 'fert', spray: 'spray', harvest: 'harvest' } as const)[job];
   }
 
   /* ---------------- the frame ---------------- */

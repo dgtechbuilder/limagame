@@ -6,8 +6,8 @@ import { TractorArt } from '../components/TractorArt';
 import { GuideLine } from '../first/Review';
 import { CHECK_DAYS, farmName, plotsOf, type Trial } from '../trials/model';
 import { TRACTORS, IMPL, type ImplId } from '../tractor/data';
-import { careLeft, isDone, setupLeft, type Field } from '../world/field';
-import { JOB_INFO, TOOL_JOB, TOOL_USE, TRACTOR_PLOT, prepNeed, toolName, tractorName, type PlotJob, type TractorId } from './data';
+import { careLeft, isDone, routineLeft, setupLeft, type Field } from '../world/field';
+import { JOB_INFO, TOOL_JOB, TOOL_USE, TRACTOR_PLOT, prepNeed, toolJobs, toolName, tractorName, type PlotJob, type TractorId } from './data';
 import { money } from '../money';
 
 /* At the tractor: before the engine starts, the farmer picks the tractor type and the tool for the job. The tractor
@@ -17,7 +17,9 @@ import { money } from '../money';
 
 export type Rig = { tractor: TractorId; tool: ImplId };
 
-const JOB_ORDER: PlotJob[] = ['prep', 'sow', 'setupFeed', 'spray', 'harvest'];
+const JOB_ORDER: PlotJob[] = ['prep', 'sow', 'setupFeed', 'weeding', 'borer', 'topdress', 'spray', 'harvest'];
+/** Scheduled care's jobs: shown only in cycles that have it (Trial.routine). */
+const ROUTINE_TOOL_JOBS: PlotJob[] = ['weeding', 'borer', 'topdress'];
 
 /** The jobs some farm needs done today, and on which farms. */
 export function jobsDue(field: Field, tr: Trial | null, day: number): Partial<Record<PlotJob, number[]>> {
@@ -32,6 +34,8 @@ export function jobsDue(field: Field, tr: Trial | null, day: number): Partial<Re
       return;
     }
     if (day >= 1 && careLeft(field, tr, i, day)?.job === 'spray') add('spray', i);
+    // scheduled care: weeding, the stalk-borer spray and the top-dress
+    for (const r of routineLeft(field, tr, i, day)) add(r.job, i);
   });
   return out;
 }
@@ -43,12 +47,13 @@ export function TractorPick({ tr, field, day, rig, onGo, onLeave }: { tr: Trial;
   const firstDue = JOB_ORDER.find(j => due[j]);
   const [step, setStep] = useState<'tractor' | 'tool'>('tractor');
   const [tractor, setTractor] = useState<TractorId | null>(rig?.tractor ?? null);
-  const [tool, setTool] = useState<ImplId | null>(rig && (!firstDue || TOOL_JOB[rig.tool] === firstDue) ? rig.tool : null);
+  const [tool, setTool] = useState<ImplId | null>(rig && (!firstDue || toolJobs(rig.tool).includes(firstDue)) ? rig.tool : null);
   const plots = tr.plans.map((_, i) => plotsOf(tr, i));
+  const jobs = JOB_ORDER.filter(j => tr.routine || !ROUTINE_TOOL_JOBS.includes(j));
 
   /** where a tractor type works: "Farm 1" … */
   const worksOf = (k: TractorId) => plots.flatMap((rows, f) => (rows.some(r => r.tractor === k) ? [farmName(f)] : []));
-  const usedOf = (k: ImplId) => plots.flatMap((rows, f) => (rows.some(r => r.tools?.[TOOL_JOB[k]] === k) ? [farmName(f)] : []));
+  const usedOf = (k: ImplId) => plots.flatMap((rows, f) => (rows.some(r => toolJobs(k).some(j => r.tools?.[j] === k)) ? [farmName(f)] : []));
 
   let line: string;
   if (step === 'tractor') {
@@ -58,8 +63,8 @@ export function TractorPick({ tr, field, day, rig, onGo, onLeave }: { tr: Trial;
   } else if (!tool) {
     line = firstDue ? `Pick the tool. Due now: ${JOB_INFO[firstDue].name.toLowerCase()} on ${farmsText(due[firstDue]!)}.` : 'Pick the tool for the job you want to do. Nothing is due on the farms right now.';
   } else {
-    const j = TOOL_JOB[tool];
-    line = due[j] ? `${toolName(tool)}: ${JOB_INFO[j].name.toLowerCase()} on ${farmsText(due[j]!)}. Drive over a farm's plots to work them.` : `${toolName(tool)} (${JOB_INFO[j].name.toLowerCase()}): no farm is waiting for this job right now. You can still drive, or pick another tool.`;
+    const j = toolJobs(tool).find(x => due[x]) ?? TOOL_JOB[tool];
+    line = due[j] ? `${toolName(tool)}: ${JOB_INFO[j].name.toLowerCase()} on ${farmsText(due[j]!)}. Drive over a farm's plots to work them.` : `${toolName(tool)} (${toolJobs(tool).map(x => JOB_INFO[x].name.toLowerCase()).join(', ')}): no farm is waiting for this job right now. You can still drive, or pick another tool.`;
   }
 
   return (
@@ -113,15 +118,15 @@ export function TractorPick({ tr, field, day, rig, onGo, onLeave }: { tr: Trial;
             })}
           </div>
         ) : (
-          <div className="tp-tools" role="radiogroup" aria-label="Tool">
-            {JOB_ORDER.map(j => (
+          <div className="tp-tools" role="radiogroup" aria-label="Tool" style={{ gridTemplateColumns: `repeat(${jobs.length}, minmax(0, 1fr))` }}>
+            {jobs.map(j => (
               <div key={j} className={`tp-job${due[j] ? ' is-due' : ''}`}>
                 <p className="tp-job-title">
                   {JOB_INFO[j].name}
                   <small>{due[j] ? `Due: ${farmsText(due[j]!)}` : JOB_INFO[j].when}</small>
                 </p>
                 {(Object.keys(TOOL_JOB) as ImplId[])
-                  .filter(k => TOOL_JOB[k] === j)
+                  .filter(k => toolJobs(k).includes(j))
                   .map(k => {
                     const used = usedOf(k);
                     const fits = j === 'prep' ? tr.plans.map((_, f) => f).filter(f => prepNeed(f).tool === k) : [];

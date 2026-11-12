@@ -142,6 +142,8 @@ export interface FertOption extends InputOption<FertId> {
   factor: number;
   /** how much of a hungry week's loss the plot suffers (1 = all of it) */
   hunger: number;
+  /** it has a CAN top-dress after planting: how it grows when the top-dress is never done (scheduled care, ROUTINE) */
+  withoutTop?: { factor: number; hunger: number };
 }
 
 export const FERTS: FertOption[] = [
@@ -188,6 +190,8 @@ export const FERTS: FertOption[] = [
     color: '#2f7d27',
     factor: 1,
     hunger: 0.3,
+    // without the CAN it is DAP at planting, and grows like it
+    withoutTop: { factor: 0.75, hunger: 1 },
   },
   {
     id: 'double',
@@ -199,6 +203,8 @@ export const FERTS: FertOption[] = [
     color: '#c0392b',
     factor: 0.95,
     hunger: 0.3,
+    // a double dose of DAP alone: a little less than one dose, as the extra burns roots
+    withoutTop: { factor: 0.72, hunger: 1 },
   },
 ];
 
@@ -274,25 +280,34 @@ export const TRACTOR_PLOT: Record<TractorId, { fuel: number; compaction: number;
 /** Land turned by a tractor: the yield factor of its land prep (a hand hoe is 0.95, oxen 1). */
 export const TRACTOR_LAND_FACTOR = 1.03;
 
-export type PlotJob = 'prep' | 'sow' | 'setupFeed' | 'spray' | 'harvest';
+export type PlotJob = 'prep' | 'sow' | 'setupFeed' | 'weeding' | 'borer' | 'topdress' | 'spray' | 'harvest';
 
-/** The job each tool does when the tractor drives over a plot. */
+/** The job each tool does when the tractor drives over a plot (its first job: the spreader and the boom sprayer also
+    do scheduled care, toolJobs). */
 export const TOOL_JOB: Record<ImplId, PlotJob> = {
   plough: 'prep',
   harrow: 'prep',
   ridger: 'prep',
   planter: 'sow',
   drill: 'sow',
+  cultivator: 'weeding',
   spreader: 'setupFeed',
   sprayer: 'spray',
   maizeH: 'harvest',
   beanH: 'harvest',
 };
 
+/** Every job a tool can do: the spreader feeds at planting and top-dresses later; the boom sprayer sprays a problem
+    and the stalk-borer spray. */
+export const toolJobs = (tool: ImplId): PlotJob[] => (tool === 'spreader' ? ['setupFeed', 'topdress'] : tool === 'sprayer' ? ['spray', 'borer'] : [TOOL_JOB[tool]]);
+
 export const JOB_INFO: Record<PlotJob, { name: string; when: string }> = {
   prep: { name: 'Prepare the land', when: 'before planting' },
   sow: { name: 'Sow', when: 'at planting' },
   setupFeed: { name: 'Fertilize', when: 'at planting' },
+  weeding: { name: 'Weed', when: 'day 2 or 3' },
+  borer: { name: 'Spray against stalk borer', when: 'day 3 or 4, maize' },
+  topdress: { name: 'Top-dress', when: 'day 4 or 5, DAP + CAN farms' },
   spray: { name: 'Spray', when: 'when a pest or disease is found' },
   harvest: { name: 'Harvest', when: 'when the cobs are dry' },
 };
@@ -304,8 +319,9 @@ export const TOOL_USE: Record<ImplId, string> = {
   ridger: 'Dry ground with a channel to bring water in (or wet ground to drain): it digs furrows and ridges.',
   planter: 'Sowing maize: one seed every 25 cm in rows 75 cm apart.',
   drill: 'Sowing small seeds such as beans or wheat in close rows. Too close for maize.',
-  spreader: 'Spreading fertilizer evenly over the ground at planting.',
-  sprayer: 'Spraying a whole plot fast against a pest or disease.',
+  cultivator: 'Weeding: its tines run between the rows on weeding day.',
+  spreader: 'Spreading fertilizer evenly at planting, and the CAN top-dress later.',
+  sprayer: 'Spraying a whole plot fast: against stalk borer, or a pest or disease.',
   maizeH: 'Picking and shelling dry maize cobs, row by row.',
   beanH: 'Cutting and threshing dry beans. On maize it drops and breaks cobs.',
 };
@@ -315,7 +331,7 @@ export const prepNeed = (farm: number) => LAYOUTS[farm % LAYOUTS.length].prep;
 
 /** How well a tool does a job on a farm: 1 = the right tool, less = a poorer job. */
 export function toolFit(job: PlotJob, tool: ImplId, farm: number): number {
-  if (TOOL_JOB[tool] !== job) return 0;
+  if (!toolJobs(tool).includes(job)) return 0;
   if (job === 'prep') return fitOf(prepNeed(farm).tool, tool);
   if (job === 'sow') return tool === 'planter' ? 1 : 0.5;
   if (job === 'harvest') return tool === 'maizeH' ? 1 : 0.4;
@@ -323,13 +339,60 @@ export function toolFit(job: PlotJob, tool: ImplId, farm: number): number {
 }
 
 /** The most a wrong tool takes off a plot's harvest, by job. */
-export const MISFIT_COST: Record<PlotJob, number> = { prep: 0.15, sow: 0.12, setupFeed: 0.08, spray: 0, harvest: 0.15 };
+export const MISFIT_COST: Record<PlotJob, number> = { prep: 0.15, sow: 0.12, setupFeed: 0.08, weeding: 0, borer: 0, topdress: 0, spray: 0, harvest: 0.15 };
 
 /** The tool that suits a job on a farm, for the picker's hints. */
 export function rightTool(job: PlotJob, farm: number): ImplId {
   if (job === 'prep') return prepNeed(farm).tool;
-  return ({ sow: 'planter', setupFeed: 'spreader', spray: 'sprayer', harvest: 'maizeH' } as const)[job];
+  return ({ sow: 'planter', setupFeed: 'spreader', weeding: 'cultivator', borer: 'sprayer', topdress: 'spreader', spray: 'sprayer', harvest: 'maizeH' } as const)[job];
 }
+
+/* ---------------- scheduled care after planting ---------------- */
+
+/** Care every farm gets on set days after planting, whatever its checks show: weeding, a spray against stalk borer
+    (maize) and the CAN top-dress (farms on DAP + CAN, or the double dose). Each can be done by hand or from the
+    tractor seat, on either of its two days. Missing it costs the harvest (trials/model.ts). From the second cycle
+    in the farm world (Trial.routine). Proposed days and numbers, for the agronomist's review. */
+export type RoutineJob = 'weeding' | 'borer' | 'topdress';
+export const ROUTINE_JOBS: RoutineJob[] = ['weeding', 'borer', 'topdress'];
+
+export const ROUTINE: Record<RoutineJob, { from: number; by: number; title: string; short: string; done: string; carry?: 'fertilizer' | 'sprayer'; teach: string; missed: string }> = {
+  weeding: {
+    from: 2,
+    by: 3,
+    title: 'Weed',
+    short: 'weeding',
+    done: 'weeded',
+    teach: 'Weeds take the water and food meant for the young crop. Weed every farm on day 2 or 3.',
+    missed: 'Not weeded in time: the weeds took a tenth of the harvest.',
+  },
+  borer: {
+    from: 3,
+    by: 4,
+    title: 'Spray against stalk borer',
+    short: 'stalk-borer spray',
+    done: 'sprayed against stalk borer',
+    carry: 'sprayer',
+    teach: 'Stalk borer tunnels into young maize stems. Spray the leaf funnels on day 3 or 4.',
+    missed: 'Not sprayed against stalk borer: it took grain from every plant.',
+  },
+  topdress: {
+    from: 4,
+    by: 5,
+    title: 'Top-dress',
+    short: 'top-dress',
+    done: 'top-dressed',
+    carry: 'fertilizer',
+    teach: 'DAP + CAN only pays when the CAN goes on: put it beside each plant on day 4 or 5.',
+    missed: 'No CAN top-dress: the maize ran short of nitrogen and grew like DAP alone.',
+  },
+};
+
+/** The share of the harvest a farm loses when it is not weeded on its days. */
+export const WEEDS_MISSED = 0.1;
+/** The share of a maize farm's harvest stalk borer takes unless it is sprayed (a farm with no sprayer always loses
+    it: the check strip shows it). A spray keeps what its sprayer reaches (its armyworm cover: both hide in the funnel). */
+export const STALK_BORER = 0.08;
 
 export const TOOLS = Object.keys(TOOL_JOB) as ImplId[];
 export const toolName = (k: ImplId) => IMPL[k].name;
