@@ -15,7 +15,6 @@ import {
   CLUSTER,
   CROPS,
   DAY_HOURS,
-  DRIVER_WAGE,
   HUBS,
   HUB_SHARE,
   MAP_H,
@@ -524,7 +523,7 @@ function Today({ b, name, dispatch, onDone }: { b: Biz; name: string; dispatch: 
               Work diesel <b className="is-cost">−{ksh(plan.workDiesel)}</b>
             </span>
             <span>
-              Driver <b className="is-cost">−{ksh(mine.length ? DRIVER_WAGE : 0)}</b>
+              Driver <b className="is-cost">−{ksh(plan.wage)}</b>
             </span>
             {plan.hubFee > 0 && (
               <span>

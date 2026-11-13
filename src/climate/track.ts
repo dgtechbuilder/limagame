@@ -120,15 +120,17 @@ export function trackClimate(prev: GameState, s: GameState, a: Action): GameStat
       if (d) log(`${farmName(a.farm)} · wrong fix (${a.pick})`, 'field', d);
       break;
     }
-    // A tractor drive: the diesel it really burned; a clean drive earns a credit
+    // A tractor drive: the diesel it really burned; the first clean drive on a farm this cycle earns a credit (a retry
+    // burns diesel again, but earns no second credit)
     case 'tractorDone': {
       if (a.diesel === undefined) break;
+      const first = !prev.trial?.tractor?.[a.farm];
       next = { ...next, climate: { ...next.climate, drives: { n: next.climate.drives.n + 1, clim: next.climate.drives.clim + (a.clim ?? 0) } } };
       log(`${farmName(a.farm)} · tractor drive (climate ${a.clim ?? 0}/100)`, 'tractor', {
         diesel: a.diesel,
         emit: { fuel: a.co2 ?? 0 },
         pollution: a.diesel * 0.5,
-        credits: (a.clim ?? 0) >= 80 ? 1 : 0,
+        credits: first && (a.clim ?? 0) >= 80 ? 1 : 0,
       });
       break;
     }

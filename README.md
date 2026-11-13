@@ -254,18 +254,22 @@ One season of maize on *Farm Moja* (the maize beds on the map):
 
 1. **Farming Steps** run in order: Land prep → Planting → Fertilizer → Pesticides → Water → Harvest. Only the
    current step is open; later ones are locked and finished ones are read-only. Each task costs coins (free
-   if the input was bought in the Shop) and shows a one-line farming tip. *Finish* moves the calendar on by
+   if the input was bought in the Shop, though its shop price still counts in the season's costs) and shows a
+   one-line farming tip. *Finish* moves the calendar on by
    that step's days; *Skip* is allowed but scores zero for that step.
 2. **Crop health** is the average score of the growing steps (tasks done ÷ recommended). It sets expected bags
    and quality, shown in Info and Harvest timing.
 3. **Harvest timing**: harvest now, wait 2 days (best), or wait a week (lower quality).
-4. **Sale → Storage → Value addition → Select process**: prices are editable; storage trades cost per bag
-   against bags lost; processing raises the price. *Confirm and sell* pays out coins and points.
+4. **Sale → Storage → Value addition → Select process**: prices are editable; the harvest sells where it pays
+   more a bag, at the gate or at market after transport and storage; the grade sets the price (a lower grade
+   fetches less, as on the six farms: `PRICE_BY_QUALITY`); storage costs every bag put in store, against bags
+   lost; processing raises the price. *Confirm and sell* pays out coins and points.
 5. **Season results** compare seasons, name the three steps that cost the most, and *Lima AI* explains the
    result from the player's own numbers. *Start season N+1* keeps coins, points and history.
 
 Points: +100 × score for each finished step, +5 per bag sold. Rewards cost 800 or 1,500 points. Play time
-counts while the game is on screen. Milk and eggs can be collected once a day. The farm always shows
+counts while the game is on screen. Milk and eggs can be collected once a day. Equipment is bought once; fertilizer
+and tanks can be bought again. The farm always shows
 **Now : &lt;task&gt;** and a bubble on the field for the current task.
 
 Balance numbers live in `src/data.ts` (`STEP_META`, `HARVEST_EFFECT`, `STORAGE_OPTIONS`, `PROCESSES`,
@@ -516,8 +520,10 @@ hand ploughing 24 person-days an acre at KSh 400 a day ([FarmBiz Africa](https:/
 everything but ploughing; diesel per acre for each implement; 2.68 kg of CO₂ a litre. One farm is a sixth of an acre.
 
 **Rewards.** A drive pays 1.5 coins per score point and 50 points per star above the farm's best this cycle, as in
-Wakala. *Try again* is allowed until the player is done with the drive, so a good drive can be replayed for coins;
-`TRACTOR_REWARD.retryPays = 'improvement'` would pay a retry only for the score above the best (an open decision).
+Wakala. *Try again* is allowed until the player is done with the drive, but a retry pays coins only for the score
+above the farm's best (`TRACTOR_REWARD.retryPays = 'improvement'`), so a drive can't be replayed for coins. The
+reducer works the pay out from the score and the best on file. Only the first clean drive on a farm each cycle earns
+a climate credit.
 
 **Yield.** Until the agronomist's review (Gate A), how well the tractor ploughed and whether follow-ups were done are
 shown and saved but change no bags: `WAKALA_YIELD_EFFECTS = false`. With it on, a tractor-hire farm's land-prep
@@ -641,7 +647,8 @@ so simulated peers stand in (the brief's "liquidity backstop"), and the data sha
 
 **Partners** (Kimani Tractor Hire, the Narok Farmers' Co-op, Rafiki Fuel, the County Roads Office, the Hello Tractor
 app), **Fleet** (ridger, fertilizer spreader, maize planter, tractor harvester, the hub's large tractor, the combine)
-and **levels** by farmers helped are as before.
+and **levels** by farmers helped are as before. A day hired out to the county is booked like any other day's hire:
+the hub keeps its share while the tractor is the hub's, and an owned tractor pays its PAYG instalment from it.
 
 **Hello Tractor's voice (§6).** The business screens use the brand's palette (Sunset Blaze `#FF461E`, Hibiscus
 `#F8285F`, Plum `#2F1C54`, Sage `#93C393`, Summer Breeze `#93C2C6`, Charcoal `#161616`) and type (Merriweather for
@@ -930,8 +937,8 @@ player's saved game or events.
 - The faint 5% pattern texture on the cream panels in Figma is omitted.
 - **From Wakala Agent**, waiting on a decision: the fix lessons, products, follow-up days and Mama Achieng's lines
   need the agronomist's review; the proposed yield effects stay off until Gate A; only the before-planting tractor
-  stage is played; every retried drive pays coins in full, as planned, which a player could farm
-  (`retryPays: 'improvement'` closes that); wrong fixes count in the farm's costs at harvest; fuel for the drive is
+  stage is played; a retried drive pays only for beating the farm's best; wrong fixes count in the farm's costs at
+  harvest; fuel for the drive is
   free (the plan's hire price covers it); Wakala's photos are still to add.
 
 ---
