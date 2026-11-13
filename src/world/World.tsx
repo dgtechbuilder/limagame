@@ -44,6 +44,7 @@ import { JOB_INFO, KIND_WORDS, TOOL_JOB, toolName, tractorName, type PlotKind } 
 import type { Rig } from '../plots/TractorPick';
 import { money } from '../money';
 import { sfx } from '../sfx';
+import { AwardsButton } from '../components/AwardsButton';
 
 // from Wakala Agent: the screens after a right call, at the shed and at the Hire spot, loaded when first opened
 const Prescribe = lazy(() => import('../care/Prescribe').then(m => ({ default: m.Prescribe })));
@@ -682,6 +683,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         <span>CLIMATE</span>
         {grade && <i className="hud-badge" aria-hidden="true">{grade.grade}</i>}
       </button>
+      <AwardsButton s={s} dispatch={dispatch} />
       <button type="button" className="hud-round hud-mission" onClick={() => dispatch({ type: 'trials', open: true })} aria-label="Mission: plan, progress and results of your farms">
         <ClipboardIcon />
         <span>MISSION</span>

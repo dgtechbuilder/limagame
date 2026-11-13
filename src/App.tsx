@@ -15,6 +15,7 @@ const ReviewPicker = lazy(() => import('./review/Review').then(m => ({ default: 
 import { WelcomeModal } from './screens/Meta';
 import { SettingsPage } from './screens/Settings';
 import { ClimatePage } from './screens/Climate';
+import { AchievementsPage } from './screens/Achievements';
 import { ArtContext, VoiceContext } from './art/style';
 import { speak, stopSpeaking } from './speech';
 import { setSoundOn, sfx, warmSfx } from './sfx';
@@ -49,6 +50,8 @@ export default function App() {
   const scale = useStageScale(review);
   const toastTimer = useRef<number | undefined>(undefined);
   const [toastVisible, setToastVisible] = useState(false);
+  const [awardVisible, setAwardVisible] = useState(false);
+  const awardTimer = useRef<number | undefined>(undefined);
 
 
   // Play-tests: ?dev in a dev build exposes the state and jump-to-state helpers as window.__lima (never in production)
@@ -124,6 +127,13 @@ export default function App() {
     return () => window.removeEventListener('pointerdown', warmSfx);
   }, [s.settings.sound]);
 
+  // a badge, a certificate or a new day of the streak: a pop-up for a few seconds
+  useEffect(() => {
+    if (!s.award) return;
+    setAwardVisible(true);
+    window.clearTimeout(awardTimer.current);
+    awardTimer.current = window.setTimeout(() => setAwardVisible(false), 4200);
+  }, [s.award]);
   useEffect(() => {
     if (!s.toast) return;
     setToastVisible(true);
@@ -191,6 +201,7 @@ export default function App() {
         {m?.kind === 'welcome' && <WelcomeModal s={s} dispatch={dispatch} />}
         {m?.kind === 'settings' && <SettingsPage s={s} dispatch={dispatch} tab={m.tab} />}
         {m?.kind === 'climate' && <ClimatePage s={s} dispatch={dispatch} tab={m.tab} />}
+        {m?.kind === 'achievements' && <AchievementsPage s={s} dispatch={dispatch} tab={m.tab} />}
         {m?.kind === 'shop' && <ShopModal s={s} tab={m.tab} dispatch={dispatch} />}
         {m?.kind === 'steps' && <StepsModal s={s} step={m.step} dispatch={dispatch} />}
         {m?.kind === 'sale' && <SaleModal s={s} dispatch={dispatch} />}
@@ -202,6 +213,15 @@ export default function App() {
         {m?.kind === 'outcome' && <OutcomeModal s={s} dispatch={dispatch} />}
         {m?.kind === 'rewards' && <RewardsModal s={s} dispatch={dispatch} />}
 
+        {awardVisible && s.award && !m && (
+          <div key={`award-${s.award.id}`} className="award-pop" role="status">
+            <span aria-hidden="true">🏅</span>
+            <span>
+              <b>{s.award.title}</b>
+              <small>{s.award.line}</small>
+            </span>
+          </div>
+        )}
         {toastVisible && s.toast && (
           <div key={s.toast.id} className="toast" role="status">
             {s.toast.text}

@@ -39,6 +39,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [Money on screen](#money-on-screen)
 - [Settings](#settings)
 - [Climate tracking](#climate-tracking)
+- [Achievements, the daily streak and certificates](#achievements-the-daily-streak-and-certificates)
 - [Character art: retro anime](#character-art-retro-anime)
 - [Design review mode](#design-review-mode)
 - [Saving, events and privacy](#saving-events-and-privacy)
@@ -833,6 +834,36 @@ Climate levels (Seedling, Grower, Steward, Champion, Climate hero) pay 100 to 50
 All factors are in one table in `src/climate/model.ts` (`FACTORS` and the plan, task and market tables), like the six
 farms' numbers: illustrative estimates for learning until an agronomist reviews them; the N₂O share cites the IPCC
 2006 guidelines. `tests/climate.spec.ts` plays the tracking and the page.
+
+## Achievements, the daily streak and certificates
+
+A reason to come back every day, and something won in every part of the game. Everything is in
+`src/achievements/model.ts` (the badges, what they pay, the streak's rewards, which certificates are given);
+`src/achievements/track.ts` watches each action, as climate tracking does; the page is `src/screens/Achievements.tsx`.
+
+- **The daily streak.** A day counts once the player finishes something on it (any action that plays a happy
+  sound). Days in a row build the streak; a whole day missed starts it again. The day turns at the player's own
+  midnight. Each day played has a reward to claim: 200 coins and 10 points on day 1, growing to 1,400 coins and
+  70 points from day 7 on (`STREAK_REWARD`).
+- **Badges** (59), by part of the game: *Every day*, *Farm Moja*, *Six farms*, *Field rounds*, *Tractor*,
+  *Tractor business*, *Climate*. Ten **day-one badges** are easy firsts, one or two in each part (finish the first
+  crop checks, do a farming task, buy in the Shop, collect the milk or eggs, read a bed right, plant the farms, read
+  a daily check right, finish a tractor drive, run a business day, earn a climate credit). The rest come in
+  bronze, silver and gold (a 3-, 7- and 30-day streak; 10, 50 and 150 farming tasks; 3, 10 and 30 drives…), plus
+  *Tractor owner*. Badges pay 25 (day one), 50, 100 or 250 points, and 150 for a special one.
+- **Rewards wait to be claimed** on the Achievements page (*Claim*, or *Claim all*): an action never changes coins
+  or points by itself, so every other rule in the game adds up as before.
+- **Certificates**, kept on the page with the farmer's name and the date: one for every 7 days played (with what
+  was done that week), one for each streak of 3, 7, 14, 30, 60 and 100 days, and a bronze, silver or gold
+  certificate for a part of the game whose every badge of that tier is won.
+- **On screen:** the AWARDS button (3D farm, under Climate; on the classic farm, under the farm's name) shows the
+  streak and a red dot while a reward waits. A pop-up announces each badge, certificate and new day. The page has
+  *Today* (the streak, the last seven days, today's reward, the day-one goals), *Badges* (filter by part of the
+  game, closest to done first) and *Certificates*. Main menu → *Achievements*; addresses `#/achievements/today`,
+  `/badges` and `/certificates`.
+- Counting starts with the first action after this update; badges that read what the save already holds
+  (seasons sold, cycles harvested, farmers helped, level, climate credits) are won at once. Badges open once the
+  first crop checks are done.
 
 ## Character art: retro anime
 

@@ -31,6 +31,8 @@ import { rewardFor } from './tractor/sim';
 import { TRACTOR_PLOT, plotCost, setPlotInput, toolName, type PlotJob, type PlotKind, type TractorId } from './plots/data';
 import { initialClimate, type ClimateState } from './climate/model';
 import { trackClimate } from './climate/track';
+import { achClock, trackAchievements } from './achievements/track';
+import { achOf, achOfSave, initialAch, streakReward, type AchState } from './achievements/model';
 import { routeTo } from './route';
 import type { SfxKind } from './sfx';
 import { money } from './money';
@@ -54,6 +56,7 @@ import {
 export type Modal =
   | { kind: 'menu' }
   | { kind: 'climate'; tab?: ClimateTab }
+  | { kind: 'achievements'; tab?: AchTab }
   | { kind: 'welcome' }
   | { kind: 'settings'; tab?: SettingsTab }
   | { kind: 'shop'; tab: ShopTab }
@@ -82,6 +85,7 @@ export interface Settings {
 }
 export type SettingsTab = 'farmer' | 'game' | 'display' | 'help';
 export type ClimateTab = 'overview' | 'emissions' | 'water' | 'shocks' | 'activity';
+export type AchTab = 'today' | 'badges' | 'certificates';
 export const DEFAULT_SETTINGS: Settings = { art: 'anime', graphics: 'auto', reduceMotion: false, voice: false, sound: true };
 
 /** Stage index: 0–5 = the farming step being worked on, 6 = harvested and selling, 7 = season sold. */
@@ -130,6 +134,10 @@ export interface GameState {
   sfx: { id: number; kind: SfxKind } | null;
   /** climate tracking: emissions, carbon stored, water, pollution, soil, credits (src/climate/model.ts) */
   climate: ClimateState;
+  /** achievements: badges won, the daily streak, certificates (src/achievements/model.ts); missing in older saves */
+  ach?: AchState;
+  /** the pop-up announcing a badge, a certificate or a new day of the streak (not saved) */
+  award: { id: number; title: string; line: string } | null;
   /** the farm screen: the walkable 3D farm, or the classic painted one */
   view: 'world' | 'classic';
   /** the screen on top was opened from the main menu, so Back goes back to the menu */
@@ -218,6 +226,8 @@ export const freshSeason = {
 export const initialState: GameState = {
   settings: DEFAULT_SETTINGS,
   climate: initialClimate,
+  ach: initialAch,
+  award: null,
   view: 'world',
   fromMenu: false,
   navSeq: 0,
@@ -413,6 +423,10 @@ export type Action =
   | { type: 'bizGraduate' }
   | { type: 'bizContract'; id: string; bookings: Bookings }
   | { type: 'bizIntro' }
+  /** achievements: claim a badge's reward, every reward waiting, or today's reward for coming back */
+  | { type: 'achClaim'; id: string }
+  | { type: 'achClaimAll' }
+  | { type: 'achDaily' }
   /** go to a web address (src/route.ts): the screen it names, if the player may go there now */
   | { type: 'route'; path: string };
 
@@ -435,16 +449,17 @@ const lowerFirst = (x: string) => x.charAt(0).toLowerCase() + x.slice(1);
 export function reducer(s: GameState, a: Action): GameState {
   const next = play(s, a);
   if (next === s) return s;
-  const tracked = trackClimate(s, next, a);
   const kind = soundOf(s, next, a);
+  // an action that finished something counts today as a day played (the streak)
+  const tracked = trackAchievements(s, trackClimate(s, next, a), a, kind !== null);
   return kind ? { ...tracked, sfx: { id: ++sfxId, kind } } : tracked;
 }
 
 let sfxId = 0;
 /** Flows: finishing one of these ends a whole piece of play. */
-const FLOWS = new Set<Action['type']>(['completeSale', 'trialHarvest', 'bizRun', 'bizHireOut', 'bizContract', 'bizGraduate', 'tractorDone']);
+const FLOWS = new Set<Action['type']>(['achClaimAll', 'completeSale', 'trialHarvest', 'bizRun', 'bizHireOut', 'bizContract', 'bizGraduate', 'tractorDone']);
 /** Actions: finishing one of these is one thing done. Some only count when they earned something (their message). */
-const ACTIONS = new Set<Action['type']>(['buy', 'sell', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo']);
+const ACTIONS = new Set<Action['type']>(['achClaim', 'achDaily', 'buy', 'sell', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo']);
 const EARNED = new Set<Action['type']>(['roundResult', 'trialCheck', 'fieldMark']);
 const FS_ORDER: FsPhase[] = ['create', 'story', 'walk1', 'update', 'review1', 'walkRetry', 'retry', 'walk2', 'review2', 'done'];
 
@@ -1029,6 +1044,47 @@ function play(s: GameState, a: Action): GameState {
     }
     case 'bizIntro':
       return { ...s, biz: { ...bizOf(s.biz), intro: true } };
+    case 'achClaim': {
+      const ach = achOfSave(s.ach);
+      const w = ach.won[a.id];
+      const x = achOf(a.id);
+      if (!w || w.claimed || !x) return s;
+      return {
+        ...s,
+        ach: { ...ach, won: { ...ach.won, [a.id]: { ...w, claimed: true } } },
+        points: s.points + x.points,
+        coins: s.coins + (x.coins ?? 0),
+        toast: toast(`${x.name}: +${x.points} points${x.coins ? ` · +${money(x.coins)} coins` : ''}`),
+      };
+    }
+    case 'achClaimAll': {
+      const ach = achOfSave(s.ach);
+      const ids = Object.keys(ach.won).filter(id => !ach.won[id].claimed && achOf(id));
+      const day = ach.daily && ach.daily.date === achClock.today() && !ach.daily.claimed ? streakReward(ach.daily.streak) : null;
+      if (!ids.length && !day) return s;
+      const points = ids.reduce((n, id) => n + achOf(id)!.points, 0) + (day?.points ?? 0);
+      const coins = ids.reduce((n, id) => n + (achOf(id)!.coins ?? 0), 0) + (day?.coins ?? 0);
+      return {
+        ...s,
+        ach: { ...ach, won: { ...ach.won, ...Object.fromEntries(ids.map(id => [id, { ...ach.won[id], claimed: true }])) }, daily: day ? { ...ach.daily!, claimed: true } : ach.daily },
+        points: s.points + points,
+        coins: s.coins + coins,
+        toast: toast(`Rewards claimed: +${fmt(points)} points${coins ? ` · +${money(coins)} coins` : ''}`),
+      };
+    }
+    case 'achDaily': {
+      const ach = achOfSave(s.ach);
+      const d = ach.daily;
+      if (!d || d.claimed || d.date !== achClock.today()) return s;
+      const r = streakReward(d.streak);
+      return {
+        ...s,
+        ach: { ...ach, daily: { ...d, claimed: true } },
+        coins: s.coins + r.coins,
+        points: s.points + r.points,
+        toast: toast(`Day ${d.streak} reward: +${money(r.coins)} coins · +${r.points} points`),
+      };
+    }
   }
 }
 
@@ -1037,7 +1093,7 @@ function play(s: GameState, a: Action): GameState {
 /* ------------------------------------------------------------------ */
 
 const SAVE_KEY = 'lima-farming-game:v2';
-const TRANSIENT: (keyof GameState)[] = ['sfx', 'fromMenu', 'navSeq', 'rideReq', 'modal', 'plotSelected', 'toast', 'roundsOpen', 'roundsView', 'roundsDemo', 'worldDemo', 'trialsOpen', 'roundsTrial', 'bizOpen'];
+const TRANSIENT: (keyof GameState)[] = ['award', 'sfx', 'fromMenu', 'navSeq', 'rideReq', 'modal', 'plotSelected', 'toast', 'roundsOpen', 'roundsView', 'roundsDemo', 'worldDemo', 'trialsOpen', 'roundsTrial', 'bizOpen'];
 
 /** Design-review links (?review or ?screen) use a throwaway game so they never touch a player's save. */
 export const reviewing = () => {
@@ -1066,7 +1122,7 @@ function loadSaved(): GameState {
     const saved = JSON.parse(raw);
     // Saves from before the farm had one owner may carry a reminder about neighbours.
     if (typeof saved.note === 'string' && /Achieng|neighbour/i.test(saved.note)) saved.note = 'Check every bed on your farm often: open Rounds on the farm.';
-    return { ...initialState, ...saved, fromMenu: false, navSeq: 0, rideReq: 0, modal: null, plotSelected: false, toast: null, sfx: null, roundsOpen: false, roundsView: null, roundsDemo: null, worldDemo: null, trialsOpen: false, bizOpen: false, roundsTrial: false, rounds: { ...initialState.rounds, ...(saved.rounds ?? {}) }, settings: { ...DEFAULT_SETTINGS, ...(saved.settings ?? {}) }, climate: { ...initialClimate, ...(saved.climate ?? {}) } };
+    return { ...initialState, ...saved, fromMenu: false, navSeq: 0, rideReq: 0, modal: null, plotSelected: false, toast: null, sfx: null, award: null, ach: achOfSave(saved.ach), roundsOpen: false, roundsView: null, roundsDemo: null, worldDemo: null, trialsOpen: false, bizOpen: false, roundsTrial: false, rounds: { ...initialState.rounds, ...(saved.rounds ?? {}) }, settings: { ...DEFAULT_SETTINGS, ...(saved.settings ?? {}) }, climate: { ...initialClimate, ...(saved.climate ?? {}) } };
   } catch {
     return initialState;
   }
