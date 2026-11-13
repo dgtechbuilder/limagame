@@ -1328,7 +1328,11 @@ export class FarmWorld {
       if (now) {
         const item = PICKUP_OF[now];
         if (item) {
-          if (this.view?.field.carry !== item) this.ev.carry(item);
+          // only a spot walked to (or steered into) hands over its item: crossing it on the way somewhere else keeps
+          // what is carried, so the sprayer is not swapped for fertilizer on the way to the farm
+          const p = PLACES[now];
+          const meant = !this.target || Math.hypot(this.target.x - p.x, this.target.y - p.z) < p.r;
+          if (meant && this.view?.field.carry !== item) this.ev.carry(item);
         } else if (now === 'hire') {
           if (!this.riding) this.startHire();
         }

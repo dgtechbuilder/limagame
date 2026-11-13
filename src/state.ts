@@ -4,6 +4,7 @@ import {
   CHECK_DAYS,
   COMMON_PLAN,
   DAMAGE,
+  PRICE_BY_QUALITY,
   WRONG_FIX_COST,
   canTreat,
   checkKey,
@@ -26,9 +27,12 @@ import {
 import { FOLLOW_UP } from './care/data';
 import { FULL, carryNeeded, emptyField, followUpLeft, plotLocked, treatCost, treatLeft, type Carry, type Field } from './world/field';
 import { TRACTOR_BONUS, type ImplId } from './tractor/data';
+import { rewardFor } from './tractor/sim';
 import { TRACTOR_PLOT, plotCost, setPlotInput, toolName, type PlotJob, type PlotKind, type TractorId } from './plots/data';
 import { initialClimate, type ClimateState } from './climate/model';
 import { trackClimate } from './climate/track';
+import { achClock, trackAchievements } from './achievements/track';
+import { achOf, achOfSave, initialAch, streakReward, type AchState } from './achievements/model';
 import { routeTo } from './route';
 import type { SfxKind } from './sfx';
 import { money } from './money';
@@ -52,6 +56,7 @@ import {
 export type Modal =
   | { kind: 'menu' }
   | { kind: 'climate'; tab?: ClimateTab }
+  | { kind: 'achievements'; tab?: AchTab }
   | { kind: 'welcome' }
   | { kind: 'settings'; tab?: SettingsTab }
   | { kind: 'shop'; tab: ShopTab }
@@ -80,6 +85,7 @@ export interface Settings {
 }
 export type SettingsTab = 'farmer' | 'game' | 'display' | 'help';
 export type ClimateTab = 'overview' | 'emissions' | 'water' | 'shocks' | 'activity';
+export type AchTab = 'today' | 'badges' | 'certificates';
 export const DEFAULT_SETTINGS: Settings = { art: 'anime', graphics: 'auto', reduceMotion: false, voice: false, sound: true };
 
 /** Stage index: 0–5 = the farming step being worked on, 6 = harvested and selling, 7 = season sold. */
@@ -128,6 +134,10 @@ export interface GameState {
   sfx: { id: number; kind: SfxKind } | null;
   /** climate tracking: emissions, carbon stored, water, pollution, soil, credits (src/climate/model.ts) */
   climate: ClimateState;
+  /** achievements: badges won, the daily streak, certificates (src/achievements/model.ts); missing in older saves */
+  ach?: AchState;
+  /** the pop-up announcing a badge, a certificate or a new day of the streak (not saved) */
+  award: { id: number; title: string; line: string } | null;
   /** the farm screen: the walkable 3D farm, or the classic painted one */
   view: 'world' | 'classic';
   /** the screen on top was opened from the main menu, so Back goes back to the menu */
@@ -216,6 +226,8 @@ export const freshSeason = {
 export const initialState: GameState = {
   settings: DEFAULT_SETTINGS,
   climate: initialClimate,
+  ach: initialAch,
+  award: null,
   view: 'world',
   fromMenu: false,
   navSeq: 0,
@@ -294,6 +306,14 @@ export function expectedHarvest(s: GameState, choice: HarvestChoice) {
 /** Coins earned per bag at market after transport and storage (both entered per 10 bags). */
 export const profitPerBag = (p: Prices) => Math.round((p.market - (p.transport + p.storage) / 10) * 10) / 10;
 
+/** Where the harvest sells: at the gate when the gate pays more a bag than the market after its costs. */
+export const sellAt = (p: Prices): 'gate' | 'market' => (p.farmgate > profitPerBag(p) ? 'gate' : 'market');
+/** Coins a bag of top-grade grain fetches where it sells (the better of the gate and the market after costs). */
+export const basePerBag = (p: Prices) => Math.max(0, sellAt(p) === 'gate' ? p.farmgate : profitPerBag(p));
+
+/** The price a grade fetches against top grade (5 stars), as on the six farms (trials/model.ts PRICE_BY_QUALITY). */
+export const qualityPrice = (quality: number) => PRICE_BY_QUALITY[Math.max(1, Math.min(5, Math.round(quality)))] / PRICE_BY_QUALITY[5];
+
 export function saleQuote(s: GameState, processId: string | null) {
   const storage = STORAGE_OPTIONS.find(o => o.id === s.storage)!;
   const harvestCare = s.stepScores.harvest ?? stepScore(s, 'harvest');
@@ -301,11 +321,19 @@ export function saleQuote(s: GameState, processId: string | null) {
   const bags = s.harvested?.bags ?? 0;
   const bagsSold = Math.round(bags * (1 - loss));
   const process = processId ? PROCESSES.find(p => p.id === processId)! : null;
-  const price = profitPerBag(s.prices) * (1 + (process ? process.profitIncrease / 100 : 0));
-  const costs = bagsSold * storage.costPerBag + (process ? process.cost : 0);
-  const revenue = Math.max(0, Math.round(bagsSold * price - costs));
-  return { bagsSold, lost: bags - bagsSold, price, revenue };
+  // the grade sets the price: a lower grade fetches less a bag
+  const price = basePerBag(s.prices) * qualityPrice(s.harvested?.quality ?? 5) * (1 + (process ? process.profitIncrease / 100 : 0));
+  // storage is paid on every bag put in store, the ones that spoil there too
+  const costs = bags * storage.costPerBag + (process ? process.cost : 0);
+  const gross = bagsSold * price;
+  const revenue = Math.max(0, Math.round(gross - costs));
+  return { bagsSold, lost: bags - bagsSold, price, costs, gross: Math.round(gross), revenue, at: sellAt(s.prices) };
 }
+
+/** What a shop item cost (one unit), or 0. */
+const shopPrice = (id: string) => SHOP_TABS.flatMap(t => t.items).find(i => i.id === id)?.price ?? 0;
+/** Shop items that are kept for good (equipment): one of each is enough. Tanks add up; fertilizer is used up. */
+const KEEPS = new Set(SHOP_TABS.find(t => t.id === 'equipment')!.items.map(i => i.id));
 
 export const daysToHarvest = (s: GameState) =>
   STEPS.slice(s.stage, stepIndex('harvest')).reduce((d, st) => d + STEP_META[st.id].days, 0);
@@ -377,8 +405,9 @@ export type Action =
   | { type: 'prescribe'; farm: number; day: number; pick: string; right: boolean }
   /** farm world: follow-ups whose day ended undone, by `${farm}:${day}` (they are logged once) */
   | { type: 'followUpMissed'; keys: string[] }
-  /** farm world: a before-planting tractor drive finished (the drive's coins and points are worked out by the screen) */
-  | { type: 'tractorDone'; farm: number; score: number; stars: number; Q: number; coins: number; points: number; diesel?: number; co2?: number; clim?: number }
+  /** farm world: a before-planting tractor drive finished (its coins and points are worked out here, from the score
+      and the farm's best: tractor/sim.ts rewardFor; the screen's own figures are only what it showed) */
+  | { type: 'tractorDone'; farm: number; score: number; stars: number; Q: number; coins?: number; points?: number; diesel?: number; co2?: number; clim?: number }
   | { type: 'fs'; phase: FsPhase; at?: 'first' | 'lower'; opened?: boolean; note?: string; page?: number }
   /** the tractor business: open or close it; run a day (the plan is worked out again here); hire the tractor out
       for a day; sign a partner; buy for the fleet */
@@ -394,6 +423,10 @@ export type Action =
   | { type: 'bizGraduate' }
   | { type: 'bizContract'; id: string; bookings: Bookings }
   | { type: 'bizIntro' }
+  /** achievements: claim a badge's reward, every reward waiting, or today's reward for coming back */
+  | { type: 'achClaim'; id: string }
+  | { type: 'achClaimAll' }
+  | { type: 'achDaily' }
   /** go to a web address (src/route.ts): the screen it names, if the player may go there now */
   | { type: 'route'; path: string };
 
@@ -416,16 +449,17 @@ const lowerFirst = (x: string) => x.charAt(0).toLowerCase() + x.slice(1);
 export function reducer(s: GameState, a: Action): GameState {
   const next = play(s, a);
   if (next === s) return s;
-  const tracked = trackClimate(s, next, a);
   const kind = soundOf(s, next, a);
+  // an action that finished something counts today as a day played (the streak)
+  const tracked = trackAchievements(s, trackClimate(s, next, a), a, kind !== null);
   return kind ? { ...tracked, sfx: { id: ++sfxId, kind } } : tracked;
 }
 
 let sfxId = 0;
 /** Flows: finishing one of these ends a whole piece of play. */
-const FLOWS = new Set<Action['type']>(['completeSale', 'trialHarvest', 'bizRun', 'bizHireOut', 'bizContract', 'bizGraduate', 'tractorDone']);
+const FLOWS = new Set<Action['type']>(['achClaimAll', 'completeSale', 'trialHarvest', 'bizRun', 'bizHireOut', 'bizContract', 'bizGraduate', 'tractorDone']);
 /** Actions: finishing one of these is one thing done. Some only count when they earned something (their message). */
-const ACTIONS = new Set<Action['type']>(['buy', 'sell', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo']);
+const ACTIONS = new Set<Action['type']>(['achClaim', 'achDaily', 'buy', 'sell', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo']);
 const EARNED = new Set<Action['type']>(['roundResult', 'trialCheck', 'fieldMark']);
 const FS_ORDER: FsPhase[] = ['create', 'story', 'walk1', 'update', 'review1', 'walkRetry', 'retry', 'walk2', 'review2', 'done'];
 
@@ -464,6 +498,7 @@ function play(s: GameState, a: Action): GameState {
     case 'onboarded':
       return { ...s, onboarded: true };
     case 'buy': {
+      if (KEEPS.has(a.id) && s.inventory.includes(a.id)) return { ...s, toast: toast(`You already have a ${a.name.toLowerCase()}`) };
       if (s.coins < a.price) return { ...s, toast: toast(`You need ${money(a.price)} coins for ${a.name}`) };
       return {
         ...s,
@@ -493,10 +528,12 @@ function play(s: GameState, a: Action): GameState {
       if (s.coins < cost) return { ...s, toast: toast(`You need ${money(cost)} coins for ${a.name}`) };
       const inventory = fromStock >= 0 ? s.inventory.filter((_, i) => i !== fromStock) : s.inventory;
       const tip = TASK_TIPS[a.id] ?? `${a.name} done`;
+      // an item bought in the shop was paid for then: it still counts in this season's costs when it is used
+      const spent = fromStock >= 0 ? shopPrice(item) : cost;
       return {
         ...s,
         coins: s.coins - cost,
-        seasonSpend: s.seasonSpend + cost,
+        seasonSpend: s.seasonSpend + spent,
         inventory,
         water: s.water + (a.water ?? 0),
         doneTasks: [...s.doneTasks, a.id],
@@ -603,6 +640,7 @@ function play(s: GameState, a: Action): GameState {
     case 'farm':
       return { ...s, farmView: a.index };
     case 'collect':
+      if (s.collectedDay[a.id] === today()) return s;
       return {
         ...s,
         collectedDay: { ...s.collectedDay, [a.id]: today() },
@@ -727,7 +765,9 @@ function play(s: GameState, a: Action): GameState {
         points: s.points + earned,
         trial: { ...t, checks: { ...t.checks, [key]: { right: a.right, tries: a.tries, treated: paid } }, treatments },
         ...gainXp(s, a.right ? 0.06 : 0.01),
-        toast: earned ? toast(`Read right · +${earned} points${paid ? ` · treated for ${money(fix)} coins` : ''}`) : s.toast,
+        toast: earned
+          ? toast(`Read right · +${earned} points${paid ? ` · treated for ${money(fix)} coins` : !a.physical && fix > 0 ? ` · not treated: it costs ${money(fix)} coins and you have ${money(s.coins)}` : ''}`)
+          : s.toast,
       };
     }
     case 'trialNextDay': {
@@ -820,7 +860,8 @@ function play(s: GameState, a: Action): GameState {
         const pending = treatLeft(f, t, a.farm, day);
         if (pending && (after & pending.need) === pending.need) {
           const cost = treatCost(pending.hazard);
-          if (s1.coins < cost) return { ...s1, field: marked, toast: toast(`You need ${money(cost)} coins to treat ${farmName(a.farm)}`) };
+          // not enough coins: the last of the work waits (marking it done would leave the treatment unpaid and undone for good)
+          if (s1.coins < cost) return { ...s1, toast: toast(`You need ${money(cost)} coins to treat ${farmName(a.farm)}`) };
           const ck = checkKey(a.farm, day);
           // the care that has to be done again a day or two later (only inside the six check days)
           const fu = FOLLOW_UP[pending.hazard];
@@ -902,6 +943,8 @@ function play(s: GameState, a: Action): GameState {
       const t = s.trial;
       if (!t) return s;
       const before = t.tractor?.[a.farm];
+      // the pay is worked out against the best on file (TRACTOR_REWARD): a retry pays only for beating it
+      const pay = rewardFor(a, before ?? null);
       const best = {
         stars: Math.max(before?.stars ?? 0, a.stars),
         score: Math.max(before?.score ?? 0, a.score),
@@ -910,8 +953,8 @@ function play(s: GameState, a: Action): GameState {
       };
       return {
         ...s,
-        coins: s.coins + a.coins,
-        points: s.points + a.points,
+        coins: s.coins + pay.coins,
+        points: s.points + pay.points,
         trial: { ...t, tractor: { ...(t.tractor ?? {}), [a.farm]: best } },
         ...gainXp(s, 0.05 + 0.05 * a.stars),
       };
@@ -1001,6 +1044,47 @@ function play(s: GameState, a: Action): GameState {
     }
     case 'bizIntro':
       return { ...s, biz: { ...bizOf(s.biz), intro: true } };
+    case 'achClaim': {
+      const ach = achOfSave(s.ach);
+      const w = ach.won[a.id];
+      const x = achOf(a.id);
+      if (!w || w.claimed || !x) return s;
+      return {
+        ...s,
+        ach: { ...ach, won: { ...ach.won, [a.id]: { ...w, claimed: true } } },
+        points: s.points + x.points,
+        coins: s.coins + (x.coins ?? 0),
+        toast: toast(`${x.name}: +${x.points} points${x.coins ? ` · +${money(x.coins)} coins` : ''}`),
+      };
+    }
+    case 'achClaimAll': {
+      const ach = achOfSave(s.ach);
+      const ids = Object.keys(ach.won).filter(id => !ach.won[id].claimed && achOf(id));
+      const day = ach.daily && ach.daily.date === achClock.today() && !ach.daily.claimed ? streakReward(ach.daily.streak) : null;
+      if (!ids.length && !day) return s;
+      const points = ids.reduce((n, id) => n + achOf(id)!.points, 0) + (day?.points ?? 0);
+      const coins = ids.reduce((n, id) => n + (achOf(id)!.coins ?? 0), 0) + (day?.coins ?? 0);
+      return {
+        ...s,
+        ach: { ...ach, won: { ...ach.won, ...Object.fromEntries(ids.map(id => [id, { ...ach.won[id], claimed: true }])) }, daily: day ? { ...ach.daily!, claimed: true } : ach.daily },
+        points: s.points + points,
+        coins: s.coins + coins,
+        toast: toast(`Rewards claimed: +${fmt(points)} points${coins ? ` · +${money(coins)} coins` : ''}`),
+      };
+    }
+    case 'achDaily': {
+      const ach = achOfSave(s.ach);
+      const d = ach.daily;
+      if (!d || d.claimed || d.date !== achClock.today()) return s;
+      const r = streakReward(d.streak);
+      return {
+        ...s,
+        ach: { ...ach, daily: { ...d, claimed: true } },
+        coins: s.coins + r.coins,
+        points: s.points + r.points,
+        toast: toast(`Day ${d.streak} reward: +${money(r.coins)} coins · +${r.points} points`),
+      };
+    }
   }
 }
 
@@ -1009,7 +1093,7 @@ function play(s: GameState, a: Action): GameState {
 /* ------------------------------------------------------------------ */
 
 const SAVE_KEY = 'lima-farming-game:v2';
-const TRANSIENT: (keyof GameState)[] = ['sfx', 'fromMenu', 'navSeq', 'rideReq', 'modal', 'plotSelected', 'toast', 'roundsOpen', 'roundsView', 'roundsDemo', 'worldDemo', 'trialsOpen', 'roundsTrial', 'bizOpen'];
+const TRANSIENT: (keyof GameState)[] = ['award', 'sfx', 'fromMenu', 'navSeq', 'rideReq', 'modal', 'plotSelected', 'toast', 'roundsOpen', 'roundsView', 'roundsDemo', 'worldDemo', 'trialsOpen', 'roundsTrial', 'bizOpen'];
 
 /** Design-review links (?review or ?screen) use a throwaway game so they never touch a player's save. */
 export const reviewing = () => {
@@ -1038,7 +1122,7 @@ function loadSaved(): GameState {
     const saved = JSON.parse(raw);
     // Saves from before the farm had one owner may carry a reminder about neighbours.
     if (typeof saved.note === 'string' && /Achieng|neighbour/i.test(saved.note)) saved.note = 'Check every bed on your farm often: open Rounds on the farm.';
-    return { ...initialState, ...saved, fromMenu: false, navSeq: 0, rideReq: 0, modal: null, plotSelected: false, toast: null, sfx: null, roundsOpen: false, roundsView: null, roundsDemo: null, worldDemo: null, trialsOpen: false, bizOpen: false, roundsTrial: false, rounds: { ...initialState.rounds, ...(saved.rounds ?? {}) }, settings: { ...DEFAULT_SETTINGS, ...(saved.settings ?? {}) }, climate: { ...initialClimate, ...(saved.climate ?? {}) } };
+    return { ...initialState, ...saved, fromMenu: false, navSeq: 0, rideReq: 0, modal: null, plotSelected: false, toast: null, sfx: null, award: null, ach: achOfSave(saved.ach), roundsOpen: false, roundsView: null, roundsDemo: null, worldDemo: null, trialsOpen: false, bizOpen: false, roundsTrial: false, rounds: { ...initialState.rounds, ...(saved.rounds ?? {}) }, settings: { ...DEFAULT_SETTINGS, ...(saved.settings ?? {}) }, climate: { ...initialClimate, ...(saved.climate ?? {}) } };
   } catch {
     return initialState;
   }
