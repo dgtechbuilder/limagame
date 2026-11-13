@@ -94,8 +94,9 @@ let awardId = 0;
 export function trackAchievements(prev: GameState, s: GameState, a: Action, played: boolean, today = achClock.today()): GameState {
   // a whole game put in place (Reset progress, design review, play-tests) is not play
   if (a.type === 'reset') return s;
-  const before = achOfSave(s.ach);
-  let ach = before;
+  // saves are filled in on loading (state.ts), so the state's own record is used as it is: an action that changes
+  // nothing here returns the very same state
+  let ach = s.ach ?? achOfSave(undefined);
   const add = counted(prev, s, a);
   if (Object.keys(add).length) {
     const stats = { ...ach.stats };
