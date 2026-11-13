@@ -434,10 +434,10 @@ test('levels, partners and the fleet open as the business grows', () => {
   const s3 = reducer(s2, { type: 'bizBuy', item: 'planter' });
   expect(s3.biz!.tools).not.toContain('planter');
   expect(s3.toast?.text).toBe('Maize planter: needs KSh 350,000');
-  // a day hired out to the county
+  // a day hired out to the county: the fee, less the driver and the hub's share of its own tractor
   const s4 = reducer({ ...s2, biz: { ...s2.biz!, partners: [...s2.biz!.partners, 'county'] } }, { type: 'bizHireOut' });
   expect(s4.biz!.day).toBe(s2.biz!.day + 1);
-  expect(s4.biz!.cash).toBe(s2.biz!.cash + 11000);
+  expect(s4.biz!.cash).toBe(s2.biz!.cash + 12000 - 1000 - 12000 * HUB_SHARE);
 });
 
 test('the tractor business screen: book farms, order the route, run the day', async ({ page }) => {
