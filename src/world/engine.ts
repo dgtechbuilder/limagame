@@ -1268,9 +1268,13 @@ export class FarmWorld {
     if (this.keys.has('a') || this.keys.has('arrowleft')) dir.x -= 1;
     if (this.keys.has('d') || this.keys.has('arrowright')) dir.x += 1;
     if (this.joy.lengthSq() > 0.01) dir.copy(this.joy);
+    // how far the spot being walked to is: a step never goes past it (a long frame on a slow phone, or a fast
+    // farmer, used to overshoot and swing back and forth across it)
+    let reach = Infinity;
     if (!dir.lengthSq() && this.target) {
       dir.subVectors(this.target, this.pos);
-      if (dir.length() < 0.15) {
+      reach = dir.length();
+      if (reach < 0.15) {
         this.target = null;
         dir.set(0, 0);
         this.ev.arrived?.();
@@ -1281,10 +1285,18 @@ export class FarmWorld {
       const len = Math.min(1, dir.length());
       dir.normalize();
       this.heading = Math.atan2(dir.x, dir.y);
-      const next = this.pos.clone().addScaledVector(dir, speed * len * dt);
+      const step = speed * len * dt;
+      const lands = reach <= step;
+      const next = this.pos.clone().addScaledVector(dir, Math.min(reach, step));
       this.collide(next);
-      if (this.target && next.distanceTo(this.pos) < speed * dt * 0.1) this.target = null;
+      const blocked = !lands && !!this.target && next.distanceTo(this.pos) < speed * dt * 0.1;
       this.pos.copy(next);
+      if (lands && this.target) {
+        // this step ends on the spot (unless something solid stands there)
+        const there = next.distanceTo(this.target) < 0.15;
+        this.target = null;
+        if (there) this.ev.arrived?.();
+      } else if (blocked) this.target = null;
       this.walking = Math.min(1, this.walking + dt * 8);
     } else this.walking = Math.max(0, this.walking - dt * 8);
   }
