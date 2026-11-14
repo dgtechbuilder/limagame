@@ -373,6 +373,9 @@ WASD. The **task card** at the top says what to do next; tap it and the farmer w
   the plots under it as it drives (a column of five plots a pass): see [Plots and inputs](#plots-and-inputs). It drives
   a little faster than walking. A farm whose 20 plots are all done from the seat pays **+30 bonus points** once per
   farm and job (`TRACTOR_BONUS.perJob`). The hired tractor (a *Tractor hire* plan) ploughs a whole farm in one pass.
+- **Places answer when the farmer walks to them** (a shed, the pond, the Hire spot, the market, the house, the
+  Mission board), or stops in them: a walk to somewhere else that only passes through picks nothing up and opens
+  nothing. A tap on the task card at a place the farmer already stands in opens it again.
 - **Sleep** at the farmhouse starts the next day (on the fast clock); **Plan** by the house, or **Mission** on the
   HUD, opens the plans, progress and results.
 - The HUD: the farmer and their level (top left), settings, coins and points (top right; **+** opens the shop and

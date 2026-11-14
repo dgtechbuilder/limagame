@@ -202,7 +202,8 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
   const onResult = (right: boolean) => {
     if (!visit) return;
     const r = visit.round;
-    const looks = (results[r.id]?.looks ?? 0) + 1;
+    // the six farms keep their checks: a look after the rounds were closed and opened again carries on counting
+    const looks = (results[r.id]?.looks ?? (trial ? doneToday[r.id]?.tries : undefined) ?? 0) + 1;
     const paid = right && !doneToday[r.id]?.right ? (looks === 1 ? ROUND_POINTS.first : ROUND_POINTS.second) : 0;
     setResults(prev => ({ ...prev, [r.id]: { right: right || !!prev[r.id]?.right, looks } }));
     setCheckedAt(prev => ({ ...prev, [r.id]: Date.now() }));

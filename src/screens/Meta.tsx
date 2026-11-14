@@ -14,14 +14,18 @@ const POINTS = [
 ];
 
 /** First-run introduction. */
-export function WelcomeModal({ dispatch }: Props) {
+export function WelcomeModal({ s, dispatch }: Props) {
+  // read from the menu before the farm is open (the first session): the guide closes back to the game, and the
+  // farming steps stay shut until the first crops are checked
+  const early = s.fs.phase !== 'done';
   const start = () => {
+    if (early) return dispatch({ type: 'close' });
     dispatch({ type: 'onboarded' });
     dispatch({ type: 'open', modal: { kind: 'steps', step: 'landprep' } });
   };
   return (
     <ModalShell frame="shop" x={178} y={28} title="How the farm works" close={[633, 56]} onClose={() => {
-      dispatch({ type: 'onboarded' });
+      if (!early) dispatch({ type: 'onboarded' });
       dispatch({ type: 'close' });
     }}>
       <div className="panel" style={{ left: 215, top: 78, width: 197, height: 254, borderRadius: '16px 0 0 16px', background: '#f1dcbd' }}>
@@ -45,7 +49,7 @@ export function WelcomeModal({ dispatch }: Props) {
           ))}
         </ol>
         <GoldButton font={10} height={26} style={{ position: 'absolute', left: 16, right: 16, bottom: 14 }} onClick={start}>
-          Start farming
+          {early ? 'Back to the game' : 'Start farming'}
         </GoldButton>
       </div>
     </ModalShell>
