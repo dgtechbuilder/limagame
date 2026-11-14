@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch } from 'react';
 import { NavBar } from '../components/Nav';
+import { CloseX } from '../components/Success';
 import { FarmMap } from '../components/FarmMap';
 import { GoldButton } from '../components/ui';
 import type { Action, GameState, RoundsView } from '../state';
@@ -268,6 +269,7 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
         onResult={onResult}
         onContinue={onContinue}
         onLeave={() => dispatch({ type: 'rounds', open: false })}
+        progress={{ done: rightCount, total: rounds.length, unit }}
       />
     );
   }
@@ -375,6 +377,7 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
       {phase === 'summary' && (
         <div className="abs ending" style={{ inset: 0 }}>
           <div className="rr-summary">
+            <CloseX onClick={() => dispatch({ type: 'rounds', open: false })} />
             <p className="rr-summary-title">
               {rightCount === rounds.length
                 ? t(trial ? `You read every farm on day ${tDay}, {name}!` : 'You read every bed on your farm, {name}!')

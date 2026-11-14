@@ -7,6 +7,7 @@ import { SPEAKER } from '../care/voice';
 import { track } from '../first/track';
 import { farmName } from '../trials/model';
 import { NavBar, useNav } from '../components/Nav';
+import { CloseX } from '../components/Success';
 import { FARM_ACRES, IMPL, IMPL_ORDER, MONEY, OBS_NAME, TRACTORS, TRACTOR_BONUS, TRACTOR_EDGE, TRACTOR_REWARD, type ImplId, type MoneyFigure, type TractorKind } from './data';
 import { CELL, FH, FW, GW, createJob, finishJob, pct, rewardFor, setupJob, stepJob, tankOf, type Controls, type Job, type JobResult } from './sim';
 
@@ -613,6 +614,7 @@ function Sources({ figures, onClose }: { figures: MoneyFigure[]; onClose: () => 
   const seen = new Set<MoneyFigure>();
   return (
     <div className="tc-choose tc-sources" role="dialog" aria-label="Where the shillings come from">
+      <CloseX onClick={onClose} />
       <p className="tc-ask">Where the shillings come from</p>
       <ul>
         {figures
@@ -633,9 +635,6 @@ function Sources({ figures, onClose }: { figures: MoneyFigure[]; onClose: () => 
           One farm is {acresText} ({FARM_ACRES.toFixed(2)} acre). Lima's coins are game money: these shillings are only to compare. Like every value in the game, they are shown at 10 times the source figures.
         </li>
       </ul>
-      <button type="button" className="tc-btn" onClick={onClose}>
-        Close
-      </button>
     </div>
   );
 }

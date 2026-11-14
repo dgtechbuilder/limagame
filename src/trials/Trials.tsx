@@ -1,5 +1,6 @@
 import { useState, type Dispatch, type ReactNode } from 'react';
 import { NavBar } from '../components/Nav';
+import { CloseX } from '../components/Success';
 import { img } from '../assets';
 import { FarmMap } from '../components/FarmMap';
 import { ClimateTag } from '../climate/Tag';
@@ -111,6 +112,7 @@ function Intro({ s, dispatch, t }: Props & { s: GameState }) {
   return (
     <div className="abs ending" style={{ inset: 0, background: 'transparent' }}>
       <div className="tr-card">
+        <CloseX onClick={() => dispatch({ type: 'trials', open: false })} />
         <p className="tr-card-title">{first ? t('Your first planting, {name}') : t('Plan your six farms, {name}')}</p>
         {first ? (
           <>
@@ -241,6 +243,7 @@ function PlanBoard({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) 
       {board !== null && (
         <div className="abs ending" style={{ inset: 0 }} onClick={() => setBoard(null)} role="dialog" aria-label="Farm inputs">
           <div className="fs-panel pb-panel is-over" onClick={e => e.stopPropagation()}>
+            <CloseX onClick={() => setBoard(null)} />
             <PlotBoard tr={tr} farm={board} kinds={['seed', 'fert', 'sprayer']} coins={s.coins} dispatch={dispatch} onFarm={setBoard} />
             <button type="button" className="pb-close" onClick={() => setBoard(null)}>
               Done
@@ -254,6 +257,7 @@ function PlanBoard({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) 
       {planting && (
         <div className="abs ending" style={{ inset: 0 }} onClick={() => setPlanting(false)}>
           <div className="tr-card" onClick={e => e.stopPropagation()}>
+            <CloseX onClick={() => setPlanting(false)} />
             <p className="tr-card-title">How should the days pass?</p>
             <p>Each cycle has six days of checks before the harvest.</p>
             <div className="tr-choice">
@@ -288,6 +292,7 @@ function Picker({ s, tr, farm, stepKey, dispatch, onClose }: { s: GameState; tr:
   return (
     <div className="abs ending" style={{ inset: 0 }} onClick={onClose} role="dialog" aria-label={`${farmName(farm)}: ${step.label}`}>
       <div className="tr-picker" onClick={e => e.stopPropagation()}>
+        <CloseX onClick={onClose} />
         <p className="tr-card-title">
           {farmName(farm)} · {step.label}
         </p>

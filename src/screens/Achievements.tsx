@@ -1,5 +1,6 @@
 import { useEffect, useState, type Dispatch } from 'react';
 import { NavBar } from '../components/Nav';
+import { CloseX } from '../components/Success';
 import {
   ACHIEVEMENTS,
   DAY_ONE,
@@ -78,7 +79,8 @@ export function AchievementsPage({ s, dispatch, tab: startTab }: Props) {
           {tab === 'certificates' && <Certificates s={s} v={v} />}
         </section>
       </div>
-      <NavBar horizontal onBack={close} hideHome={s.fs.phase !== 'done'} style={{ right: 8, top: 6 }} />
+      <NavBar horizontal onBack={close} hideHome={s.fs.phase !== 'done'} style={{ right: 44, top: 6 }} />
+      <CloseX className="page-x" onClick={close} />
       <p className="set-title-bar">
         <span aria-hidden="true">🏅</span> Achievements · <b>{TABS.find(t => t.id === tab)!.label}</b>
       </p>

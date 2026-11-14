@@ -1,5 +1,6 @@
 import { useEffect, type Dispatch, type ReactNode } from 'react';
 import { NavBar } from '../components/Nav';
+import { CloseX } from '../components/Success';
 import {
   FACTORS,
   LEVELS,
@@ -115,7 +116,8 @@ export function ClimatePage({ s, dispatch, tab: startTab }: Props) {
           {tab === 'activity' && <Activity s={s} />}
         </section>
       </div>
-      <NavBar horizontal onBack={close} hideHome={s.fs.phase !== 'done'} style={{ right: 8, top: 6 }} />
+      <NavBar horizontal onBack={close} hideHome={s.fs.phase !== 'done'} style={{ right: 44, top: 6 }} />
+      <CloseX className="page-x" onClick={close} />
       <p className="set-title-bar">
         <span aria-hidden="true">🌍</span> Climate · <b>{TABS.find(t => t.id === tab)!.label}</b>
       </p>
