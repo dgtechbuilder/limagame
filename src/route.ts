@@ -32,6 +32,7 @@ const SIMPLE = {
   info: 'farm-info',
   outcome: 'results',
   rewards: 'rewards',
+  training: 'training',
 } as const satisfies Partial<Record<Modal['kind'], string>>;
 
 /** First-session steps, by address. The story is /story/1 to /story/3. */
@@ -67,6 +68,8 @@ function modalPath(s: GameState, m: Modal): string {
       return `/shop/${SHOP[m.tab]}`;
     case 'steps':
       return `/steps/${STEPS[m.step]}`;
+    case 'loan':
+      return m.view === 'quote' ? '/loan-calculator/quote' : '/loan-calculator';
     default:
       return `/${SIMPLE[m.kind]}`;
   }
@@ -119,6 +122,10 @@ function modalFor(s: GameState, parts: string[]): Modal | null | 'bad' {
   if (first === 'steps') {
     const t = tab(STEPS);
     return t === 'bad' ? 'bad' : { kind: 'steps', step: t ?? 'landprep' };
+  }
+  if (first === 'loan-calculator') {
+    if (second === undefined) return { kind: 'loan', view: 'calc' };
+    return second === 'quote' ? { kind: 'loan', view: 'quote' } : 'bad';
   }
   const simple = key(SIMPLE, first);
   if (!simple) return null;

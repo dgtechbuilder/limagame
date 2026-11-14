@@ -34,6 +34,8 @@ import { trackClimate } from './climate/track';
 import { achClock, trackAchievements } from './achievements/track';
 import { achOf, achOfSave, initialAch, streakReward, type AchState } from './achievements/model';
 import { routeTo } from './route';
+import { DEFAULT_LOAN, type LoanAsk } from './finance/loan';
+import { bookingRef, courseDate, courseOf, dayText, type TrainingBooking } from './training/data';
 import type { SfxKind } from './sfx';
 import { money } from './money';
 import { PAYG, SHOP, activitiesDone, bizOf, contractDay, demoSlots, farmerAccepts, graduation, hireOutDay, offersFor, partnerBlock, partnerOf, planDay, requestsFor, runDay, scanFarm, shopBlock, type Biz, type Bookings, type Crop, type Drives, type FleetItem, type PartnerId } from './business/model';
@@ -68,7 +70,38 @@ export type Modal =
   | { kind: 'rewards' }
   | { kind: 'value' }
   | { kind: 'process' }
-  | { kind: 'info' };
+  | { kind: 'info' }
+  /** the loan calculator, and the quote it gives */
+  | { kind: 'loan'; view?: 'calc' | 'quote' }
+  /** farmer training: book a seat on a course */
+  | { kind: 'training' };
+
+/** The dialog after something worked: a sale, a training booked, a storage upgrade. It replaces the short message
+    at the top of the screen for these, so the player cannot miss it (components/Success.tsx, screens/Success.tsx). */
+export type Success =
+  | {
+      kind: 'sale';
+      id: number;
+      /** the shop's Sell Food, or the season's harvest */
+      from: 'shop' | 'season';
+      item: string;
+      /** the shop item sold (Sell another sells one more of it) */
+      itemId?: string;
+      qty: number;
+      price: number;
+      earned: number;
+      points: number;
+      /** bags of it left in the shop */
+      left?: number;
+      /** the season's sale: where it sold, bags lost in store, the process, the costs taken off */
+      at?: 'gate' | 'market';
+      lost?: number;
+      process?: string | null;
+      costs?: number;
+      quality?: number;
+    }
+  | { kind: 'training'; id: number; course: string; date: string; ref: string; price: number }
+  | { kind: 'storage'; id: number; from: string; to: string; saved: number; extra: number };
 
 /** Player settings. They are kept on this device and survive Reset progress. */
 export interface Settings {
@@ -82,11 +115,13 @@ export interface Settings {
   voice: boolean;
   /** the happy sound effects when an action or a flow is completed (src/sfx.ts) */
   sound: boolean;
+  /** the dialog after an upgrade (better storage): it can be turned off in the dialog or in Settings */
+  upgradeNotes: boolean;
 }
 export type SettingsTab = 'farmer' | 'game' | 'display' | 'help';
 export type ClimateTab = 'overview' | 'emissions' | 'water' | 'shocks' | 'activity';
 export type AchTab = 'today' | 'badges' | 'certificates';
-export const DEFAULT_SETTINGS: Settings = { art: 'anime', graphics: 'auto', reduceMotion: false, voice: false, sound: true };
+export const DEFAULT_SETTINGS: Settings = { art: 'anime', graphics: 'auto', reduceMotion: false, voice: false, sound: true, upgradeNotes: true };
 
 /** Stage index: 0–5 = the farming step being worked on, 6 = harvested and selling, 7 = season sold. */
 export const SELLING = 6;
@@ -178,6 +213,8 @@ export interface GameState {
   modal: Modal | null;
   plotSelected: boolean;
   toast: { id: number; text: string } | null;
+  /** the dialog after something worked (not saved) */
+  success: Success | null;
   // player
   onboarded: boolean;
   coins: number;
@@ -189,6 +226,10 @@ export interface GameState {
   stock: Record<string, number>;
   inventory: string[]; // shop items owned (one entry per unit)
   redeemed: string[];
+  /** the loan calculator's last amounts (missing in older saves) */
+  loan?: LoanAsk;
+  /** training courses booked (missing in older saves) */
+  trainings?: TrainingBooking[];
   collectedDay: Record<string, string>; // milk/eggs → date last collected
   // season
   season: number;
@@ -250,6 +291,7 @@ export const initialState: GameState = {
   modal: null,
   plotSelected: false,
   toast: null,
+  success: null,
   sfx: null,
   onboarded: false,
   coins: 5000,
@@ -261,6 +303,8 @@ export const initialState: GameState = {
   stock: initialStock,
   inventory: [],
   redeemed: [],
+  loan: DEFAULT_LOAN,
+  trainings: [],
   collectedDay: {},
   season: 1,
   ...freshSeason,
@@ -369,6 +413,12 @@ export type Action =
   | { type: 'farm'; index: number }
   | { type: 'collect'; id: string; text: string; coins: number }
   | { type: 'toast'; text: string }
+  /** close the dialog after something worked */
+  | { type: 'dismissSuccess' }
+  /** the loan calculator's amounts */
+  | { type: 'loanAsk'; ask: Partial<LoanAsk> }
+  /** book a seat on a training course */
+  | { type: 'bookTraining'; id: string }
   | { type: 'tick'; seconds: number }
   | { type: 'picker'; on: boolean }
   | { type: 'reset'; state: Partial<GameState> }
@@ -431,6 +481,7 @@ export type Action =
   | { type: 'route'; path: string };
 
 let toastId = 0;
+let successId = 0;
 export const toast = (text: string) => ({ id: ++toastId, text });
 const gainXp = (s: GameState, amount: number) => {
   let xp = s.xp + amount;
@@ -459,7 +510,7 @@ let sfxId = 0;
 /** Flows: finishing one of these ends a whole piece of play. */
 const FLOWS = new Set<Action['type']>(['achClaimAll', 'completeSale', 'trialHarvest', 'bizRun', 'bizHireOut', 'bizContract', 'bizGraduate', 'tractorDone']);
 /** Actions: finishing one of these is one thing done. Some only count when they earned something (their message). */
-const ACTIONS = new Set<Action['type']>(['achClaim', 'achDaily', 'buy', 'sell', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo']);
+const ACTIONS = new Set<Action['type']>(['achClaim', 'achDaily', 'buy', 'sell', 'bookTraining', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo']);
 const EARNED = new Set<Action['type']>(['roundResult', 'trialCheck', 'fieldMark']);
 const FS_ORDER: FsPhase[] = ['create', 'story', 'walk1', 'update', 'review1', 'walkRetry', 'retry', 'walk2', 'review2', 'done'];
 
@@ -485,14 +536,14 @@ function play(s: GameState, a: Action): GameState {
   switch (a.type) {
     case 'open':
       // another section of the same screen (a Settings tab, a Shop tab) keeps where Back goes
-      return { ...s, modal: a.modal, fromMenu: s.modal?.kind === a.modal.kind ? s.fromMenu : s.modal?.kind === 'menu' && a.modal.kind !== 'menu', plotSelected: false };
+      return { ...s, success: null, modal: a.modal, fromMenu: s.modal?.kind === a.modal.kind ? s.fromMenu : s.modal?.kind === 'menu' && a.modal.kind !== 'menu', plotSelected: false };
     case 'close':
       // a screen opened from the main menu goes back to the menu
-      return s.fromMenu && s.modal && s.modal.kind !== 'menu' ? { ...s, modal: { kind: 'menu' }, fromMenu: false } : { ...s, modal: null, fromMenu: false };
+      return s.fromMenu && s.modal && s.modal.kind !== 'menu' ? { ...s, success: null, modal: { kind: 'menu' }, fromMenu: false } : { ...s, success: null, modal: null, fromMenu: false };
     case 'ride':
-      return { ...s, modal: null, fromMenu: false, plotSelected: false, roundsOpen: false, roundsTrial: false, roundsView: null, roundsDemo: null, trialsOpen: false, bizOpen: false, worldDemo: null, navSeq: s.navSeq + 1, rideReq: s.rideReq + 1, toast: s.view === 'world' ? s.toast : toast('The tractor is on the 3D farm: switch the farm view in Settings') };
+      return { ...s, success: null, modal: null, fromMenu: false, plotSelected: false, roundsOpen: false, roundsTrial: false, roundsView: null, roundsDemo: null, trialsOpen: false, bizOpen: false, worldDemo: null, navSeq: s.navSeq + 1, rideReq: s.rideReq + 1, toast: s.view === 'world' ? s.toast : toast('The tractor is on the 3D farm: switch the farm view in Settings') };
     case 'home':
-      return { ...s, modal: null, fromMenu: false, plotSelected: false, roundsOpen: false, roundsTrial: false, roundsView: null, roundsDemo: null, trialsOpen: false, bizOpen: false, worldDemo: null, navSeq: s.navSeq + 1 };
+      return { ...s, success: null, modal: null, fromMenu: false, plotSelected: false, roundsOpen: false, roundsTrial: false, roundsView: null, roundsDemo: null, trialsOpen: false, bizOpen: false, worldDemo: null, navSeq: s.navSeq + 1 };
     case 'selectPlot':
       return { ...s, plotSelected: a.on };
     case 'onboarded':
@@ -511,12 +562,25 @@ function play(s: GameState, a: Action): GameState {
     case 'sell': {
       const left = s.stock[a.id] ?? 0;
       if (left <= 0) return { ...s, toast: toast(`No ${a.name} left to sell`) };
+      // a second sale of the same food while the dialog is up adds to it
+      const prev = s.success?.kind === 'sale' && s.success.from === 'shop' && s.success.itemId === a.id ? s.success : null;
       return {
         ...s,
         coins: s.coins + a.price,
         stock: { ...s.stock, [a.id]: left - 1 },
         ...gainXp(s, 0.03),
-        toast: toast(`Sold 1 bag of ${a.name} for ${money(a.price)} coins`),
+        success: {
+          kind: 'sale',
+          id: ++successId,
+          from: 'shop',
+          item: a.name,
+          itemId: a.id,
+          qty: (prev?.qty ?? 0) + 1,
+          price: a.price,
+          earned: (prev?.earned ?? 0) + a.price,
+          points: 0,
+          left: left - 1,
+        },
       };
     }
     case 'task': {
@@ -588,8 +652,21 @@ function play(s: GameState, a: Action): GameState {
     }
     case 'prices':
       return { ...s, prices: a.prices };
-    case 'storage':
-      return { ...s, storage: a.id };
+    case 'storage': {
+      if (a.id === s.storage) return s;
+      const from = STORAGE_OPTIONS.find(o => o.id === s.storage);
+      const to = STORAGE_OPTIONS.find(o => o.id === a.id);
+      if (!to) return s;
+      const next = { ...s, storage: a.id };
+      // a move to storage that loses less is an upgrade: a dialog says what it changes, unless it was turned off
+      if (!from || to.loss >= from.loss || s.settings.upgradeNotes === false || s.stage !== SELLING || !s.harvested) return next;
+      const before = saleQuote(s, null);
+      const after = saleQuote(next, null);
+      return {
+        ...next,
+        success: { kind: 'storage', id: ++successId, from: from.id, to: to.id, saved: before.lost - after.lost, extra: after.costs - before.costs },
+      };
+    }
     case 'process':
       return { ...s, processId: a.id };
     case 'completeSale': {
@@ -611,6 +688,7 @@ function play(s: GameState, a: Action): GameState {
         days: s.day,
       };
       const history = [...s.history, result];
+      // the season results open underneath: the sale dialog is read first, then closed onto them
       return {
         ...s,
         coins: s.coins + q.revenue,
@@ -620,7 +698,21 @@ function play(s: GameState, a: Action): GameState {
         farmView: history.length - 1,
         ...gainXp(s, 0.5),
         modal: { kind: 'outcome' },
-        toast: toast(`Sold ${q.bagsSold} bags for ${money(q.revenue)} coins · +${q.bagsSold * 5} points`),
+        success: {
+          kind: 'sale',
+          id: ++successId,
+          from: 'season',
+          item: 'Maize',
+          qty: q.bagsSold,
+          price: q.price,
+          earned: q.revenue,
+          points: q.bagsSold * 5,
+          at: q.at,
+          lost: q.lost,
+          process: a.processId,
+          costs: q.costs,
+          quality: s.harvested.quality,
+        },
       };
     }
     case 'newSeason':
@@ -650,6 +742,27 @@ function play(s: GameState, a: Action): GameState {
       };
     case 'toast':
       return { ...s, toast: toast(a.text) };
+    case 'dismissSuccess':
+      return s.success ? { ...s, success: null } : s;
+    case 'loanAsk':
+      return { ...s, loan: { ...(s.loan ?? DEFAULT_LOAN), ...a.ask } };
+    case 'bookTraining': {
+      const c = courseOf(a.id);
+      if (!c) return s;
+      const booked = s.trainings ?? [];
+      if (booked.some(b => b.id === a.id)) return s;
+      if (s.coins < c.price) return { ...s, toast: toast(`You need ${money(c.price)} coins for ${c.title}`) };
+      const date = courseDate(c, today());
+      const ref = bookingRef(c, date);
+      return {
+        ...s,
+        coins: s.coins - c.price,
+        trainings: [...booked, { id: c.id, date, ref }],
+        ...gainXp(s, 0.05),
+        note: `Training on ${dayText(date)}, ${c.time}: ${c.title} at ${c.place} · ref ${ref}`,
+        success: { kind: 'training', id: ++successId, course: c.id, date, ref, price: c.price },
+      };
+    }
     case 'tick':
       return { ...s, playSeconds: s.playSeconds + a.seconds };
     case 'picker':
@@ -1093,7 +1206,7 @@ function play(s: GameState, a: Action): GameState {
 /* ------------------------------------------------------------------ */
 
 const SAVE_KEY = 'lima-farming-game:v2';
-const TRANSIENT: (keyof GameState)[] = ['award', 'sfx', 'fromMenu', 'navSeq', 'rideReq', 'modal', 'plotSelected', 'toast', 'roundsOpen', 'roundsView', 'roundsDemo', 'worldDemo', 'trialsOpen', 'roundsTrial', 'bizOpen'];
+const TRANSIENT: (keyof GameState)[] = ['award', 'success', 'sfx', 'fromMenu', 'navSeq', 'rideReq', 'modal', 'plotSelected', 'toast', 'roundsOpen', 'roundsView', 'roundsDemo', 'worldDemo', 'trialsOpen', 'roundsTrial', 'bizOpen'];
 
 /** Design-review links (?review or ?screen) use a throwaway game so they never touch a player's save. */
 export const reviewing = () => {
@@ -1122,7 +1235,7 @@ function loadSaved(): GameState {
     const saved = JSON.parse(raw);
     // Saves from before the farm had one owner may carry a reminder about neighbours.
     if (typeof saved.note === 'string' && /Achieng|neighbour/i.test(saved.note)) saved.note = 'Check every bed on your farm often: open Rounds on the farm.';
-    return { ...initialState, ...saved, fromMenu: false, navSeq: 0, rideReq: 0, modal: null, plotSelected: false, toast: null, sfx: null, award: null, ach: achOfSave(saved.ach), roundsOpen: false, roundsView: null, roundsDemo: null, worldDemo: null, trialsOpen: false, bizOpen: false, roundsTrial: false, rounds: { ...initialState.rounds, ...(saved.rounds ?? {}) }, settings: { ...DEFAULT_SETTINGS, ...(saved.settings ?? {}) }, climate: { ...initialClimate, ...(saved.climate ?? {}) } };
+    return { ...initialState, ...saved, fromMenu: false, navSeq: 0, rideReq: 0, modal: null, plotSelected: false, toast: null, success: null, sfx: null, award: null, ach: achOfSave(saved.ach), roundsOpen: false, roundsView: null, roundsDemo: null, worldDemo: null, trialsOpen: false, bizOpen: false, roundsTrial: false, rounds: { ...initialState.rounds, ...(saved.rounds ?? {}) }, settings: { ...DEFAULT_SETTINGS, ...(saved.settings ?? {}) }, climate: { ...initialClimate, ...(saved.climate ?? {}) } };
   } catch {
     return initialState;
   }

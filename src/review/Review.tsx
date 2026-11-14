@@ -117,6 +117,14 @@ const SCREENS: { label: string; group: string; state: Partial<GameState> }[] = [
   { group: 'Climate', label: 'Climate · Shocks', state: { climate: CLIMATE_SAMPLE, modal: { kind: 'climate', tab: 'shocks' } } },
   { group: 'Climate', label: 'Climate · Activity', state: { climate: CLIMATE_SAMPLE, modal: { kind: 'climate', tab: 'activity' } } },
   { group: 'Climate', label: 'Climate · New game', state: { modal: { kind: 'climate', tab: 'overview' } } },
+  { group: 'Added', label: 'Loan calculator', state: { modal: { kind: 'loan', view: 'calc' } } },
+  { group: 'Added', label: 'Loan quote result', state: { loan: { purpose: 'inputs', amount: 12000, months: 6 }, modal: { kind: 'loan', view: 'quote' } } },
+  { group: 'Added', label: 'Loan quote · comfortable', state: { history: [sampleResult], redeemed: ['phone'], loan: { purpose: 'irrigation', amount: 3000, months: 12 }, modal: { kind: 'loan', view: 'quote' } } },
+  { group: 'Added', label: 'Farmer training', state: { modal: { kind: 'training' } } },
+  { group: 'Added', label: 'Training · booking success', state: { trainings: [{ id: 'soil', date: '2026-11-17', ref: 'LIMA-SOIL-1117' }], modal: { kind: 'training' }, success: { kind: 'training', id: 1, course: 'soil', date: '2026-11-17', ref: 'LIMA-SOIL-1117', price: 0 } } },
+  { group: 'Added', label: 'Shop · sale success', state: { modal: { kind: 'shop', tab: 'food' }, success: { kind: 'sale', id: 1, from: 'shop', item: 'Maize', itemId: 'maize', qty: 2, price: 40, earned: 80, points: 0, left: 1 } } },
+  { group: 'Added', label: 'Harvest · sale success', state: { ...grown, stage: SOLD, history: [sampleResult], modal: { kind: 'outcome' }, success: { kind: 'sale', id: 1, from: 'season', item: 'Maize', qty: 137, price: 41.6, earned: 4250, points: 685, at: 'market', lost: 8, process: 'processing', costs: 10, quality: 4 } } },
+  { group: 'Added', label: 'Storage · upgrade success', state: { ...selling, storage: 'cold', modal: { kind: 'storage' }, success: { kind: 'storage', id: 1, from: 'home', to: 'cold', saved: 15, extra: 648 } } },
 ];
 
 export function ReviewPicker({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {

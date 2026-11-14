@@ -1,5 +1,6 @@
 import { useEffect, useState, type Dispatch, type ReactNode } from 'react';
 import { NavBar } from '../components/Nav';
+import { CloseX } from '../components/Success';
 import { GoldButton } from '../components/ui';
 import { FarmerFigure, FarmerPortrait } from '../first/art';
 import { LOOKS, NAME_SUGGESTIONS } from '../first/data';
@@ -91,7 +92,8 @@ export function SettingsPage({ s, dispatch, tab: startTab }: Props) {
           {tab === 'help' && <HelpTab s={s} dispatch={dispatch} />}
         </section>
       </div>
-      <NavBar horizontal onBack={close} hideHome={s.fs.phase !== 'done'} style={{ right: 8, top: 6 }} />
+      <NavBar horizontal onBack={close} hideHome={s.fs.phase !== 'done'} style={{ right: 44, top: 6 }} />
+      <CloseX className="page-x" onClick={close} />
       <p className="set-title-bar">
         <span aria-hidden="true">⚙</span> Settings · <b>{TABS.find(t => t.id === tab)!.label}</b>
       </p>
@@ -249,6 +251,17 @@ function GameTab({ s, dispatch, set }: Props & { set: (p: Partial<Settings>) => 
             Flow
           </button>
         </div>
+      </Row>
+      <Row title="Upgrade messages" body="A dialog after you upgrade, such as moving the harvest to better storage, saying what it changes.">
+        <Seg
+          label="Upgrade messages"
+          value={st.upgradeNotes === false ? 'off' : 'on'}
+          onChange={v => set({ upgradeNotes: v === 'on' })}
+          options={[
+            { id: 'off', label: 'Off' },
+            { id: 'on', label: 'On' },
+          ]}
+        />
       </Row>
     </div>
   );

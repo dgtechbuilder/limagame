@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type Dispatch } from 'react';
 import { img } from '../assets';
 import { FarmMap } from '../components/FarmMap';
 import { NavBar } from '../components/Nav';
+import { CloseX } from '../components/Success';
 import { GoldButton } from '../components/ui';
 import { GuideLine } from '../first/Review';
 import type { Action, GameState } from '../state';
@@ -110,6 +111,8 @@ export function Business({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
   const b = useMemo(() => bizOf(s.biz), [s.biz]);
   const [tab, setTab] = useState<Tab>('today');
   const [result, setResult] = useState<DayResult | null>(null);
+  // the graduation offer, put off until the business is opened again
+  const [gradLater, setGradLater] = useState(false);
   const close = () => dispatch({ type: 'biz', open: false });
   const lvl = levelOf(b.helped);
   const nxt = nextLevel(b.helped);
@@ -191,7 +194,7 @@ export function Business({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
 
       {result && <Results r={result} b={b} onNext={() => setResult(null)} />}
       {!result && !b.intro && <Welcome name={name} onGo={() => dispatch({ type: 'bizIntro' })} />}
-      {!result && b.intro && grad?.due && tab === 'today' && <Graduation b={b} name={name} onSign={() => dispatch({ type: 'bizGraduate' })} />}
+      {!result && b.intro && grad?.due && tab === 'today' && !gradLater && <Graduation b={b} name={name} onSign={() => dispatch({ type: 'bizGraduate' })} onLater={() => setGradLater(true)} />}
     </div>
   );
 }
@@ -202,6 +205,7 @@ function Welcome({ name, onGo }: { name: string; onGo: () => void }) {
   return (
     <div className="abs ending" style={{ inset: 0 }} role="dialog" aria-label="Welcome to the Narok hub">
       <div className="fs-panel ht-card ht-plum">
+        <CloseX onClick={onGo} />
         <Says who="sasha" tone="white">
           <b>Welcome to the {TERRITORY.hub}, {name}.</b> You are our Booking Agent here: no land, no machine, just your word and your eye for a field. Find farmers who need
           mechanised work, scout their land with Campbell, and book the hub tractor to do it. Book densely and keep your word, and we finance you into a tractor of your own.
@@ -228,12 +232,13 @@ function Welcome({ name, onGo }: { name: string; onGo: () => void }) {
   );
 }
 
-function Graduation({ b, name, onSign }: { b: Biz; name: string; onSign: () => void }) {
+function Graduation({ b, name, onSign, onLater }: { b: Biz; name: string; onSign: () => void; onLater: () => void }) {
   const g = graduation(b)!;
   const second = b.owned.length > 0;
   return (
     <div className="abs ending" style={{ inset: 0 }} role="dialog" aria-label="Graduation">
       <div className="fs-panel ht-card ht-grad">
+        <CloseX onClick={onLater} label="Not now" />
         <p className="ht-grad-title">{second ? 'Your second tractor' : 'Graduation day'}</p>
         <Says who="sasha" tone="white">
           <b>{name}, your book is underwritable.</b> {Math.floor(b.counted)} counted acres at {pct(fulfilment(b))} fulfilment: every job you booked, you closed. Hello Tractor is
@@ -873,6 +878,7 @@ function Results({ r, b, onNext }: { r: DayResult; b: Biz; onNext: () => void })
   return (
     <div className="abs ending" style={{ inset: 0 }} role="dialog" aria-label={`Day ${r.day} done`}>
       <div className="fs-panel biz-result">
+        <CloseX onClick={onNext} />
         <p className="biz-result-title">
           Day {r.day} done
           <span className="biz-stars" aria-label={`${r.stars} of 3 stars`}>

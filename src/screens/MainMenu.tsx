@@ -35,6 +35,8 @@ export function MainMenu({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
         { label: waiting ? `Achievements (${waiting})` : 'Achievements', note: streak ? `${streak}-day streak · badges, certificates` : 'Daily streak, badges, certificates', run: () => open({ kind: 'achievements' }) },
         { label: 'Climate', note: 'Emissions, water, soil, credits', run: () => open({ kind: 'climate' }) },
         { label: 'Rewards', note: 'Points for real discounts', run: () => open({ kind: 'rewards' }) },
+        { label: 'Training', note: (s.trainings ?? []).length ? `${(s.trainings ?? []).length} booked · book a course` : 'Book a farmer course', run: () => open({ kind: 'training' }) },
+        { label: 'Loan calculator', note: 'What a farm loan costs', run: () => open({ kind: 'loan', view: 'calc' }) },
         { label: 'Farming steps', note: 'The classic maize season', run: () => open({ kind: 'steps', step: 'landprep' }) },
         { label: 'Settings', note: 'Farm view, full screen', run: () => open({ kind: 'settings' }) },
       ];

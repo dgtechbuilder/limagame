@@ -5,6 +5,7 @@ import { FarmMap } from '../components/FarmMap';
 import { PhotoPicture } from '../components/PhotoPicture';
 import { photoByKey } from '../rounds/photos';
 import { GoldButton } from '../components/ui';
+import { CloseX } from '../components/Success';
 import { GuideFace } from '../art/Cast';
 import { useVoice } from '../art/style';
 import { speak } from '../speech';
@@ -432,6 +433,7 @@ export function Review({
       {zoom && (
         <div className="abs zoom" style={{ inset: 0 }} onClick={() => setZoom(null)} role="dialog" aria-label={PART_LABELS[zoom]}>
           <div className="zoom-art" onClick={e => e.stopPropagation()}>
+            <CloseX onClick={() => setZoom(null)} />
             <Pic shamba={shamba} part={zoom} credit />
             <span className="zoom-label">{PART_LABELS[zoom]}</span>
           </div>
@@ -441,6 +443,7 @@ export function Review({
       {step === 'right' && phase === 2 ? (
         <div className="abs ending" style={{ inset: 0 }}>
           <div className="ending-card">
+            <CloseX onClick={onEnd} />
             <p>{t(ending.line)}</p>
             <GoldButton font={12} height={38} style={{ width: 240, marginTop: 14 }} onClick={onEnd}>
               {ending.button}

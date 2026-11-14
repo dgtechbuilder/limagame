@@ -20,6 +20,9 @@ import { ArtContext, VoiceContext } from './art/style';
 import { speak, stopSpeaking } from './speech';
 import { setSoundOn, sfx, warmSfx } from './sfx';
 import { MainMenu } from './screens/MainMenu';
+import { LoanModal } from './screens/Loan';
+import { TrainingModal } from './screens/Training';
+import { SuccessLayer } from './screens/Success';
 import { NavBar, NavContext } from './components/Nav';
 import { reviewing, useGame } from './state';
 import { pathOf } from './route';
@@ -111,6 +114,12 @@ export default function App() {
   useEffect(() => {
     if (s.toast && voiceOn) speak(s.toast.text);
   }, [s.toast, voiceOn]);
+  // read the dialog after something worked: what happened, in a few words
+  useEffect(() => {
+    const x = s.success;
+    if (!x || !voiceOn) return;
+    speak(x.kind === 'sale' ? `Sold ${x.qty} ${x.item}` : x.kind === 'training' ? 'Training booked' : 'Storage upgraded');
+  }, [s.success?.id, voiceOn]);
   useEffect(() => {
     if (!voiceOn) stopSpeaking();
   }, [voiceOn]);
@@ -212,6 +221,11 @@ export default function App() {
         {m?.kind === 'info' && <InfoModal s={s} dispatch={dispatch} />}
         {m?.kind === 'outcome' && <OutcomeModal s={s} dispatch={dispatch} />}
         {m?.kind === 'rewards' && <RewardsModal s={s} dispatch={dispatch} />}
+        {m?.kind === 'loan' && <LoanModal s={s} dispatch={dispatch} view={m.view} />}
+        {m?.kind === 'training' && <TrainingModal s={s} dispatch={dispatch} />}
+
+        {/* the dialog after something worked: above every screen */}
+        <SuccessLayer s={s} dispatch={dispatch} />
 
         {awardVisible && s.award && !m && (
           <div key={`award-${s.award.id}`} className="award-pop" role="status">

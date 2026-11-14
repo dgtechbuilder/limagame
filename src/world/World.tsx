@@ -796,6 +796,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
               if (fixLeft(sRef.current.trial ?? t, c.farm, c.day)) setCare({ kind: 'fix', farm: c.farm, day: c.day });
             }}
             onLeave={() => setChecking(null)}
+            progress={{ done: t.plans.filter((_, i) => t.checks[checkKey(i, checking.day)]?.right).length, total: t.plans.length, unit: 'farm' }}
           />
         </div>
       )}

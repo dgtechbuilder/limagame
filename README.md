@@ -715,11 +715,44 @@ Every screen has at least two or three ways to move, and one of them is always t
 | First session | one step where that is safe | ☰ | Settings instead (the farm is not open yet) |
 
 The **main menu** (`src/screens/MainMenu.tsx`, the **MENU** button on the farm) lists My farm, Mission, Field rounds,
-Tractor, Tractor business, Shop, Climate, Rewards, Farming steps and Settings. The list scrolls, with a gold
+Tractor, Tractor business, Shop, Achievements, Climate, Rewards, Training, Loan calculator, Farming steps and
+Settings. The list scrolls, with a gold
 **scroll wheel** beside it (▲ and ▼ buttons and a thumb to drag, since phones hide scroll bars); the mouse wheel and
 a swipe scroll it too. A screen opened from the menu goes back to the menu on *Back*;
 *Farm* closes everything. The shared buttons are `NavBar` in `src/components/Nav.tsx`; `ModalShell` adds them to every
 modal. `tests/nav.spec.ts` plays them.
+
+**Every dialog has a ✕ in its top-right corner** to leave it: the framed modals (`ModalShell`), the full pages
+(Settings, Climate, Achievements: beside Back · Menu · Farm), and the cards on top of a screen (the six farms' choices,
+the rounds' summary, the tractor business's welcome, graduation and day result, the story's pop-ups, a zoomed
+picture). The shared button is `CloseX` in `src/components/Success.tsx`.
+
+### Success dialogs
+
+Things that matter end in a dialog the player reads and closes, not a message that fades at the top
+(`SuccessCard` in `src/components/Success.tsx`, the screens in `src/screens/Success.tsx`, `GameState.success`):
+
+| After | The dialog |
+| --- | --- |
+| Selling food in the Shop | **Sale complete**: bags sold, what they earned, the price, bags left, coins now; *Sell another* adds to it |
+| Selling the season's harvest | **Harvest sold**: bags, where they sold, what they earned, losses and costs, points; closes onto the season results |
+| Booking a training course | **Booking confirmed**: when, where, the trainer, what to bring and a seat reference; a reminder goes into Messages |
+| Moving the harvest to better storage | **Storage upgraded** (optional): spoilage before and after, bags saved, the extra cost; *Don't show this after an upgrade*, or Settings → Game → *Upgrade messages* |
+| A right call on a farm check | **Farm visit complete**: what was found and what to do next, the points, first or second look, and the day's visits so far |
+
+### Loan calculator and training
+
+*Loan calculator* (Menu): what the loan is for (each purpose has its rate), how much, and over how many months, with
+the monthly repayment as it changes. **Get my quote** opens the **Loan Quote Result**: the monthly repayment, the
+interest, a 1.5% processing fee and the total to pay back; whether the farm can carry it against what it earns a month
+(the last seasons' sales, or this season's expected harvest): *Comfortable* (under 30%), *Tight* (up to 50%) or
+*Risky*, with the most that stays comfortable; and the loan and interest month by month. The *Phone Loan Discount*
+voucher from Rewards takes 10% off the rate. It is a calculator only: no coins change hands
+(`src/finance/loan.ts`, `src/screens/Loan.tsx`).
+
+*Training* (Menu): four short courses, each with a date, place, trainer, seats and price (two are free). *Book a
+seat* pays for it, keeps the booking with the save and opens the Booking Success dialog (`src/training/data.ts`,
+`src/screens/Training.tsx`). `tests/success.spec.ts` plays all of this.
 
 ## Page addresses
 
@@ -745,6 +778,7 @@ reload without losing their place, bookmark a page, and use the browser's **Back
 | `#/steps/land-prep` · `planting` · `fertilizer` · `pesticides` · `water` · `harvest` | Farming steps |
 | `#/harvest-timing` · `#/sale` · `#/storage` · `#/value-addition` · `#/process` | The season after harvest |
 | `#/farm-info` · `#/results` · `#/rewards` · `#/welcome` | Farm info, season results, rewards, how the farm works |
+| `#/loan-calculator` · `#/loan-calculator/quote` · `#/training` | The loan calculator and its quote, farmer training |
 
 **The player's session decides where an address can go.** The game's saved state stays the one source of
 truth: the address always names the page on show, and a typed address goes through the same rules as a tap.
@@ -794,7 +828,7 @@ four sections. Every control works at once and is saved on the device; *Reset pr
 | Section | Controls |
 | --- | --- |
 | **My farmer** | rename the farmer; change the look (the farm, the rounds and the HUD all follow) |
-| **Game** | *Character style*: Retro anime or Original · *Farm view*: 3D farm or Classic · *Read aloud*: speaks the guide's lines and the game's messages with the phone's voice (a Kenyan English voice when the phone has one), with a Test button · *Sound effects*: on or off, with a button to hear each one |
+| **Game** | *Character style*: Retro anime or Original · *Farm view*: 3D farm or Classic · *Read aloud*: speaks the guide's lines and the game's messages with the phone's voice (a Kenyan English voice when the phone has one), with a Test button · *Sound effects*: on or off, with a button to hear each one · *Upgrade messages*: the dialog after a storage upgrade, on or off |
 | **Display** | *Graphics*: Auto (drops shadows by itself on slow phones), High, Low (no shadows, 1× resolution) · *Reduce motion*: ends every animation and transition at once · *Full screen* |
 | **Help & data** | How the farm works · Design review · Reset progress (asks twice) |
 

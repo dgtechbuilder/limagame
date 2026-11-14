@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { img } from '../assets';
 import { GoldButton } from '../components/ui';
+import { CloseX } from '../components/Success';
 import { useVoice } from '../art/style';
 import { speak } from '../speech';
 import { photoByKey } from '../rounds/photos';
@@ -258,6 +259,7 @@ export function Story({ name, look, page: at, onPage, onDone }: { name: string; 
         {cheer && (
           <div className="story-cheer" role="dialog" aria-modal="true" aria-label={t(cheer.title)}>
             <div className="story-cheer-card">
+              <CloseX onClick={() => (setCheer(null), track('story_cheer', { title: cheer.title }))} />
               <Burst />
               <p className="story-cheer-title">{t(cheer.title)}</p>
               <p className="story-cheer-line">{t(cheer.line)}</p>
