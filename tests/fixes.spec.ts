@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { boot, state, type Win } from './helpers';
 
-/* Regressions for faults found by playing the whole game: a price that was offered but never paid, a guide button
-   that opened the season before the farm and a load swapped by walking past a shed. */
+/* Regressions for faults found by playing the whole game: a guide button that opened the season before the farm,
+   and a load swapped by walking past a shed. */
 
 test('first session: the guide in the menu goes back to the game, not into the farming steps', async ({ page }) => {
   await boot(page);
