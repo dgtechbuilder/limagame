@@ -69,8 +69,8 @@ test('the story so far: sign for the farm, play last season, press =, turn over 
   await expect(card.locator('.story-caption')).toHaveText('Now tap the sukuma seeds, then tap the sukuma bed.');
   await page.getByRole('button', { name: 'Sukuma seeds', exact: true }).click();
   await page.getByRole('button', { name: 'Sukuma bed: tap to sow' }).click();
-  // each bed sown, and the step, ping a happy sound
-  expect(await page.evaluate(() => (window as unknown as Win).__lima.sfx().filter(k => k === 'action').length)).toBeGreaterThanOrEqual(3);
+  // each bed sown, and the step, ping a happy sound (the step's comes 700 ms after the last bed, so wait for it)
+  await expect.poll(() => page.evaluate(() => (window as unknown as Win).__lima.sfx().filter(k => k === 'action').length)).toBeGreaterThanOrEqual(3);
   // the pop-up holds the next step until Continue
   await expect(page.locator('.story-cheer-title')).toHaveText('Well done, Wanjiku!', { timeout: 5000 });
   await expect(card.locator('.story-step', { hasText: 'Weed the farm' })).toBeDisabled();

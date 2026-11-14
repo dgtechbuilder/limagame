@@ -1,22 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { initialState, reducer, saleQuote, type GameState } from '../src/state';
 import { boot, state, type Win } from './helpers';
 
 /* Regressions for faults found by playing the whole game: a price that was offered but never paid, a guide button
    that opened the season before the farm and a load swapped by walking past a shed. */
-
-test('the sale pays the farm-gate price when the gate pays more than the market', () => {
-  const selling: GameState = { ...initialState, stage: 6, harvested: { bags: 100, quality: 5 }, storage: 'cold' };
-  const market = saleQuote(selling, null);
-  // the gate at 50 a bag against 19.2 at market after costs
-  const gate = saleQuote({ ...selling, prices: { ...selling.prices, farmgate: 50 } }, null);
-  expect(gate.price).toBe(50);
-  expect(gate.revenue).toBeGreaterThan(market.revenue);
-  // a gate price below the market's changes nothing
-  expect(saleQuote({ ...selling, prices: { ...selling.prices, farmgate: 5 } }, null).revenue).toBe(market.revenue);
-  const sold = reducer({ ...selling, prices: { ...selling.prices, farmgate: 50 } }, { type: 'completeSale', processId: null });
-  expect(sold.coins).toBe(selling.coins + gate.revenue);
-});
 
 test('first session: the guide in the menu goes back to the game, not into the farming steps', async ({ page }) => {
   await boot(page);

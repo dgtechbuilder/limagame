@@ -1127,9 +1127,13 @@ export function runDay(b: Biz, plan: Plan, done: Record<string, Activity[]> = {}
   return closeDay(b, result, done);
 }
 
-/** A day hired out to the county: a fixed fee, the driver paid, no farms. */
+/** A day hired out to the county: a fixed fee, the driver paid, no farms. Like any day's hire, the hub keeps its share
+    of its own tractor's, and an agent's own tractor pays its PAYG instalment from it. */
 export function hireOutDay(b: Biz, missed: number): { biz: Biz; result: DayResult } {
-  const result: DayResult = { ...emptyResult(b.day, 'county'), revenue: COUNTY_DAY, wage: DRIVER_WAGE, profit: COUNTY_DAY - DRIVER_WAGE, missed, booked: missed, stars: 1 };
+  const rig = tractorOf(b);
+  const hubFee = rig.own ? 0 : Math.round(COUNTY_DAY * HUB_SHARE);
+  const instalment = rig.own ? Math.min(Math.round(COUNTY_DAY * PAYG.share), Math.max(0, rig.own.price - rig.own.paid)) : 0;
+  const result: DayResult = { ...emptyResult(b.day, 'county'), revenue: COUNTY_DAY, wage: DRIVER_WAGE, hubFee, instalment, profit: COUNTY_DAY - DRIVER_WAGE - hubFee, missed, booked: missed, stars: 1 };
   return closeDay(b, result, {});
 }
 

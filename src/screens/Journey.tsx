@@ -17,7 +17,9 @@ import {
   daysToHarvest,
   expectedHarvest,
   profitPerBag,
+  qualityPrice,
   saleQuote,
+  sellAt,
   stepIndex,
   type Action,
   type GameState,
@@ -141,9 +143,10 @@ export function SaleModal({ s, dispatch }: Props) {
                   <Coin size={14} /> {money(perBag)}/bag
                 </Row>
               </div>
-              <p style={{ fontSize: 9, color: p.farmgate >= perBag ? '#c0392b' : undefined }}>
-                {p.farmgate >= perBag ? 'Selling at the gate pays more right now, so you sell there: ' : 'Market pays more, so you sell there: '}
+              <p style={{ fontSize: 9, color: sellAt(p) === 'gate' ? '#c0392b' : undefined }}>
+                {sellAt(p) === 'gate' ? 'The gate pays more right now, so you sell there: ' : 'Market pays more: '}
                 {money(p.farmgate)}/bag at your gate vs {money(perBag)}/bag at market
+                {s.harvested!.quality < 5 ? ` · ${s.harvested!.quality}-star grain fetches ${Math.round(qualityPrice(s.harvested!.quality) * 100)}% of that` : ''}
               </p>
               <GoldButton font={10} height={29} onClick={() => go(dispatch, { kind: 'storage' })}>
                 Continue · choose storage

@@ -74,10 +74,9 @@ export const TRACTOR_REWARD = {
   coinsPerScore: 1.5,
   /** points for each star above the farm's best this cycle */
   pointsPerStar: 50,
-  /** 'full' (as planned, and as in Wakala): every finished drive pays coinsPerScore × score, so "Try again" can be
-      replayed for coins. 'improvement': a second try on the same farm pays only for the score above the best so far.
-      An open decision: see the README. */
-  retryPays: 'full' as 'improvement' | 'full',
+  /** 'improvement': a second try on the same farm pays only for the score above the best so far, so "Try again" can
+      not be replayed for coins. 'full' (as in Wakala) paid every finished drive in full, which a player could farm. */
+  retryPays: 'improvement' as 'improvement' | 'full',
   /** autopilot jobs earn at most this many stars */
   autopilotStars: 2,
 };

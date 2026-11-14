@@ -2,7 +2,7 @@ import type { ShopTab, StepId } from './data';
 import { STORY } from './first/data';
 import { CHECK_DAYS, currentDay } from './trials/model';
 import { dayNumber } from './rounds/farms';
-import type { Action, ClimateTab, FsPhase, GameState, Modal, SettingsTab } from './state';
+import type { AchTab, Action, ClimateTab, FsPhase, GameState, Modal, SettingsTab } from './state';
 
 /* Web addresses: every screen has its own address after the # (…/limagame/#/settings/display), so a player can
    type one to go there, reload without losing their place, and use the browser's Back and Forward.
@@ -17,6 +17,7 @@ const STORY_PAGES = STORY.length;
 // friendly words in the address ↔ the ids in the code
 const SETTINGS: Record<SettingsTab, string> = { farmer: 'my-farmer', game: 'game', display: 'display', help: 'help' };
 const CLIMATE: Record<ClimateTab, string> = { overview: 'overview', emissions: 'emissions', water: 'water-and-soil', shocks: 'shocks', activity: 'activity' };
+const ACH: Record<AchTab, string> = { today: 'today', badges: 'badges', certificates: 'certificates' };
 const SHOP: Record<ShopTab, string> = { food: 'food', fertilizer: 'fertilizer', tank: 'water-tanks', equipment: 'equipment' };
 const STEPS: Record<StepId, string> = { landprep: 'land-prep', planting: 'planting', fertilizer: 'fertilizer', pesticides: 'pesticides', water: 'water', harvest: 'harvest' };
 /** Screens with no sections, by address. */
@@ -60,6 +61,8 @@ function modalPath(s: GameState, m: Modal): string {
       return `/settings/${SETTINGS[settingsTab(s, m.tab)]}`;
     case 'climate':
       return `/climate/${CLIMATE[m.tab ?? 'overview']}`;
+    case 'achievements':
+      return `/achievements/${ACH[m.tab ?? 'today']}`;
     case 'shop':
       return `/shop/${SHOP[m.tab]}`;
     case 'steps':
@@ -104,6 +107,10 @@ function modalFor(s: GameState, parts: string[]): Modal | null | 'bad' {
   if (first === 'climate') {
     const t = tab(CLIMATE);
     return t === 'bad' ? 'bad' : { kind: 'climate', tab: t ?? 'overview' };
+  }
+  if (first === 'achievements') {
+    const t = tab(ACH);
+    return t === 'bad' ? 'bad' : { kind: 'achievements', tab: t ?? 'today' };
   }
   if (first === 'shop') {
     const t = tab(SHOP);

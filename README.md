@@ -39,6 +39,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [Money on screen](#money-on-screen)
 - [Settings](#settings)
 - [Climate tracking](#climate-tracking)
+- [Achievements, the daily streak and certificates](#achievements-the-daily-streak-and-certificates)
 - [Character art: retro anime](#character-art-retro-anime)
 - [Design review mode](#design-review-mode)
 - [Saving, events and privacy](#saving-events-and-privacy)
@@ -254,19 +255,22 @@ One season of maize on *Farm Moja* (the maize beds on the map):
 
 1. **Farming Steps** run in order: Land prep → Planting → Fertilizer → Pesticides → Water → Harvest. Only the
    current step is open; later ones are locked and finished ones are read-only. Each task costs coins (free
-   if the input was bought in the Shop) and shows a one-line farming tip. *Finish* moves the calendar on by
+   if the input was bought in the Shop, though its shop price still counts in the season's costs) and shows a
+   one-line farming tip. *Finish* moves the calendar on by
    that step's days; *Skip* is allowed but scores zero for that step.
 2. **Crop health** is the average score of the growing steps (tasks done ÷ recommended). It sets expected bags
    and quality, shown in Info and Harvest timing.
 3. **Harvest timing**: harvest now, wait 2 days (best), or wait a week (lower quality).
-4. **Sale → Storage → Value addition → Select process**: prices are editable, and the harvest sells where it pays
-   more: at the farm gate, or at market after transport and storage; storage trades cost per bag
-   against bags lost; processing raises the price. *Confirm and sell* pays out coins and points.
+4. **Sale → Storage → Value addition → Select process**: prices are editable; the harvest sells where it pays
+   more a bag, at the gate or at market after transport and storage; the grade sets the price (a lower grade
+   fetches less, as on the six farms: `PRICE_BY_QUALITY`); storage costs every bag put in store, against bags
+   lost; processing raises the price. *Confirm and sell* pays out coins and points.
 5. **Season results** compare seasons, name the three steps that cost the most, and *Lima AI* explains the
    result from the player's own numbers. *Start season N+1* keeps coins, points and history.
 
 Points: +100 × score for each finished step, +5 per bag sold. Rewards cost 800 or 1,500 points. Play time
-counts while the game is on screen. Milk and eggs can be collected once a day. The farm always shows
+counts while the game is on screen. Milk and eggs can be collected once a day. Equipment is bought once; fertilizer
+and tanks can be bought again. The farm always shows
 **Now : &lt;task&gt;** and a bubble on the field for the current task.
 
 Balance numbers live in `src/data.ts` (`STEP_META`, `HARVEST_EFFECT`, `STORAGE_OPTIONS`, `PROCESSES`,
@@ -520,8 +524,10 @@ hand ploughing 24 person-days an acre at KSh 400 a day ([FarmBiz Africa](https:/
 everything but ploughing; diesel per acre for each implement; 2.68 kg of CO₂ a litre. One farm is a sixth of an acre.
 
 **Rewards.** A drive pays 1.5 coins per score point and 50 points per star above the farm's best this cycle, as in
-Wakala. *Try again* is allowed until the player is done with the drive, so a good drive can be replayed for coins;
-`TRACTOR_REWARD.retryPays = 'improvement'` would pay a retry only for the score above the best (an open decision).
+Wakala. *Try again* is allowed until the player is done with the drive, but a retry pays coins only for the score
+above the farm's best (`TRACTOR_REWARD.retryPays = 'improvement'`), so a drive can't be replayed for coins. The
+reducer works the pay out from the score and the best on file. Only the first clean drive on a farm each cycle earns
+a climate credit.
 
 **Yield.** Until the agronomist's review (Gate A), how well the tractor ploughed and whether follow-ups were done are
 shown and saved but change no bags: `WAKALA_YIELD_EFFECTS = false`. With it on, a tractor-hire farm's land-prep
@@ -645,7 +651,8 @@ so simulated peers stand in (the brief's "liquidity backstop"), and the data sha
 
 **Partners** (Kimani Tractor Hire, the Narok Farmers' Co-op, Rafiki Fuel, the County Roads Office, the Hello Tractor
 app), **Fleet** (ridger, fertilizer spreader, maize planter, tractor harvester, the hub's large tractor, the combine)
-and **levels** by farmers helped are as before.
+and **levels** by farmers helped are as before. A day hired out to the county is booked like any other day's hire:
+the hub keeps its share while the tractor is the hub's, and an owned tractor pays its PAYG instalment from it.
 
 **Hello Tractor's voice (§6).** The business screens use the brand's palette (Sunset Blaze `#FF461E`, Hibiscus
 `#F8285F`, Plum `#2F1C54`, Sage `#93C393`, Summer Breeze `#93C2C6`, Charcoal `#161616`) and type (Merriweather for
@@ -831,6 +838,36 @@ All factors are in one table in `src/climate/model.ts` (`FACTORS` and the plan, 
 farms' numbers: illustrative estimates for learning until an agronomist reviews them; the N₂O share cites the IPCC
 2006 guidelines. `tests/climate.spec.ts` plays the tracking and the page.
 
+## Achievements, the daily streak and certificates
+
+A reason to come back every day, and something won in every part of the game. Everything is in
+`src/achievements/model.ts` (the badges, what they pay, the streak's rewards, which certificates are given);
+`src/achievements/track.ts` watches each action, as climate tracking does; the page is `src/screens/Achievements.tsx`.
+
+- **The daily streak.** A day counts once the player finishes something on it (any action that plays a happy
+  sound). Days in a row build the streak; a whole day missed starts it again. The day turns at the player's own
+  midnight. Each day played has a reward to claim: 200 coins and 10 points on day 1, growing to 1,400 coins and
+  70 points from day 7 on (`STREAK_REWARD`).
+- **Badges** (59), by part of the game: *Every day*, *Farm Moja*, *Six farms*, *Field rounds*, *Tractor*,
+  *Tractor business*, *Climate*. Ten **day-one badges** are easy firsts, one or two in each part (finish the first
+  crop checks, do a farming task, buy in the Shop, collect the milk or eggs, read a bed right, plant the farms, read
+  a daily check right, finish a tractor drive, run a business day, earn a climate credit). The rest come in
+  bronze, silver and gold (a 3-, 7- and 30-day streak; 10, 50 and 150 farming tasks; 3, 10 and 30 drives…), plus
+  *Tractor owner*. Badges pay 25 (day one), 50, 100 or 250 points, and 150 for a special one.
+- **Rewards wait to be claimed** on the Achievements page (*Claim*, or *Claim all*): an action never changes coins
+  or points by itself, so every other rule in the game adds up as before.
+- **Certificates**, kept on the page with the farmer's name and the date: one for every 7 days played (with what
+  was done that week), one for each streak of 3, 7, 14, 30, 60 and 100 days, and a bronze, silver or gold
+  certificate for a part of the game whose every badge of that tier is won.
+- **On screen:** the AWARDS button (3D farm, under Climate; on the classic farm, under the farm's name) shows the
+  streak and a red dot while a reward waits. A pop-up announces each badge, certificate and new day. The page has
+  *Today* (the streak, the last seven days, today's reward, the day-one goals), *Badges* (filter by part of the
+  game, closest to done first) and *Certificates*. Main menu → *Achievements*; addresses `#/achievements/today`,
+  `/badges` and `/certificates`.
+- Counting starts with the first action after this update; badges that read what the save already holds
+  (seasons sold, cycles harvested, farmers helped, level, climate credits) are won at once. Badges open once the
+  first crop checks are done.
+
 ## Character art: retro anime
 
 The characters are drawn in a **retro anime** style by default: flat cel colours with one hard, slightly purple
@@ -934,8 +971,8 @@ player's saved game or events.
 - The faint 5% pattern texture on the cream panels in Figma is omitted.
 - **From Wakala Agent**, waiting on a decision: the fix lessons, products, follow-up days and Mama Achieng's lines
   need the agronomist's review; the proposed yield effects stay off until Gate A; only the before-planting tractor
-  stage is played; every retried drive pays coins in full, as planned, which a player could farm
-  (`retryPays: 'improvement'` closes that); wrong fixes count in the farm's costs at harvest; fuel for the drive is
+  stage is played; a retried drive pays only for beating the farm's best; wrong fixes count in the farm's costs at
+  harvest; fuel for the drive is
   free (the plan's hire price covers it); Wakala's photos are still to add.
 
 ---
