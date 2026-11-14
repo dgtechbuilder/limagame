@@ -259,7 +259,8 @@ One season of maize on *Farm Moja* (the maize beds on the map):
 2. **Crop health** is the average score of the growing steps (tasks done ÷ recommended). It sets expected bags
    and quality, shown in Info and Harvest timing.
 3. **Harvest timing**: harvest now, wait 2 days (best), or wait a week (lower quality).
-4. **Sale → Storage → Value addition → Select process**: prices are editable; storage trades cost per bag
+4. **Sale → Storage → Value addition → Select process**: prices are editable, and the harvest sells where it pays
+   more: at the farm gate, or at market after transport and storage; storage trades cost per bag
    against bags lost; processing raises the price. *Confirm and sell* pays out coins and points.
 5. **Season results** compare seasons, name the three steps that cost the most, and *Lima AI* explains the
    result from the player's own numbers. *Start season N+1* keeps coins, points and history.
@@ -368,6 +369,9 @@ WASD. The **task card** at the top says what to do next; tap it and the farmer w
   the plots under it as it drives (a column of five plots a pass): see [Plots and inputs](#plots-and-inputs). It drives
   a little faster than walking. A farm whose 20 plots are all done from the seat pays **+30 bonus points** once per
   farm and job (`TRACTOR_BONUS.perJob`). The hired tractor (a *Tractor hire* plan) ploughs a whole farm in one pass.
+- **Places answer when the farmer walks to them** (a shed, the pond, the Hire spot, the market, the house, the
+  Mission board), or stops in them: a walk to somewhere else that only passes through picks nothing up and opens
+  nothing. A tap on the task card at a place the farmer already stands in opens it again.
 - **Sleep** at the farmhouse starts the next day (on the fast clock); **Plan** by the house, or **Mission** on the
   HUD, opens the plans, progress and results.
 - The HUD: the farmer and their level (top left), settings, coins and points (top right; **+** opens the shop and

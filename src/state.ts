@@ -294,6 +294,9 @@ export function expectedHarvest(s: GameState, choice: HarvestChoice) {
 /** Coins earned per bag at market after transport and storage (both entered per 10 bags). */
 export const profitPerBag = (p: Prices) => Math.round((p.market - (p.transport + p.storage) / 10) * 10) / 10;
 
+/** What a bag earns: at market after transport and storage, or at the farm gate when the gate pays more. */
+export const bagPrice = (p: Prices) => Math.max(profitPerBag(p), p.farmgate);
+
 export function saleQuote(s: GameState, processId: string | null) {
   const storage = STORAGE_OPTIONS.find(o => o.id === s.storage)!;
   const harvestCare = s.stepScores.harvest ?? stepScore(s, 'harvest');
@@ -301,7 +304,7 @@ export function saleQuote(s: GameState, processId: string | null) {
   const bags = s.harvested?.bags ?? 0;
   const bagsSold = Math.round(bags * (1 - loss));
   const process = processId ? PROCESSES.find(p => p.id === processId)! : null;
-  const price = profitPerBag(s.prices) * (1 + (process ? process.profitIncrease / 100 : 0));
+  const price = bagPrice(s.prices) * (1 + (process ? process.profitIncrease / 100 : 0));
   const costs = bagsSold * storage.costPerBag + (process ? process.cost : 0);
   const revenue = Math.max(0, Math.round(bagsSold * price - costs));
   return { bagsSold, lost: bags - bagsSold, price, revenue };

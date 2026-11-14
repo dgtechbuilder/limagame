@@ -142,7 +142,7 @@ export function SaleModal({ s, dispatch }: Props) {
                 </Row>
               </div>
               <p style={{ fontSize: 9, color: p.farmgate >= perBag ? '#c0392b' : undefined }}>
-                {p.farmgate >= perBag ? 'Selling at the gate pays more right now: ' : 'Market pays more: '}
+                {p.farmgate >= perBag ? 'Selling at the gate pays more right now, so you sell there: ' : 'Market pays more, so you sell there: '}
                 {money(p.farmgate)}/bag at your gate vs {money(perBag)}/bag at market
               </p>
               <GoldButton font={10} height={29} onClick={() => go(dispatch, { kind: 'storage' })}>

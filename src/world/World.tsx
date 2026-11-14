@@ -329,6 +329,9 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       const at = w.farmerAt();
       if (Math.hypot(at.x - PLACES.hire.x, at.z - PLACES.hire.z) < PLACES.hire.r) return onPlace('hire');
     }
+    // already standing at the shed, the pond, the house or the market (after stepping back out of its screen, say):
+    // walking there again would not arrive, so the place answers again
+    if ('place' in task.target) w.revisit(task.target.place);
     const p = targetOf(task, w);
     intent.current = 'place' in task.target ? null : task.target.at === 'sign' ? task.target.farm : null;
     // already at the sign: open the check
