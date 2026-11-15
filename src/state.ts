@@ -33,6 +33,8 @@ import { initialClimate, type ClimateState } from './climate/model';
 import { trackClimate } from './climate/track';
 import { achClock, trackAchievements } from './achievements/track';
 import { achOf, achOfSave, initialAch, streakReward, type AchState } from './achievements/model';
+import { levelOf } from './progress/model';
+import { brandOf, type BrandId } from './partners/data';
 import { routeTo } from './route';
 import { DEFAULT_LOAN, type LoanAsk } from './finance/loan';
 import { bookingRef, courseDate, courseOf, dayText, type TrainingBooking } from './training/data';
@@ -50,6 +52,7 @@ import {
   STORAGE_OPTIONS,
   TASK_TIPS,
   TASK_USES_ITEM,
+  itemsFor,
   type HarvestChoice,
   type ShopTab,
   type StepId,
@@ -74,7 +77,9 @@ export type Modal =
   /** the loan calculator, and the quote it gives */
   | { kind: 'loan'; view?: 'calc' | 'quote' }
   /** farmer training: book a seat on a course */
-  | { kind: 'training' };
+  | { kind: 'training' }
+  /** partners: their offers, and (for partners) every place in the game a brand can appear; brand: the offer to show */
+  | { kind: 'partners'; tab?: PartnersTab; brand?: BrandId };
 
 /** The dialog after something worked: a sale, a training booked, a storage upgrade. It replaces the short message
     at the top of the screen for these, so the player cannot miss it (components/Success.tsx, screens/Success.tsx). */
@@ -120,7 +125,9 @@ export interface Settings {
 }
 export type SettingsTab = 'farmer' | 'game' | 'display' | 'help';
 export type ClimateTab = 'overview' | 'emissions' | 'water' | 'shocks' | 'activity';
-export type AchTab = 'today' | 'badges' | 'certificates';
+/** My Progress (the achievements page): the journey of certification levels, the modules, today, badges, certificates */
+export type AchTab = 'journey' | 'modules' | 'today' | 'badges' | 'certificates';
+export type PartnersTab = 'offers' | 'placements';
 export const DEFAULT_SETTINGS: Settings = { art: 'anime', graphics: 'auto', reduceMotion: false, voice: false, sound: true, upgradeNotes: true };
 
 /** Stage index: 0–5 = the farming step being worked on, 6 = harvested and selling, 7 = season sold. */
@@ -230,6 +237,8 @@ export interface GameState {
   loan?: LoanAsk;
   /** training courses booked (missing in older saves) */
   trainings?: TrainingBooking[];
+  /** partner offers the player saved (src/partners/data.ts; missing in older saves) */
+  offers?: BrandId[];
   collectedDay: Record<string, string>; // milk/eggs → date last collected
   // season
   season: number;
@@ -305,6 +314,7 @@ export const initialState: GameState = {
   redeemed: [],
   loan: DEFAULT_LOAN,
   trainings: [],
+  offers: [],
   collectedDay: {},
   season: 1,
   ...freshSeason,
@@ -477,6 +487,10 @@ export type Action =
   | { type: 'achClaim'; id: string }
   | { type: 'achClaimAll' }
   | { type: 'achDaily' }
+  /** My Progress: claim a certification level's reward */
+  | { type: 'levelClaim'; id: string }
+  /** partners: save a brand's offer (it is kept in Messages) */
+  | { type: 'partnerSave'; id: BrandId }
   /** go to a web address (src/route.ts): the screen it names, if the player may go there now */
   | { type: 'route'; path: string };
 
@@ -510,7 +524,7 @@ let sfxId = 0;
 /** Flows: finishing one of these ends a whole piece of play. */
 const FLOWS = new Set<Action['type']>(['achClaimAll', 'completeSale', 'trialHarvest', 'bizRun', 'bizHireOut', 'bizContract', 'bizGraduate', 'tractorDone']);
 /** Actions: finishing one of these is one thing done. Some only count when they earned something (their message). */
-const ACTIONS = new Set<Action['type']>(['achClaim', 'achDaily', 'buy', 'sell', 'bookTraining', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo']);
+const ACTIONS = new Set<Action['type']>(['achClaim', 'achDaily', 'levelClaim', 'partnerSave', 'buy', 'sell', 'bookTraining', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo']);
 const EARNED = new Set<Action['type']>(['roundResult', 'trialCheck', 'fieldMark']);
 const FS_ORDER: FsPhase[] = ['create', 'story', 'walk1', 'update', 'review1', 'walkRetry', 'retry', 'walk2', 'review2', 'done'];
 
@@ -587,13 +601,15 @@ function play(s: GameState, a: Action): GameState {
       if (s.doneTasks.includes(a.id)) return s;
       if (stepIndex(a.step) !== s.stage) return { ...s, toast: toast(`Finish ${STEPS[Math.min(s.stage, 5)].label} first`) };
       const item = TASK_USES_ITEM[a.id];
-      const fromStock = item ? s.inventory.indexOf(item) : -1;
+      // the plain item, or a partner's branded product that does its job
+      const have = item ? itemsFor(item).find(i => s.inventory.includes(i)) : undefined;
+      const fromStock = have ? s.inventory.indexOf(have) : -1;
       const cost = fromStock >= 0 ? 0 : a.price;
       if (s.coins < cost) return { ...s, toast: toast(`You need ${money(cost)} coins for ${a.name}`) };
       const inventory = fromStock >= 0 ? s.inventory.filter((_, i) => i !== fromStock) : s.inventory;
       const tip = TASK_TIPS[a.id] ?? `${a.name} done`;
       // an item bought in the shop was paid for then: it still counts in this season's costs when it is used
-      const spent = fromStock >= 0 ? shopPrice(item) : cost;
+      const spent = have ? shopPrice(have) : cost;
       return {
         ...s,
         coins: s.coins - cost,
@@ -1173,17 +1189,43 @@ function play(s: GameState, a: Action): GameState {
     case 'achClaimAll': {
       const ach = achOfSave(s.ach);
       const ids = Object.keys(ach.won).filter(id => !ach.won[id].claimed && achOf(id));
+      const lv = Object.keys(ach.levels).filter(id => !ach.levels[id].claimed && levelOf(id));
       const day = ach.daily && ach.daily.date === achClock.today() && !ach.daily.claimed ? streakReward(ach.daily.streak) : null;
-      if (!ids.length && !day) return s;
-      const points = ids.reduce((n, id) => n + achOf(id)!.points, 0) + (day?.points ?? 0);
-      const coins = ids.reduce((n, id) => n + (achOf(id)!.coins ?? 0), 0) + (day?.coins ?? 0);
+      if (!ids.length && !lv.length && !day) return s;
+      const points = ids.reduce((n, id) => n + achOf(id)!.points, 0) + lv.reduce((n, id) => n + levelOf(id)!.points, 0) + (day?.points ?? 0);
+      const coins = ids.reduce((n, id) => n + (achOf(id)!.coins ?? 0), 0) + lv.reduce((n, id) => n + levelOf(id)!.coins, 0) + (day?.coins ?? 0);
       return {
         ...s,
-        ach: { ...ach, won: { ...ach.won, ...Object.fromEntries(ids.map(id => [id, { ...ach.won[id], claimed: true }])) }, daily: day ? { ...ach.daily!, claimed: true } : ach.daily },
+        ach: {
+          ...ach,
+          won: { ...ach.won, ...Object.fromEntries(ids.map(id => [id, { ...ach.won[id], claimed: true }])) },
+          levels: { ...ach.levels, ...Object.fromEntries(lv.map(id => [id, { ...ach.levels[id], claimed: true }])) },
+          daily: day ? { ...ach.daily!, claimed: true } : ach.daily,
+        },
         points: s.points + points,
         coins: s.coins + coins,
         toast: toast(`Rewards claimed: +${fmt(points)} points${coins ? ` · +${money(coins)} coins` : ''}`),
       };
+    }
+    case 'levelClaim': {
+      const ach = achOfSave(s.ach);
+      const w = ach.levels[a.id];
+      const l = levelOf(a.id);
+      if (!w || w.claimed || !l) return s;
+      return {
+        ...s,
+        ach: { ...ach, levels: { ...ach.levels, [a.id]: { ...w, claimed: true } } },
+        coins: s.coins + l.coins,
+        points: s.points + l.points,
+        ...gainXp(s, 0.1 * l.n),
+        toast: toast(`Level ${l.n} · ${l.name}: +${money(l.coins)} coins · +${fmt(l.points)} points`),
+      };
+    }
+    case 'partnerSave': {
+      const b = brandOf(a.id);
+      const saved = s.offers ?? [];
+      if (!b || saved.includes(a.id)) return s;
+      return { ...s, offers: [...saved, a.id], note: `Saved offer from ${b.name}: ${b.offer.title}. ${b.offer.line}.`, toast: toast(`Offer saved: ${b.offer.title} · it is in Messages`) };
     }
     case 'achDaily': {
       const ach = achOfSave(s.ach);

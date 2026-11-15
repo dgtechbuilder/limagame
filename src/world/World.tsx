@@ -35,7 +35,10 @@ import {
   type TaskIcon,
   type TreatJob,
 } from './field';
-import { FarmWorld, PLACES, STAGE_H, STAGE_W, TRACTOR_BOARD, type Fx } from './engine';
+import { BILLBOARDS, FarmWorld, PLACES, STAGE_H, STAGE_W, TRACTOR_BOARD, type Fx } from './engine';
+import { slotBrand, type SlotId } from '../partners/data';
+import { useSlotView } from '../partners/track';
+import { BrandMark, openOffer } from '../partners/ui';
 import { useNav } from '../components/Nav';
 import { ClimateIcon } from '../components/Icons';
 import { rating } from '../climate/model';
@@ -44,7 +47,7 @@ import { JOB_INFO, KIND_WORDS, TOOL_JOB, toolName, tractorName, type PlotKind } 
 import type { Rig } from '../plots/TractorPick';
 import { money } from '../money';
 import { sfx } from '../sfx';
-import { AwardsButton } from '../components/AwardsButton';
+import { ProgressButton } from '../components/ProgressButton';
 
 // from Wakala Agent: the screens after a right call, at the shed and at the Hire spot, loaded when first opened
 const Prescribe = lazy(() => import('../care/Prescribe').then(m => ({ default: m.Prescribe })));
@@ -194,7 +197,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     const tick = window.setInterval(() => {
       const f = w.farmerScreen();
       const sg = eng.current && atSignRef.current >= 0 ? signOf(atSignRef.current) : null;
-      const next = { farmer: f, sign: sg ? w.project(sg.x, 2.5, sg.z) : null, riding: w.isRiding(), nearTractor: w.nearTractor(), plot: w.plotJobHere() };
+      const next = { farmer: f, sign: sg ? w.project(sg.x, 2.5, sg.z) : null, riding: w.isRiding(), nearTractor: w.nearTractor(), plot: w.plotJobHere(), bill: billboardNear(w) };
       // the HUD follows the farmer: re-render only when something on it would move or change
       setAnchors(a => (sameAnchors(a, next) ? a : next));
     }, 120);
@@ -686,7 +689,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         <span>CLIMATE</span>
         {grade && <i className="hud-badge" aria-hidden="true">{grade.grade}</i>}
       </button>
-      <AwardsButton s={s} dispatch={dispatch} />
+      <ProgressButton s={s} dispatch={dispatch} />
       <button type="button" className="hud-round hud-mission" onClick={() => dispatch({ type: 'trials', open: true })} aria-label="Mission: plan, progress and results of your farms">
         <ClipboardIcon />
         <span>MISSION</span>
@@ -746,6 +749,10 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
             <i>{rowName(anchors.plot.row)}</i>
           </span>
         </button>
+      )}
+
+      {anchors.bill && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen) && (
+        <BillboardTag bill={anchors.bill} dispatch={dispatch} />
       )}
 
       {hint && (
@@ -814,13 +821,34 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
 /** The plot under the farmer that is waiting to be cleared or planted (its button shows). */
 /** The row of plots under the farmer waiting for the button: its plots still to do are bits. */
 type PlotHere = { farm: number; plot: number; row: number; bits: number; job: 'prep' | 'sow'; fx: Fx };
-type Anchors = { farmer: { x: number; y: number }; sign: { x: number; y: number; visible: boolean } | null; riding: boolean; nearTractor: boolean; plot: PlotHere | null };
+type Anchors = {
+  farmer: { x: number; y: number };
+  sign: { x: number; y: number; visible: boolean } | null;
+  riding: boolean;
+  nearTractor: boolean;
+  plot: PlotHere | null;
+  /** a partner billboard the farmer is near, where it shows on the stage */
+  bill?: { slot: SlotId; x: number; y: number } | null;
+};
 const samePlot = (a: PlotHere | null, b: PlotHere | null) => a === b || (!!a && !!b && a.farm === b.farm && a.row === b.row && a.job === b.job);
 const near = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.abs(a.x - b.x) < 1 && Math.abs(a.y - b.y) < 1;
 function sameAnchors(a: Anchors, b: Anchors) {
   if (a.riding !== b.riding || a.nearTractor !== b.nearTractor || !near(a.farmer, b.farmer) || !samePlot(a.plot, b.plot)) return false;
+  if (a.bill?.slot !== b.bill?.slot || (a.bill && b.bill && !near(a.bill, b.bill))) return false;
   if (!a.sign || !b.sign) return a.sign === b.sign;
   return a.sign.visible === b.sign.visible && near(a.sign, b.sign);
+}
+
+/** The partner billboard the farmer is close to (and that shows on screen): its offer tag goes over it. */
+const BILL_REACH = 7.5;
+function billboardNear(w: FarmWorld): Anchors['bill'] {
+  const me = w.farmerAt();
+  for (const bb of BILLBOARDS) {
+    if (!slotBrand(bb.slot) || Math.hypot(me.x - bb.x, me.z - bb.z) > BILL_REACH) continue;
+    const p = w.project(bb.x, 0.2, bb.z + 0.9);
+    if (p.visible) return { slot: bb.slot, x: p.x, y: p.y };
+  }
+  return null;
 }
 
 /** The timer over the farmer while a plot is cleared or planted: a stopwatch whose ring fills, and the seconds left. */
@@ -1036,4 +1064,23 @@ export function TaskGlyph({ icon }: { icon: TaskIcon }) {
         </svg>
       );
   }
+}
+
+/** The tag over a partner billboard the farmer walked up to: tap it for the brand's offer. */
+function BillboardTag({ bill, dispatch }: { bill: NonNullable<Anchors['bill']>; dispatch: Dispatch<Action> }) {
+  const b = slotBrand(bill.slot)!;
+  useSlotView(bill.slot);
+  return (
+    <button
+      type="button"
+      className="hud-bill"
+      style={{ left: Math.min(STAGE_W - 80, Math.max(80, bill.x)), top: Math.min(STAGE_H - 40, Math.max(84, bill.y)), ['--brand' as string]: b.color, ['--accent' as string]: b.accent }}
+      onClick={() => openOffer(dispatch, bill.slot, b.id)}
+      aria-label={`${b.name} billboard: see the offer`}
+    >
+      <BrandMark b={b} size={16} />
+      <b>{b.name}</b>
+      <span>See offer ›</span>
+    </button>
+  );
 }

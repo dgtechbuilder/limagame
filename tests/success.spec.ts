@@ -152,7 +152,8 @@ test('full pages have a ✕ in the top-right corner', async ({ page }) => {
   for (const [modal, name] of [
     [{ kind: 'settings', tab: 'game' }, 'Settings'],
     [{ kind: 'climate', tab: 'overview' }, 'Climate'],
-    [{ kind: 'achievements', tab: 'today' }, 'Achievements'],
+    [{ kind: 'achievements', tab: 'today' }, 'My Progress'],
+    [{ kind: 'partners', tab: 'offers' }, 'Partners'],
   ] as const) {
     await jump(page, { modal });
     const d = page.getByRole('dialog', { name, exact: true });

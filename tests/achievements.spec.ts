@@ -148,15 +148,15 @@ test('a save from before achievements loads with everything in place', () => {
   expect(a.certs).toEqual([]);
 });
 
-test('the Achievements page: a badge won on the farm is claimed on the page, and today’s reward with it', async ({ page }) => {
+test('My Progress: a badge won on the farm is claimed on the page, and today’s reward with it', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => (window as unknown as Win).__lima.jump({ view: 'classic', coins: 5000, points: 0 }));
   // a farming task: the pop-up says a badge was won
   await page.evaluate(() => (window as unknown as Win).__lima.dispatch({ type: 'task', step: 'landprep', id: 'clearing', price: 40, name: 'Clearing' }));
   await expect(page.locator('.award-pop')).toContainText('badges won');
-  await expect(page.getByRole('button', { name: /^Achievements: 1-day streak, \d+ rewards? to claim/ })).toBeVisible();
-  await page.evaluate(() => (window.location.hash = '#/achievements/today'));
-  await expect(page.locator('.set-title-bar')).toContainText('Achievements · Today');
+  await expect(page.getByRole('button', { name: /^My Progress: .*1-day streak, \d+ rewards? to claim/ })).toBeVisible();
+  await page.evaluate(() => (window.location.hash = '#/progress/today'));
+  await expect(page.locator('.set-title-bar')).toContainText('My Progress · Today');
   await page.getByRole('button', { name: /^Claim First task/ }).click();
   await expect.poll(async () => (await state(page)).points).toBe(25);
   await page.getByRole('button', { name: /^Claim all/ }).click();
@@ -164,7 +164,7 @@ test('the Achievements page: a badge won on the farm is claimed on the page, and
   await expect(page.locator('.ach-daily')).toContainText('claimed');
   // the badges and the certificates
   await page.getByRole('button', { name: 'Badges', exact: true }).click();
-  await expect(page).toHaveURL(/#\/achievements\/badges$/);
+  await expect(page).toHaveURL(/#\/progress\/badges$/);
   await page.getByRole('tab', { name: /Tractor \d/ }).click();
   await expect(page.locator('.ach-badge').first()).toBeVisible();
   await page.getByRole('button', { name: 'Certificates', exact: true }).click();

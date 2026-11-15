@@ -2,6 +2,7 @@ import type { Dispatch } from 'react';
 import { ModalShell } from '../components/Modal';
 import { Coin, GoldButton } from '../components/ui';
 import { money } from '../money';
+import { SponsorLine } from '../partners/ui';
 import { basePerBag, expectedHarvest, type Action, type GameState } from '../state';
 import {
   DEFAULT_LOAN,
@@ -49,6 +50,7 @@ export function LoanModal({ s, dispatch, view = 'calc' }: Props) {
       <div className="panel loan" style={PANEL}>
         {view === 'quote' ? <Quote s={s} dispatch={dispatch} q={quote} /> : <Calculator ask={ask} set={set} voucher={voucher} onQuote={() => dispatch({ type: 'open', modal: { kind: 'loan', view: 'quote' } })} />}
       </div>
+      <SponsorLine slot="loan" label="Loan quotes with" dispatch={dispatch} className="modal-sponsor" style={{ left: PANEL.left + PANEL.width / 2, top: PANEL.top + PANEL.height + 3 }} />
     </ModalShell>
   );
 }

@@ -1,4 +1,5 @@
 import { asset } from './assets';
+import type { BrandId } from './partners/data';
 
 /* ------------------------------------------------------------------ */
 /* Shop                                                                 */
@@ -14,6 +15,10 @@ export interface ShopItem {
   price: number;
   /** Harvested stock for the "Sell Food" tab, e.g. 3 of 4 bags */
   stock?: [number, number];
+  /** a partner's branded product (src/partners/data.ts): shown with the brand's name and colours */
+  partner?: BrandId;
+  /** the plain item a branded product does the job of (Rutuba Gold NPK is used for the NPK task) */
+  standsIn?: string;
 }
 
 export interface ShopTabDef {
@@ -68,6 +73,8 @@ export const SHOP_TABS: ShopTabDef[] = [
       { id: 'potassium', name: 'Potassium', icon: asset('fert-potassium.png'), iconSize: [31, 23], price: 40 },
       { id: 'npk', name: 'Balance NPK', icon: asset('fert-npk.png'), iconSize: [31, 23], price: 40 },
       { id: 'manure', name: 'Organic Manure', icon: asset('fert-manure.png'), iconSize: [31, 23], price: 40 },
+      // the fertilizer partner's product: an NPK at the partner's 10% off
+      { id: 'rutuba-npk', name: 'Rutuba Gold NPK', icon: asset('fert-npk.png'), iconSize: [31, 23], price: 36, partner: 'rutuba', standsIn: 'npk' },
     ],
   },
   {
@@ -85,6 +92,8 @@ export const SHOP_TABS: ShopTabDef[] = [
       { id: 'tank-s', name: 'Small', icon: asset('tank-small.png'), iconSize: [24, 35], price: 2500 },
       { id: 'tank-m', name: 'Medium', icon: asset('tank-medium.png'), iconSize: [24, 35], price: 5000 },
       { id: 'tank-l', name: 'Large', icon: asset('tank-large.png'), iconSize: [30, 35], price: 10000 },
+      // the water partner's tank: a medium tank with a gutter kit
+      { id: 'tank-tangi', name: 'Tangi 5,000 L', icon: asset('tank-medium.png'), iconSize: [24, 35], price: 5000, partner: 'tangi' },
     ],
   },
   {
@@ -378,6 +387,18 @@ export const TASK_TIPS: Record<string, string> = {
 };
 
 /** Farming-step tasks that can use an item bought in the Shop instead of coins. */
+/** Litres each water tank holds. */
+export const TANK_LITRES: Record<string, number> = { 'tank-s': 1000, 'tank-m': 5000, 'tank-l': 10000, 'tank-tangi': 5000 };
+
+/** Branded products and the plain item each does the job of (a task that uses NPK takes Rutuba Gold NPK too). */
+export const STANDS_IN: Record<string, string> = Object.fromEntries(
+  SHOP_TABS.flatMap(t => t.items)
+    .filter(i => i.standsIn)
+    .map(i => [i.id, i.standsIn!]),
+);
+/** Items in stock that do a task's job: the plain item first, then a branded one. */
+export const itemsFor = (item: string) => [item, ...Object.keys(STANDS_IN).filter(k => STANDS_IN[k] === item)];
+
 export const TASK_USES_ITEM: Record<string, string> = {
   'f-nitrogen': 'nitrogen',
   'f-phosphorus': 'phosphorus',

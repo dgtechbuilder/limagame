@@ -15,6 +15,8 @@ import {
   type Where,
 } from '../climate/model';
 import { hasSolar } from '../climate/track';
+import { TANK_LITRES } from '../data';
+import { SponsorLine } from '../partners/ui';
 import { FORECASTS } from '../trials/model';
 import type { Action, ClimateTab, GameState } from '../state';
 
@@ -112,7 +114,7 @@ export function ClimatePage({ s, dispatch, tab: startTab }: Props) {
           {tab === 'overview' && <Overview s={s} go={setTab} />}
           {tab === 'emissions' && <Emissions s={s} />}
           {tab === 'water' && <WaterSoil s={s} />}
-          {tab === 'shocks' && <Shocks s={s} />}
+          {tab === 'shocks' && <Shocks s={s} dispatch={dispatch} />}
           {tab === 'activity' && <Activity s={s} />}
         </section>
       </div>
@@ -235,7 +237,7 @@ function WaterSoil({ s }: { s: GameState }) {
   const t = s.climate.total;
   const wp = waterProductivity(t);
   const solar = hasSolar(s);
-  const tanks = s.inventory.filter(i => i.startsWith('tank-')).reduce((n, i) => n + ({ 'tank-s': 1000, 'tank-m': 5000, 'tank-l': 10000 }[i] ?? 0), 0);
+  const tanks = s.inventory.reduce((n, i) => n + (TANK_LITRES[i] ?? 0), 0);
   return (
     <div className="cl-two">
       <div>
@@ -264,7 +266,7 @@ function WaterSoil({ s }: { s: GameState }) {
 
 /* ---------------- Climate shocks ---------------- */
 
-function Shocks({ s }: { s: GameState }) {
+function Shocks({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
   const sh = s.climate.shocks;
   const f = s.trial?.forecast;
   return (
@@ -291,7 +293,11 @@ function Shocks({ s }: { s: GameState }) {
         <li>
           <b>Hail:</b> beans between the rows and a healthy soil help a crop recover.
         </li>
+        <li>
+          <b>Crop cover:</b> insurance pays out when a shock takes a harvest, so one bad season does not end the farm.
+        </li>
       </ul>
+      <SponsorLine slot="climate" label="Crop cover with" dispatch={dispatch} style={{ marginTop: 8 }} />
     </div>
   );
 }

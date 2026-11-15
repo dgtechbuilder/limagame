@@ -28,6 +28,8 @@ import {
   type SeasonResult,
 } from '../state';
 import { VALUE_X, money } from '../money';
+import { REWARD_SPONSOR, brandOf } from '../partners/data';
+import { BrandMark, openOffer } from '../partners/ui';
 
 type Props = { s: GameState; dispatch: Dispatch<Action> };
 
@@ -663,8 +665,15 @@ export function RewardsModal({ s, dispatch }: Props) {
                 <div key={r.id} className="card" style={{ height: 107, padding: '6px 8px 9px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                   <Img src={r.icon} w={33} h={32} alt="" />
                   <p style={{ fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', marginTop: 4 }}>{r.name}</p>
-                  <p style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 8, opacity: 0.85 }}>
+                  <p style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 8, opacity: 0.85, whiteSpace: 'nowrap' }}>
                     <Img src={img.coupon} w={16} h={16} /> {r.off}% OFF
+                  {brandOf(REWARD_SPONSOR[r.id]) && (
+                    <button type="button" className="sponsor-line is-tiny" onClick={() => openOffer(dispatch, 'rewards', REWARD_SPONSOR[r.id]!)} aria-label={`${r.name} with ${brandOf(REWARD_SPONSOR[r.id])!.name}: see the offer`}>
+                      <span>with</span>
+                      <BrandMark b={brandOf(REWARD_SPONSOR[r.id])!} size={11} />
+                      <b>{brandOf(REWARD_SPONSOR[r.id])!.name}</b>
+                    </button>
+                  )}
                   </p>
                   <GoldButton
                     selected={done}

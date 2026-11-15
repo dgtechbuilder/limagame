@@ -67,6 +67,8 @@ export interface AchView {
   owned: number;
   /** climate credits earned */
   credits: number;
+  /** farmer courses booked (learning credits in My Progress) */
+  courses: number;
 }
 
 /* ---------------- the badges ---------------- */
@@ -250,7 +252,8 @@ export const WEEK_DAYS = 7;
 
 export interface Certificate {
   id: string;
-  kind: 'week' | 'streak' | 'mastery';
+  /** level: a certification level of My Progress (src/progress/model.ts) */
+  kind: 'week' | 'streak' | 'mastery' | 'level';
   title: string;
   /** one line on what it is for */
   line: string;
@@ -259,6 +262,8 @@ export interface Certificate {
   summary?: string[];
   game?: AchGame;
   tier?: Tier;
+  /** a certification level's number */
+  level?: number;
 }
 
 /* ---------------- the saved state ---------------- */
@@ -274,6 +279,8 @@ export interface AchState {
   /** the reward for today's visit: the day it is for, and whether it was claimed */
   daily: { date: string; streak: number; claimed: boolean } | null;
   certs: Certificate[];
+  /** certification levels reached (My Progress), by id: the day each was reached, and whether its reward was claimed */
+  levels: Record<string, { date: string; claimed: boolean }>;
   /** the counts when the last week's certificate was given, to sum up the next week */
   weekFrom: AchStats & { seasons: number; helped: number };
 }
@@ -286,6 +293,7 @@ export const initialAch: AchState = {
   recent: [],
   daily: null,
   certs: [],
+  levels: {},
   weekFrom: { ...ZERO_STATS, seasons: 0, helped: 0 },
 };
 
@@ -295,6 +303,7 @@ export const achOfSave = (a: Partial<AchState> | undefined): AchState => ({
   ...(a ?? {}),
   stats: { ...ZERO_STATS, ...(a?.stats ?? {}) },
   streak: { ...initialAch.streak, ...(a?.streak ?? {}) },
+  levels: { ...(a?.levels ?? {}) },
   weekFrom: { ...initialAch.weekFrom, ...(a?.weekFrom ?? {}) },
 });
 
@@ -321,9 +330,11 @@ export const streakNow = (a: AchState, today: string) => (a.streak.last && daysB
 /** Badges whose goal is met but are not yet won. */
 export const newlyWon = (a: AchState, v: AchView) => ACHIEVEMENTS.filter(x => !a.won[x.id] && x.value(v) >= x.need);
 
-/** Rewards waiting to be claimed: badges won, and today's visit. */
+/** Rewards waiting to be claimed: badges won, certification levels reached, and today's visit. */
 export const unclaimed = (a: AchState, today: string) =>
-  Object.entries(a.won).filter(([, w]) => !w.claimed).length + (a.daily && a.daily.date === today && !a.daily.claimed ? 1 : 0);
+  Object.values(a.won).filter(w => !w.claimed).length +
+  Object.values(a.levels ?? {}).filter(w => !w.claimed).length +
+  (a.daily && a.daily.date === today && !a.daily.claimed ? 1 : 0);
 
 /** A game whose every badge of a tier is won (day-one badges count with bronze). */
 export function masteredTiers(a: AchState): { game: AchGame; tier: Tier }[] {

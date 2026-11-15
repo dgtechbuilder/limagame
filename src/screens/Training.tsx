@@ -4,6 +4,8 @@ import { GoldButton, PriceChip } from '../components/ui';
 import { money } from '../money';
 import { today, type Action, type GameState } from '../state';
 import { COURSES, courseDate, dayText, seatsLeft } from '../training/data';
+import { SponsorLine } from '../partners/ui';
+import { COURSE_CREDITS } from '../progress/model';
 
 /* Farmer training (Menu → Training): four short courses. Book a seat and the Booking Success dialog says when and
    where, with a reference; the booking is kept and a reminder goes into Messages. */
@@ -15,7 +17,7 @@ export function TrainingModal({ s, dispatch }: { s: GameState; dispatch: Dispatc
     <ModalShell frame="tall" x={130} y={2} title="Farmer training" close={[675, 26]} onClose={() => dispatch({ type: 'close' })}>
       <div className="panel" style={{ left: 170, top: 52, width: 530, height: 306 }}>
         <p className="section-title" style={{ marginTop: 8 }}>
-          Learn from people who farm for a living · {booked.length ? `${booked.length} booked` : 'book a seat'}
+          Learn from people who farm for a living · {booked.length ? `${booked.length} booked` : 'book a seat'} · +{COURSE_CREDITS} learning credits each
         </p>
         <div className="train-grid">
           {COURSES.map(c => {
@@ -52,6 +54,7 @@ export function TrainingModal({ s, dispatch }: { s: GameState; dispatch: Dispatc
           })}
         </div>
       </div>
+      <SponsorLine slot="training" label="Courses with" dispatch={dispatch} className="modal-sponsor" style={{ left: 435, top: 360 }} />
     </ModalShell>
   );
 }

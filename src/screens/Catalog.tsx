@@ -7,9 +7,14 @@ import { ClimateTag } from '../climate/Tag';
 import { TASK_CLIMATE, waterTask } from '../climate/model';
 import { hasSolar } from '../climate/track';
 import { GoldButton, Img, Partner, PriceChip } from '../components/ui';
-import { SHOP_TABS, STEP_META, STEPS, TASK_USES_ITEM, type ShopTab, type StepId } from '../data';
+import { SHOP_TABS, STEP_META, STEPS, TASK_USES_ITEM, itemsFor, type ShopTab, type StepId } from '../data';
 import { stepIndex, tasksDone, type Action, type GameState } from '../state';
 import { money } from '../money';
+import { PartnerRibbon, SponsorLine } from '../partners/ui';
+import { brandOf, slotBrand, type SlotId } from '../partners/data';
+
+/** The partner slot each Shop section sells. */
+const SHOP_SLOT: Partial<Record<ShopTab, SlotId>> = { fertilizer: 'shop-fertilizer', tank: 'shop-tank', equipment: 'shop-equipment' };
 
 /* ================================================================== */
 /* Shop (Figma: Food / Fertilizer / Water tanks / Equipments)          */
@@ -60,19 +65,21 @@ export function ShopModal({ s, tab, dispatch }: { s: GameState; tab: ShopTab; di
               {row.map(item => {
                 const left = item.stock ? s.stock[item.id] ?? 0 : undefined;
                 const owned = !item.stock && s.inventory.includes(item.id);
+                const brand = brandOf(item.partner);
                 return (
                   <button
                     key={item.id}
                     type="button"
-                    className={`card${owned ? ' is-owned' : ''}`}
-                    style={{ width: 66, padding: '4px 8px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, opacity: left === 0 ? 0.55 : 1 }}
+                    className={`card${owned ? ' is-owned' : ''}${brand ? ' is-partner' : ''}`}
+                    style={{ width: 66, padding: '4px 8px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, opacity: left === 0 ? 0.55 : 1, ...(brand ? { ['--brand' as string]: brand.color } : {}) }}
                     onClick={() =>
                       item.stock
                         ? dispatch({ type: 'sell', id: item.id, price: item.price, name: item.name })
                         : dispatch({ type: 'buy', id: item.id, price: item.price, name: item.name })
                     }
-                    aria-label={item.stock ? `Sell ${item.name}, ${left} of ${item.stock[1]} bags left, ${money(item.price)} coins each` : `Buy ${item.name} for ${money(item.price)} coins`}
+                    aria-label={item.stock ? `Sell ${item.name}, ${left} of ${item.stock[1]} bags left, ${money(item.price)} coins each` : `Buy ${item.name} for ${money(item.price)} coins${brand ? `, from partner ${brand.name}` : ''}`}
                   >
+                    {item.partner && <PartnerRibbon brand={item.partner} />}
                     <span style={{ fontSize: def.nameFont, fontWeight: 700, lineHeight: 'normal', textAlign: 'center', ...(def.id === 'fertilizer' ? { maxWidth: 52 } : { whiteSpace: 'nowrap', margin: '0 -8px' }) }}>
                       {item.name}
                     </span>
@@ -92,7 +99,11 @@ export function ShopModal({ s, tab, dispatch }: { s: GameState; tab: ShopTab; di
             </div>
           ))}
         </div>
-        <Partner top={233} />
+        {SHOP_SLOT[tab] && slotBrand(SHOP_SLOT[tab]!) ? (
+          <SponsorLine slot={SHOP_SLOT[tab]!} label="Featured partner" dispatch={dispatch} className="shop-sponsor" />
+        ) : (
+          <Partner top={233} />
+        )}
       </div>
     </ModalShell>
   );
@@ -191,7 +202,7 @@ function TaskChip({ s, taskId, price, done, status, width }: { s: GameState; tas
   if (done) return <span className="chip" style={{ width, fontSize: 8, background: '#5fb544', borderColor: '#3e8c2a' }}>Done</span>;
   if (status !== 'current') return <span className="chip" style={{ width, fontSize: 8, background: '#cdb89a', borderColor: '#a8916f' }}>{status === 'locked' ? 'Locked' : 'Skipped'}</span>;
   const item = TASK_USES_ITEM[taskId];
-  if (item && s.inventory.includes(item)) return <span className="chip" style={{ width, fontSize: 8, background: '#5fb544', borderColor: '#3e8c2a' }}>In stock · free</span>;
+  if (item && itemsFor(item).some(i => s.inventory.includes(i))) return <span className="chip" style={{ width, fontSize: 8, background: '#5fb544', borderColor: '#3e8c2a' }}>In stock · free</span>;
   return <PriceChip price={price} width={width} />;
 }
 

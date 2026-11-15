@@ -3,7 +3,7 @@
    whose goal is met are won, and certificates that are due are given. Kept out of the main reducer, as climate
    tracking is, so the farming rules stay readable; the rules themselves are in model.ts.
 
-   Nothing here changes coins or points: rewards wait on the Achievements page until the player claims them. */
+   Nothing here changes coins or points: rewards wait on the My Progress page until the player claims them. */
 
 import type { Action, GameState } from '../state';
 import type { Trial } from '../trials/model';
@@ -21,6 +21,7 @@ import {
   type AchStats,
   type AchView,
 } from './model';
+import { dueLevels } from '../progress/model';
 
 /** The day the game counts in (tests set their own). */
 export const achClock = { today: () => localDay() };
@@ -39,6 +40,7 @@ export function viewOf(s: GameState, a: AchState, today: string): AchView {
     helped: s.biz?.helped ?? 0,
     owned: s.biz?.owned.length ?? 0,
     credits: s.climate.credits,
+    courses: (s.trainings ?? []).length,
   };
 }
 
@@ -83,7 +85,7 @@ function counted(prev: GameState, s: GameState, a: Action): Partial<AchStats> {
   // the farms planted: from the plan, or the first planting period as it starts
   if (s.trial?.phase === 'growing' && (prev.trial?.phase !== 'growing' || prev.trial.cycle !== s.trial.cycle)) add.plantings = 1;
   // coins earned by playing (claimed rewards are not earnings)
-  if (s.coins > prev.coins && a.type !== 'achClaim' && a.type !== 'achDaily' && a.type !== 'achClaimAll') add.coinsEarned = s.coins - prev.coins;
+  if (s.coins > prev.coins && a.type !== 'achClaim' && a.type !== 'achDaily' && a.type !== 'achClaimAll' && a.type !== 'levelClaim') add.coinsEarned = s.coins - prev.coins;
   return add;
 }
 
@@ -112,6 +114,14 @@ export function trackAchievements(prev: GameState, s: GameState, a: Action, play
   const won = newlyWon(ach, v);
   if (won.length) ach = { ...ach, won: { ...ach.won, ...Object.fromEntries(won.map(x => [x.id, { date: today, claimed: false }])) } };
   const certs = dueCertificates(ach, v, today);
+  // certification levels: on top of the badges just won (a level asks for credits, which badges pay)
+  const levels = dueLevels({ ach, v, courses: v.courses });
+  if (levels.length) {
+    ach = { ...ach, levels: { ...ach.levels, ...Object.fromEntries(levels.map(l => [l.id, { date: today, claimed: false }])) } };
+    certs.unshift(
+      ...levels.map(l => ({ id: l.id, kind: 'level' as const, title: `Level ${l.n}: ${l.name}`, line: l.line, date: today, level: l.n })),
+    );
+  }
   if (certs.length) {
     const week = certs.some(c => c.kind === 'week');
     ach = {
@@ -125,15 +135,17 @@ export function trackAchievements(prev: GameState, s: GameState, a: Action, play
 
   // the pop-up: the biggest news first
   const n = won.length;
-  const award =
-    certs.length > 0
-      ? { title: `Certificate: ${certs[0].title}`, line: n ? `and ${n} badge${n === 1 ? '' : 's'} won · see them in Achievements` : 'Yours to keep in Achievements' }
+  const top = levels[levels.length - 1];
+  const award = top
+    ? { title: `Certified: Level ${top.n} · ${top.name}`, line: 'A new certificate and a reward to claim in My Progress' }
+    : certs.length > 0
+      ? { title: `Certificate: ${certs[0].title}`, line: n ? `and ${n} badge${n === 1 ? '' : 's'} won · see them in My Progress` : 'Yours to keep in My Progress' }
       : n > 0
-        ? { title: n === 1 ? `Badge won: ${won[0].name}` : `${n} badges won`, line: `+${won.reduce((p, x) => p + x.points, 0)} points to claim in Achievements` }
+        ? { title: n === 1 ? `Badge won: ${won[0].name}` : `${n} badges won`, line: `+${won.reduce((p, x) => p + x.points, 0)} points to claim in My Progress` }
         : newDay && ach.streak.count > 1
-          ? { title: `Day ${ach.streak.count} in a row 🔥`, line: 'Today’s reward is waiting in Achievements' }
+          ? { title: `Day ${ach.streak.count} in a row 🔥`, line: 'Today’s reward is waiting in My Progress' }
           : newDay
-            ? { title: 'Welcome back 🔥', line: 'A new streak starts today: claim your reward in Achievements' }
+            ? { title: 'Welcome back 🔥', line: 'A new streak starts today: claim your reward in My Progress' }
             : null;
   return { ...s, ach, ...(award ? { award: { id: ++awardId, ...award } } : {}) };
 }
