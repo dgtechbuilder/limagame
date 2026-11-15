@@ -7,6 +7,7 @@ import { boot, closeCheer, eventNames, flipMistakes, lookAtAll, playLastSeason, 
 
 async function createFarmer(page: Page, read = true) {
   await page.locator('.name-chip', { hasText: 'Wanjiku' }).click();
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
   await page.getByRole('button', { name: "Twende! Let's go", exact: true }).click();
   await expect.poll(async () => (await state(page)).fs.phase).toBe('story');
   if (!read) return;

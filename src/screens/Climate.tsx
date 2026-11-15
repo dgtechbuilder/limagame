@@ -19,7 +19,7 @@ import { LAND_FACTORS, LAND_PLOTS, PAY, areasOf, coinsFor, farmedShare, landOf, 
 import { FARM_ACRES, FARM_SCALE, PLOT_ACRES } from '../farmSize';
 import { payOf } from '../climate/model';
 import { COLS } from '../world/field';
-import { money } from '../money';
+import { currency, fromUsd, money } from '../money';
 import { FORECASTS } from '../trials/model';
 import type { Action, ClimateTab, GameState } from '../state';
 
@@ -273,11 +273,11 @@ function LandPay({ s }: { s: GameState }) {
       <div>
         <p className="set-title">Daily payments</p>
         <p className="set-body">
-          At the end of each day, every credit earned since the last payment, from the forest, the farms, the pen and your work, is paid to you in US dollars.
+          At the end of each day, every credit earned since the last payment, from the forest, the farms, the pen and your work, is paid to you in {currency().name}.
         </p>
         <div className="cl-tiles is-three" style={{ marginTop: 6 }}>
           <Tile label="Credits today" value={num(due, 1)} sub={`About ${money(coinsFor(due, c.level))} tonight`} tone={due > 0 ? 'good' : undefined} />
-          <Tile label="A credit pays" value={money(rate)} sub={rate > PAY.perCredit ? `${LEVELS[c.level].name} premium` : '$25 a tonne · more at higher levels'} />
+          <Tile label="A credit pays" value={money(rate)} sub={rate > PAY.perCredit ? `${LEVELS[c.level].name} premium` : `${money(fromUsd(25))} a tonne · more at higher levels`} />
           <Tile label="Paid in all" value={money(pay.paid)} sub={`for ${num(pay.creditsPaid, 1)} credits`} tone={pay.paid > 0 ? 'good' : undefined} />
         </div>
         {pay.payments.length ? (
