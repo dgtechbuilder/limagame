@@ -421,6 +421,25 @@ button.card:active { transform: scale(0.98); }
 }
 .look-btn.is-on { border-color: var(--gold); background: #fff2cf; }
 .create-farmer { animation: bob 2.4s ease-in-out infinite; }
+/* the country step: where the player farms sets the currency money is shown in (src/money.ts) */
+.countries { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
+.country-btn {
+  display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px; border-radius: 9px;
+  background: #fff3dc; border: 1.5px solid var(--brown-20); font-size: 11.5px; font-weight: 600; text-align: left;
+}
+.country-btn.is-on { background: var(--gold); border-color: var(--gold-edge); color: #fff; }
+.country-flag { font-size: 15px; line-height: 1; flex-shrink: 0; }
+.country-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.country-note { margin-top: 10px; font-size: 11.5px; line-height: 1.4; }
+.create-actions { position: absolute; left: 30px; right: 30px; bottom: 20px; display: flex; gap: 10px; align-items: center; }
+.create-back {
+  height: 40px; padding: 0 16px; border-radius: 10px; border: 1.5px solid var(--brown-20); background: #fff8ea;
+  font-size: 13px; font-weight: 700;
+}
+.set-select {
+  height: 30px; padding: 0 8px; border-radius: 9px; border: 1.5px solid var(--brown-20); background: #fff8ea;
+  color: var(--brown); font: inherit; font-size: 11px; font-weight: 600; max-width: 190px;
+}
 .name-bubble {
   position: absolute; z-index: 5;
   padding: 4px 12px; border-radius: 12px; background: #fff;
@@ -1986,6 +2005,37 @@ button.card:active { transform: scale(0.98); }
 .clue-spotted { position: absolute; left: 10px; bottom: 10px; padding: 3px 10px; border-radius: 100px; background: #2f9b14; color: #fff; font-size: 11px; font-weight: 800; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); }
 @media (prefers-reduced-motion: reduce) { .success-rays, .success-disc, .success-card, .visit-ribbon { animation: none; } }
 .reduce-motion .success-rays, .reduce-motion .success-disc, .reduce-motion .success-card, .reduce-motion .visit-ribbon { animation: none; }
+
+/* Climate · Land & pay: the six farms' plots, farmed, bare or idle */
+.cl-inline { height: auto; padding: 0; border: 0; background: none; font-size: inherit; text-decoration: underline; color: inherit; cursor: pointer; }
+.cl-land { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin: 8px 0; }
+.cl-land-farm { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+.cl-land-farm small { font-size: 8px; opacity: 0.75; }
+.cl-land-grid { display: grid; gap: 2px; width: 100%; max-width: 44px; padding: 3px; border-radius: 6px; background: #f1dcbd; }
+.cl-land-grid i { display: block; aspect-ratio: 1; border-radius: 2px; }
+.cl-land-grid .is-farmed { background: #3f8f46; }
+.cl-land-grid .is-bare { background: #b5653a; }
+.cl-land-grid .is-idle { background: #e9e0cf; box-shadow: inset 0 0 0 1px rgba(110, 80, 40, 0.18); }
+.cl-pay { margin-top: 8px; }
+.cl-pay .cl-where { width: 92px; }
+.cl-land-key { display: flex; gap: 12px; margin: -2px 0 6px; font-size: 8.5px; opacity: 0.85; }
+.cl-land-key span { display: inline-flex; align-items: center; gap: 4px; }
+.cl-land-key i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; }
+.cl-land-key .is-farmed { background: #3f8f46; }
+.cl-land-key .is-bare { background: #b5653a; }
+.cl-land-key .is-idle { background: #e9e0cf; box-shadow: inset 0 0 0 1px rgba(110, 80, 40, 0.18); }
+
+/* Climate · Farm areas: every area of the farm, evaluated */
+.cl-rows { display: flex; flex-direction: column; gap: 8px; }
+.cl-areas { width: 100%; border-collapse: collapse; font-size: 9.5px; line-height: 1.35; }
+.cl-areas th, .cl-areas td { text-align: left; vertical-align: top; padding: 5px 6px; border-top: 1px solid var(--brown-10); }
+.cl-areas thead th { border-top: 0; font-size: 8.5px; font-weight: 600; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.4px; padding-top: 0; }
+.cl-areas tbody th { font-weight: 700; white-space: nowrap; }
+.cl-areas small { display: block; font-size: 8px; font-weight: 400; opacity: 0.75; }
+.cl-areas .cl-num { white-space: nowrap; font-weight: 600; }
+.cl-areas tr.is-good .cl-tone { color: #2e8b47; }
+.cl-areas tr.is-bad .cl-tone { color: #c0432f; }
+.cl-areas tr.is-none .cl-tone { color: #8a6a3a; }
 
 /* ================================================================== */
 /* Partners: brand marks, sponsor lines, billboards, the Partners page */

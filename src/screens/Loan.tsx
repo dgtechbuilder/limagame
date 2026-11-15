@@ -221,7 +221,7 @@ function Quote({ s, dispatch, q }: { s: GameState; dispatch: Dispatch<Action>; q
           Done
         </GoldButton>
       </div>
-      <p className="loan-foot">A quote to plan with: game figures, no coins change hands.</p>
+      <p className="loan-foot">A quote to plan with: game figures, no money changes hands.</p>
     </>
   );
 }

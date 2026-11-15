@@ -91,7 +91,8 @@ test('the plan: one set of inputs per farm, and the results by input', async ({ 
   // a six-farm plan
   await page.evaluate(() => {
     const l = (window as unknown as Win).__lima;
-    l.jump({ trialHistory: [{ cycle: 1, farms: 2, best: 1, bags: [5, 6], profit: [0, 0] }], trialsOpen: true });
+    // six 4-acre farms cost more than a new game starts with
+    l.jump({ coins: 100000, trialHistory: [{ cycle: 1, farms: 2, best: 1, bags: [5, 6], profit: [0, 0] }], trialsOpen: true });
   });
   await page.evaluate(() => ((window as unknown as Win).__lima as unknown as D).dispatch({ type: 'trialNew' }));
   await expect(page.locator('.tr-plots')).toHaveCount(6);

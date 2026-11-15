@@ -45,8 +45,8 @@ export const MONEY = {
   co2: { value: 2.68, unit: 'kg CO₂ a litre of diesel', what: 'Carbon dioxide from burning diesel', estimate: true },
 } satisfies Record<string, MoneyFigure>;
 
-/** One farm in Lima is a sixth of an acre. */
-export const FARM_ACRES = 1 / 6;
+/** One farm in Lima is 4 acres (src/farmSize.ts). */
+export { FARM_ACRES } from '../farmSize';
 
 /* ---------------- how much better a tractor is than walking ---------------- */
 

@@ -4,7 +4,9 @@
    This file is the whole model and has no screens, so the reducer and the tests can use it. Every number a
    designer might tune (what each badge asks, what it pays, the streak's rewards, which streaks earn a certificate)
    is in the tables below. Rewards are claimed by the player on the Achievements page, so an action never changes
-   coins or points behind the player's back. */
+   money or points behind the player's back. */
+
+import { money } from '../money';
 
 /* ---------------- the parts of the game ---------------- */
 
@@ -158,9 +160,9 @@ export const ACHIEVEMENTS: Achievement[] = [
     ['Maize trader', 15, 'Sell 15 seasons'],
   ]),
   ...tiers('coins', 'farm', '💰', v => v.stats.coinsEarned, [
-    ['Money maker', 1000, 'Earn 10,000 coins'],
-    ['Good business', 10000, 'Earn 100,000 coins'],
-    ['Farm fortune', 50000, 'Earn 500,000 coins'],
+    ['Money maker', 1000, `Earn ${money(1000)}`],
+    ['Good business', 10000, `Earn ${money(10000)}`],
+    ['Farm fortune', 50000, `Earn ${money(50000)}`],
   ]),
   // six farms
   ...tiers('harvests', 'six', '📊', v => v.harvests, [

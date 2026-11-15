@@ -79,9 +79,13 @@ test('today’s reward: once a day, bigger as the streak grows', () => {
   expect(achOfSave(s.ach).streak.count).toBe(2);
   expect(s.award?.title).toBeTruthy();
   const before = { coins: s.coins, points: s.points };
+  // the badges waiting: the first task's, and the climate ones the night's credits won (the forest earns every day)
+  const waiting = Object.entries(achOfSave(s.ach).won).filter(([, w]) => !w.claimed).map(([id]) => ACHIEVEMENTS.find(x => x.id === id)!);
+  expect(waiting.map(x => x.id)).toContain('first-task');
   s = reducer(s, { type: 'achClaimAll' });
-  expect(s.coins).toBe(before.coins + streakReward(2).coins);
-  expect(s.points).toBe(before.points + streakReward(2).points + DAY_ONE.find(x => x.id === 'first-task')!.points);
+  expect(s.coins).toBe(before.coins + streakReward(2).coins + waiting.reduce((n, x) => n + (x.coins ?? 0), 0));
+  expect(s.points).toBe(before.points + streakReward(2).points + waiting.reduce((n, x) => n + x.points, 0));
+  expect(DAY_ONE.some(x => x.id === 'first-task')).toBe(true);
   expect(unclaimed(achOfSave(s.ach), day)).toBe(0);
 });
 

@@ -18,6 +18,7 @@ test('first session: each step and story page has an address, and later steps ca
   await expect.poll(() => hash(page)).toBe('#/start');
 
   await page.locator('.name-chip', { hasText: 'Chebet' }).click();
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
   await page.getByRole('button', { name: "Twende! Let's go", exact: true }).click();
   await expect.poll(() => hash(page)).toBe('#/story/1');
   await signStory(page);

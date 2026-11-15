@@ -160,5 +160,5 @@ export const weekSoFar = (s: GameState, today = achClock.today()) => {
 export const rewardText = (id: string) => {
   const x = achOf(id);
   if (!x) return '';
-  return `+${x.points} points${x.coins ? ` · +${money(x.coins)} coins` : ''}`;
+  return `+${x.points} points${x.coins ? ` · +${money(x.coins)}` : ''}`;
 };

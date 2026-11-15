@@ -7,6 +7,7 @@ import { boot, state, type Win } from './helpers';
 test('first session: the guide in the menu goes back to the game, not into the farming steps', async ({ page }) => {
   await boot(page);
   await page.getByRole('button', { name: 'Wanjiku' }).click();
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
   await page.getByRole('button', { name: /Twende/ }).click();
   await page.getByRole('button', { name: 'Main menu' }).click();
   await page.locator('.menu-item .gold-btn', { hasText: 'How the farm works' }).click();

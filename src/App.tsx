@@ -27,29 +27,72 @@ import { SuccessLayer } from './screens/Success';
 import { NavBar, NavContext } from './components/Nav';
 import { reviewing, useGame } from './state';
 import { pathOf } from './route';
+import { setCountry } from './money';
+import { fitScale } from './fit';
 
-const STAGE_W = 874;
-const STAGE_H = 402;
 
+
+/* The stage is fitted to the space the page really has. Phones report a rotation late: Safari and Chrome on iOS fire
+   "resize" (and "orientationchange") before the new width and height can be read, so a fit taken only then keeps the
+   portrait size and the game sits small in the middle of a landscape screen. The fit is therefore re-taken on every
+   signal a size change gives (resize, orientationchange, screen orientation, the visual viewport, a ResizeObserver on
+   the page, coming back to the tab) and checked again for a moment after each one, until the size has settled. The
+   size is the layout viewport's (the page's own box), so the on-screen keyboard and pinch zoom do not shrink it. */
+function viewSize() {
+  const de = document.documentElement;
+  return { w: de.clientWidth || window.innerWidth, h: de.clientHeight || window.innerHeight };
+}
 
 function useStageScale(roomForPicker: boolean) {
-  const [scale, setScale] = useState(1);
+  const [scale, setScale] = useState(() => {
+    const { w, h } = viewSize();
+    return fitScale(w, h, roomForPicker);
+  });
   useLayoutEffect(() => {
+    let raf = 0;
+    const timers: number[] = [];
     const fit = () => {
-      const small = window.innerWidth < 700 || window.innerHeight < 420;
-      const padX = small ? 0 : 48;
-      const padY = small ? 0 : roomForPicker ? 112 : 48;
-      setScale(Math.min((window.innerWidth - padX) / STAGE_W, (window.innerHeight - padY) / STAGE_H));
+      const { w, h } = viewSize();
+      if (w > 0 && h > 0) setScale(fitScale(w, h, roomForPicker));
     };
-    fit();
-    window.addEventListener('resize', fit);
-    return () => window.removeEventListener('resize', fit);
+    const onChange = () => {
+      fit();
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(fit);
+      // a rotation settles over a few hundred milliseconds on iOS: look again until it has
+      timers.splice(0).forEach(t => window.clearTimeout(t));
+      for (const ms of [100, 300, 700]) timers.push(window.setTimeout(fit, ms));
+    };
+    onChange();
+    window.addEventListener('resize', onChange);
+    window.addEventListener('orientationchange', onChange);
+    window.visualViewport?.addEventListener('resize', onChange);
+    screen.orientation?.addEventListener?.('change', onChange);
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(onChange) : null;
+    ro?.observe(document.documentElement);
+    // coming back to the tab after rotating the phone while it was hidden
+    const onShow = () => document.visibilityState === 'visible' && onChange();
+    document.addEventListener('visibilitychange', onShow);
+    window.addEventListener('pageshow', onChange);
+    return () => {
+      cancelAnimationFrame(raf);
+      timers.forEach(t => window.clearTimeout(t));
+      window.removeEventListener('resize', onChange);
+      window.removeEventListener('orientationchange', onChange);
+      window.visualViewport?.removeEventListener('resize', onChange);
+      screen.orientation?.removeEventListener?.('change', onChange);
+      ro?.disconnect();
+      document.removeEventListener('visibilitychange', onShow);
+      window.removeEventListener('pageshow', onChange);
+    };
   }, [roomForPicker]);
   return scale;
 }
 
 export default function App() {
   const [s, dispatch] = useGame();
+  // money is shown in the currency of the player's country (src/money.ts): set before anything below is drawn
+  setCountry(s.settings.country);
   const review = reviewing();
   const scale = useStageScale(review);
   const toastTimer = useRef<number | undefined>(undefined);
@@ -136,6 +179,19 @@ export default function App() {
     window.addEventListener('pointerdown', warmSfx, { once: true });
     return () => window.removeEventListener('pointerdown', warmSfx);
   }, [s.settings.sound]);
+
+  // the daily climate payment (climate/land.ts): a day that has ended is paid on opening the game, on coming back
+  // to it, and within a minute of midnight while it is open
+  useEffect(() => {
+    const tick = () => document.visibilityState !== 'hidden' && dispatch({ type: 'climateTick' });
+    tick();
+    const id = window.setInterval(tick, 60_000);
+    document.addEventListener('visibilitychange', tick);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', tick);
+    };
+  }, [dispatch]);
 
   // a badge, a certificate or a new day of the streak: a pop-up for a few seconds
   useEffect(() => {

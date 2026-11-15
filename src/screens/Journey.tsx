@@ -27,7 +27,7 @@ import {
   type Prices,
   type SeasonResult,
 } from '../state';
-import { VALUE_X, money } from '../money';
+import { fromLocal, localNumber, money } from '../money';
 import { REWARD_SPONSOR, brandOf } from '../partners/data';
 import { BrandMark, openOffer } from '../partners/ui';
 
@@ -97,8 +97,8 @@ export function SaleModal({ s, dispatch }: Props) {
     { key: 'storage', label: 'Storage cost' },
   ];
   const setPrice = (key: keyof Prices, raw: string) => {
-    // prices are typed as shown (10 times the stored value, src/money.ts)
-    const n = Math.min(key === 'market' || key === 'farmgate' ? 60 : 200, (Number(raw.replace(/\D/g, '')) || 0) / VALUE_X);
+    // prices are typed as shown, in the player's currency (src/money.ts)
+    const n = Math.min(key === 'market' || key === 'farmgate' ? 60 : 200, fromLocal(Number(raw.replace(/[^\d.]/g, '')) || 0));
     dispatch({ type: 'prices', prices: { ...p, [key]: n } });
   };
   const selling = s.stage === SELLING && s.harvested;
@@ -131,7 +131,7 @@ export function SaleModal({ s, dispatch }: Props) {
                     <span className="field-box">
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         <Img src={img.coin20} w={20} h={21} />
-                        <input id={`price-${f.key}`} inputMode="numeric" value={money(p[f.key]).replace(/,/g, '')} aria-label={f.label} onChange={e => setPrice(f.key, e.target.value)} />
+                        <input id={`price-${f.key}`} inputMode="numeric" value={localNumber(p[f.key]).replace(/,/g, '')} aria-label={f.label} onChange={e => setPrice(f.key, e.target.value)} />
                       </span>
                       <EditIcon size={20} />
                     </span>
@@ -407,7 +407,7 @@ export function ProcessModal({ s, dispatch }: Props) {
                 <Coin size={14} /> + {p.profitIncrease}%
               </p>
               <p style={{ fontSize: 8, marginTop: 4, lineHeight: 1.4 }}>
-                <b>{money(q.revenue)}</b> coins vs {money(plain.revenue)} as plain grain
+                <b>{money(q.revenue)}</b> vs {money(plain.revenue)} as plain grain
               </p>
             </div>
             <GoldButton font={10} height={27} style={{ position: 'absolute', left: 16, top: 218, width: 201 }} onClick={() => dispatch({ type: 'completeSale', processId: p.id })}>

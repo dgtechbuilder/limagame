@@ -193,13 +193,13 @@ function Today({ s, dispatch, v, today, go }: { s: GameState; dispatch: Dispatch
             d.claimed ? (
               <>
                 <b>Today’s reward claimed ✓</b>
-                <small>Come back tomorrow for day {d.streak + 1}: +{money(streakReward(d.streak + 1).coins)} coins</small>
+                <small>Come back tomorrow for day {d.streak + 1}: +{money(streakReward(d.streak + 1).coins)}</small>
               </>
             ) : (
               <>
                 <b>Day {d.streak} reward</b>
                 <small>
-                  +{money(reward.coins)} coins · +{reward.points} points
+                  +{money(reward.coins)} · +{reward.points} points
                 </small>
                 <button type="button" className="ach-claim is-big" onClick={() => dispatch({ type: 'achDaily' })}>
                   Claim
@@ -209,7 +209,7 @@ function Today({ s, dispatch, v, today, go }: { s: GameState; dispatch: Dispatch
           ) : (
             <>
               <b>{streak ? 'Keep your streak going' : 'Start a streak today'}</b>
-              <small>Do one job on the farm today, then claim +{money(reward.coins)} coins here.</small>
+              <small>Do one job on the farm today, then claim +{money(reward.coins)} here.</small>
             </>
           )}
         </div>
@@ -423,7 +423,7 @@ function Journey({ s, dispatch, p, go }: { s: GameState; dispatch: Dispatch<Acti
               </Ring>
               <b>{l.name}</b>
               {got && !got.claimed ? (
-                <button type="button" className="ach-claim" onClick={() => dispatch({ type: 'levelClaim', id: l.id })} aria-label={`Claim Level ${l.n}: ${money(l.coins)} coins and ${l.points} points`}>
+                <button type="button" className="ach-claim" onClick={() => dispatch({ type: 'levelClaim', id: l.id })} aria-label={`Claim Level ${l.n}: ${money(l.coins)} and ${l.points} points`}>
                   Claim
                 </button>
               ) : (
@@ -450,7 +450,7 @@ function Journey({ s, dispatch, p, go }: { s: GameState; dispatch: Dispatch<Acti
               />
             </ul>
             <p className="pg-reward">
-              Reward: +{money(next.coins)} coins · +{next.points} points · a certificate{partner ? ` co-signed by ${partner.name}` : ''}
+              Reward: +{money(next.coins)} · +{next.points} points · a certificate{partner ? ` co-signed by ${partner.name}` : ''}
               <button type="button" className="set-link" onClick={() => go('modules')}>
                 How to earn credits ›
               </button>
