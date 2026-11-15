@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { initialState, reducer, type GameState } from '../src/state';
 import { ACHIEVEMENTS, DAY_ONE, achOfSave, daysBetween, initialAch, playDay, streakNow, streakReward, unclaimed } from '../src/achievements/model';
 import { achClock } from '../src/achievements/track';
+import { levelOf } from '../src/progress/model';
 import { wakalaCase } from '../src/trials/samples';
 import { boot, state, type Win } from './helpers';
 
@@ -82,9 +83,11 @@ test('today’s reward: once a day, bigger as the streak grows', () => {
   // the badges waiting: the first task's, and the climate ones the night's credits won (the forest earns every day)
   const waiting = Object.entries(achOfSave(s.ach).won).filter(([, w]) => !w.claimed).map(([id]) => ACHIEVEMENTS.find(x => x.id === id)!);
   expect(waiting.map(x => x.id)).toContain('first-task');
+  // and any certification level those badges reached (My Progress): Claim all pays it too
+  const levels = Object.entries(achOfSave(s.ach).levels).filter(([, w]) => !w.claimed).map(([id]) => levelOf(id)!);
   s = reducer(s, { type: 'achClaimAll' });
-  expect(s.coins).toBe(before.coins + streakReward(2).coins + waiting.reduce((n, x) => n + (x.coins ?? 0), 0));
-  expect(s.points).toBe(before.points + streakReward(2).points + waiting.reduce((n, x) => n + x.points, 0));
+  expect(s.coins).toBe(before.coins + streakReward(2).coins + waiting.reduce((n, x) => n + (x.coins ?? 0), 0) + levels.reduce((n, l) => n + l.coins, 0));
+  expect(s.points).toBe(before.points + streakReward(2).points + waiting.reduce((n, x) => n + x.points, 0) + levels.reduce((n, l) => n + l.points, 0));
   expect(DAY_ONE.some(x => x.id === 'first-task')).toBe(true);
   expect(unclaimed(achOfSave(s.ach), day)).toBe(0);
 });
