@@ -12,7 +12,7 @@ import { FARM_ACRES, IMPL, IMPL_ORDER, MONEY, OBS_NAME, TRACTORS, TRACTOR_BONUS,
 import { CELL, FH, FW, GW, createJob, finishJob, pct, rewardFor, setupJob, stepJob, tankOf, type Controls, type Job, type JobResult } from './sim';
 
 /* From Wakala Agent: the tractor drive before planting. Brief → tractor → implement → ready → drive → summary,
-   on Lima's 874 × 402 stage. The drive is drawn on a canvas; the rules are in sim.ts and the numbers in data.ts. */
+   on TemoLima's 874 × 402 stage. The drive is drawn on a canvas; the rules are in sim.ts and the numbers in data.ts. */
 
 type Phase = 'brief' | 'tractor' | 'implement' | 'ready' | 'drive' | 'done';
 const STEPS: [Phase, string][] = [

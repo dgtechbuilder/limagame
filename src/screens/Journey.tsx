@@ -585,7 +585,7 @@ export function OutcomeModal({ s, dispatch }: Props) {
             </div>
 
             <div style={box({ left: 418, top: 9, width: 168, height: 250, border: 0, background: 'rgba(255,255,255,0.3)', padding: '10px 9px' })}>
-              <p style={{ fontSize: 9, fontWeight: 600 }}>Lima AI Tool</p>
+              <p style={{ fontSize: 9, fontWeight: 600 }}>TemoLima AI Tool</p>
               <div style={{ marginTop: 12, height: 150, borderRadius: 6, background: 'var(--brown-10)', padding: 6, display: 'flex', gap: 4 }}>
                 <Img src={img.aiBot} w={14} h={14} style={{ flexShrink: 0, marginTop: 2 }} />
                 {answer ? (
@@ -593,7 +593,7 @@ export function OutcomeModal({ s, dispatch }: Props) {
                 ) : (
                   <textarea
                     id="ai-question"
-                    aria-label="Ask Lima AI about this season"
+                    aria-label="Ask TemoLima AI about this season"
                     placeholder="Why did my maize productivity reduce?"
                     value={question}
                     onChange={e => setQuestion(e.target.value)}

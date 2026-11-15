@@ -505,7 +505,7 @@ function Compare({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) {
               By input
             </button>
           </div>
-          <p className="tr-why-title">Lima AI</p>
+          <p className="tr-why-title">TemoLima AI</p>
           {byPlot ? (
             <div className="tr-lessons">
               {lessons.map(l => (

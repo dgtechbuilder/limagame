@@ -54,7 +54,7 @@ export const LAND_FACTORS = {
   henWater: { value: 0.3, unit: 'L a hen a day', what: 'What a hen drinks', estimate: true },
   cooking: { value: 3, unit: 'kg CO₂e a day', what: 'Cooking on firewood in the house (an efficient stove or biogas halves it)', estimate: true },
   houseWater: { value: 100, unit: 'L a day', what: 'Water for the house: drinking, cooking, washing', estimate: true },
-  credit: { value: 0.25, unit: 'US$ a credit', what: 'What a Lima climate credit (10 kg CO₂) pays: $25 a tonne, a nature-based carbon price', estimate: true },
+  credit: { value: 0.25, unit: 'US$ a credit', what: 'What a TemoLima climate credit (10 kg CO₂) pays: $25 a tonne, a nature-based carbon price', estimate: true },
 } satisfies Record<string, Factor>;
 
 /** The farm's areas: their size and what lives on them. */

@@ -1,4 +1,6 @@
-# Lima Farming Game
+# TemoLima
+
+*TemoLima* means **farming** in a combination of Swahili and Sesotho: *temo* is Sesotho and *lima* is Swahili.
 
 A farming game for young Africans who farm or want to — including "satellite farmers" with a city job and a
 rural farm — played on a landscape phone. It is **one farm, the player's own** — there are no neighbours. The
@@ -209,7 +211,7 @@ A new player never sees the farm screen first. Everything happens on their own f
    - **What is at stake, on every check**: a red line at the top left while the player reads the crop, *This problem
      will cost you about KSh 100,000 of harvest if it is left alone* (KSh 50,000 on the sukuma wiki: `atStake` on each
      shamba), which turns green once it is caught: *Caught in time: about KSh 100,000 of harvest saved*.
-4. **First check (the aha moment)** — four steps, the template for every check in Lima:
+4. **First check (the aha moment)** — four steps, the template for every check in TemoLima:
    - **Look** at four pictures (the crop, pests & disease, soil & water, layout). Tap to zoom; the next one glows.
    - **Spot** the rows that look wrong in the field.
    - **Judge**: healthy · needs water · pests · needs fertiliser.
@@ -276,7 +278,7 @@ One season of maize on *Farm Moja* (the maize beds on the map):
    more a bag, at the gate or at market after transport and storage; the grade sets the price (a lower grade
    fetches less, as on the six farms: `PRICE_BY_QUALITY`); storage costs every bag put in store, against bags
    lost; processing raises the price. *Confirm and sell* pays out coins and points.
-5. **Season results** compare seasons, name the three steps that cost the most, and *Lima AI* explains the
+5. **Season results** compare seasons, name the three steps that cost the most, and *TemoLima AI* explains the
    result from the player's own numbers. *Start season N+1* keeps coins, points and history.
 
 Points: +100 × score for each finished step, +5 per bag sold. Rewards cost 800 or 1,500 points. Play time
@@ -433,12 +435,12 @@ today, or **!** at harvest).
    the problem (for a few coins) and stops most of the damage; a missed or wrong call lets it run. After the call the
    player is told why this farm has this problem and what was done about it.
 3. **Harvest and compare.** Bags of maize, quality, and profit per farm, side by side, with the plan rows that
-   differ. **Lima AI** splits the gap between the best and worst farm into its causes from the player's own numbers
+   differ. **TemoLima AI** splits the gap between the best and worst farm into its causes from the player's own numbers
    (for example *Fertilizer: planting + top-dress instead of at planting only gave 0.6 bags more*), and says when the
    farm that grew most is not the one that made most. The player can keep any farm's plan as their **recipe**; the
    next cycle starts from it.
 
-![Six harvests compared, with Lima AI's reasons](docs/six-farms-results.webp)
+![Six harvests compared, with TemoLima AI's reasons](docs/six-farms-results.webp)
 
 **The first planting period** (the first cycle) needs no planning: it starts as soon as the farm opens, with two
 farms grown a common way (hand hoe, planted with the rains, fertilizer at planting only, no pest control, rain only,
@@ -483,7 +485,7 @@ Events: the checks use the field-round events (`round_start`, `round_part_viewed
 ## From Wakala Agent
 
 [Wakala Agent](https://github.com/dgtechbuilder/wakalarepotest2) is a sister game about a village agent who reads
-farms and helps fix them. Its gameplay now runs inside Lima's farm world, on Lima's own state, clock, save and coins:
+farms and helps fix them. Its gameplay now runs inside TemoLima's farm world, on TemoLima's own state, clock, save and coins:
 the logic and data were ported, not its HTML.
 
 **What was added**
@@ -494,7 +496,7 @@ the logic and data were ported, not its HTML.
   check (`fix`, `wrongFixes`), so a reload asks for the fix again only if it was not picked.
 - **Safety kit and product.** Picking up the sprayer for a spray job asks for gloves, mask and boots, then which
   product goes in the sprayer (one question per problem being sprayed). A wrong product says why and costs nothing.
-- **Follow-up care.** Some treatments need doing again on Lima's clock: water again the next day (drought), water the
+- **Follow-up care.** Some treatments need doing again on TemoLima's clock: water again the next day (drought), water the
   top-dress in (low nitrogen), spray again two days on (armyworm, leaf rust), weed again two days on. A follow-up shows
   on the task card on its day, always inside the six check days, and costs no coins. A follow-up whose day ends undone
   is logged, and the problem is back on that farm's next check ("The problem came back").
@@ -529,7 +531,7 @@ with *Tractor hire* or *Check and treat*, and the moments come up as you play.
 
 Lines ported from Wakala are marked `// Wakala` in the data; the rest are new, in the same style.
 
-**Money.** Lima's money (shown in the player's currency) stays the only money. Real-world costs appear only in the tractor summary, to compare, and its
+**Money.** TemoLima's money (shown in the player's currency) stays the only money. Real-world costs appear only in the tractor summary, to compare, and its
 *Sources* button lists each figure with its source: diesel KSh 228 a litre (EPRA's Nairobi cap for 15 October to
 14 November 2026, via [Techish](https://tech-ish.com/2026/10/14/petrol-rises-to-kes-226-96-in-nairobi-and-kerosene-jumps-kes-28-49/)),
 tractor ploughing KSh 3,000 and harrowing KSh 1,500 an acre ([Beyond Forest](https://www.beyondforest.org/post/ploughing-cost-per-acre-in-kenya-2026-guide-virgin-vs-uncultivated-land-explained)),
@@ -709,7 +711,7 @@ them. Every word and number is in `src/plots/data.ts`, for an agronomist's revie
   tool without getting off.
 - **Growth on the field.** A farm's crop grows taller or shorter, greener or paler, with its inputs.
 - **Results by input.** The results have a *By input* view: every farm's harvest beside its seed, fertilizer, sprayer
-  and tractor, and Lima AI's lessons, each a fair comparison: a farm's harvest against the same farm with one input
+  and tractor, and TemoLima AI's lessons, each a fair comparison: a farm's harvest against the same farm with one input
   changed to a yardstick (long-season hybrid, no fertilizer, work by hand, the tool the farm needed, no spray),
   averaged over the farms with each choice.
 - **Proposed numbers.** Seeds and fertilizers change yield as proposed in `docs/plot-trials-plan.md` (drought-tolerant
@@ -1116,7 +1118,7 @@ player's saved game or events.
 - **Field-round advice** (ash or sand for armyworm, soapy water for aphids, top-dressing, drainage after floods, what to
   do after hail, when each crop is ready to pick) needs agronomist review, and so do the crop calendar (21 real days
   stand in for a whole season) and the rotation. Round points are illustrative.
-- **Lima AI** is a rule-based stand-in that reads the season's numbers; it does not call an AI service.
+- **TemoLima AI** is a rule-based stand-in that reads the season's numbers; it does not call an AI service.
 - **Rewards** are saved in the game but nothing is sent to a partner; there is no redemption backend.
 - **Missed checks** cost harvest on the six farms (see `DAMAGE` in `src/trials/model.ts`). In the everyday field
   rounds they still only show as a bed to look at again.

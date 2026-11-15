@@ -2,7 +2,7 @@
 
    Everything that teaches or pays is here as data: the three tractors, the eight implements, how much of a job a
    wrong implement still does, the six farms' fields, and every shilling figure with its source (or marked as an
-   estimate). Shillings are real-world information shown in the summary only; Lima's coins stay the only money in the
+   estimate). Shillings are real-world information shown in the summary only; TemoLima's coins stay the only money in the
    game. No pictures or screens here. */
 
 /* ---------------- money: real-world figures, shown in the summary only ---------------- */
@@ -45,7 +45,7 @@ export const MONEY = {
   co2: { value: 2.68, unit: 'kg CO₂ a litre of diesel', what: 'Carbon dioxide from burning diesel', estimate: true },
 } satisfies Record<string, MoneyFigure>;
 
-/** One farm in Lima is 4 acres (src/farmSize.ts). */
+/** One farm in TemoLima is 4 acres (src/farmSize.ts). */
 export { FARM_ACRES } from '../farmSize';
 
 /* ---------------- how much better a tractor is than walking ---------------- */
@@ -67,7 +67,7 @@ export const TRACTOR_BONUS = {
   perDrive: 25,
 };
 
-/* ---------------- rewards, in Lima's scale ---------------- */
+/* ---------------- rewards, in TemoLima's scale ---------------- */
 
 export const TRACTOR_REWARD = {
   /** coins for each point of the score (out of 100) */

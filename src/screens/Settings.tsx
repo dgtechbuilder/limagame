@@ -14,7 +14,7 @@ import { clearSave, initialState, type Action, type GameState, type Settings, ty
 
 /* Settings: a full page with four sections. Every control changes the game straight away and is kept on this device.
    Farmer: rename and change look. Game: character style, farm view, read aloud. Display: graphics, motion, full
-   screen. Help & data: the intro, design review, and reset (which keeps these settings). */
+   screen. Help & data: about the game and its name, the intro, design review, and reset (which keeps these settings). */
 
 type Props = { s: GameState; dispatch: Dispatch<Action>; tab?: SettingsTab };
 
@@ -43,14 +43,14 @@ function Seg<T extends string>({ label, value, options, onChange }: { label: str
   );
 }
 
-function Row({ title, body, children }: { title: string; body: ReactNode; children: ReactNode }) {
+function Row({ title, body, children }: { title: string; body: ReactNode; children?: ReactNode }) {
   return (
     <div className="set-row">
       <div className="set-text">
         <p className="set-title">{title}</p>
         <p className="set-body">{body}</p>
       </div>
-      <div className="set-control">{children}</div>
+      {children && <div className="set-control">{children}</div>}
     </div>
   );
 }
@@ -227,7 +227,7 @@ function GameTab({ s, dispatch, set }: Props & { set: (p: Partial<Settings>) => 
             value={st.voice ? 'on' : 'off'}
             onChange={v => {
               set({ voice: v === 'on' });
-              if (v === 'on') speak('Read aloud is on. Karibu Lima!');
+              if (v === 'on') speak('Read aloud is on. Karibu TemoLima!');
             }}
             options={[
               { id: 'off', label: 'Off' },
@@ -317,7 +317,7 @@ function DisplayTab({ s, dispatch, set }: Props & { set: (p: Partial<Settings>) 
           ]}
         />
       </Row>
-      <Row title="Full screen" body="Fills the whole screen. On phones, adding Lima to your home screen fits best.">
+      <Row title="Full screen" body="Fills the whole screen. On phones, adding TemoLima to your home screen fits best.">
         <Seg
           label="Full screen"
           value={full ? 'on' : 'off'}
@@ -338,6 +338,15 @@ function HelpTab({ s, dispatch }: Props) {
   const [confirmReset, setConfirmReset] = useState(false);
   return (
     <div className="set-rows">
+      <Row
+        title="About TemoLima"
+        body={
+          <>
+            TemoLima means <b>farming</b> in a combination of Swahili and Sesotho: <i>temo</i> is Sesotho and <i>lima</i> is
+            Swahili. Grow maize, learn good farming practice and earn partner discounts.
+          </>
+        }
+      />
       <Row title="How the farm works" body="A quick guide to seasons, selling and rewards.">
         <GoldButton font={10} height={28} style={{ width: 120 }} onClick={() => dispatch({ type: 'open', modal: { kind: 'welcome' } })}>
           Open

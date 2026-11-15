@@ -1,4 +1,4 @@
-/* Lima's service worker: the game opens fast on a second visit and plays on a weak or missing signal.
+/* TemoLima's service worker: the game opens fast on a second visit and plays on a weak or missing signal.
    - The page itself: from the network when there is one (so an update shows at once), else the copy kept here.
    - Build files with a hash in their name (they never change): kept here and served from here.
    - Pictures, icons and the font: served from here at once, and refreshed in the background. */

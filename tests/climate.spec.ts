@@ -5,9 +5,9 @@ import { FARM_ACRES } from '../src/farmSize';
 
 /* Climate tracking: every job records its climate effect, and the Climate page shows it. */
 
-type Lima = { __lima: { dispatch: (a: unknown) => void; jump: (s: Record<string, unknown>) => void; state: any } };
-const act = (page: Page, a: Record<string, unknown>) => page.evaluate(x => (window as unknown as Lima).__lima.dispatch(x), a);
-const jump = (page: Page, s: Record<string, unknown>) => page.evaluate(x => (window as unknown as Lima).__lima.jump(x), s);
+type TemoLima = { __lima: { dispatch: (a: unknown) => void; jump: (s: Record<string, unknown>) => void; state: any } };
+const act = (page: Page, a: Record<string, unknown>) => page.evaluate(x => (window as unknown as TemoLima).__lima.dispatch(x), a);
+const jump = (page: Page, s: Record<string, unknown>) => page.evaluate(x => (window as unknown as TemoLima).__lima.jump(x), s);
 const climate = async (page: Page) => (await state(page)).climate;
 const dialog = (page: Page) => page.getByRole('dialog', { name: 'Climate' });
 
