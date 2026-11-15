@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { boot, scenario, state } from './helpers';
 import { money } from '../src/money';
+import { FARM_ACRES } from '../src/farmSize';
 
 /* Climate tracking: every job records its climate effect, and the Climate page shows it. */
 
@@ -59,7 +60,7 @@ test('a Farm Moja task is tracked: manure stores carbon, earns credits and shows
 test('six farms: planting records each plan; tractor work and drives burn diesel; the harvest closes the cycle', async ({ page }) => {
   await boot(page);
   // a planned cycle (the first one plants itself: maize and sukuma wiki), so the plans can differ
-  await jump(page, { view: 'classic', coins: 5000, trialHistory: [{ cycle: 1, farms: 2, best: 0, bags: [5, 5], profit: [0, 0] }] });
+  await jump(page, { view: 'classic', coins: 100000, trialHistory: [{ cycle: 1, farms: 2, best: 0, bags: [5, 5], profit: [0, 0] }] });
   await act(page, { type: 'trialNew' });
   // six farms may not share a plan: one change each, then Farm 2's own
   await act(page, { type: 'trialSuggest' });
@@ -77,8 +78,9 @@ test('six farms: planting records each plan; tractor work and drives burn diesel
   await act(page, { type: 'fieldMark', farm: 1, job: 'prep', bits: mask(0), tractor: true, rig: { tractor: 'compact', tool: 'plough', job: 'prep' } });
   await act(page, { type: 'fieldMark', farm: 1, job: 'prep', bits: mask(1), tractor: true, rig: { tractor: 'large', tool: 'harrow', job: 'prep' } });
   c = await climate(page);
-  // five plots are a quarter of the farm; a compact tractor burns 6/9 of the standard's diesel, a large one 14/9
-  const litres = (13 / 6) * 0.25 * (6 / 9 + 14 / 9);
+  // five plots are a quarter of a 4-acre farm (13 L an acre to plough); a compact tractor burns 6/9 of the standard's
+  // diesel, a large one 14/9
+  const litres = 13 * FARM_ACRES * 0.25 * (6 / 9 + 14 / 9);
   expect(c.total.diesel).toBeCloseTo(litres, 3);
   expect(c.co2By.fuel).toBeCloseTo(litres * 2.68, 3);
 
