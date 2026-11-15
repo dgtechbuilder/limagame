@@ -133,11 +133,11 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
       )}
 
       {/* Resources */}
-      <div className="meter abs" style={{ left: 713, top: 31, width: 60 }} title="Coins" aria-label={`${money(s.coins)} coins`}>
+      <div className="meter abs" style={{ left: 713, top: 31, width: 60 }} title="Money (US dollars)" aria-label={`${money(s.coins)}`}>
         <span className="fill" style={{ width: Math.max(10, 58 * coinFill), background: 'var(--xp)' }} />
         <span className="value" style={{ paddingRight: 8 }}>{money(s.coins)}</span>
       </div>
-      <Img src={img.coin} w={14} h={14} style={{ position: 'absolute', left: 758, top: 30 }} />
+      <Img src={img.cash} w={14} h={14} style={{ position: 'absolute', left: 758, top: 30 }} />
       <div className="meter abs" style={{ left: 713, top: 51, width: 60 }} title="Water in your tanks" aria-label={`${Math.round(s.water)} thousand litres of water`}>
         <span className="fill" style={{ width: Math.max(10, 58 * waterFill), background: 'var(--water)' }} />
         <span className="value" style={{ paddingRight: 8 }}>{Math.round(s.water)}k L</span>
@@ -289,7 +289,7 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
                   width={54}
                   icon={img.milk}
                   label="Milk now"
-                  onClick={() => dispatch({ type: 'collect', id: 'milk', coins: 30, text: 'Collected 3 L of goat milk · +300 coins · back tomorrow' })}
+                  onClick={() => dispatch({ type: 'collect', id: 'milk', coins: 30, text: `Collected 3 L of goat milk · +${money(30)} · back tomorrow` })}
                 />
               )}
               {s.collectedDay.eggs !== today() && (
@@ -299,7 +299,7 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
                   width={81}
                   icon={img.egg}
                   label="Harvest eggs"
-                  onClick={() => dispatch({ type: 'collect', id: 'eggs', coins: 20, text: 'Collected 12 eggs · +200 coins · back tomorrow' })}
+                  onClick={() => dispatch({ type: 'collect', id: 'eggs', coins: 20, text: `Collected 12 eggs · +${money(20)} · back tomorrow` })}
                 />
               )}
             </>

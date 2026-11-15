@@ -27,7 +27,7 @@ test('hire the tractor: choose it and the implement, drive on autopilot, see the
   const score = Number((await page.locator('.tc-score > b').textContent())?.replace('/100', ''));
   expect(score).toBeGreaterThan(0);
   for (const part of ['Job done', 'Efficiency', 'Climate', 'Cost saving']) await expect(page.locator('.tc-scorebar', { hasText: part })).toBeVisible();
-  await expect(page.locator('.tc-ksh')).toContainText('KSh');
+  await expect(page.locator('.tc-ksh')).toContainText('$');
   // autopilot earns at most 2 stars
   await expect(page.locator('.tc-stars .is-on')).not.toHaveCount(3);
 

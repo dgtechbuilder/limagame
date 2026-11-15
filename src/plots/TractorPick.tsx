@@ -105,7 +105,7 @@ export function TractorPick({ tr, field, day, rig, onGo, onLeave }: { tr: Trial;
                     ))}
                   </span>
                   <span className="tp-meta">
-                    Fuel <b>{money(TRACTOR_PLOT[k.id].fuel)} coins</b> a farm · speed {Math.round(TRACTOR_PLOT[k.id].speed * 100)}%
+                    Fuel <b>{money(TRACTOR_PLOT[k.id].fuel)}</b> a farm · speed {Math.round(TRACTOR_PLOT[k.id].speed * 100)}%
                   </span>
                   <small>{works.length ? `Works ${works.slice(0, 3).join(', ')}${works.length > 3 ? '…' : ''}` : 'Not used yet this cycle'}</small>
                 </button>

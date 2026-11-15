@@ -56,9 +56,9 @@ export function Prescribe({
     if (!op.right) setTried(v => [...v, op.id]);
   };
 
-  let line = `${name}, what will fix ${farmName}? A wrong fix costs ${money(cost)} coins.`;
-  if (wrongBefore > 0 && !picked) line = `Pick again, ${name}. A wrong fix costs ${money(cost)} coins.`;
-  if (picked && !picked.right) line = `${picked.lesson} −${money(cost)} coins. Pick again.`;
+  let line = `${name}, what will fix ${farmName}? A wrong fix costs ${money(cost)}.`;
+  if (wrongBefore > 0 && !picked) line = `Pick again, ${name}. A wrong fix costs ${money(cost)}.`;
+  if (picked && !picked.right) line = `${picked.lesson} −${money(cost)}. Pick again.`;
   if (right) line = `${right.lesson} Now ${then}`;
 
   return (
@@ -97,7 +97,7 @@ export function Prescribe({
                   {wrong ? '✕' : isRight ? '✓' : ''}
                 </span>
                 <span>{op.label}</span>
-                {wrong && <small>−{money(cost)} coins</small>}
+                {wrong && <small>−{money(cost)}</small>}
               </button>
             );
           })}

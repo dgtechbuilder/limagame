@@ -12,19 +12,20 @@
    - Diesel (litres), synthetic nitrogen (kg), sprays, food lost (kg) and food grown (kg), for the efficiency figures
    - Climate shocks (drought, flood, hail) met and handled: adapting, not only cutting
    - Climate credits: 1 credit for every 10 kg of CO₂ stored or kept out of the air (a real carbon credit is 1,000 kg)
-   - Land: every day, each of the six farms' 120 plots is farmed (a crop in the ground), bare (cleared, not planted)
-     or idle. Farmed plots store carbon, bare ones lose it, idle ones earn nothing; the day's credits are paid to the
-     farmer in coins (land.ts)
+   - Every area of the farm, every day (land.ts): the six farms' 120 plots farmed, bare or idle; Farm Moja; the
+     10-acre mini forest; the grazing pen; the cows and hens; the pond; the homestead. The day's credits are paid to
+     the farmer in US dollars
 
    Every number is in the tables below, so an agronomist can review them without touching code. Like the six farms'
    numbers, they are illustrative estimates until that review, except where a source is named. No pictures here. */
 
 import type { Forecast, Plan, TrialHazard } from '../trials/model';
+import { FARM_ACRES, FARM_SCALE, M2_PER_ACRE } from '../farmSize';
 import { FORECASTS, WATER_TOO_MUCH } from '../trials/model';
 
 /* ---------------- what is tracked ---------------- */
 
-export type Source = 'fuel' | 'fertilizer' | 'manure' | 'chemicals' | 'water' | 'seed' | 'storage' | 'transport' | 'soil';
+export type Source = 'fuel' | 'fertilizer' | 'manure' | 'chemicals' | 'water' | 'seed' | 'storage' | 'transport' | 'soil' | 'livestock' | 'cooking';
 
 export const SOURCES: { id: Source; label: string; fix: string }[] = [
   { id: 'fertilizer', label: 'Fertilizer', fix: 'Use manure or beans for part of the nitrogen, and never a double dose.' },
@@ -36,6 +37,8 @@ export const SOURCES: { id: Source; label: string; fix: string }[] = [
   { id: 'seed', label: 'Seed', fix: 'Certified seed costs a little carbon but grows more food per kg.' },
   { id: 'manure', label: 'Manure', fix: 'Manure gives off a little gas, but stores much more carbon in the soil.' },
   { id: 'soil', label: 'Bare soil', fix: 'Plant soon after clearing, or mulch: cleared ground left bare loses its carbon to the air.' },
+  { id: 'livestock', label: 'Cows and hens', fix: 'Good forage, and the manure spread on the farms or put in a biogas digester, cut the methane.' },
+  { id: 'cooking', label: 'Cooking', fix: 'An efficient stove, or biogas from the cows’ manure, burns less wood.' },
 ];
 
 export interface Footprint {
@@ -122,9 +125,11 @@ export interface Payment {
   landCredits: number;
   workCredits: number;
   credits: number;
-  /** coins a credit, at the climate level reached */
+  /** money a credit pays, at the climate level reached (stored money: src/money.ts) */
   rate: number;
   coins: number;
+  /** each area's day: kg CO₂ stored and kg CO₂e emitted (missing in payments from before areas) */
+  areas?: { id: string; stored: number; emitted: number }[];
 }
 
 export interface PayState {
@@ -132,7 +137,7 @@ export interface PayState {
   day: string | null;
   /** lifetime credits at the last payment: everything above it is paid next */
   creditsAt: number;
-  /** coins and credits paid, all time */
+  /** money (stored: src/money.ts) and credits paid, all time */
   paid: number;
   creditsPaid: number;
   /** newest first */
@@ -140,12 +145,14 @@ export interface PayState {
   /** plot-days of each land use, all time, and the land's own carbon (kg CO₂ stored, and lost from bare soil) */
   plotDays: { farmed: number; bare: number; idle: number };
   landKg: { stored: number; lost: number };
+  /** each area's kg CO₂ stored and kg CO₂e emitted, and litres of water drawn, all time (missing in older saves) */
+  areas?: Record<string, { stored: number; emitted: number; water: number }>;
 }
 
-export const initialPay: PayState = { day: null, creditsAt: 0, paid: 0, creditsPaid: 0, payments: [], plotDays: { farmed: 0, bare: 0, idle: 0 }, landKg: { stored: 0, lost: 0 } };
+export const initialPay: PayState = { day: null, creditsAt: 0, paid: 0, creditsPaid: 0, payments: [], plotDays: { farmed: 0, bare: 0, idle: 0 }, landKg: { stored: 0, lost: 0 }, areas: {} };
 export const payOf = (c: ClimateState): PayState => ({ ...initialPay, ...(c.pay ?? {}) });
 
-const noSources = (): Record<Source, number> => ({ fuel: 0, fertilizer: 0, manure: 0, chemicals: 0, water: 0, seed: 0, storage: 0, transport: 0, soil: 0 });
+const noSources = (): Record<Source, number> => ({ fuel: 0, fertilizer: 0, manure: 0, chemicals: 0, water: 0, seed: 0, storage: 0, transport: 0, soil: 0, livestock: 0, cooking: 0 });
 
 export const initialClimate: ClimateState = {
   total: ZERO,
@@ -181,13 +188,12 @@ export const FACTORS = {
   spray: { value: 2, unit: 'kg CO₂e a spray', what: 'Making and carrying one pesticide spray for a farm', estimate: true },
   transport: { value: 0.8, unit: 'kg CO₂e a bag', what: 'Taking a 90 kg bag to market by lorry or motorbike', estimate: true },
   bag: { value: 90, unit: 'kg a bag', what: 'A bag of maize' },
-  farmM2: { value: 675, unit: 'm²', what: 'One of the six farms (a sixth of an acre)' },
+  farmM2: { value: FARM_ACRES * M2_PER_ACRE, unit: 'm²', what: `One of the six farms (${FARM_ACRES} acres)` },
   weeks: { value: 3, unit: 'weeks', what: 'A cycle of the six farms (21 days)' },
   credit: { value: 10, unit: 'kg CO₂e', what: 'One Lima climate credit (a real carbon credit is 1,000 kg)' },
 } satisfies Record<string, Factor>;
 
 const N = FACTORS.nitrogen.value;
-const FARM_ACRES = 1 / 6;
 /** litres of diesel an acre for each job a tractor can do (the tractor drive's implements: plough + harrow, planter, harvester) */
 export const TRACTOR_LPA: Record<string, number> = { prep: 13, sow: 4, setupFeed: 4, spray: 3, harvest: 10 };
 /** how much diesel each tractor type burns next to the standard one: its fuel cost a plot (6, 9, 14) over the standard's 9 */
@@ -245,13 +251,27 @@ function sum(...ds: Delta[]): Delta {
   return out;
 }
 
+/** A farm's inputs, from the tables above (set for a farm of a sixth of an acre), for the farm's real size: the
+    amounts (emissions, carbon, pollution, nitrogen, sprays, credits) grow with the area; soil health is a state of the
+    soil, not an amount, so it does not. */
+export function sized(d: Delta, k = FARM_SCALE): Delta {
+  const out: Delta = {};
+  for (const [key, v] of Object.entries(d)) {
+    if (key === 'emit') out.emit = Object.fromEntries(Object.entries(v as Record<Source, number>).map(([s, n]) => [s, n * k]));
+    else (out as Record<string, number>)[key] = key === 'soil' ? (v as number) : (v as number) * k;
+  }
+  return out;
+}
+
+/** Over-watering on top of the rain: fertilizer washed into the streams, and waterlogged soil. */
+const tooWet = (w: number, f: Forecast): Delta => (w + FORECASTS[f].rain > WATER_TOO_MUCH ? sized({ pollution: 6, soil: -1 }) : {});
+
 /** What one farm's plan puts in at planting: seed, fertilizer or manure, the pest programme, the watering, the land.
     (Tractor diesel is counted when the ground is worked.) */
 export function planDelta(p: Plan, f: Forecast, solar: boolean): Delta {
   const litres = planLitres(p);
-  const total = p.water + FORECASTS[f].rain;
-  const water: Delta = { water: litres, emit: { water: pumpCo2(litres, solar) }, ...(total > WATER_TOO_MUCH ? { pollution: 6, soil: -1 } : {}) };
-  return sum(LAND[p.land], SEED[p.seed], FERT[p.fert], PEST[p.pest], water);
+  const water: Delta = { water: litres, emit: { water: pumpCo2(litres, solar) } };
+  return sum(sized(sum(LAND[p.land], SEED[p.seed], FERT[p.fert], PEST[p.pest])), water, tooWet(p.water, f));
 }
 
 /** Diesel for a tractor job on one farm, for the share of its tiles done from the seat. */
@@ -273,12 +293,12 @@ export function treatDelta(job: string, solar: boolean): Delta {
       return { water: litres, emit: { water: pumpCo2(litres, solar) } };
     }
     case 'spray':
-      return { emit: { chemicals: FACTORS.spray.value }, sprays: 1, pollution: 6 };
+      return sized({ emit: { chemicals: FACTORS.spray.value }, sprays: 1, pollution: 6 });
     case 'feed':
-      return { emit: { fertilizer: 1 * N }, fertN: 1, pollution: 1 };
+      return sized({ emit: { fertilizer: 1 * N }, fertN: 1, pollution: 1 });
     // by hand: no herbicide
     case 'weed':
-      return { soil: 0.5, credits: 0.3 };
+      return sized({ soil: 0.5, credits: 0.3 });
     case 'drain':
       return { soil: 1 };
     default:
@@ -288,9 +308,9 @@ export function treatDelta(job: string, solar: boolean): Delta {
 
 /** A wrong fix that still went on the field. */
 export function wrongFixDelta(pick: string): Delta | null {
-  if (pick === 'glyphosate') return { emit: { chemicals: FACTORS.spray.value }, sprays: 1, pollution: 10, soil: -1 };
-  if (['insecticide', 'fungicide', 'spray'].includes(pick)) return { emit: { chemicals: FACTORS.spray.value }, sprays: 1, pollution: 6 };
-  if (pick === 'fertilizer' || pick === 'topdress') return { emit: { fertilizer: 0.5 * N }, fertN: 0.5, pollution: 2 };
+  if (pick === 'glyphosate') return sized({ emit: { chemicals: FACTORS.spray.value }, sprays: 1, pollution: 10, soil: -1 });
+  if (['insecticide', 'fungicide', 'spray'].includes(pick)) return sized({ emit: { chemicals: FACTORS.spray.value }, sprays: 1, pollution: 6 });
+  if (pick === 'fertilizer' || pick === 'topdress') return sized({ emit: { fertilizer: 0.5 * N }, fertN: 0.5, pollution: 2 });
   if (pick === 'water' || pick === 'wet') return { water: 2 * FACTORS.farmM2.value };
   return null;
 }
@@ -437,18 +457,17 @@ export function biggestSource(c: ClimateState) {
 export function optionDelta(key: string, id: string, f: Forecast, solar: boolean): Delta | null {
   switch (key) {
     case 'land':
-      return id === 'tractor' ? sum(LAND.tractor, contractorDiesel()) : LAND[id as Plan['land']] ?? null;
+      return id === 'tractor' ? sum(sized(LAND.tractor), contractorDiesel()) : LAND[id as Plan['land']] ? sized(LAND[id as Plan['land']]) : null;
     case 'seed':
-      return SEED[id as Plan['seed']] ?? null;
+      return SEED[id as Plan['seed']] ? sized(SEED[id as Plan['seed']]) : null;
     case 'fert':
-      return FERT[id as Plan['fert']] ?? null;
+      return FERT[id as Plan['fert']] ? sized(FERT[id as Plan['fert']]) : null;
     case 'pest':
-      return PEST[id as Plan['pest']] ?? null;
+      return PEST[id as Plan['pest']] ? sized(PEST[id as Plan['pest']]) : null;
     case 'water': {
       const w = Number(id) as Plan['water'];
-      const total = w + FORECASTS[f].rain;
       const l = w * FACTORS.farmM2.value * FACTORS.weeks.value;
-      return { water: l, emit: { water: pumpCo2(l, solar) }, ...(total > WATER_TOO_MUCH ? { pollution: 6, soil: -1 } : {}) };
+      return sum({ water: l, emit: { water: pumpCo2(l, solar) } }, tooWet(w, f));
     }
     default:
       return null;

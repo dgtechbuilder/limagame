@@ -236,6 +236,66 @@ export function badgeTexture(text: string, bg: string) {
 }
 
 /** A sign board face: a cyan frame with a maize cob, like a crop marker. */
+/** The mini forest's sign: a wooden board. */
+export function forestSignTexture() {
+  return canvasTex(256, 128, g => {
+    g.fillStyle = '#8b5a2b';
+    g.fillRect(0, 0, 256, 128);
+    g.fillStyle = '#c9925a';
+    g.fillRect(8, 8, 240, 112);
+    g.fillStyle = '#2f6b25';
+    g.beginPath();
+    g.moveTo(40, 22);
+    g.lineTo(66, 70);
+    g.lineTo(14, 70);
+    g.closePath();
+    g.fill();
+    g.beginPath();
+    g.moveTo(40, 44);
+    g.lineTo(70, 98);
+    g.lineTo(10, 98);
+    g.closePath();
+    g.fill();
+    g.fillStyle = '#5c3a20';
+    g.fillRect(36, 98, 8, 14);
+    g.fillStyle = '#3a2410';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.font = 'bold 26px Poppins, Arial, sans-serif';
+    g.fillText('MINI FOREST', 160, 48);
+    g.font = 'bold 24px Poppins, Arial, sans-serif';
+    g.fillText('10 acres', 158, 86);
+  });
+}
+
+/** The mini forest: a stand of trees of mixed sizes, with bushes under them, on a darker forest floor, filling the
+    rectangle x0..x1, z0..z1. The trees are placed the same way every time (no randomness). Returns the parts and
+    where each trunk stands (the farmer walks round them). */
+export function forest(x0: number, z0: number, x1: number, z1: number): { parts: Part[]; floor: Part[]; trunks: { x: number; z: number; r: number }[] } {
+  const floor: Part[] = [
+    { geo: roundRect(x0 - 0.4, z0 - 0.4, x1 + 0.4, z1 + 0.4, 1.4), color: '#4c9a3c', m: at(0, 0.006, 0) },
+    { geo: roundRect(x0, z0, x1, z1, 1.1), color: '#3d8434', m: at(0, 0.011, 0) },
+  ];
+  const parts: Part[] = [];
+  const trunks: { x: number; z: number; r: number }[] = [];
+  const jit = (i: number, k: number) => Math.sin(i * 12.9898 + k * 78.233) * 0.5;
+  const step = 1.55;
+  let i = 0;
+  for (let z = z0 + 0.8; z <= z1 - 0.5; z += step) {
+    const row = Math.round((z - z0) / step);
+    for (let x = x0 + 0.8 + (row % 2) * (step / 2); x <= x1 - 0.5; x += step) {
+      i++;
+      const tx = x + jit(i, 1) * 0.7;
+      const tz = z + jit(i, 2) * 0.6;
+      const s = 0.72 + (jit(i, 3) + 0.5) * 0.5;
+      parts.push(...place(tree(s, i % 3 === 0 ? 1 : 0), at(tx, 0, tz, { ry: jit(i, 4) * 6 })));
+      trunks.push({ x: tx, z: tz, r: 0.55 * s });
+      if (i % 2 === 0) parts.push(...place(bush(0.55 + (jit(i, 5) + 0.5) * 0.3), at(tx + 0.7, 0, tz + 0.45)));
+    }
+  }
+  return { parts, floor, trunks };
+}
+
 export function signTexture(n: number) {
   return canvasTex(128, 128, g => {
     g.fillStyle = '#3cc3dd';

@@ -237,7 +237,7 @@ export const PARTNERS: Partner[] = [
   { id: 'kimani', name: 'Kimani Tractor Hire', kind: 'Tractor owner', does: 'Takes the bookings you pass on, with his own tractor. You keep 10% of the hire, and the farmer is helped.', fee: 0, level: 1 },
   { id: 'coop', name: 'Narok Farmers’ Co-op', kind: 'Farmers’ co-op', does: 'Sends you two more farms’ bookings every day.', fee: 5000, level: 2 },
   { id: 'fuel', name: 'Rafiki Fuel', kind: 'Fuel station', does: 'Sells you diesel 10% cheaper.', fee: 3000, level: 2 },
-  { id: 'county', name: 'County Roads Office', kind: 'Hires tractors', does: 'Rents your tractor for a whole day, with your driver: KSh 120,000, no farms that day.', fee: 0, level: 2 },
+  { id: 'county', name: 'County Roads Office', kind: 'Hires tractors', does: `Rents your tractor for a whole day, with your driver: ${kshText(12000)}, no farms that day.`, fee: 0, level: 2 },
   { id: 'app', name: 'Hello Tractor app', kind: 'Booking app', does: 'Puts your stops in the shortest order with one tap.', fee: 4000, level: 3 },
 ];
 export const partnerOf = (id: PartnerId) => PARTNERS.find(p => p.id === id)!;

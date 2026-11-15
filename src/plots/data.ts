@@ -7,6 +7,7 @@
    game can use it. */
 
 import type { Forecast, TrialHazard } from '../trials/model';
+import { FARM_SCALE } from '../farmSize';
 import { IMPL, LAYOUTS, TRACTORS, fitOf, type ImplId, type TractorKind } from '../tractor/data';
 
 /** Every farm is 20 plots: its 4 × 5 tiles, numbered 1 to 20 from the back left. */
@@ -266,9 +267,9 @@ export type TractorId = TractorKind['id'];
 
 /** What each tractor type does to a farm it works: fuel is coins per farm and job, paid the first time it works it. */
 export const TRACTOR_PLOT: Record<TractorId, { fuel: number; compaction: number; speed: number; teach: string }> = {
-  compact: { fuel: 24, compaction: 1, speed: 0.85, teach: 'Light: it does not pack the soil. Slowest, and cheapest on fuel.' },
-  standard: { fuel: 36, compaction: 0.99, speed: 1, teach: 'Packs the soil a little. Middle speed and fuel.' },
-  large: { fuel: 56, compaction: 0.96, speed: 1.25, teach: 'Fastest, but heavy wheels pack the soil (less grain), and it burns the most fuel.' },
+  compact: { fuel: 24 * FARM_SCALE, compaction: 1, speed: 0.85, teach: 'Light: it does not pack the soil. Slowest, and cheapest on fuel.' },
+  standard: { fuel: 36 * FARM_SCALE, compaction: 0.99, speed: 1, teach: 'Packs the soil a little. Middle speed and fuel.' },
+  large: { fuel: 56 * FARM_SCALE, compaction: 0.96, speed: 1.25, teach: 'Fastest, but heavy wheels pack the soil (less grain), and it burns the most fuel.' },
 };
 
 /** Land turned by a tractor: the yield factor of its land prep (a hand hoe is 0.95, oxen 1). */
@@ -370,7 +371,7 @@ export const KIND_WORDS: Record<PlotKind, { title: string; one: string; shed: st
 };
 
 /** Coins an input costs a farm. */
-export const plotCost = (kind: PlotKind, id: string) => Math.round((OPTIONS[kind].find(x => x.id === id)?.cost ?? 0) * PLOT_SHARE);
+export const plotCost = (kind: PlotKind, id: string) => Math.round((OPTIONS[kind].find(x => x.id === id)?.cost ?? 0) * PLOT_SHARE * FARM_SCALE);
 
 /** Put an input on a farm (its one input set). */
 export function setPlotInput(rows: PlotRecord[], kind: PlotKind, plot: number, value: string): PlotRecord[] {

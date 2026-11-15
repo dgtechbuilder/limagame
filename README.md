@@ -351,7 +351,10 @@ WASD. The **task card** at the top says what to do next; tap it and the farmer w
 
 ![The farm world](docs/farm-world.webp)
 
-- **The six farms** each have **20 plots** (4 × 5 tiles, Plot 1 at the back left), Farms 1–3 at the back and 4–6 in
+- **The mini forest**: 10 acres of idle land left to grow as forest, top right of the farm above the pond, with a
+  *Mini forest · 10 acres* sign (`FOREST` in `src/world/engine.ts`). The farmer walks round its trees. It is the
+  farm's biggest carbon store (Climate → Farm areas).
+- **The six farms** are **4 acres** each, with **20 plots** of a fifth of an acre (4 × 5 tiles, Plot 1 at the back left), Farms 1–3 at the back and 4–6 in
   front, each with a sign. The plots make **4 rows of 5** (each row runs from the back of the farm to the front).
   **Clearing and planting are done a row at a time**: the farmer stands anywhere in a row, a **Clear Row 1** or
   **Plant Row 1** button shows under them, and pressing it starts a **3-second timer** (a stopwatch over the farmer,
@@ -516,13 +519,14 @@ with *Tractor hire* or *Check and treat*, and the moments come up as you play.
 
 Lines ported from Wakala are marked `// Wakala` in the data; the rest are new, in the same style.
 
-**Money.** Lima's coins stay the only money. Shillings appear only in the tractor summary, to compare, and its
+**Money.** Lima's money (shown in US dollars) stays the only money. Real-world costs appear only in the tractor summary, to compare, and its
 *Sources* button lists each figure with its source: diesel KSh 228 a litre (EPRA's Nairobi cap for 15 October to
 14 November 2026, via [Techish](https://tech-ish.com/2026/10/14/petrol-rises-to-kes-226-96-in-nairobi-and-kerosene-jumps-kes-28-49/)),
 tractor ploughing KSh 3,000 and harrowing KSh 1,500 an acre ([Beyond Forest](https://www.beyondforest.org/post/ploughing-cost-per-acre-in-kenya-2026-guide-virgin-vs-uncultivated-land-explained)),
 hand ploughing 24 person-days an acre at KSh 400 a day ([FarmBiz Africa](https://farmbizafrica.com/tractors-services-increase-farmer-earnings-lower-production-costs/)).
 **Estimates**, labelled as such in the game: ridging, planting, spraying and harvesting hire; hand-work days for
-everything but ploughing; diesel per acre for each implement; 2.68 kg of CO₂ a litre. One farm is a sixth of an acre.
+everything but ploughing; diesel per acre for each implement; 2.68 kg of CO₂ a litre. One farm is 4 acres. The
+summary shows these costs in US dollars, from the shilling sources at KSh 129 to the dollar.
 
 **Rewards.** A drive pays 1.5 coins per score point and 50 points per star above the farm's best this cycle, as in
 Wakala. *Try again* is allowed until the player is done with the drive, but a retry pays coins only for the score
@@ -774,7 +778,7 @@ reload without losing their place, bookmark a page, and use the browser's **Back
 | `#/mission` | Mission: the six farms |
 | `#/tractor-business` | The tractor business |
 | `#/settings/my-farmer` · `game` · `display` · `help` | Settings, by section |
-| `#/climate/overview` · `land-and-pay` · `emissions` · `water-and-soil` · `shocks` · `activity` | Climate, by section |
+| `#/climate/overview` · `land-and-pay` · `farm-areas` · `emissions` · `water-and-soil` · `shocks` · `activity` | Climate, by section |
 | `#/shop/food` · `fertilizer` · `water-tanks` · `equipment` | Shop, by tab |
 | `#/steps/land-prep` · `planting` · `fertilizer` · `pesticides` · `water` · `harvest` | Farming steps |
 | `#/harvest-timing` · `#/sale` · `#/storage` · `#/value-addition` · `#/process` | The season after harvest |
@@ -816,10 +820,13 @@ Settings → Game → *Sound effects* turns them off.
 
 ## Money on screen
 
-Every money value is shown at **10 times** its stored amount: coins, prices, costs, profits and shillings all gain a
-0 (`money()` and `kshText()` in `src/money.ts`). The game's own maths, its unlocks and old saves are unchanged, so
-everything compares exactly as before; only what the player reads is scaled. Points, litres, km, acres and days are
-not money and are not scaled. Typed prices (Sale of produce) are read back at the same scale.
+All money is shown in **US dollars** (`money()` in `src/money.ts`): balances, prices, costs, profits, rewards,
+loans, training, the tractor summary's real-world costs and the climate payments. The game's own maths keeps its
+stored amounts, so every comparison, unlock and old save works as before: a stored amount stands for 10 Kenyan
+shillings (the prices were set in shillings), shown in dollars at KSh 129 to the dollar (`KSH_PER_USD`). Amounts
+under $100 show cents ($3.10), larger ones whole dollars ($2,326). Typed prices (Sale of produce) are typed in
+dollars. Where this README says *coins*, it means this money. A new game starts with $2,326 (enough to plant the
+first two 4-acre farms). Points, litres, km, acres and days are not money.
 
 ## Settings
 
@@ -860,8 +867,8 @@ work from the seat in the farm world (by the share of tiles driven); each tracto
 treatments, follow-ups and wrong fixes; a contractor's diesel for tractor-hire farms nobody ploughed; harvests (food grown
 and lost); and the trip to market (storage, milling, transport). A harvest closes a season in the history.
 
-**The page** has six sections: *Overview* (a climate rating A–E, the climate level and credits, eight key figures and
-the biggest source with what to change), *Land & pay* (below), *Emissions* (by source and by season), *Water & soil*, *Climate shocks* and
+**The page** has seven sections: *Overview* (a climate rating A–E, the climate level and credits, eight key figures and
+the biggest source with what to change), *Land & pay* and *Farm areas* (below), *Emissions* (by source and by season), *Water & soil*, *Climate shocks* and
 *Activity* (every recorded job, newest first).
 
 **In the game**: the climate effect shows beside each choice: on the six farms' plan options, the Farm Moja task
@@ -869,28 +876,43 @@ cards, and the storage and processing cards. The HUD button carries the climate 
 Climate levels (Seedling, Grower, Steward, Champion, Climate hero) pay 100 to 500 points once each. Redeeming the
 *solar power discount* in Rewards switches pumping, cold storage and milling to solar.
 
-### Land under farming vs idle land, and the daily climate payment
+### Every area of the farm, and the daily climate payment
 
-`src/climate/land.ts` tracks the six farms' land, plot by plot (6 farms × 20 plots = 120), every day:
+`src/climate/land.ts` evaluates every area of the farm each day:
 
-| Land use | What it is | A plot a day |
+| Area | Size | A day |
 | --- | --- | --- |
-| **Farmed** | a crop in the ground (a planted row in the farm world; on the classic farm, the farms in the plan) | stores 0.05 kg CO₂; +0.05 with mulch, +0.04 with beans between the rows, +0.03 with manure, +0.01 with an ox plough; −0.01 with tractor tillage, −0.03 with slash and burn (at least 0.01) |
-| **Bare** | cleared or ploughed, not planted yet | loses 0.06 kg CO₂ (emissions source *Bare soil*) and 0.01 soil points; the loss takes credits back |
-| **Idle** | not worked this cycle, or already harvested | nothing counted or paid, and no food (carbon programmes pay for practices on farmed land) |
+| **Six farms** | 4 acres each (24), 20 plots of 0.2 acre | each plot is *farmed* (a crop in the ground: stores 1 kg CO₂ an acre; +1.5 with mulch, +1 with beans between the rows, +1 with manure, +0.3 with an ox plough; −0.3 with tractor tillage, −1 with slash and burn; at least 0.2), *bare* (cleared or ploughed, not planted: loses 2 kg CO₂ an acre, source *Bare soil*, and soil points; the loss takes credits back) or *idle* (not worked this cycle, or harvested: nothing counted or paid, no food) |
+| **Farm Moja** | 1 acre | the same, from its season's tasks: bare once cleared or tilled, farmed once seeded (manure and beans store more), idle after the harvest |
+| **Mini forest** | 10 acres | idle land left to grow as forest, top right of the farm above the pond: stores 11 kg CO₂ an acre (about 10 t a hectare a year) |
+| **Grazing pen** | 2 acres | grazed grass: stores 0.5 kg CO₂ an acre |
+| **Cows and hens** | 2 cows, 4 hens | methane from the cows' digestion (4.6 kg CO₂e a cow, IPCC 2006) and their manure (0.6), the hens' manure; 50 L of water a cow, 0.3 L a hen (source *Cows and hens*) |
+| **Pond** | 0.5 acre | the water the animals and the house draw from it, and its health (0–100): the season's fertilizer and spray runoff muddies it |
+| **Homestead** | 0.5 acre | cooking on firewood, 3 kg CO₂e (source *Cooking*; less with solar), and 100 L of water for the house |
 
 **Daily payments.** When a day ends (the player's own midnight, the same clock as the daily streak, or a night
-slept on the fast clock of the first cycle), the day's land carbon is recorded in Activity (*Land*), and every credit
-earned since the last payment, from the land and from the work (manure, mulch, beans, hand weeding, checking before
-spraying, clean tractor drives), is paid into the farmer's coins with a pop-up. A credit pays 5 coins (50 on
-screen), with a premium for the climate level reached: ×1.1 Grower, ×1.2 Steward, ×1.35 Champion, ×1.5 Climate hero.
-Up to 7 days away are counted. The game checks the clock on opening, on coming back to it, and every minute
-(`climateTick`). Payments start once the farm is open; credits earned before this update are not paid again.
+slept on the fast clock of the first cycle), every area's day is recorded in Activity (*Farm areas*), and every credit
+earned since the last payment, from the areas and from the work (manure, mulch, beans, hand weeding, checking before
+spraying, clean tractor drives), is paid into the farmer's money with a pop-up. A credit (10 kg CO₂) pays **$0.25**
+($25 a tonne, a nature-based carbon price), with a premium for the climate level reached: ×1.1 Grower, ×1.2 Steward,
+×1.35 Champion, ×1.5 Climate hero. The forest alone earns about 11 credits a day. Emissions from the animals and the
+kitchen are counted in the footprint, not taken off the pay; bare soil's loss is. Up to 7 days away are counted. The
+game checks the clock on opening, on coming back to it, and every minute (`climateTick`). Payments start once the
+farm is open; credits earned before this update are not paid again.
 
-**Climate → Land & pay** (`#/climate/land-and-pay`) shows the six farms' plots coloured farmed, bare or idle, today's
-carbon a day, the credits earned today and what they will pay tonight, the rate a credit pays, everything paid, and
-the latest payments (land and work credits, and the land on that day). The Overview shows the coins paid in all.
-`tests/climate-pay.spec.ts` plays it through the reducer.
+**Climate → Land & pay** (`#/climate/land-and-pay`) shows the six farms' plots coloured farmed, bare or idle, the
+carbon a day, the credits earned today and what they will pay tonight, the rate, everything paid, and the latest
+payments. **Climate → Farm areas** (`#/climate/farm-areas`) evaluates every area: what it is doing today, its CO₂ a
+day and all time, the water it draws, and a line on how it is doing and what would help. The Overview shows the money
+paid in all. `tests/climate-pay.spec.ts` plays it through the reducer; `tests/climate.spec.ts` pays a day at midnight
+in the browser.
+
+**The six farms are 4 acres each** (`src/farmSize.ts`). Their numbers were first set for a sixth of an acre;
+`FARM_SCALE` (24) sizes them: a farm's potential harvest is 144 bags (36 an acre), and seed, fertilizer, plan
+options, treatments, wrong fixes and tractor fuel cost 24 times as much, so every rule keeps its proportions. The
+tractor drive works a 4-acre farm (`FARM_ACRES` in `src/tractor/data.ts`), and the six farms' climate effects
+(inputs, water, diesel, pollution, credits) are for 4 acres; soil health, a state of the soil, is not scaled. Farm
+Moja stays one acre.
 
 All factors are in one table in `src/climate/model.ts` (`FACTORS` and the plan, task and market tables), like the six
 farms' numbers: illustrative estimates for learning until an agronomist reviews them; the N₂O share cites the IPCC

@@ -9,7 +9,7 @@ import { achClock } from '../achievements/track';
 import { daysBetween } from '../achievements/model';
 import { dayText } from '../training/data';
 import { money } from '../money';
-import { PAY, coinsFor, landDelta, landOf, landWords, payRate } from './land';
+import { PAY, areasDelta, areasOf, coinsFor, landOf, landWords, payRate } from './land';
 import {
   creditsOf,
   payOf,
@@ -53,9 +53,10 @@ export function settleDays(land: GameState, s: GameState, today = payClock.today
   if (days <= 0) return s;
 
   const l = landOf(land);
+  const areas = areasOf(land);
   const when = farmDay ? `Farm day ${farmDay}` : days > 1 ? `${dayText(pay.day)} + ${days - 1} more day${days > 2 ? 's' : ''}` : dayText(pay.day);
-  const d = landDelta(l, days);
-  const { c: c1, levelUp } = record(c, `Land · ${when}: ${landWords(l)} plots`, 'land', d);
+  const d = areasDelta(areas, days);
+  const { c: c1, levelUp } = record(c, `Farm areas · ${when}: six farms ${landWords(l)} plots, forest, animals, pond, home`, 'land', d);
   const credits = Math.max(0, c1.credits - pay.creditsAt);
   const landCredits = creditsOf(d);
   const coins = coinsFor(credits, c1.level);
@@ -72,7 +73,13 @@ export function settleDays(land: GameState, s: GameState, today = payClock.today
     credits,
     rate: payRate(c1.level),
     coins,
+    areas: areas.map(a => ({ id: a.id, stored: a.stored * days, emitted: (Object.values(a.emit).reduce((n, v) => n + (v ?? 0), 0) as number) * days })),
   };
+  const totals = { ...(pay.areas ?? {}) };
+  for (const a of areas) {
+    const t = totals[a.id] ?? { stored: 0, emitted: 0, water: 0 };
+    totals[a.id] = { stored: t.stored + a.stored * days, emitted: t.emitted + (Object.values(a.emit).reduce((n, v) => n + (v ?? 0), 0) as number) * days, water: t.water + a.water * days };
+  }
   const pay1 = {
     ...pay,
     day: farmDay ? pay.day : today,
@@ -82,16 +89,17 @@ export function settleDays(land: GameState, s: GameState, today = payClock.today
     payments: coins > 0 ? [payment, ...pay.payments].slice(0, 30) : pay.payments,
     plotDays: { farmed: pay.plotDays.farmed + l.farmed * days, bare: pay.plotDays.bare + l.bare * days, idle: pay.plotDays.idle + l.idle * days },
     landKg: { stored: pay.landKg.stored + l.stored * days, lost: pay.landKg.lost + l.lost * days },
+    areas: totals,
   };
-  let next: GameState = { ...s, climate: { ...c1, pay: pay1 }, coins: Math.round((s.coins + coins) * 10) / 10 };
+  let next: GameState = { ...s, climate: { ...c1, pay: pay1 }, coins: s.coins + coins };
   if (levelUp) next = { ...next, points: next.points + levelUp.points, toast: toast(`Climate level up: ${levelUp.name} · +${levelUp.points} points`) };
   if (coins > 0)
     next = {
       ...next,
       award: {
         id: payment.id,
-        title: `Climate payment: +${money(coins)} coins`,
-        line: `${when} · ${Math.round(credits * 10) / 10} credits · ${l.farmed} of ${l.farmed + l.bare + l.idle} plots farmed`,
+        title: `Climate payment: +${money(coins)}`,
+        line: `${when} · ${Math.round(credits * 10) / 10} credits from the forest, the farms and your work`,
       },
     };
   return next;

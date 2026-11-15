@@ -1,3 +1,4 @@
+import { kshText } from '../src/money';
 import { expect, test } from '@playwright/test';
 import {
   ACRES_AN_HOUR,
@@ -418,7 +419,7 @@ test('levels, partners and the fleet open as the business grows', () => {
   expect(levelOf(80).level).toBe(5);
   expect(partnerBlock(b, 'kimani')).toBe('Signed');
   expect(partnerBlock(b, 'coop')).toBe('Opens at level 2');
-  expect(shopBlock(b, 'ridger')).toBe('Needs KSh 250,000');
+  expect(shopBlock(b, 'ridger')).toBe(`Needs ${kshText(25000)}`);
   const grown = { ...b, helped: 8, cash: 50000 };
   expect(partnerBlock(grown, 'coop')).toBeNull();
   expect(farmsToday({ ...grown, partners: [...grown.partners, 'coop'] })).toBe(farmsToday(grown) + 2);
@@ -433,7 +434,7 @@ test('levels, partners and the fleet open as the business grows', () => {
   // not enough money: refused, with a message
   const s3 = reducer(s2, { type: 'bizBuy', item: 'planter' });
   expect(s3.biz!.tools).not.toContain('planter');
-  expect(s3.toast?.text).toBe('Maize planter: needs KSh 350,000');
+  expect(s3.toast?.text).toBe(`Maize planter: needs ${kshText(35000)}`);
   // a day hired out to the county: the fee, less the driver and the hub's share of its own tractor
   const s4 = reducer({ ...s2, biz: { ...s2.biz!, partners: [...s2.biz!.partners, 'county'] } }, { type: 'bizHireOut' });
   expect(s4.biz!.day).toBe(s2.biz!.day + 1);

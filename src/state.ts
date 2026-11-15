@@ -119,7 +119,7 @@ export interface Settings {
   upgradeNotes: boolean;
 }
 export type SettingsTab = 'farmer' | 'game' | 'display' | 'help';
-export type ClimateTab = 'overview' | 'land' | 'emissions' | 'water' | 'shocks' | 'activity';
+export type ClimateTab = 'overview' | 'land' | 'areas' | 'emissions' | 'water' | 'shocks' | 'activity';
 export type AchTab = 'today' | 'badges' | 'certificates';
 export const DEFAULT_SETTINGS: Settings = { art: 'anime', graphics: 'auto', reduceMotion: false, voice: false, sound: true, upgradeNotes: true };
 
@@ -294,7 +294,8 @@ export const initialState: GameState = {
   success: null,
   sfx: null,
   onboarded: false,
-  coins: 5000,
+  // enough for the first planting of two 4-acre farms (src/farmSize.ts), and a margin
+  coins: 30000,
   water: 20,
   level: 1,
   xp: 0.1,
@@ -554,13 +555,13 @@ function play(s: GameState, a: Action): GameState {
       return { ...s, onboarded: true };
     case 'buy': {
       if (KEEPS.has(a.id) && s.inventory.includes(a.id)) return { ...s, toast: toast(`You already have a ${a.name.toLowerCase()}`) };
-      if (s.coins < a.price) return { ...s, toast: toast(`You need ${money(a.price)} coins for ${a.name}`) };
+      if (s.coins < a.price) return { ...s, toast: toast(`You need ${money(a.price)} for ${a.name}`) };
       return {
         ...s,
         coins: s.coins - a.price,
         inventory: [...s.inventory, a.id],
         ...gainXp(s, 0.03),
-        toast: toast(`Bought ${a.name} for ${money(a.price)} coins`),
+        toast: toast(`Bought ${a.name} for ${money(a.price)}`),
       };
     }
     case 'sell': {
@@ -593,7 +594,7 @@ function play(s: GameState, a: Action): GameState {
       const item = TASK_USES_ITEM[a.id];
       const fromStock = item ? s.inventory.indexOf(item) : -1;
       const cost = fromStock >= 0 ? 0 : a.price;
-      if (s.coins < cost) return { ...s, toast: toast(`You need ${money(cost)} coins for ${a.name}`) };
+      if (s.coins < cost) return { ...s, toast: toast(`You need ${money(cost)} for ${a.name}`) };
       const inventory = fromStock >= 0 ? s.inventory.filter((_, i) => i !== fromStock) : s.inventory;
       const tip = TASK_TIPS[a.id] ?? `${a.name} done`;
       // an item bought in the shop was paid for then: it still counts in this season's costs when it is used
@@ -755,7 +756,7 @@ function play(s: GameState, a: Action): GameState {
       if (!c) return s;
       const booked = s.trainings ?? [];
       if (booked.some(b => b.id === a.id)) return s;
-      if (s.coins < c.price) return { ...s, toast: toast(`You need ${money(c.price)} coins for ${c.title}`) };
+      if (s.coins < c.price) return { ...s, toast: toast(`You need ${money(c.price)} for ${c.title}`) };
       const date = courseDate(c, today());
       const ref = bookingRef(c, date);
       return {
@@ -834,7 +835,7 @@ function play(s: GameState, a: Action): GameState {
         coins: s.coins - cost,
         trial: { ...trial, phase: 'growing', clock: 'fast', planted: dayNumber(), day: 1 },
         field: emptyField(trial.cycle),
-        toast: toast(`Your first planting: maize on Farm 1, sukuma wiki on Farm 2 · −${money(cost)} coins for seed and fertilizer`),
+        toast: toast(`Your first planting: maize on Farm 1, sukuma wiki on Farm 2 · −${money(cost)} for seed and fertilizer`),
       };
     }
     case 'trialPlan': {
@@ -860,7 +861,7 @@ function play(s: GameState, a: Action): GameState {
         trial: { ...t, phase: 'growing', clock: a.clock, planted: dayNumber(), day: 1 },
         field: emptyField(t.cycle),
         ...gainXp(s, 0.1),
-        toast: toast(s.view === 'world' ? `${t.plans.length} farm plans paid: ${money(cost)} coins · now get them planted` : `${t.plans.length} farms planted for ${money(cost)} coins · day 1: check every farm`),
+        toast: toast(s.view === 'world' ? `${t.plans.length} farm plans paid: ${money(cost)} · now get them planted` : `${t.plans.length} farms planted for ${money(cost)} · day 1: check every farm`),
       };
     }
     case 'trialCheck': {
@@ -883,7 +884,7 @@ function play(s: GameState, a: Action): GameState {
         trial: { ...t, checks: { ...t.checks, [key]: { right: a.right, tries: a.tries, treated: paid } }, treatments },
         ...gainXp(s, a.right ? 0.06 : 0.01),
         toast: earned
-          ? toast(`Read right · +${earned} points${paid ? ` · treated for ${money(fix)} coins` : !a.physical && fix > 0 ? ` · not treated: it costs ${money(fix)} coins and you have ${money(s.coins)}` : ''}`)
+          ? toast(`Read right · +${earned} points${paid ? ` · treated for ${money(fix)}` : !a.physical && fix > 0 ? ` · not treated: it costs ${money(fix)} and you have ${money(s.coins)}` : ''}`)
           : s.toast,
       };
     }
@@ -915,7 +916,7 @@ function play(s: GameState, a: Action): GameState {
         trial: { ...t, phase: 'done', results },
         trialHistory: [...s.trialHistory, summary],
         ...gainXp(s, 0.4),
-        toast: toast(`Harvest sold for ${money(income)} coins · +${50 * t.plans.length} points`),
+        toast: toast(`Harvest sold for ${money(income)} · +${50 * t.plans.length} points`),
       };
     }
     case 'view':
@@ -978,7 +979,7 @@ function play(s: GameState, a: Action): GameState {
         if (pending && (after & pending.need) === pending.need) {
           const cost = treatCost(pending.hazard);
           // not enough coins: the last of the work waits (marking it done would leave the treatment unpaid and undone for good)
-          if (s1.coins < cost) return { ...s1, toast: toast(`You need ${money(cost)} coins to treat ${farmName(a.farm)}`) };
+          if (s1.coins < cost) return { ...s1, toast: toast(`You need ${money(cost)} to treat ${farmName(a.farm)}`) };
           const ck = checkKey(a.farm, day);
           // the care that has to be done again a day or two later (only inside the six check days)
           const fu = FOLLOW_UP[pending.hazard];
@@ -998,7 +999,7 @@ function play(s: GameState, a: Action): GameState {
             coins: s1.coins - cost,
             trial,
             ...gainXp(s1, 0.03),
-            toast: toast(`${farmName(a.farm)} treated · −${money(cost)} coins · most of the damage stopped${due ? ` · come back on day ${due}` : ''}`),
+            toast: toast(`${farmName(a.farm)} treated · −${money(cost)} · most of the damage stopped${due ? ` · come back on day ${due}` : ''}`),
           };
         }
       }
@@ -1012,8 +1013,8 @@ function play(s: GameState, a: Action): GameState {
           return { ...s1, field, trial, ...gainXp(s1, 0.03), toast: toast(`${farmName(a.farm)}: follow-up done · the problem stays away`) };
         }
       }
-      if (bonus) return { ...s1, field, points: s1.points + bonus, ...gainXp(s1, 0.02), toast: toast(`Tractor bonus · +${bonus} points · all 20 plots of ${farmName(a.farm)} done from the seat${fuel ? ` · −${money(fuel)} coins of fuel` : ''}`) };
-      if (fuel && a.rig) return { ...s1, field, toast: toast(`${farmName(a.farm)}: the ${a.rig.tractor} tractor's ${toolName(a.rig.tool).toLowerCase()} at work · −${money(fuel)} coins of fuel`) };
+      if (bonus) return { ...s1, field, points: s1.points + bonus, ...gainXp(s1, 0.02), toast: toast(`Tractor bonus · +${bonus} points · all 20 plots of ${farmName(a.farm)} done from the seat${fuel ? ` · −${money(fuel)} of fuel` : ''}`) };
+      if (fuel && a.rig) return { ...s1, field, toast: toast(`${farmName(a.farm)}: the ${a.rig.tractor} tractor's ${toolName(a.rig.tool).toLowerCase()} at work · −${money(fuel)} of fuel`) };
       return { ...s1, field };
     }
     case 'plotSet': {
@@ -1032,7 +1033,7 @@ function play(s: GameState, a: Action): GameState {
       const plots = t.plans.map((_, i) => (i === a.farm ? next : plotsOf(t, i)));
       // once the farms are paid for, a change of seed or fertilizer is paid (or refunded) at once
       const delta = t.phase === 'growing' && a.kind !== 'sprayer' ? next.reduce((n, r, i) => n + plotCost(a.kind, r[a.kind] as string) - plotCost(a.kind, rows[i][a.kind] as string), 0) : 0;
-      if (delta > s.coins) return { ...s, toast: toast(`That costs ${money(delta)} coins more and you have ${money(s.coins)}`) };
+      if (delta > s.coins) return { ...s, toast: toast(`That costs ${money(delta)} more and you have ${money(s.coins)}`) };
       return { ...s, coins: s.coins - delta, trial: { ...t, plots } };
     }
     case 'prescribe': {
@@ -1171,7 +1172,7 @@ function play(s: GameState, a: Action): GameState {
         ach: { ...ach, won: { ...ach.won, [a.id]: { ...w, claimed: true } } },
         points: s.points + x.points,
         coins: s.coins + (x.coins ?? 0),
-        toast: toast(`${x.name}: +${x.points} points${x.coins ? ` · +${money(x.coins)} coins` : ''}`),
+        toast: toast(`${x.name}: +${x.points} points${x.coins ? ` · +${money(x.coins)}` : ''}`),
       };
     }
     case 'achClaimAll': {
@@ -1186,7 +1187,7 @@ function play(s: GameState, a: Action): GameState {
         ach: { ...ach, won: { ...ach.won, ...Object.fromEntries(ids.map(id => [id, { ...ach.won[id], claimed: true }])) }, daily: day ? { ...ach.daily!, claimed: true } : ach.daily },
         points: s.points + points,
         coins: s.coins + coins,
-        toast: toast(`Rewards claimed: +${fmt(points)} points${coins ? ` · +${money(coins)} coins` : ''}`),
+        toast: toast(`Rewards claimed: +${fmt(points)} points${coins ? ` · +${money(coins)}` : ''}`),
       };
     }
     case 'achDaily': {
@@ -1199,7 +1200,7 @@ function play(s: GameState, a: Action): GameState {
         ach: { ...ach, daily: { ...d, claimed: true } },
         coins: s.coins + r.coins,
         points: s.points + r.points,
-        toast: toast(`Day ${d.streak} reward: +${money(r.coins)} coins · +${r.points} points`),
+        toast: toast(`Day ${d.streak} reward: +${money(r.coins)} · +${r.points} points`),
       };
     }
   }

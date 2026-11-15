@@ -15,15 +15,17 @@ import {
   type Where,
 } from '../climate/model';
 import { hasSolar } from '../climate/track';
-import { LAND_FACTORS, LAND_PLOTS, PAY, coinsFor, farmedShare, landOf, payRate, type LandUse } from '../climate/land';
+import { LAND_FACTORS, LAND_PLOTS, PAY, areasOf, coinsFor, farmedShare, landOf, payRate, type AreaNow, type LandUse } from '../climate/land';
+import { FARM_ACRES, FARM_SCALE, PLOT_ACRES } from '../farmSize';
 import { payOf } from '../climate/model';
 import { COLS } from '../world/field';
 import { money } from '../money';
 import { FORECASTS } from '../trials/model';
 import type { Action, ClimateTab, GameState } from '../state';
 
-/* The Climate page: everything the game tracks about the climate, in six sections. Overview (rating, level,
-   credits, the key figures), Land & pay (land farmed, bare and idle today, and the daily payments for credits),
+/* The Climate page: everything the game tracks about the climate, in seven sections. Overview (rating, level,
+   credits, the key figures), Land & pay (land farmed, bare and idle today, and the daily payments for credits), Farm areas (every area evaluated:
+   the six farms, Farm Moja, the forest, the pen, the animals, the pond, the homestead),
    Emissions (by source, by season), Water & soil, Climate shocks, and Activity (each recorded job). Opened from the CLIMATE button on the farm, or the main menu. */
 
 type Props = { s: GameState; dispatch: Dispatch<Action>; tab?: ClimateTab };
@@ -31,6 +33,7 @@ type Props = { s: GameState; dispatch: Dispatch<Action>; tab?: ClimateTab };
 const TABS: { id: ClimateTab; label: string; icon: string }[] = [
   { id: 'overview', label: 'Overview', icon: '◎' },
   { id: 'land', label: 'Land & pay', icon: '🌱' },
+  { id: 'areas', label: 'Farm areas', icon: '🗺' },
   { id: 'emissions', label: 'Emissions', icon: '☁' },
   { id: 'water', label: 'Water & soil', icon: '💧' },
   { id: 'shocks', label: 'Climate shocks', icon: '⚡' },
@@ -116,6 +119,7 @@ export function ClimatePage({ s, dispatch, tab: startTab }: Props) {
         <section className="set-content cl-content" aria-label={TABS.find(t => t.id === tab)!.label}>
           {tab === 'overview' && <Overview s={s} go={setTab} />}
           {tab === 'land' && <LandPay s={s} />}
+          {tab === 'areas' && <Areas s={s} />}
           {tab === 'emissions' && <Emissions s={s} />}
           {tab === 'water' && <WaterSoil s={s} />}
           {tab === 'shocks' && <Shocks s={s} />}
@@ -163,7 +167,7 @@ function Overview({ s, go }: { s: GameState; go: (t: ClimateTab) => void }) {
           </span>
           <small>{nextL ? `${num(nextL.credits - c.credits, 1)} credits to ${nextL.name} (+${nextL.points} points)` : 'Top level reached'}</small>
           <small>
-            Paid {money(payOf(c).paid)} coins ·{' '}
+            Paid {money(payOf(c).paid)} ·{' '}
             <button type="button" className="set-link cl-inline" onClick={() => go('land')}>
               Land &amp; pay
             </button>
@@ -180,7 +184,7 @@ function Overview({ s, go }: { s: GameState; go: (t: ClimateTab) => void }) {
         <Tile label="Emissions" value={kg(t.co2)} sub={`This season ${kg(c.season.co2)}`} />
         <Tile label="Carbon stored" value={kg(t.stored)} sub="Mulch, manure, beans" tone={t.stored > 0 ? 'good' : undefined} />
         <Tile label="Water used" value={litres(t.water)} sub={`This season ${litres(c.season.water)}`} />
-        <Tile label="Pollution" value={num(t.pollution)} sub={`${num(t.sprays)} sprays · ${kg(t.fertN)} N`} tone={t.pollution > 40 ? 'bad' : undefined} />
+        <Tile label="Pollution" value={num(t.pollution)} sub={`${num(t.sprays)} sprays · ${kg(t.fertN)} N`} tone={t.pollution > 40 * FARM_SCALE ? 'bad' : undefined} />
         <Tile label="Soil health" value={signed(t.soil)} sub={t.soil >= 0 ? 'Getting richer' : 'Wearing out'} tone={t.soil > 0 ? 'good' : t.soil < 0 ? 'bad' : undefined} />
         <Tile label="Diesel" value={`${num(t.diesel, 1)} L`} sub={c.drives.n ? `Drives: ${Math.round(c.drives.clim / c.drives.n)}/100 climate` : 'No tractor drives yet'} />
         <Tile label="Food lost" value={kg(t.foodLoss)} sub={`of ${kg(t.yieldKg + t.foodLoss)} grown`} tone={t.foodLoss > 0.1 * (t.yieldKg + t.foodLoss) ? 'bad' : undefined} />
@@ -214,9 +218,12 @@ function LandPay({ s }: { s: GameState }) {
   const pay = payOf(c);
   const l = landOf(s);
   const share = farmedShare(l);
-  // today so far: the work's credits since the last payment, and the land's for a whole day
+  const areas = areasOf(s);
+  const areaCredits = areas.reduce((n, a) => n + a.credits, 0);
+  const forest = areas.find(a => a.id === 'forest')!;
+  // today so far: the work's credits since the last payment, and every area's for a whole day
   const work = Math.max(0, c.credits - pay.creditsAt);
-  const due = work + l.credits;
+  const due = work + areaCredits;
   const rate = payRate(c.level);
   const pd = pay.plotDays;
   const allDays = pd.farmed + pd.bare + pd.idle;
@@ -225,11 +232,12 @@ function LandPay({ s }: { s: GameState }) {
       <div>
         <p className="set-title">Land today</p>
         <p className="set-body">
-          The six farms: {LAND_PLOTS} plots. A crop in the ground stores carbon every day; cleared ground left bare loses it; idle land earns nothing.
+          Six farms of {FARM_ACRES} acres: {LAND_PLOTS} plots of {PLOT_ACRES} acre. A crop in the ground stores carbon every day; cleared ground left bare loses it; idle plots earn nothing. The
+          10-acre forest stores {kg(forest.stored)} a day.
         </p>
         <div className="cl-land" role="img" aria-label={`Land today: ${l.farmed} plots farmed, ${l.bare} bare, ${l.idle} idle`}>
           {l.farms.map(f => (
-            <div key={f.farm} className="cl-land-farm" title={`Farm ${f.farm + 1}${f.practices.length ? ` · ${f.practices.join(', ')}` : ''}${f.rate ? ` · ${num(f.rate, 2)} kg CO₂ a plot a day` : ''}`}>
+            <div key={f.farm} className="cl-land-farm" title={`Farm ${f.farm + 1}${f.practices.length ? ` · ${f.practices.join(', ')}` : ''}${f.rate ? ` · ${num(f.rate, 1)} kg CO₂ an acre a day` : ''}`}>
               <span className="cl-land-grid" style={{ gridTemplateColumns: `repeat(${COLS}, 1fr)` }}>
                 {f.uses.map((u, i) => (
                   <i key={i} className={`is-${u}`} />
@@ -239,7 +247,7 @@ function LandPay({ s }: { s: GameState }) {
             </div>
           ))}
         </div>
-        <p className="cl-land-key cl-land-grid-key" aria-hidden="true">
+        <p className="cl-land-key" aria-hidden="true">
           {(['farmed', 'bare', 'idle'] as LandUse[]).map(u => (
             <span key={u}>
               <i className={`is-${u}`} />
@@ -253,7 +261,7 @@ function LandPay({ s }: { s: GameState }) {
           <Tile label={USE_WORD.idle} value={`${l.idle}`} sub="No food, no credits" />
         </div>
         <p className="set-body cl-note">
-          A farmed plot stores {LAND_FACTORS.farmed.value} kg CO₂ a day, more with mulch, beans and manure; a bare one loses {LAND_FACTORS.bare.value} kg.
+          A farmed acre stores {LAND_FACTORS.farmed.value} kg CO₂ a day, more with mulch, beans and manure; a bare acre loses {LAND_FACTORS.bare.value} kg.
           {allDays > 0 && (
             <>
               {' '}
@@ -265,12 +273,12 @@ function LandPay({ s }: { s: GameState }) {
       <div>
         <p className="set-title">Daily payments</p>
         <p className="set-body">
-          At the end of each day, every credit earned since the last payment, from the land and from your work, is paid to you in coins.
+          At the end of each day, every credit earned since the last payment, from the forest, the farms, the pen and your work, is paid to you in US dollars.
         </p>
         <div className="cl-tiles is-three" style={{ marginTop: 6 }}>
-          <Tile label="Credits today" value={num(due, 1)} sub={`About ${money(coinsFor(due, c.level))} coins tonight`} tone={due > 0 ? 'good' : undefined} />
-          <Tile label="A credit pays" value={`${money(rate)}`} sub={rate > PAY.perCredit ? `coins · ${LEVELS[c.level].name} premium` : 'coins · more at higher levels'} />
-          <Tile label="Paid in all" value={money(pay.paid)} sub={`coins for ${num(pay.creditsPaid, 1)} credits`} tone={pay.paid > 0 ? 'good' : undefined} />
+          <Tile label="Credits today" value={num(due, 1)} sub={`About ${money(coinsFor(due, c.level))} tonight`} tone={due > 0 ? 'good' : undefined} />
+          <Tile label="A credit pays" value={money(rate)} sub={rate > PAY.perCredit ? `${LEVELS[c.level].name} premium` : '$25 a tonne · more at higher levels'} />
+          <Tile label="Paid in all" value={money(pay.paid)} sub={`for ${num(pay.creditsPaid, 1)} credits`} tone={pay.paid > 0 ? 'good' : undefined} />
         </div>
         {pay.payments.length ? (
           <ol className="cl-log cl-pay" aria-label="Payments, newest first">
@@ -278,18 +286,81 @@ function LandPay({ s }: { s: GameState }) {
               <li key={p.id}>
                 <span className="cl-where">{p.label}</span>
                 <span className="cl-log-text">
-                  <b>+{money(p.coins)} coins</b>
+                  <b>+{money(p.coins)}</b>
                   <small>
-                    {num(p.credits, 1)} credits ({num(p.landCredits, 1)} land, {num(p.workCredits, 1)} work) · {p.farmed} farmed, {p.bare} bare, {p.idle} idle
+                    {num(p.credits, 1)} credits ({num(p.landCredits, 1)} land, {num(p.workCredits, 1)} work) · {p.farmed} farmed, {p.bare} bare, {p.idle} idle plots
                   </small>
                 </span>
               </li>
             ))}
           </ol>
         ) : (
-          <Empty>{pay.day ? 'Your first payment comes at the end of today. Plant the six farms to earn from the land.' : 'Payments start once your farm is open.'}</Empty>
+          <Empty>{pay.day ? 'Your first payment comes at the end of today.' : 'Payments start once your farm is open.'}</Empty>
         )}
       </div>
+    </div>
+  );
+}
+
+/* ---------------- Farm areas ---------------- */
+
+const TONE_WORD = { good: 'Helping', bad: 'Watch', none: 'Steady' } as const;
+
+function Areas({ s }: { s: GameState }) {
+  const areas = areasOf(s);
+  const totals = payOf(s.climate).areas ?? {};
+  const em = (a: AreaNow) => Object.values(a.emit).reduce((n: number, v) => n + (v ?? 0), 0);
+  const stored = areas.reduce((n, a) => n + a.stored, 0);
+  const out = areas.reduce((n, a) => n + em(a), 0);
+  const water = areas.reduce((n, a) => n + a.water, 0);
+  const credits = areas.reduce((n, a) => n + a.credits, 0);
+  return (
+    <div className="cl-rows">
+      <div className="cl-tiles">
+        <Tile label="Stored a day" value={kg(stored)} sub="Forest, crops, grass" tone="good" />
+        <Tile label="Emitted a day" value={kg(out)} sub="Animals, cooking, bare soil" tone={out > stored ? 'bad' : undefined} />
+        <Tile label="Water drawn a day" value={litres(water)} sub="Animals and the house" />
+        <Tile label="Credits a day" value={num(credits, 1)} sub={`About ${money(coinsFor(credits, s.climate.level))} a day`} tone={credits > 0 ? 'good' : undefined} />
+      </div>
+      <table className="cl-areas" aria-label="Every area of the farm, today">
+        <thead>
+          <tr>
+            <th scope="col">Area</th>
+            <th scope="col">Today</th>
+            <th scope="col">CO₂ a day</th>
+            <th scope="col">All time</th>
+            <th scope="col">How it is doing</th>
+          </tr>
+        </thead>
+        <tbody>
+          {areas.map(a => {
+            const t = totals[a.id];
+            const netDay = a.stored - em(a);
+            return (
+              <tr key={a.id} className={`is-${a.tone}`}>
+                <th scope="row">
+                  <span aria-hidden="true">{a.icon}</span> {a.name}
+                  <small>{a.size}</small>
+                </th>
+                <td>
+                  {a.use}
+                  {a.water > 0 && <small>{litres(a.water)} water a day</small>}
+                </td>
+                <td className="cl-num">
+                  {a.stored || em(a) ? `${netDay >= 0 ? '+' : '−'}${kg(Math.abs(netDay))}` : '–'}
+                  <small>{a.stored && em(a) ? 'net' : a.stored ? 'stored' : em(a) ? 'emitted' : ''}</small>
+                </td>
+                <td className="cl-num">
+                  {t ? `${t.stored - t.emitted >= 0 ? '+' : '−'}${kg(Math.abs(t.stored - t.emitted))}` : '–'}
+                </td>
+                <td>
+                  <b className="cl-tone">{TONE_WORD[a.tone]}</b> {a.note}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -352,7 +423,7 @@ function WaterSoil({ s }: { s: GameState }) {
       <div>
         <p className="set-title">Pollution and soil</p>
         <div className="cl-tiles is-two">
-          <Tile label="Pollution" value={num(t.pollution)} sub="Chemicals, runoff, exhaust" tone={t.pollution > 40 ? 'bad' : undefined} />
+          <Tile label="Pollution" value={num(t.pollution)} sub="Chemicals, runoff, exhaust" tone={t.pollution > 40 * FARM_SCALE ? 'bad' : undefined} />
           <Tile label="Sprays" value={num(t.sprays)} sub="Pesticide and herbicide applications" />
           <Tile label="Synthetic nitrogen" value={kg(t.fertN)} sub={`About ${kg(t.fertN * FACTORS.nitrogen.value)} CO₂e`} />
           <Tile label="Soil health" value={signed(t.soil)} sub="Mulch, manure, beans: up · bare soil, compaction: down" tone={t.soil > 0 ? 'good' : t.soil < 0 ? 'bad' : undefined} />
@@ -399,7 +470,7 @@ function Shocks({ s }: { s: GameState }) {
 
 /* ---------------- Activity ---------------- */
 
-const WHERE: Record<Where, string> = { season: 'Farm Moja', farms: 'Six farms', field: 'Field work', tractor: 'Tractor', market: 'Market', checks: 'Checks', land: 'Land' };
+const WHERE: Record<Where, string> = { season: 'Farm Moja', farms: 'Six farms', field: 'Field work', tractor: 'Tractor', market: 'Market', checks: 'Checks', land: 'Farm areas' };
 
 function Activity({ s }: { s: GameState }) {
   const log = s.climate.log;

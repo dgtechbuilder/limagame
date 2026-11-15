@@ -42,6 +42,8 @@ import {
   badgeTexture,
   board,
   bush,
+  forest,
+  forestSignTexture,
   fence,
   flowers,
   grassClump,
@@ -102,6 +104,8 @@ function phoneLike() {
 }
 /** Where the tractor waits, and a spot beside it to walk to (clear of the Hire spot, which opens the hire screen). */
 const TRACTOR_HOME = { x: -17.4, z: 6.4 };
+/** The mini forest: 10 acres of idle land, top right of the farm, above the pond (the pond is at x 18.4, z 0). */
+export const FOREST = { x0: 14.8, z0: -18.2, x1: 21.8, z1: -5.2, sign: { x: 13.6, z: -4.4 } };
 export const TRACTOR_BOARD = { x: -17.4, z: 8.6 };
 
 export const STAGE_W = 874;
@@ -458,23 +462,35 @@ export class FarmWorld {
       [-17.5, 14.8, 0.8],
       [19.5, 12.5, 1.1],
       [16.4, 15.0, 0.8],
-      [19.8, -9.5, 1],
-      [17.4, -17.8, 1.1],
       [-6.8, -19.4, 0.9],
       [13.2, -19.6, 0.9],
       [-9.5, 15.6, 0.85],
       [9.8, 15.4, 0.9],
-      [20.0, -15.0, 0.8],
       [-20.0, 9.0, 0.7],
     ];
     for (const [x, z, s] of trees) {
       flat.push(...place(tree(s, (x * 7 + z) % 2 ? 1 : 0), at(x, 0, z)));
       this.obstacles.push({ x, z, r: 0.7 * s });
     }
+    // the mini forest: 10 acres of idle land left to grow, top right of the farm above the pond (climate/land.ts)
+    const fo = forest(FOREST.x0, FOREST.z0, FOREST.x1, FOREST.z1);
+    smooth.push(...fo.floor);
+    flat.push(...fo.parts);
+    for (const t of fo.trunks) this.obstacles.push(t);
+    {
+      const post = new THREE.Mesh(G.cyl6, new THREE.MeshLambertMaterial({ color: '#8b5a2b' }));
+      post.scale.set(0.14, 1.3, 0.14);
+      post.position.set(FOREST.sign.x, 0.65, FOREST.sign.z);
+      const face = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.2), new THREE.MeshLambertMaterial({ map: forestSignTexture() }));
+      face.position.set(FOREST.sign.x, 1.55, FOREST.sign.z + 0.1);
+      face.rotation.x = -0.55;
+      post.castShadow = true;
+      this.scene.add(post, face);
+      this.obstacles.push({ x: FOREST.sign.x, z: FOREST.sign.z, r: 0.3 });
+    }
     const bushes: [number, number, number][] = [
       [-14.2, 10.6, 1],
       [14.6, 10.2, 0.8],
-      [15.2, -6.4, 0.9],
       [-3.6, -14.0, 0.7],
       [6.4, 12.2, 0.8],
       [-6.2, 12.4, 0.7],
@@ -507,7 +523,6 @@ export class FarmWorld {
       smooth.push(...place(flowers(), at(x, 0, z)));
     for (const [x, z, s] of [
       [-15.6, 9.4, 1.2],
-      [16.8, -7.2, 1],
       [-6.0, -14.8, 0.9],
     ] as const)
       flat.push(...place(rock(s), at(x, 0, z)));
