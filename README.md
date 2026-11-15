@@ -115,7 +115,8 @@ src/
                            Cast.tsx (anime or original picture), style.ts (style and read-aloud contexts)
   speech.ts                Read aloud: the phone's own voice (speechSynthesis)
   climate/                 climate tracking: model.ts (every factor, the ledger, rating, levels), track.ts (which
-                           actions record what), Tag.tsx (climate tags on choices), sample.ts (design review)
+                           actions record what, and the end-of-day payment), land.ts (land farmed, bare or idle,
+                           and what a credit pays), Tag.tsx (climate tags on choices), sample.ts (design review)
   first/                   the first session (see below)
   world/                   the farm world (see below): field.ts the work by hand, engine.ts the 3D farm, World.tsx the HUD
   trials/                  the six farms (see below): model.ts holds every number; Trials.tsx the screens (loaded when opened)
@@ -773,7 +774,7 @@ reload without losing their place, bookmark a page, and use the browser's **Back
 | `#/mission` | Mission: the six farms |
 | `#/tractor-business` | The tractor business |
 | `#/settings/my-farmer` · `game` · `display` · `help` | Settings, by section |
-| `#/climate/overview` · `emissions` · `water-and-soil` · `shocks` · `activity` | Climate, by section |
+| `#/climate/overview` · `land-and-pay` · `emissions` · `water-and-soil` · `shocks` · `activity` | Climate, by section |
 | `#/shop/food` · `fertilizer` · `water-tanks` · `equipment` | Shop, by tab |
 | `#/steps/land-prep` · `planting` · `fertilizer` · `pesticides` · `water` · `harvest` | Farming steps |
 | `#/harvest-timing` · `#/sale` · `#/storage` · `#/value-addition` · `#/process` | The season after harvest |
@@ -859,14 +860,37 @@ work from the seat in the farm world (by the share of tiles driven); each tracto
 treatments, follow-ups and wrong fixes; a contractor's diesel for tractor-hire farms nobody ploughed; harvests (food grown
 and lost); and the trip to market (storage, milling, transport). A harvest closes a season in the history.
 
-**The page** has five sections: *Overview* (a climate rating A–E, the climate level and credits, eight key figures and
-the biggest source with what to change), *Emissions* (by source and by season), *Water & soil*, *Climate shocks* and
+**The page** has six sections: *Overview* (a climate rating A–E, the climate level and credits, eight key figures and
+the biggest source with what to change), *Land & pay* (below), *Emissions* (by source and by season), *Water & soil*, *Climate shocks* and
 *Activity* (every recorded job, newest first).
 
 **In the game**: the climate effect shows beside each choice: on the six farms' plan options, the Farm Moja task
 cards, and the storage and processing cards. The HUD button carries the climate rating once there is a harvest.
 Climate levels (Seedling, Grower, Steward, Champion, Climate hero) pay 100 to 500 points once each. Redeeming the
 *solar power discount* in Rewards switches pumping, cold storage and milling to solar.
+
+### Land under farming vs idle land, and the daily climate payment
+
+`src/climate/land.ts` tracks the six farms' land, plot by plot (6 farms × 20 plots = 120), every day:
+
+| Land use | What it is | A plot a day |
+| --- | --- | --- |
+| **Farmed** | a crop in the ground (a planted row in the farm world; on the classic farm, the farms in the plan) | stores 0.05 kg CO₂; +0.05 with mulch, +0.04 with beans between the rows, +0.03 with manure, +0.01 with an ox plough; −0.01 with tractor tillage, −0.03 with slash and burn (at least 0.01) |
+| **Bare** | cleared or ploughed, not planted yet | loses 0.06 kg CO₂ (emissions source *Bare soil*) and 0.01 soil points; the loss takes credits back |
+| **Idle** | not worked this cycle, or already harvested | nothing counted or paid, and no food (carbon programmes pay for practices on farmed land) |
+
+**Daily payments.** When a day ends (the player's own midnight, the same clock as the daily streak, or a night
+slept on the fast clock of the first cycle), the day's land carbon is recorded in Activity (*Land*), and every credit
+earned since the last payment, from the land and from the work (manure, mulch, beans, hand weeding, checking before
+spraying, clean tractor drives), is paid into the farmer's coins with a pop-up. A credit pays 5 coins (50 on
+screen), with a premium for the climate level reached: ×1.1 Grower, ×1.2 Steward, ×1.35 Champion, ×1.5 Climate hero.
+Up to 7 days away are counted. The game checks the clock on opening, on coming back to it, and every minute
+(`climateTick`). Payments start once the farm is open; credits earned before this update are not paid again.
+
+**Climate → Land & pay** (`#/climate/land-and-pay`) shows the six farms' plots coloured farmed, bare or idle, today's
+carbon a day, the credits earned today and what they will pay tonight, the rate a credit pays, everything paid, and
+the latest payments (land and work credits, and the land on that day). The Overview shows the coins paid in all.
+`tests/climate-pay.spec.ts` plays it through the reducer.
 
 All factors are in one table in `src/climate/model.ts` (`FACTORS` and the plan, task and market tables), like the six
 farms' numbers: illustrative estimates for learning until an agronomist reviews them; the N₂O share cites the IPCC

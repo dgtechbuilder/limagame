@@ -2,7 +2,8 @@
    same rules the game uses. */
 
 import { COMMON_PLAN, type Plan } from '../trials/model';
-import { TASK_CLIMATE, closeSeason, initialClimate, marketDelta, planDelta, record, tractorWork, treatDelta, waterTask, wrongFixDelta, type ClimateState, type Delta, type Where } from './model';
+import { landDelta, coinsFor, payRate, type LandNow } from './land';
+import { TASK_CLIMATE, closeSeason, creditsOf, initialPay, initialClimate, marketDelta, planDelta, record, tractorWork, treatDelta, waterTask, wrongFixDelta, type ClimateState, type Delta, type Payment, type Where } from './model';
 
 function build(): ClimateState {
   let c = initialClimate;
@@ -37,7 +38,39 @@ function build(): ClimateState {
   go('Six farms harvested · 1,350 kg grown', 'farms', { yieldKg: 1350, foodLoss: 160 });
   c = closeSeason(c, 'Six farms · cycle 1');
   go('Farm 1 planted · Hand hoe, planting + top-dress, check and treat', 'farms', planDelta({ ...COMMON_PLAN, fert: 'basalTop', pest: 'scout' }, 'normal', false));
-  return { ...c, shocks: { met: 5, handled: 4 }, drives: { n: 1, clim: 82 } };
+  // three days of land: Farm 1 and Farm 2 planted (Farm 2 with mulch, beans and manure), Farm 3 ploughed but bare
+  let creditsAt = c.credits;
+  const payments: Payment[] = [];
+  const days: [string, Pick<LandNow, 'farmed' | 'bare' | 'idle' | 'stored' | 'lost'>][] = [
+    ['Fri 13 Nov', { farmed: 20, bare: 20, idle: 80, stored: 1, lost: 1.2 }],
+    ['Sat 14 Nov', { farmed: 40, bare: 10, idle: 70, stored: 3.7, lost: 0.6 }],
+    ['Sun 15 Nov', { farmed: 60, bare: 0, idle: 60, stored: 4.7, lost: 0 }],
+  ];
+  const plotDays = { farmed: 0, bare: 0, idle: 0 };
+  const landKg = { stored: 0, lost: 0 };
+  days.forEach(([label, l], i) => {
+    const d = landDelta({ ...l, farms: [], credits: 0 }, 1);
+    if (i === 0) go('Farm 3 · tractor drive (climate 88/100)', 'tractor', { diesel: 1.6, emit: { fuel: 4.3 }, pollution: 0.8, credits: 1 });
+    if (i === 1) go('Farm 2 · weeded by hand', 'field', treatDelta('weed', false));
+    go(`Land · ${label}: ${l.farmed} farmed${l.bare ? ` · ${l.bare} bare` : ''} · ${l.idle} idle plots`, 'land', d);
+    const credits = c.credits - creditsAt;
+    creditsAt = c.credits;
+    const landCredits = creditsOf(d);
+    payments.unshift({ id: i + 1, label, date: `2026-11-${14 + i}`, days: 1, ...l, landCredits, workCredits: Math.max(0, credits - landCredits), credits, rate: payRate(c.level), coins: coinsFor(credits, c.level) });
+    plotDays.farmed += l.farmed;
+    plotDays.bare += l.bare;
+    plotDays.idle += l.idle;
+    landKg.stored += l.stored;
+    landKg.lost += l.lost;
+  });
+  const paid = payments.reduce((n, p) => n + p.coins, 0);
+  const creditsPaid = payments.reduce((n, p) => n + p.credits, 0);
+  return {
+    ...c,
+    shocks: { met: 5, handled: 4 },
+    drives: { n: 1, clim: 82 },
+    pay: { ...initialPay, day: '2026-11-16', creditsAt, paid, creditsPaid, payments, plotDays, landKg },
+  };
 }
 
 export const CLIMATE_SAMPLE = build();

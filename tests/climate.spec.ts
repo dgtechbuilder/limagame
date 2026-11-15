@@ -123,3 +123,30 @@ test('credits past a climate level pay points once', async ({ page }) => {
   expect(s.points).toBe(100);
   expect(s.toast.text).toContain('Grower');
 });
+
+test('Land & pay: the six farms plot by plot, and the day’s credits paid at midnight', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-11-15T23:57:00') });
+  await boot(page);
+  await jump(page, { view: 'classic', coins: 1000 });
+  // today's work: organic manure stores 40 kg (4 credits); the first action starts the day's count
+  await act(page, { type: 'task', step: 'landprep', id: 'lp-manure', price: 40, name: 'Organic Manure' });
+  let s = await state(page);
+  expect(s.climate.pay.day).toBe('2026-11-15');
+  expect(s.coins).toBe(960);
+
+  await act(page, { type: 'open', modal: { kind: 'climate', tab: 'land' } });
+  await expect.poll(() => page.evaluate(() => window.location.hash)).toBe('#/climate/land-and-pay');
+  await expect(dialog(page).getByRole('button', { name: 'Land & pay', exact: true })).toHaveAttribute('aria-current', 'page');
+  // no crop yet: all 120 plots idle
+  await expect(dialog(page).getByRole('img', { name: 'Land today: 0 plots farmed, 0 bare, 120 idle' })).toBeVisible();
+  await expect(dialog(page).getByText('About 200 coins tonight')).toBeVisible();
+
+  // past midnight: the game's minute check pays the day's 4 credits (5 coins each, 50 on screen)
+  await page.clock.fastForward('05:00');
+  await expect.poll(async () => (await state(page)).coins).toBe(980);
+  s = await state(page);
+  expect(s.climate.pay.payments[0]).toMatchObject({ label: 'Sun 15 Nov', credits: 4, coins: 20, idle: 120 });
+  expect(s.climate.pay.day).toBe('2026-11-16');
+  await expect(dialog(page).getByText('+200 coins')).toBeVisible();
+  await expect(dialog(page).getByText('Paid in all')).toBeVisible();
+});

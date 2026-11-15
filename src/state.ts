@@ -30,7 +30,7 @@ import { TRACTOR_BONUS, type ImplId } from './tractor/data';
 import { rewardFor } from './tractor/sim';
 import { TRACTOR_PLOT, plotCost, setPlotInput, toolName, type PlotJob, type PlotKind, type TractorId } from './plots/data';
 import { initialClimate, type ClimateState } from './climate/model';
-import { trackClimate } from './climate/track';
+import { settleDays, trackClimate } from './climate/track';
 import { achClock, trackAchievements } from './achievements/track';
 import { achOf, achOfSave, initialAch, streakReward, type AchState } from './achievements/model';
 import { routeTo } from './route';
@@ -119,7 +119,7 @@ export interface Settings {
   upgradeNotes: boolean;
 }
 export type SettingsTab = 'farmer' | 'game' | 'display' | 'help';
-export type ClimateTab = 'overview' | 'emissions' | 'water' | 'shocks' | 'activity';
+export type ClimateTab = 'overview' | 'land' | 'emissions' | 'water' | 'shocks' | 'activity';
 export type AchTab = 'today' | 'badges' | 'certificates';
 export const DEFAULT_SETTINGS: Settings = { art: 'anime', graphics: 'auto', reduceMotion: false, voice: false, sound: true, upgradeNotes: true };
 
@@ -391,6 +391,8 @@ export const today = () => new Date().toISOString().slice(0, 10);
 export type Action =
   | { type: 'open'; modal: Modal }
   | { type: 'close' }
+  /** the clock's check (on opening the game, coming back to it, and every minute): a day that has ended is paid */
+  | { type: 'climateTick' }
   /** back to the farm from anywhere: closes every screen on top of it */
   | { type: 'home' }
   /** back to the farm and walk to the tractor (the farm world picks this up) */
@@ -534,6 +536,8 @@ function soundOf(s: GameState, next: GameState, a: Action): SfxKind | null {
 
 function play(s: GameState, a: Action): GameState {
   switch (a.type) {
+    case 'climateTick':
+      return settleDays(s, s);
     case 'open':
       // another section of the same screen (a Settings tab, a Shop tab) keeps where Back goes
       return { ...s, success: null, modal: a.modal, fromMenu: s.modal?.kind === a.modal.kind ? s.fromMenu : s.modal?.kind === 'menu' && a.modal.kind !== 'menu', plotSelected: false };

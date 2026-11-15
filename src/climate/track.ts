@@ -5,7 +5,14 @@
 import { TILES, TREAT_JOB, popcount } from '../world/field';
 import { checkKey, farmName, hazardFor, optionOf, type Trial } from '../trials/model';
 import { toast, SELLING, SOLD, type Action, type GameState } from '../state';
+import { achClock } from '../achievements/track';
+import { daysBetween } from '../achievements/model';
+import { dayText } from '../training/data';
+import { money } from '../money';
+import { PAY, coinsFor, landDelta, landOf, landWords, payRate } from './land';
 import {
+  creditsOf,
+  payOf,
   SHOCKS,
   TASK_CLIMATE,
   TRACTOR_LPA,
@@ -25,8 +32,74 @@ import {
 /** Solar power, once its reward is redeemed, runs the pumps, the cold store and the mill. */
 export const hasSolar = (s: GameState) => s.redeemed.includes('solar');
 
+/** The clock the daily payment counts in: the player's own calendar day (the same clock as the daily streak). */
+export const payClock = { today: () => achClock.today() };
+
+let payId = 0;
+
+/** Ends the days that have passed: records the land's carbon for them (the land as it stood, from `land`), and pays
+    every credit earned since the last payment. `farmDay`: one night slept on the fast clock of the first cycle,
+    which ends a farm day without the calendar day turning. Nothing happens before the farm opens. */
+export function settleDays(land: GameState, s: GameState, today = payClock.today(), farmDay?: number): GameState {
+  if (s.fs.phase !== 'done') return s;
+  const c = s.climate;
+  const pay = payOf(c);
+  // the first day counted: from now on (credits earned before are not paid again)
+  if (pay.day === null) return { ...s, climate: { ...c, pay: { ...pay, day: today, creditsAt: c.credits } } };
+  const gap = daysBetween(pay.day, today);
+  // a clock set back: nothing is counted until it passes the last day again
+  if (gap < 0 && !farmDay) return s;
+  const days = farmDay ? 1 : Math.min(PAY.catchUpDays, gap);
+  if (days <= 0) return s;
+
+  const l = landOf(land);
+  const when = farmDay ? `Farm day ${farmDay}` : days > 1 ? `${dayText(pay.day)} + ${days - 1} more day${days > 2 ? 's' : ''}` : dayText(pay.day);
+  const d = landDelta(l, days);
+  const { c: c1, levelUp } = record(c, `Land · ${when}: ${landWords(l)} plots`, 'land', d);
+  const credits = Math.max(0, c1.credits - pay.creditsAt);
+  const landCredits = creditsOf(d);
+  const coins = coinsFor(credits, c1.level);
+  const payment = {
+    id: Date.now() + ++payId,
+    label: when,
+    date: today,
+    days,
+    farmed: l.farmed,
+    bare: l.bare,
+    idle: l.idle,
+    landCredits,
+    workCredits: Math.max(0, credits - landCredits),
+    credits,
+    rate: payRate(c1.level),
+    coins,
+  };
+  const pay1 = {
+    ...pay,
+    day: farmDay ? pay.day : today,
+    creditsAt: c1.credits,
+    paid: pay.paid + coins,
+    creditsPaid: pay.creditsPaid + credits,
+    payments: coins > 0 ? [payment, ...pay.payments].slice(0, 30) : pay.payments,
+    plotDays: { farmed: pay.plotDays.farmed + l.farmed * days, bare: pay.plotDays.bare + l.bare * days, idle: pay.plotDays.idle + l.idle * days },
+    landKg: { stored: pay.landKg.stored + l.stored * days, lost: pay.landKg.lost + l.lost * days },
+  };
+  let next: GameState = { ...s, climate: { ...c1, pay: pay1 }, coins: Math.round((s.coins + coins) * 10) / 10 };
+  if (levelUp) next = { ...next, points: next.points + levelUp.points, toast: toast(`Climate level up: ${levelUp.name} · +${levelUp.points} points`) };
+  if (coins > 0)
+    next = {
+      ...next,
+      award: {
+        id: payment.id,
+        title: `Climate payment: +${money(coins)} coins`,
+        line: `${when} · ${Math.round(credits * 10) / 10} credits · ${l.farmed} of ${l.farmed + l.bare + l.idle} plots farmed`,
+      },
+    };
+  return next;
+}
+
 export function trackClimate(prev: GameState, s: GameState, a: Action): GameState {
-  let next = s;
+  // a day that ended before this action is settled first, with the land as it stood then
+  let next = a.type === 'reset' ? s : settleDays(prev, s);
   const solar = hasSolar(prev);
   const log = (label: string, where: Where, d: Delta) => {
     const { c, levelUp } = record(next.climate, label, where, d);
@@ -147,6 +220,12 @@ export function trackClimate(prev: GameState, s: GameState, a: Action): GameStat
       const lost = t.results.reduce((n, r) => n + (r.lost > 0 && r.lost < 1 ? (r.bags * r.lost) / (1 - r.lost) : 0) * 90, 0);
       log(`Six farms harvested · ${Math.round(kg)} kg grown`, 'farms', { yieldKg: kg, foodLoss: lost });
       next = { ...next, climate: closeSeason(next.climate, `Six farms · cycle ${t.cycle}`) };
+      break;
+    }
+    // a night slept on the fast clock: a farm day ends, with the land as it stood that day, and is paid
+    case 'trialNextDay': {
+      const day = prev.trial?.day ?? 0;
+      if (s.trial && prev.trial && s.trial.day > day) next = settleDays(prev, next, undefined, day);
       break;
     }
   }

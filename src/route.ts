@@ -16,7 +16,7 @@ const STORY_PAGES = STORY.length;
 
 // friendly words in the address ↔ the ids in the code
 const SETTINGS: Record<SettingsTab, string> = { farmer: 'my-farmer', game: 'game', display: 'display', help: 'help' };
-const CLIMATE: Record<ClimateTab, string> = { overview: 'overview', emissions: 'emissions', water: 'water-and-soil', shocks: 'shocks', activity: 'activity' };
+const CLIMATE: Record<ClimateTab, string> = { overview: 'overview', land: 'land-and-pay', emissions: 'emissions', water: 'water-and-soil', shocks: 'shocks', activity: 'activity' };
 const ACH: Record<AchTab, string> = { today: 'today', badges: 'badges', certificates: 'certificates' };
 const SHOP: Record<ShopTab, string> = { food: 'food', fertilizer: 'fertilizer', tank: 'water-tanks', equipment: 'equipment' };
 const STEPS: Record<StepId, string> = { landprep: 'land-prep', planting: 'planting', fertilizer: 'fertilizer', pesticides: 'pesticides', water: 'water', harvest: 'harvest' };

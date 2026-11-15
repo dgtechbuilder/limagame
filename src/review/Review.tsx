@@ -112,6 +112,7 @@ const SCREENS: { label: string; group: string; state: Partial<GameState> }[] = [
   { group: 'Field rounds', label: 'Rounds · Wrong call', state: { roundsOpen: true, roundsView: 'wrong' } },
   { group: 'Field rounds', label: 'Rounds · Summary', state: { roundsOpen: true, roundsView: 'summary' } },
   { group: 'Climate', label: 'Climate · Overview', state: { climate: CLIMATE_SAMPLE, modal: { kind: 'climate', tab: 'overview' } } },
+  { group: 'Climate', label: 'Climate · Land & pay', state: { climate: CLIMATE_SAMPLE, trial: TRIAL_SAMPLES.worldPlanting, field: TRIAL_SAMPLES.worldPlantingField, modal: { kind: 'climate', tab: 'land' } } },
   { group: 'Climate', label: 'Climate · Emissions', state: { climate: CLIMATE_SAMPLE, modal: { kind: 'climate', tab: 'emissions' } } },
   { group: 'Climate', label: 'Climate · Water & soil', state: { climate: CLIMATE_SAMPLE, modal: { kind: 'climate', tab: 'water' } } },
   { group: 'Climate', label: 'Climate · Shocks', state: { climate: CLIMATE_SAMPLE, modal: { kind: 'climate', tab: 'shocks' } } },

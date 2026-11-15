@@ -12,6 +12,9 @@
    - Diesel (litres), synthetic nitrogen (kg), sprays, food lost (kg) and food grown (kg), for the efficiency figures
    - Climate shocks (drought, flood, hail) met and handled: adapting, not only cutting
    - Climate credits: 1 credit for every 10 kg of CO₂ stored or kept out of the air (a real carbon credit is 1,000 kg)
+   - Land: every day, each of the six farms' 120 plots is farmed (a crop in the ground), bare (cleared, not planted)
+     or idle. Farmed plots store carbon, bare ones lose it, idle ones earn nothing; the day's credits are paid to the
+     farmer in coins (land.ts)
 
    Every number is in the tables below, so an agronomist can review them without touching code. Like the six farms'
    numbers, they are illustrative estimates until that review, except where a source is named. No pictures here. */
@@ -21,7 +24,7 @@ import { FORECASTS, WATER_TOO_MUCH } from '../trials/model';
 
 /* ---------------- what is tracked ---------------- */
 
-export type Source = 'fuel' | 'fertilizer' | 'manure' | 'chemicals' | 'water' | 'seed' | 'storage' | 'transport';
+export type Source = 'fuel' | 'fertilizer' | 'manure' | 'chemicals' | 'water' | 'seed' | 'storage' | 'transport' | 'soil';
 
 export const SOURCES: { id: Source; label: string; fix: string }[] = [
   { id: 'fertilizer', label: 'Fertilizer', fix: 'Use manure or beans for part of the nitrogen, and never a double dose.' },
@@ -32,6 +35,7 @@ export const SOURCES: { id: Source; label: string; fix: string }[] = [
   { id: 'transport', label: 'Transport', fix: 'Sell more bags in one trip, through the cooperative.' },
   { id: 'seed', label: 'Seed', fix: 'Certified seed costs a little carbon but grows more food per kg.' },
   { id: 'manure', label: 'Manure', fix: 'Manure gives off a little gas, but stores much more carbon in the soil.' },
+  { id: 'soil', label: 'Bare soil', fix: 'Plant soon after clearing, or mulch: cleared ground left bare loses its carbon to the air.' },
 ];
 
 export interface Footprint {
@@ -61,7 +65,7 @@ export const ZERO: Footprint = { co2: 0, stored: 0, water: 0, pollution: 0, soil
 /** One recorded change: emissions by source, and the rest of the footprint. */
 export type Delta = Partial<Omit<Footprint, 'co2'>> & { emit?: Partial<Record<Source, number>>; credits?: number };
 
-export type Where = 'season' | 'farms' | 'field' | 'tractor' | 'market' | 'checks';
+export type Where = 'season' | 'farms' | 'field' | 'tractor' | 'market' | 'checks' | 'land';
 
 export interface ClimateEntry {
   id: number;
@@ -97,9 +101,51 @@ export interface ClimateState {
   cycles: CycleRecord[];
   /** the climate level reached (index into LEVELS) */
   level: number;
+  /** land under farming vs idle, and the daily payments for credits (land.ts); missing in older saves */
+  pay?: PayState;
 }
 
-const noSources = (): Record<Source, number> => ({ fuel: 0, fertilizer: 0, manure: 0, chemicals: 0, water: 0, seed: 0, storage: 0, transport: 0 });
+/** One day's payment (or a few days', after time away): the credits earned and the coins paid for them. */
+export interface Payment {
+  id: number;
+  /** what it was for, e.g. "Sun 15 Nov" or "Farm day 2" */
+  label: string;
+  /** the calendar day it was paid (YYYY-MM-DD) */
+  date: string;
+  /** days it covers */
+  days: number;
+  /** the land on those days, in plots */
+  farmed: number;
+  bare: number;
+  idle: number;
+  /** credits from the land, and from the work done (manure, mulch, hand weeding, clean drives…) */
+  landCredits: number;
+  workCredits: number;
+  credits: number;
+  /** coins a credit, at the climate level reached */
+  rate: number;
+  coins: number;
+}
+
+export interface PayState {
+  /** the calendar day being counted (YYYY-MM-DD); null until the farm opens */
+  day: string | null;
+  /** lifetime credits at the last payment: everything above it is paid next */
+  creditsAt: number;
+  /** coins and credits paid, all time */
+  paid: number;
+  creditsPaid: number;
+  /** newest first */
+  payments: Payment[];
+  /** plot-days of each land use, all time, and the land's own carbon (kg CO₂ stored, and lost from bare soil) */
+  plotDays: { farmed: number; bare: number; idle: number };
+  landKg: { stored: number; lost: number };
+}
+
+export const initialPay: PayState = { day: null, creditsAt: 0, paid: 0, creditsPaid: 0, payments: [], plotDays: { farmed: 0, bare: 0, idle: 0 }, landKg: { stored: 0, lost: 0 } };
+export const payOf = (c: ClimateState): PayState => ({ ...initialPay, ...(c.pay ?? {}) });
+
+const noSources = (): Record<Source, number> => ({ fuel: 0, fertilizer: 0, manure: 0, chemicals: 0, water: 0, seed: 0, storage: 0, transport: 0, soil: 0 });
 
 export const initialClimate: ClimateState = {
   total: ZERO,
@@ -112,6 +158,7 @@ export const initialClimate: ClimateState = {
   log: [],
   cycles: [],
   level: 0,
+  pay: initialPay,
 };
 
 /* ---------------- the numbers ---------------- */
@@ -322,7 +369,7 @@ export function record(c: ClimateState, label: string, where: Where, d: Delta): 
   const credits = creditsOf(d);
   if (!co2 && !credits && !d.water && !d.pollution && !d.soil && !d.yieldKg && !d.foodLoss && !d.stored) return { c, levelUp: null };
   const co2By = { ...c.co2By };
-  for (const [s, n] of Object.entries(d.emit ?? {})) co2By[s as Source] += n ?? 0;
+  for (const [s, n] of Object.entries(d.emit ?? {})) co2By[s as Source] = (co2By[s as Source] ?? 0) + (n ?? 0);
   const total = c.credits + credits;
   const level = levelOf(total);
   const next: ClimateState = {
@@ -380,7 +427,7 @@ export function rating(f: Footprint): { grade: 'A' | 'B' | 'C' | 'D' | 'E'; scor
 
 /** The biggest source of emissions so far, with what to change. */
 export function biggestSource(c: ClimateState) {
-  const top = SOURCES.map(s => ({ ...s, kg: c.co2By[s.id] })).sort((a, b) => b.kg - a.kg)[0];
+  const top = SOURCES.map(s => ({ ...s, kg: c.co2By[s.id] ?? 0 })).sort((a, b) => b.kg - a.kg)[0];
   return top && top.kg > 0 ? top : null;
 }
 

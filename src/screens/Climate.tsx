@@ -15,17 +15,22 @@ import {
   type Where,
 } from '../climate/model';
 import { hasSolar } from '../climate/track';
+import { LAND_FACTORS, LAND_PLOTS, PAY, coinsFor, farmedShare, landOf, payRate, type LandUse } from '../climate/land';
+import { payOf } from '../climate/model';
+import { COLS } from '../world/field';
+import { money } from '../money';
 import { FORECASTS } from '../trials/model';
 import type { Action, ClimateTab, GameState } from '../state';
 
-/* The Climate page: everything the game tracks about the climate, in five sections. Overview (rating, level,
-   credits, the key figures), Emissions (by source, by season), Water & soil, Climate shocks, and Activity (each
-   recorded job). Opened from the CLIMATE button on the farm, or the main menu. */
+/* The Climate page: everything the game tracks about the climate, in six sections. Overview (rating, level,
+   credits, the key figures), Land & pay (land farmed, bare and idle today, and the daily payments for credits),
+   Emissions (by source, by season), Water & soil, Climate shocks, and Activity (each recorded job). Opened from the CLIMATE button on the farm, or the main menu. */
 
 type Props = { s: GameState; dispatch: Dispatch<Action>; tab?: ClimateTab };
 
 const TABS: { id: ClimateTab; label: string; icon: string }[] = [
   { id: 'overview', label: 'Overview', icon: '◎' },
+  { id: 'land', label: 'Land & pay', icon: '🌱' },
   { id: 'emissions', label: 'Emissions', icon: '☁' },
   { id: 'water', label: 'Water & soil', icon: '💧' },
   { id: 'shocks', label: 'Climate shocks', icon: '⚡' },
@@ -110,6 +115,7 @@ export function ClimatePage({ s, dispatch, tab: startTab }: Props) {
         </nav>
         <section className="set-content cl-content" aria-label={TABS.find(t => t.id === tab)!.label}>
           {tab === 'overview' && <Overview s={s} go={setTab} />}
+          {tab === 'land' && <LandPay s={s} />}
           {tab === 'emissions' && <Emissions s={s} />}
           {tab === 'water' && <WaterSoil s={s} />}
           {tab === 'shocks' && <Shocks s={s} />}
@@ -156,6 +162,12 @@ function Overview({ s, go }: { s: GameState; go: (t: ClimateTab) => void }) {
             <span style={{ width: `${Math.max(3, into * 100)}%` }} />
           </span>
           <small>{nextL ? `${num(nextL.credits - c.credits, 1)} credits to ${nextL.name} (+${nextL.points} points)` : 'Top level reached'}</small>
+          <small>
+            Paid {money(payOf(c).paid)} coins ·{' '}
+            <button type="button" className="set-link cl-inline" onClick={() => go('land')}>
+              Land &amp; pay
+            </button>
+          </small>
         </div>
         <div className="cl-net">
           <small>Net emissions</small>
@@ -193,11 +205,100 @@ function Overview({ s, go }: { s: GameState; go: (t: ClimateTab) => void }) {
   );
 }
 
+/* ---------------- Land & pay ---------------- */
+
+const USE_WORD: Record<LandUse, string> = { farmed: 'Farmed', bare: 'Bare', idle: 'Idle' };
+
+function LandPay({ s }: { s: GameState }) {
+  const c = s.climate;
+  const pay = payOf(c);
+  const l = landOf(s);
+  const share = farmedShare(l);
+  // today so far: the work's credits since the last payment, and the land's for a whole day
+  const work = Math.max(0, c.credits - pay.creditsAt);
+  const due = work + l.credits;
+  const rate = payRate(c.level);
+  const pd = pay.plotDays;
+  const allDays = pd.farmed + pd.bare + pd.idle;
+  return (
+    <div className="cl-two">
+      <div>
+        <p className="set-title">Land today</p>
+        <p className="set-body">
+          The six farms: {LAND_PLOTS} plots. A crop in the ground stores carbon every day; cleared ground left bare loses it; idle land earns nothing.
+        </p>
+        <div className="cl-land" role="img" aria-label={`Land today: ${l.farmed} plots farmed, ${l.bare} bare, ${l.idle} idle`}>
+          {l.farms.map(f => (
+            <div key={f.farm} className="cl-land-farm" title={`Farm ${f.farm + 1}${f.practices.length ? ` · ${f.practices.join(', ')}` : ''}${f.rate ? ` · ${num(f.rate, 2)} kg CO₂ a plot a day` : ''}`}>
+              <span className="cl-land-grid" style={{ gridTemplateColumns: `repeat(${COLS}, 1fr)` }}>
+                {f.uses.map((u, i) => (
+                  <i key={i} className={`is-${u}`} />
+                ))}
+              </span>
+              <small>Farm {f.farm + 1}</small>
+            </div>
+          ))}
+        </div>
+        <p className="cl-land-key cl-land-grid-key" aria-hidden="true">
+          {(['farmed', 'bare', 'idle'] as LandUse[]).map(u => (
+            <span key={u}>
+              <i className={`is-${u}`} />
+              {USE_WORD[u]}
+            </span>
+          ))}
+        </p>
+        <div className="cl-tiles is-three">
+          <Tile label={USE_WORD.farmed} value={`${l.farmed}`} sub={`${Math.round(share * 100)}% · +${kg(l.stored)} CO₂ a day`} tone={l.farmed ? 'good' : undefined} />
+          <Tile label={USE_WORD.bare} value={`${l.bare}`} sub={l.bare ? `−${kg(l.lost)} CO₂ a day: plant it` : 'None: good'} tone={l.bare ? 'bad' : undefined} />
+          <Tile label={USE_WORD.idle} value={`${l.idle}`} sub="No food, no credits" />
+        </div>
+        <p className="set-body cl-note">
+          A farmed plot stores {LAND_FACTORS.farmed.value} kg CO₂ a day, more with mulch, beans and manure; a bare one loses {LAND_FACTORS.bare.value} kg.
+          {allDays > 0 && (
+            <>
+              {' '}
+              All time: {num((100 * pd.farmed) / allDays)}% of plot-days farmed, {kg(pay.landKg.stored)} stored, {kg(pay.landKg.lost)} lost.
+            </>
+          )}
+        </p>
+      </div>
+      <div>
+        <p className="set-title">Daily payments</p>
+        <p className="set-body">
+          At the end of each day, every credit earned since the last payment, from the land and from your work, is paid to you in coins.
+        </p>
+        <div className="cl-tiles is-three" style={{ marginTop: 6 }}>
+          <Tile label="Credits today" value={num(due, 1)} sub={`About ${money(coinsFor(due, c.level))} coins tonight`} tone={due > 0 ? 'good' : undefined} />
+          <Tile label="A credit pays" value={`${money(rate)}`} sub={rate > PAY.perCredit ? `coins · ${LEVELS[c.level].name} premium` : 'coins · more at higher levels'} />
+          <Tile label="Paid in all" value={money(pay.paid)} sub={`coins for ${num(pay.creditsPaid, 1)} credits`} tone={pay.paid > 0 ? 'good' : undefined} />
+        </div>
+        {pay.payments.length ? (
+          <ol className="cl-log cl-pay" aria-label="Payments, newest first">
+            {pay.payments.slice(0, 6).map(p => (
+              <li key={p.id}>
+                <span className="cl-where">{p.label}</span>
+                <span className="cl-log-text">
+                  <b>+{money(p.coins)} coins</b>
+                  <small>
+                    {num(p.credits, 1)} credits ({num(p.landCredits, 1)} land, {num(p.workCredits, 1)} work) · {p.farmed} farmed, {p.bare} bare, {p.idle} idle
+                  </small>
+                </span>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <Empty>{pay.day ? 'Your first payment comes at the end of today. Plant the six farms to earn from the land.' : 'Payments start once your farm is open.'}</Empty>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ---------------- Emissions ---------------- */
 
 function Emissions({ s }: { s: GameState }) {
   const c = s.climate;
-  const rows = SOURCES.map(x => ({ name: x.label, value: c.co2By[x.id], note: x.fix })).filter(r => r.value > 0);
+  const rows = SOURCES.map(x => ({ name: x.label, value: c.co2By[x.id] ?? 0, note: x.fix })).filter(r => r.value > 0);
   const cycles = [...c.cycles.slice(-5), ...(c.log.length && (c.season.co2 || c.season.stored) ? [{ label: 'This season so far', f: c.season, credits: c.seasonCredits }] : [])];
   return (
     <div className="cl-two">
@@ -298,7 +399,7 @@ function Shocks({ s }: { s: GameState }) {
 
 /* ---------------- Activity ---------------- */
 
-const WHERE: Record<Where, string> = { season: 'Farm Moja', farms: 'Six farms', field: 'Field work', tractor: 'Tractor', market: 'Market', checks: 'Checks' };
+const WHERE: Record<Where, string> = { season: 'Farm Moja', farms: 'Six farms', field: 'Field work', tractor: 'Tractor', market: 'Market', checks: 'Checks', land: 'Land' };
 
 function Activity({ s }: { s: GameState }) {
   const log = s.climate.log;
