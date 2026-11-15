@@ -141,7 +141,10 @@ docs/                      screenshots used in this README
 
 The design is a landscape phone game on an **874 × 402** frame. The app draws everything on a fixed
 874 × 402 stage and scales it to fit the screen, so positions match the Figma frames exactly. Portrait
-phones see a "rotate your phone" prompt.
+phones see a "rotate your phone" prompt. The fit (`fitScale()` in `src/fit.ts`) uses the whole screen on phones and a
+small margin (3–4%, at most 48px) on larger screens. It is re-taken on resize, rotation, the visual viewport and a
+ResizeObserver, and re-checked for 700 ms after each, because iOS browsers report a rotation before the new size is
+readable (the stage otherwise kept its portrait size, small in the middle of a landscape screen).
 
 | Figma group | Frames | Code |
 | --- | --- | --- |
@@ -519,14 +522,14 @@ with *Tractor hire* or *Check and treat*, and the moments come up as you play.
 
 Lines ported from Wakala are marked `// Wakala` in the data; the rest are new, in the same style.
 
-**Money.** Lima's money (shown in US dollars) stays the only money. Real-world costs appear only in the tractor summary, to compare, and its
+**Money.** Lima's money (shown in the player's currency) stays the only money. Real-world costs appear only in the tractor summary, to compare, and its
 *Sources* button lists each figure with its source: diesel KSh 228 a litre (EPRA's Nairobi cap for 15 October to
 14 November 2026, via [Techish](https://tech-ish.com/2026/10/14/petrol-rises-to-kes-226-96-in-nairobi-and-kerosene-jumps-kes-28-49/)),
 tractor ploughing KSh 3,000 and harrowing KSh 1,500 an acre ([Beyond Forest](https://www.beyondforest.org/post/ploughing-cost-per-acre-in-kenya-2026-guide-virgin-vs-uncultivated-land-explained)),
 hand ploughing 24 person-days an acre at KSh 400 a day ([FarmBiz Africa](https://farmbizafrica.com/tractors-services-increase-farmer-earnings-lower-production-costs/)).
 **Estimates**, labelled as such in the game: ridging, planting, spraying and harvesting hire; hand-work days for
 everything but ploughing; diesel per acre for each implement; 2.68 kg of CO₂ a litre. One farm is 4 acres. The
-summary shows these costs in US dollars, from the shilling sources at KSh 129 to the dollar.
+summary shows these costs in the player's currency, from the shilling sources at KSh 129 to the US dollar.
 
 **Rewards.** A drive pays 1.5 coins per score point and 50 points per star above the farm's best this cycle, as in
 Wakala. *Try again* is allowed until the player is done with the drive, but a retry pays coins only for the score
@@ -820,13 +823,21 @@ Settings → Game → *Sound effects* turns them off.
 
 ## Money on screen
 
-All money is shown in **US dollars** (`money()` in `src/money.ts`): balances, prices, costs, profits, rewards,
-loans, training, the tractor summary's real-world costs and the climate payments. The game's own maths keeps its
-stored amounts, so every comparison, unlock and old save works as before: a stored amount stands for 10 Kenyan
-shillings (the prices were set in shillings), shown in dollars at KSh 129 to the dollar (`KSH_PER_USD`). Amounts
-under $100 show cents ($3.10), larger ones whole dollars ($2,326). Typed prices (Sale of produce) are typed in
-dollars. Where this README says *coins*, it means this money. A new game starts with $2,326 (enough to plant the
-first two 4-acre farms). Points, litres, km, acres and days are not money.
+All money is shown in the **player's own currency** (`money()` in `src/money.ts`): balances, prices, costs,
+profits, rewards, loans, training, the tractor summary's real-world costs and the climate payments. The currency
+comes from the country picked on the second onboarding step ("Where do you farm?", after naming the farmer), and
+can be changed in **Settings › Game › Country and money**. The country is kept with the settings, so it survives
+Reset progress. Kenya, Uganda, Tanzania, Rwanda, Ethiopia, Nigeria, Ghana, South Africa, Zambia, Malawi and the
+United States are offered; "Somewhere else" (and any save made before the step existed) shows US dollars. The step
+pre-picks a country from the device's time zone, then its language (e.g. `en-KE`).
+
+The game's own maths keeps its stored amounts, so every comparison, unlock and old save works as before: a stored
+amount stands for 10 Kenyan shillings (the prices were set in shillings), worth US dollars at KSh 129 to the dollar
+(`KSH_PER_USD`), and each currency has a fixed game rate to the dollar (`COUNTRIES`). Kenya therefore sees the
+game's own shilling prices (a new game starts with KSh 300,000; $2,326 in dollars). Currencies with cents (dollar,
+cedi, rand, kwacha) show them under 100 ($3.10); the rest show whole units. The small HUD meters use a short form
+(`moneyShort()`: KSh 300k, USh 8.5M). Typed prices (Sale of produce) are typed in the player's currency. Where this
+README says *coins*, it means this money. Points, litres, km, acres and days are not money.
 
 ## Settings
 

@@ -27,7 +27,7 @@ import {
   type Prices,
   type SeasonResult,
 } from '../state';
-import { fromUsd, money, usdNumber } from '../money';
+import { fromLocal, localNumber, money } from '../money';
 
 type Props = { s: GameState; dispatch: Dispatch<Action> };
 
@@ -95,8 +95,8 @@ export function SaleModal({ s, dispatch }: Props) {
     { key: 'storage', label: 'Storage cost' },
   ];
   const setPrice = (key: keyof Prices, raw: string) => {
-    // prices are typed as shown, in US dollars (src/money.ts)
-    const n = Math.min(key === 'market' || key === 'farmgate' ? 60 : 200, fromUsd(Number(raw.replace(/[^\d.]/g, '')) || 0));
+    // prices are typed as shown, in the player's currency (src/money.ts)
+    const n = Math.min(key === 'market' || key === 'farmgate' ? 60 : 200, fromLocal(Number(raw.replace(/[^\d.]/g, '')) || 0));
     dispatch({ type: 'prices', prices: { ...p, [key]: n } });
   };
   const selling = s.stage === SELLING && s.harvested;
@@ -129,7 +129,7 @@ export function SaleModal({ s, dispatch }: Props) {
                     <span className="field-box">
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         <Img src={img.coin20} w={20} h={21} />
-                        <input id={`price-${f.key}`} inputMode="numeric" value={usdNumber(p[f.key]).replace(/,/g, '')} aria-label={f.label} onChange={e => setPrice(f.key, e.target.value)} />
+                        <input id={`price-${f.key}`} inputMode="numeric" value={localNumber(p[f.key]).replace(/,/g, '')} aria-label={f.label} onChange={e => setPrice(f.key, e.target.value)} />
                       </span>
                       <EditIcon size={20} />
                     </span>

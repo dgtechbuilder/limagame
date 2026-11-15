@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { COUNTRIES, countryOf, guessCountry, moneyIn } from '../money';
+import { initialState } from '../state';
 import { img } from '../assets';
 import { GoldButton } from '../components/ui';
 import { FarmerFigure, FarmerPortrait } from './art';
@@ -9,12 +11,20 @@ const clean = (raw: string) => {
   return s.charAt(0).toUpperCase() + s.slice(1);
 };
 
-/** The first screen a new player sees: name a farmer and pick a look. */
-export function CreateFarmer({ onDone }: { onDone: (name: string, look: number) => void }) {
+/** The first screen a new player sees: name a farmer and pick a look, then say which country they farm in (it sets
+    the currency money is shown in). */
+export function CreateFarmer({ onDone, country: startCountry }: { onDone: (name: string, look: number, country: string) => void; country?: string }) {
   const [name, setName] = useState('');
   const [look, setLook] = useState(0);
+  const [step, setStep] = useState<'farmer' | 'country'>('farmer');
+  const [country, setCountry] = useState(() => startCountry || guessCountry());
   const ready = name.trim().length >= 2;
-  const submit = () => ready && onDone(name.trim(), look);
+  const submit = () => {
+    if (!ready) return;
+    if (step === 'farmer') setStep('country');
+    else onDone(name.trim(), look, country);
+  };
+  const picked = countryOf(country);
 
   return (
     <div className="abs fs-screen" style={{ inset: 0 }}>
@@ -44,6 +54,8 @@ export function CreateFarmer({ onDone }: { onDone: (name: string, look: number) 
           </span>
         </div>
 
+        {step === 'farmer' ? (
+          <>
         <label className="create-label" htmlFor="farmer-name">
           Name your farmer
         </label>
@@ -77,9 +89,38 @@ export function CreateFarmer({ onDone }: { onDone: (name: string, look: number) 
           ))}
         </div>
 
-        <GoldButton font={13} height={40} style={{ position: 'absolute', left: 30, right: 30, bottom: 20, opacity: ready ? 1 : 0.5 }} onClick={submit} ariaLabel="Twende! Let's go">
-          Twende! Let's go
+        <GoldButton font={13} height={40} style={{ position: 'absolute', left: 30, right: 30, bottom: 20, opacity: ready ? 1 : 0.5 }} onClick={submit} ariaLabel="Next">
+          Next
         </GoldButton>
+          </>
+        ) : (
+          <>
+            <p className="create-label" id="country-label">
+              Where do you farm?
+            </p>
+            <div className="countries" role="radiogroup" aria-labelledby="country-label">
+              {COUNTRIES.map(c => (
+                <button type="button" role="radio" aria-checked={country === c.id} key={c.id || 'other'} className={`country-btn${country === c.id ? ' is-on' : ''}`} onClick={() => setCountry(c.id)}>
+                  <span className="country-flag" aria-hidden="true">
+                    {c.flag}
+                  </span>
+                  <span className="country-name">{c.name}</span>
+                </button>
+              ))}
+            </div>
+            <p className="country-note" aria-live="polite">
+              Money is shown in <b>{picked.currency.name}</b>. You start with <b>{moneyIn(initialState.coins, picked.currency)}</b>.
+            </p>
+            <div className="create-actions">
+              <button type="button" className="create-back" onClick={() => setStep('farmer')}>
+                ‹ Back
+              </button>
+              <GoldButton font={13} height={40} style={{ flex: 1 }} onClick={submit} ariaLabel="Twende! Let's go">
+                Twende! Let's go
+              </GoldButton>
+            </div>
+          </>
+        )}
       </form>
     </div>
   );

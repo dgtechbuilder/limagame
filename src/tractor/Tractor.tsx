@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type PointerEvent as RPointerEvent, type R
 import { img } from '../assets';
 import { FarmMap } from '../components/FarmMap';
 import { fmt } from '../components/ui';
-import { KSH_PER_USD, money } from '../money';
+import { KSH_PER_USD, currency, money } from '../money';
 import { SPEAKER } from '../care/voice';
 import { track } from '../first/track';
 import { farmName } from '../trials/model';
@@ -632,7 +632,7 @@ function Sources({ figures, onClose }: { figures: MoneyFigure[]; onClose: () => 
             </li>
           ))}
         <li>
-          One farm is {acresText}. Prices are shown in US dollars, from Kenyan shilling sources at KSh {KSH_PER_USD} to the dollar.
+          One farm is {acresText}. {currency().code === 'KES' ? 'Prices are shown in Kenyan shillings, as the sources give them.' : `Prices are shown in ${currency().name}, from Kenyan shilling sources at KSh ${KSH_PER_USD} to the US dollar.`}
         </li>
       </ul>
     </div>

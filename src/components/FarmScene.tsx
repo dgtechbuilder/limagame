@@ -11,7 +11,7 @@ import { ClimateIcon, GoArrow, MailIcon, SettingsIcon, TimerIcon } from './Icons
 import { Img } from './ui';
 import { CHECK_DAYS, checkKey, currentDay } from '../trials/model';
 import { dayNumber } from '../rounds/farms';
-import { money } from '../money';
+import { currency, money, moneyShort } from '../money';
 import { AwardsButton } from './AwardsButton';
 
 /** What the six farms need now: a count of farms to check today, '!' at harvest time, or nothing. */
@@ -133,9 +133,9 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
       )}
 
       {/* Resources */}
-      <div className="meter abs" style={{ left: 713, top: 31, width: 60 }} title="Money (US dollars)" aria-label={`${money(s.coins)}`}>
+      <div className="meter abs" style={{ left: 713, top: 31, width: 60 }} title={`Money (${currency().name})`} aria-label={`${money(s.coins)}`}>
         <span className="fill" style={{ width: Math.max(10, 58 * coinFill), background: 'var(--xp)' }} />
-        <span className="value" style={{ paddingRight: 8 }}>{money(s.coins)}</span>
+        <span className="value" style={{ paddingRight: 8 }}>{moneyShort(s.coins)}</span>
       </div>
       <Img src={img.cash} w={14} h={14} style={{ position: 'absolute', left: 758, top: 30 }} />
       <div className="meter abs" style={{ left: 713, top: 51, width: 60 }} title="Water in your tanks" aria-label={`${Math.round(s.water)} thousand litres of water`}>

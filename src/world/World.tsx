@@ -42,7 +42,7 @@ import { rating } from '../climate/model';
 import { TRACTOR_BONUS } from '../tractor/data';
 import { JOB_INFO, KIND_WORDS, TOOL_JOB, toolName, tractorName, type PlotKind } from '../plots/data';
 import type { Rig } from '../plots/TractorPick';
-import { money } from '../money';
+import { currency, money, moneyShort } from '../money';
 import { sfx } from '../sfx';
 import { AwardsButton } from '../components/AwardsButton';
 
@@ -666,9 +666,9 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
 
       {/* coins and points */}
       <div className="hud-pills">
-        <span className="hud-pill" title="Money (US dollars)">
+        <span className="hud-pill" title={`Money (${currency().name})`}>
           <img src={img.cash} alt="" width={26} height={26} />
-          <b>{money(s.coins)}</b>
+          <b>{moneyShort(s.coins)}</b>
           <button type="button" aria-label="Shop" onClick={() => dispatch({ type: 'open', modal: { kind: 'shop', tab: 'food' } })}>
             +
           </button>

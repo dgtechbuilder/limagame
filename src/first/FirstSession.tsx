@@ -56,8 +56,10 @@ export function FirstSession({ s, dispatch }: { s: GameState; dispatch: Dispatch
       <>
         <Village look={look} name="" route={null} target={null} open={false} />
         <CreateFarmer
-          onDone={(n, l) => {
-            track('farmer_created', { look: l, suggested: ['Wanjiku', 'Otieno', 'Chebet'].includes(n) });
+          country={s.settings.country}
+          onDone={(n, l, country) => {
+            track('farmer_created', { look: l, suggested: ['Wanjiku', 'Otieno', 'Chebet'].includes(n), country: country || 'other' });
+            dispatch({ type: 'settings', patch: { country } });
             dispatch({ type: 'farmer', name: n, look: l });
             go('story', { page: 0 });
           }}

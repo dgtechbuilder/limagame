@@ -421,6 +421,25 @@ button.card:active { transform: scale(0.98); }
 }
 .look-btn.is-on { border-color: var(--gold); background: #fff2cf; }
 .create-farmer { animation: bob 2.4s ease-in-out infinite; }
+/* the country step: where the player farms sets the currency money is shown in (src/money.ts) */
+.countries { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
+.country-btn {
+  display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px; border-radius: 9px;
+  background: #fff3dc; border: 1.5px solid var(--brown-20); font-size: 11.5px; font-weight: 600; text-align: left;
+}
+.country-btn.is-on { background: var(--gold); border-color: var(--gold-edge); color: #fff; }
+.country-flag { font-size: 15px; line-height: 1; flex-shrink: 0; }
+.country-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.country-note { margin-top: 10px; font-size: 11.5px; line-height: 1.4; }
+.create-actions { position: absolute; left: 30px; right: 30px; bottom: 20px; display: flex; gap: 10px; align-items: center; }
+.create-back {
+  height: 40px; padding: 0 16px; border-radius: 10px; border: 1.5px solid var(--brown-20); background: #fff8ea;
+  font-size: 13px; font-weight: 700;
+}
+.set-select {
+  height: 30px; padding: 0 8px; border-radius: 9px; border: 1.5px solid var(--brown-20); background: #fff8ea;
+  color: var(--brown); font: inherit; font-size: 11px; font-weight: 600; max-width: 190px;
+}
 .name-bubble {
   position: absolute; z-index: 5;
   padding: 4px 12px; border-radius: 12px; background: #fff;

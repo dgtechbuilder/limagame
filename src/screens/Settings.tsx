@@ -9,6 +9,7 @@ import { ArtContext } from '../art/style';
 import { img } from '../assets';
 import { canSpeak, speak } from '../speech';
 import { setSoundOn, sfx } from '../sfx';
+import { COUNTRIES, countryOf, money } from '../money';
 import { clearSave, initialState, type Action, type GameState, type Settings, type SettingsTab } from '../state';
 
 /* Settings: a full page with four sections. Every control changes the game straight away and is kept on this device.
@@ -188,6 +189,15 @@ function GameTab({ s, dispatch, set }: Props & { set: (p: Partial<Settings>) => 
   const voiceOk = canSpeak();
   return (
     <div className="set-rows">
+      <Row title="Country and money" body={`Money is shown in ${countryOf(st.country).currency.name}: you have ${money(s.coins)}.`}>
+        <select className="set-select" aria-label="Country" value={st.country} onChange={e => set({ country: e.target.value })}>
+          {COUNTRIES.map(c => (
+            <option key={c.id || 'other'} value={c.id}>
+              {c.flag} {c.name} ({c.currency.code})
+            </option>
+          ))}
+        </select>
+      </Row>
       <Row title="Character style" body="How your farmer, the guide, the shopkeeper and the animals are drawn.">
         <Seg
           label="Character style"

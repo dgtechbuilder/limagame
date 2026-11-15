@@ -117,11 +117,13 @@ export interface Settings {
   sound: boolean;
   /** the dialog after an upgrade (better storage): it can be turned off in the dialog or in Settings */
   upgradeNotes: boolean;
+  /** the player's country (ISO code, picked when the farmer is made): money is shown in its currency; "" is US dollars */
+  country: string;
 }
 export type SettingsTab = 'farmer' | 'game' | 'display' | 'help';
 export type ClimateTab = 'overview' | 'land' | 'areas' | 'emissions' | 'water' | 'shocks' | 'activity';
 export type AchTab = 'today' | 'badges' | 'certificates';
-export const DEFAULT_SETTINGS: Settings = { art: 'anime', graphics: 'auto', reduceMotion: false, voice: false, sound: true, upgradeNotes: true };
+export const DEFAULT_SETTINGS: Settings = { art: 'anime', graphics: 'auto', reduceMotion: false, voice: false, sound: true, upgradeNotes: true, country: '' };
 
 /** Stage index: 0–5 = the farming step being worked on, 6 = harvested and selling, 7 = season sold. */
 export const SELLING = 6;
