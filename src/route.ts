@@ -2,7 +2,8 @@ import type { ShopTab, StepId } from './data';
 import { STORY } from './first/data';
 import { CHECK_DAYS, currentDay } from './trials/model';
 import { dayNumber } from './rounds/farms';
-import type { AchTab, Action, ClimateTab, FsPhase, GameState, Modal, SettingsTab } from './state';
+import type { AchTab, Action, ClimateTab, FsPhase, GameState, Modal, PartnersTab, SettingsTab } from './state';
+import { BRANDS, type BrandId } from './partners/data';
 
 /* Web addresses: every screen has its own address after the # (…/limagame/#/settings/display), so a player can
    type one to go there, reload without losing their place, and use the browser's Back and Forward.
@@ -17,7 +18,9 @@ const STORY_PAGES = STORY.length;
 // friendly words in the address ↔ the ids in the code
 const SETTINGS: Record<SettingsTab, string> = { farmer: 'my-farmer', game: 'game', display: 'display', help: 'help' };
 const CLIMATE: Record<ClimateTab, string> = { overview: 'overview', land: 'land-and-pay', areas: 'farm-areas', emissions: 'emissions', water: 'water-and-soil', shocks: 'shocks', activity: 'activity' };
-const ACH: Record<AchTab, string> = { today: 'today', badges: 'badges', certificates: 'certificates' };
+const ACH: Record<AchTab, string> = { journey: 'journey', modules: 'modules', today: 'today', badges: 'badges', certificates: 'certificates' };
+const PARTNERS: Record<PartnersTab, string> = { offers: 'offers', placements: 'placements' };
+const BRAND_WORD = Object.fromEntries(BRANDS.map(b => [b.id, b.id])) as Record<BrandId, string>;
 const SHOP: Record<ShopTab, string> = { food: 'food', fertilizer: 'fertilizer', tank: 'water-tanks', equipment: 'equipment' };
 const STEPS: Record<StepId, string> = { landprep: 'land-prep', planting: 'planting', fertilizer: 'fertilizer', pesticides: 'pesticides', water: 'water', harvest: 'harvest' };
 /** Screens with no sections, by address. */
@@ -63,7 +66,9 @@ function modalPath(s: GameState, m: Modal): string {
     case 'climate':
       return `/climate/${CLIMATE[m.tab ?? 'overview']}`;
     case 'achievements':
-      return `/achievements/${ACH[m.tab ?? 'today']}`;
+      return `/progress/${ACH[m.tab ?? 'journey']}`;
+    case 'partners':
+      return `/partners/${PARTNERS[m.tab ?? 'offers']}${m.tab !== 'placements' && m.brand ? `/${BRAND_WORD[m.brand]}` : ''}`;
     case 'shop':
       return `/shop/${SHOP[m.tab]}`;
     case 'steps':
@@ -111,9 +116,18 @@ function modalFor(s: GameState, parts: string[]): Modal | null | 'bad' {
     const t = tab(CLIMATE);
     return t === 'bad' ? 'bad' : { kind: 'climate', tab: t ?? 'overview' };
   }
-  if (first === 'achievements') {
+  // My Progress; its old address (/achievements/…) still opens it
+  if (first === 'progress' || first === 'achievements') {
+    if (parts.length > 2) return 'bad';
     const t = tab(ACH);
-    return t === 'bad' ? 'bad' : { kind: 'achievements', tab: t ?? 'today' };
+    return t === 'bad' ? 'bad' : { kind: 'achievements', tab: t ?? 'journey' };
+  }
+  if (first === 'partners') {
+    const t = tab(PARTNERS);
+    if (t === 'bad' || parts.length > 3) return 'bad';
+    if (parts[2] === undefined) return { kind: 'partners', tab: t ?? 'offers' };
+    const brand = t === 'offers' ? key(BRAND_WORD, parts[2]) : undefined;
+    return brand ? { kind: 'partners', tab: 'offers', brand } : 'bad';
   }
   if (first === 'shop') {
     const t = tab(SHOP);

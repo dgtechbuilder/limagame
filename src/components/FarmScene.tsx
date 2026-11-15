@@ -12,7 +12,8 @@ import { Img } from './ui';
 import { CHECK_DAYS, checkKey, currentDay } from '../trials/model';
 import { dayNumber } from '../rounds/farms';
 import { currency, money, moneyShort } from '../money';
-import { AwardsButton } from './AwardsButton';
+import { ProgressButton } from './ProgressButton';
+import { ClassicBillboard } from '../partners/ui';
 
 /** What the six farms need now: a count of farms to check today, '!' at harvest time, or nothing. */
 function trialBadge(s: GameState): string | null {
@@ -144,7 +145,7 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
       </div>
       <Img src={img.drop} w={14} h={14} style={{ position: 'absolute', left: 758, top: 50 }} />
 
-      <AwardsButton s={s} dispatch={dispatch} classic />
+      <ProgressButton s={s} dispatch={dispatch} classic />
       <button type="button" className="peach-btn abs" style={{ left: 779, top: 24, width: 56, height: 48.66 }} aria-label="Rewards and discounts" onClick={() => open({ kind: 'rewards' })}>
         <Img src={img.sack} w={32} h={32} />
       </button>
@@ -278,6 +279,8 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
               New: grow maize two ways and see which grows more.
             </button>
           )}
+
+          {!s.plotSelected && <ClassicBillboard dispatch={dispatch} left={120} top={300} />}
 
           {!s.plotSelected && (
             <>

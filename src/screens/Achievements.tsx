@@ -1,4 +1,4 @@
-import { useEffect, useState, type Dispatch } from 'react';
+import { useEffect, useState, type Dispatch, type ReactNode } from 'react';
 import { NavBar } from '../components/Nav';
 import { CloseX } from '../components/Success';
 import {
@@ -22,13 +22,33 @@ import {
 import { achClock, viewOf, weekSoFar } from '../achievements/track';
 import { money } from '../money';
 import type { AchTab, Action, GameState } from '../state';
+import {
+  LEVELS,
+  MODULES,
+  currentLevel,
+  levelNeeds,
+  levelProgress,
+  moduleCredits,
+  moduleMax,
+  modulesAt,
+  stageName,
+  stageOf,
+  totalCredits,
+  type ModuleId,
+  type ProgressView,
+} from '../progress/model';
+import { slotBrand } from '../partners/data';
+import { BrandMark, SponsorLine } from '../partners/ui';
 
-/* The Achievements page: today's streak and reward, the day-one goals, every badge by part of the game, and the
-   certificates won. Opened from the AWARDS button on the farm, or the main menu. */
+/* My Progress (the achievements page): the journey of certification levels over the first days and weeks, the
+   learning modules and their credits, today's streak and reward, every badge by part of the game, and the
+   certificates won. Opened from the PROGRESS button on the farm, or the main menu. */
 
 type Props = { s: GameState; dispatch: Dispatch<Action>; tab?: AchTab };
 
 const TABS: { id: AchTab; label: string; icon: string }[] = [
+  { id: 'journey', label: 'Journey', icon: '🎓' },
+  { id: 'modules', label: 'Modules', icon: '📚' },
   { id: 'today', label: 'Today', icon: '🔥' },
   { id: 'badges', label: 'Badges', icon: '🏅' },
   { id: 'certificates', label: 'Certificates', icon: '📜' },
@@ -39,7 +59,7 @@ const dateText = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString('en
 const amount = (x: Achievement, n: number) => (x.id.startsWith('coins') ? money(n) : Math.floor(n).toLocaleString('en-US'));
 
 export function AchievementsPage({ s, dispatch, tab: startTab }: Props) {
-  const tab: AchTab = startTab ?? 'today';
+  const tab: AchTab = startTab ?? 'journey';
   const setTab = (t: AchTab) => dispatch({ type: 'open', modal: { kind: 'achievements', tab: t } });
   const close = () => dispatch({ type: 'close' });
   useEffect(() => {
@@ -52,28 +72,32 @@ export function AchievementsPage({ s, dispatch, tab: startTab }: Props) {
   const v = viewOf(s, a, today);
   const waiting = unclaimed(a, today);
   const won = Object.keys(a.won).length;
+  const p: ProgressView = { ach: a, v, courses: v.courses };
+  const levelsWaiting = Object.values(a.levels).filter(w => !w.claimed).length;
+  // the dot sits on the tab where the waiting rewards are claimed
+  const dotOn = (id: AchTab) => (id === 'journey' ? levelsWaiting : id === 'today' ? waiting - levelsWaiting : 0);
 
   return (
-    <div className="abs settings-page ach-page" style={{ inset: 0 }} role="dialog" aria-modal="true" aria-label="Achievements">
+    <div className="abs settings-page ach-page" style={{ inset: 0 }} role="dialog" aria-modal="true" aria-label="My Progress">
       <div className="scrim" onClick={close} />
       <div className="fs-panel set-panel" style={{ left: 18, top: 40, width: 838, height: 348 }}>
-        <nav className="set-tabs" aria-label="Achievements sections">
-          <p className="set-heading">Achievements</p>
+        <nav className="set-tabs ach-tabs" aria-label="My Progress sections">
+          <p className="set-heading">My Progress</p>
           {TABS.map(t => (
             <button key={t.id} type="button" className={`set-tab${tab === t.id ? ' is-on' : ''}`} aria-current={tab === t.id ? 'page' : undefined} onClick={() => setTab(t.id)}>
               <i aria-hidden="true">{t.icon}</i>
               {t.label}
-              {t.id === 'today' && waiting > 0 && <b className="ach-dot">{waiting}</b>}
+              {dotOn(t.id) > 0 && <b className="ach-dot">{dotOn(t.id)}</b>}
               {t.id === 'certificates' && a.certs.length > 0 && <small className="ach-count">{a.certs.length}</small>}
             </button>
           ))}
           <p className="set-foot">
-            {won} of {ACHIEVEMENTS.length} badges won
-            <br />
-            Points from badges count toward Rewards.
+            {totalCredits(p)} credits · {won} of {ACHIEVEMENTS.length} badges
           </p>
         </nav>
         <section className="set-content ach-content" aria-label={TABS.find(t => t.id === tab)!.label}>
+          {tab === 'journey' && <Journey s={s} dispatch={dispatch} p={p} go={setTab} />}
+          {tab === 'modules' && <Modules dispatch={dispatch} p={p} />}
           {tab === 'today' && <Today s={s} dispatch={dispatch} v={v} today={today} go={setTab} />}
           {tab === 'badges' && <Badges s={s} dispatch={dispatch} v={v} />}
           {tab === 'certificates' && <Certificates s={s} v={v} />}
@@ -82,7 +106,7 @@ export function AchievementsPage({ s, dispatch, tab: startTab }: Props) {
       <NavBar horizontal onBack={close} hideHome={s.fs.phase !== 'done'} style={{ right: 44, top: 6 }} />
       <CloseX className="page-x" onClick={close} />
       <p className="set-title-bar">
-        <span aria-hidden="true">🏅</span> Achievements · <b>{TABS.find(t => t.id === tab)!.label}</b>
+        <span aria-hidden="true">🎓</span> My Progress · <b>{TABS.find(t => t.id === tab)!.label}</b>
       </p>
     </div>
   );
@@ -276,6 +300,9 @@ function Certificates({ s, v }: { s: GameState; v: AchView }) {
             <b>Streaks</b> of {STREAK_CERTS.slice(0, 4).join(', ')} days and more ({Math.max(0, nextStreak - streakNow(a, today))} more days for the next)
           </li>
           <li>
+            <b>Certification levels</b>: from day 1 to week 4, on the Journey tab
+          </li>
+          <li>
             <b>Mastery</b>: every bronze, silver or gold badge in one part of the game
           </li>
         </ul>
@@ -289,7 +316,7 @@ function Certificates({ s, v }: { s: GameState; v: AchView }) {
         {certs.map(x => (
           <li key={x.id}>
             <button type="button" className={x.id === c.id ? 'is-on' : ''} onClick={() => setPick(x.id)}>
-              <span aria-hidden="true">{x.kind === 'streak' ? '🔥' : x.kind === 'week' ? '📅' : '🎓'}</span>
+              <span aria-hidden="true">{CERT_ICON[x.kind]}</span>
               <span>
                 <b>{x.title}</b>
                 <small>{dateText(x.date)}</small>
@@ -303,12 +330,16 @@ function Certificates({ s, v }: { s: GameState; v: AchView }) {
   );
 }
 
+const CERT_ICON: Record<Certificate['kind'], string> = { streak: '🔥', week: '📅', mastery: '🎓', level: '🎖️' };
+
 function CertificateCard({ c, name }: { c: Certificate; name: string }) {
   const tone = c.kind === 'mastery' ? c.tier : c.kind;
+  // the certification partner co-signs every certificate
+  const partner = slotBrand('certification');
   return (
     <article className={`ach-cert is-${tone}`} aria-label={`Certificate: ${c.title}`}>
-      <p className="ach-cert-org">Lima Farming Game</p>
-      <p className="ach-cert-kind">Certificate of achievement</p>
+      <p className="ach-cert-org">Lima Farming Game{partner ? ` × ${partner.name}` : ''}</p>
+      <p className="ach-cert-kind">{c.kind === 'level' ? 'Certificate of certification' : 'Certificate of achievement'}</p>
       <p className="ach-cert-to">This certifies that</p>
       <p className="ach-cert-name">{name}</p>
       <p className="ach-cert-title">{c.title}</p>
@@ -319,8 +350,191 @@ function CertificateCard({ c, name }: { c: Certificate; name: string }) {
         {daysBetween(c.date, achClock.today()) === 0 ? ' · today' : ''}
       </p>
       <span className="ach-seal" aria-hidden="true">
-        {c.kind === 'streak' ? '🔥' : c.kind === 'week' ? '🌾' : '🎓'}
+        {c.kind === 'week' ? '🌾' : CERT_ICON[c.kind]}
       </span>
     </article>
+  );
+}
+
+/* ---------------- the journey: certification levels ---------------- */
+
+/** A ring that fills as a level comes closer. */
+function Ring({ value, size = 44, children }: { value: number; size?: number; children: ReactNode }) {
+  const r = size / 2 - 3;
+  const c = 2 * Math.PI * r;
+  return (
+    <span className="pg-ring" style={{ width: size, height: size }}>
+      <svg viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
+        <circle cx={size / 2} cy={size / 2} r={r} className="pg-ring-bg" />
+        <circle cx={size / 2} cy={size / 2} r={r} className="pg-ring-fg" strokeDasharray={c} strokeDashoffset={c * (1 - Math.max(0, Math.min(1, value)))} />
+      </svg>
+      <span>{children}</span>
+    </span>
+  );
+}
+
+function Journey({ s, dispatch, p, go }: { s: GameState; dispatch: Dispatch<Action>; p: ProgressView; go: (t: AchTab) => void }) {
+  const a = p.ach;
+  const { level, next } = currentLevel(a);
+  const credits = totalCredits(p);
+  const partner = slotBrand('certification');
+  const need = next ? levelNeeds(next, p) : null;
+  const toClaim = LEVELS.filter(l => a.levels[l.id] && !a.levels[l.id].claimed);
+  return (
+    <div className="pg-journey">
+      <div className="pg-head">
+        <div className="pg-now">
+          <Ring value={next ? levelProgress(next, p) : 1} size={52}>
+            <b>{level?.n ?? 0}</b>
+          </Ring>
+          <span>
+            <small>{s.farmer?.name ?? 'Farmer'} · certification</small>
+            <b>{level ? `Level ${level.n} · ${level.name}` : 'Not certified yet'}</b>
+            <small>{next ? `Next: Level ${next.n} · ${next.name} (${Math.round(levelProgress(next, p) * 100)}%)` : 'Every level reached: Master Farmer'}</small>
+          </span>
+        </div>
+        <div className="pg-stat">
+          <b>{credits}</b>
+          <small>learning credits</small>
+        </div>
+        <div className="pg-stat">
+          <b>{a.days}</b>
+          <small>day{a.days === 1 ? '' : 's'} played</small>
+        </div>
+        <div className="pg-stat">
+          <b>
+            {modulesAt('started', p)}/{MODULES.length}
+          </b>
+          <small>modules started</small>
+        </div>
+      </div>
+
+      <ol className="pg-path" aria-label="Certification levels">
+        {LEVELS.map(l => {
+          const got = a.levels[l.id];
+          const isNext = next?.id === l.id;
+          const locked = !got && a.days < l.day;
+          const pct = Math.round(levelProgress(l, p) * 100);
+          return (
+            <li key={l.id} className={`pg-step${got ? ' is-got' : ''}${isNext ? ' is-next' : ''}${locked ? ' is-locked' : ''}`} aria-label={`Level ${l.n}, ${l.name}, ${l.when}: ${got ? 'reached' : locked ? `opens on day ${l.day} played` : `${pct}% there`}`}>
+              <small className="pg-when">{l.when}</small>
+              <Ring value={got ? 1 : levelProgress(l, p)} size={38}>
+                {got ? '✓' : locked ? '🔒' : l.n}
+              </Ring>
+              <b>{l.name}</b>
+              {got && !got.claimed ? (
+                <button type="button" className="ach-claim" onClick={() => dispatch({ type: 'levelClaim', id: l.id })} aria-label={`Claim Level ${l.n}: ${money(l.coins)} and ${l.points} points`}>
+                  Claim
+                </button>
+              ) : (
+                <small>{got ? 'Certified' : locked ? `Opens day ${l.day}` : `${pct}%`}</small>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+
+      <div className="pg-next">
+        {next && need ? (
+          <>
+            <p className="set-title">
+              To reach Level {next.n} · {next.name}
+            </p>
+            <ul className="pg-needs">
+              <Need done={need.days === 0} label={`Play on ${next.day} day${next.day === 1 ? '' : 's'}`} have={`${Math.min(a.days, next.day)}/${next.day}`} />
+              <Need done={need.credits === 0} label={`Earn ${next.credits} learning credits`} have={`${Math.min(credits, next.credits)}/${next.credits}`} />
+              <Need
+                done={need.modules === 0}
+                label={`${next.modules.count} modules ${stageName(next.modules.stage).toLowerCase()} or beyond`}
+                have={`${Math.min(modulesAt(next.modules.stage, p), next.modules.count)}/${next.modules.count}`}
+              />
+            </ul>
+            <p className="pg-reward">
+              Reward: +{money(next.coins)} · +{next.points} points · a certificate{partner ? ` co-signed by ${partner.name}` : ''}
+              <button type="button" className="set-link" onClick={() => go('modules')}>
+                How to earn credits ›
+              </button>
+            </p>
+          </>
+        ) : (
+          <p className="set-title">Every certification level reached. Keep going for gold badges in every module.</p>
+        )}
+        {toClaim.length > 1 && (
+          <button type="button" className="ach-claim" onClick={() => dispatch({ type: 'achClaimAll' })}>
+            Claim all
+          </button>
+        )}
+      </div>
+      <SponsorLine slot="certification" label="Certification with" dispatch={dispatch} className="pg-sponsor" />
+    </div>
+  );
+}
+
+function Need({ done, label, have }: { done: boolean; label: string; have: string }) {
+  return (
+    <li className={done ? 'is-done' : ''}>
+      <i aria-hidden="true">{done ? '✓' : '○'}</i>
+      <span>{label}</span>
+      <b>{have}</b>
+    </li>
+  );
+}
+
+/* ---------------- the modules: credits by part of the game ---------------- */
+
+/** Where each module is played. */
+const GO: Record<ModuleId, Action> = {
+  farm: { type: 'open', modal: { kind: 'steps', step: 'landprep' } },
+  rounds: { type: 'rounds', open: true },
+  six: { type: 'trials', open: true },
+  tractor: { type: 'ride' },
+  business: { type: 'biz', open: true },
+  climate: { type: 'open', modal: { kind: 'climate' } },
+  daily: { type: 'open', modal: { kind: 'achievements', tab: 'today' } },
+  courses: { type: 'open', modal: { kind: 'training' } },
+};
+
+function Modules({ dispatch, p }: { dispatch: Dispatch<Action>; p: ProgressView }) {
+  const partner = slotBrand('certification');
+  return (
+    <div className="pg-modules">
+      <div className="ach-row-head">
+        <p className="set-title">
+          Learning modules · {totalCredits(p)} credits
+        </p>
+        {partner && (
+          <span className="pg-partner">
+            <BrandMark b={partner} size={14} /> Credits count toward {partner.name} certification
+          </span>
+        )}
+      </div>
+      <div className="pg-grid">
+        {MODULES.map(m => {
+          const have = moduleCredits(m.id, p);
+          const max = moduleMax(m.id);
+          const st = stageOf(m.id, p);
+          return (
+            <button key={m.id} type="button" className={`pg-module is-${st}`} onClick={() => dispatch(GO[m.id])} aria-label={`${m.name}: ${stageName(st)}, ${have} of ${max} credits. ${m.how}. Open it`}>
+              <span className="pg-mod-top">
+                <i aria-hidden="true">{m.icon}</i>
+                <b>{m.name}</b>
+                <em>{stageName(st)}</em>
+              </span>
+              <small>{m.subject}</small>
+              <span className="ach-meter" aria-hidden="true">
+                <span style={{ width: `${Math.max(3, (have / (max || 1)) * 100)}%` }} />
+              </span>
+              <span className="pg-mod-foot">
+                <small>{m.how}</small>
+                <b>
+                  {have}/{max}
+                </b>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <p className="pg-foot">Badges pay credits into their module: day-one 1, bronze 2, silver 4, gold 8. Each course booked pays 5.</p>
+    </div>
   );
 }

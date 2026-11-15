@@ -40,6 +40,8 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [Settings](#settings)
 - [Climate tracking](#climate-tracking)
 - [Achievements, the daily streak and certificates](#achievements-the-daily-streak-and-certificates)
+- [My Progress: certification levels and learning credits](#my-progress-certification-levels-and-learning-credits)
+- [Partners: billboards, branded products and offers](#partners-billboards-branded-products-and-offers)
 - [Character art: retro anime](#character-art-retro-anime)
 - [Design review mode](#design-review-mode)
 - [Saving, events and privacy](#saving-events-and-privacy)
@@ -111,6 +113,11 @@ src/
     Meta.tsx               How the farm works
     Settings.tsx           the Settings page: My farmer, Game, Display, Help & data
     Climate.tsx            the Climate page: Overview, Emissions, Water & soil, Climate shocks, Activity
+    Achievements.tsx       My Progress: Journey, Modules, Today, Badges, Certificates
+    Partners.tsx           the Partners page: Offers, Placements
+  progress/model.ts        My Progress: modules, learning credits, certification levels (no screens)
+  partners/                partner brands and every slot they can buy (data.ts), engagement counts (track.ts),
+                           sponsor lines, ribbons and the classic farm's sign (ui.tsx)
   art/                     retro anime characters: anime.tsx (SVG kit: farmer, guide, shopkeeper, Ojuok),
                            Cast.tsx (anime or original picture), style.ts (style and read-aloud contexts)
   speech.ts                Read aloud: the phone's own voice (speechSynthesis)
@@ -787,6 +794,8 @@ reload without losing their place, bookmark a page, and use the browser's **Back
 | `#/harvest-timing` · `#/sale` · `#/storage` · `#/value-addition` · `#/process` | The season after harvest |
 | `#/farm-info` · `#/results` · `#/rewards` · `#/welcome` | Farm info, season results, rewards, how the farm works |
 | `#/loan-calculator` · `#/loan-calculator/quote` · `#/training` | The loan calculator and its quote, farmer training |
+| `#/progress/journey` · `modules` · `today` · `badges` · `certificates` | My Progress, by section (`#/achievements/…` still works) |
+| `#/partners/offers` · `#/partners/offers/<brand>` · `#/partners/placements` | Partners: offers (one brand's in view), placements |
 
 **The player's session decides where an address can go.** The game's saved state stays the one source of
 truth: the address always names the page on show, and a typed address goes through the same rules as a tap.
@@ -950,14 +959,75 @@ A reason to come back every day, and something won in every part of the game. Ev
 - **Certificates**, kept on the page with the farmer's name and the date: one for every 7 days played (with what
   was done that week), one for each streak of 3, 7, 14, 30, 60 and 100 days, and a bronze, silver or gold
   certificate for a part of the game whose every badge of that tier is won.
-- **On screen:** the AWARDS button (3D farm, under Climate; on the classic farm, under the farm's name) shows the
-  streak and a red dot while a reward waits. A pop-up announces each badge, certificate and new day. The page has
-  *Today* (the streak, the last seven days, today's reward, the day-one goals), *Badges* (filter by part of the
-  game, closest to done first) and *Certificates*. Main menu → *Achievements*; addresses `#/achievements/today`,
-  `/badges` and `/certificates`.
+- **On screen:** the badges, the streak and the certificates are part of **My Progress** (next section), opened
+  from the PROGRESS button. A pop-up announces each badge, certificate, level and new day. *Today* has the streak,
+  the last seven days, today's reward and the day-one goals; *Badges* filters by part of the game, closest to done
+  first; *Certificates* keeps every certificate.
 - Counting starts with the first action after this update; badges that read what the save already holds
   (seasons sold, cycles harvested, farmers helped, level, climate credits) are won at once. Badges open once the
   first crop checks are done.
+
+## My Progress: certification levels and learning credits
+
+The first days and weeks of play laid out as a learning journey, behind the **PROGRESS** button on the farm
+(3D farm: under Climate; classic farm: under the farm's name). The button shows the certification level in a ring
+that fills toward the next level, the streak, and a red dot while a reward waits. Everything a designer might tune
+is in `src/progress/model.ts`; the page is `src/screens/Achievements.tsx`.
+
+- **Modules** (8), one for each part of the game plus *Courses*: Farm Moja, Field rounds, Six farms, Tractor,
+  Tractor business, Climate, Every day, Courses. Every badge won pays **learning credits** into its module
+  (day-one 1, bronze 2, silver 4, gold 8, special 4), and each farmer course booked in Training pays 5 into Courses
+  (up to four). A module is *Not started*, *Started*, *Practising* (25% of its credits), *Proficient* (50%) or
+  *Mastered* (100%). Adding a module is one more entry in `MODULES`.
+- **Certification levels** (6), each opening on a day of play so they arrive over the first weeks, not at once:
+
+  | Level | Opens | Credits | Modules |
+  | --- | --- | --- | --- |
+  | 1 · Farm Starter | Day 1 | 3 | 2 started |
+  | 2 · Farm Apprentice | Day 2 | 10 | 4 started |
+  | 3 · Smart Farmer | Day 4 | 22 | 6 started |
+  | 4 · Certified Smart Farmer | Week 1 (day 7) | 40 | 3 practising |
+  | 5 · Advanced Smart Farmer | Week 2 (day 14) | 75 | 3 proficient |
+  | 6 · Master Farmer | Week 4 (day 28) | 130 | 6 proficient |
+
+  "Day" is days played (the streak's count of days with something done), so a level waits for its day however
+  many credits are earned early, and levels come in order. Reaching one gives a **certificate** (kept with the
+  others, co-signed by the certification partner) and a reward to claim: KSh 1,000 and 50 points at Level 1, up to
+  KSh 15,000 and 750 points at Level 6 (shown in the player's own currency). Rewards wait to be claimed, as badges' do.
+- **The page:** *Journey* (the level now, credits, days played, modules started; the six levels on a path, each
+  reached, next or locked until its day; what the next level still needs), *Modules* (each module's stage and
+  credits; tap one to go and play it), then *Today*, *Badges* and *Certificates*. Main menu → *My Progress*.
+
+## Partners: billboards, branded products and offers
+
+Places across the game a partner brand can appear, and a page for the offers. The whole set-up is one table:
+`src/partners/data.ts` lists the **brands** and the **slots** (every place a brand can appear) with the brand on
+each. To sign a partner, add or edit its brand and put its id on the slots it bought; no screen changes.
+
+| Slot | Where | Brand now |
+| --- | --- | --- |
+| Billboards (2) | 3D farm, in the yard either side of the farmhouse path; walk up to one and a *See offer* tag appears | Rutuba Gold, Kinga Cover |
+| Tractor livery | 3D farm: the partner's name on the bonnet and both sides of the tractor | Hello Tractor |
+| Market stall awning | 3D farm | *Available* |
+| Roadside sign | Classic farm: each partner in turn, every 6 seconds (or one brand, if it buys the slot) | All partners |
+| Branded fertilizer | Shop › Buy Fertilizer: *Rutuba Gold NPK*, 10% under the plain NPK; it does the NPK task's job | Rutuba Gold |
+| Branded tank | Shop › Buy Tank: a 5,000 L tank | Tangi Tanks |
+| Branded tool | Shop › Buy Equipment | *Available* |
+| Voucher sponsors | Rewards & Discounts Hub: "with <brand>" on each voucher | Rutuba Gold, Shina Seeds, Hello Tractor, JuaPower Solar, PesaShamba |
+| Loan quotes | Loan calculator and quote | PesaShamba |
+| Courses | Training | Ujuzi Agri Academy |
+| Certification | My Progress: the journey, the modules and every certificate | Ujuzi Agri Academy |
+| Crop cover | Climate › Shocks | Kinga Cover |
+| Progress sponsor | The PROGRESS button | Ujuzi Agri Academy |
+
+- **Sample brands.** Hello Tractor is the game's tractor partner. Every other brand (Rutuba Gold, Shina Seeds,
+  Tangi Tanks, PesaShamba, Kinga Cover, JuaPower Solar, Ujuzi Agri Academy) is made up for the game
+  (`sample: true`) and stands in until a real partner signs; no real company is named or implied.
+- **The Partners page** (Main menu → *Partners & offers*; every billboard, sign and "with <brand>" line opens it at
+  that brand): *Offers* lists each brand's offer, to save to Messages (and a *Visit* link for brands with a web
+  address); *Placements* lists every slot, its brand or *Available*, and how often it was seen and tapped.
+- **Engagement** (views and taps per slot) is counted on the device only, apart from the saved game
+  (`src/partners/track.ts`): nothing is sent anywhere, and Reset progress does not clear it.
 
 ## Character art: retro anime
 

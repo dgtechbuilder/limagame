@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { initialState, reducer, type GameState } from '../src/state';
 import { ACHIEVEMENTS, DAY_ONE, achOfSave, daysBetween, initialAch, playDay, streakNow, streakReward, unclaimed } from '../src/achievements/model';
 import { achClock } from '../src/achievements/track';
+import { levelOf } from '../src/progress/model';
 import { wakalaCase } from '../src/trials/samples';
 import { boot, state, type Win } from './helpers';
 
@@ -82,9 +83,11 @@ test('today’s reward: once a day, bigger as the streak grows', () => {
   // the badges waiting: the first task's, and the climate ones the night's credits won (the forest earns every day)
   const waiting = Object.entries(achOfSave(s.ach).won).filter(([, w]) => !w.claimed).map(([id]) => ACHIEVEMENTS.find(x => x.id === id)!);
   expect(waiting.map(x => x.id)).toContain('first-task');
+  // and any certification level those badges reached (My Progress): Claim all pays it too
+  const levels = Object.entries(achOfSave(s.ach).levels).filter(([, w]) => !w.claimed).map(([id]) => levelOf(id)!);
   s = reducer(s, { type: 'achClaimAll' });
-  expect(s.coins).toBe(before.coins + streakReward(2).coins + waiting.reduce((n, x) => n + (x.coins ?? 0), 0));
-  expect(s.points).toBe(before.points + streakReward(2).points + waiting.reduce((n, x) => n + x.points, 0));
+  expect(s.coins).toBe(before.coins + streakReward(2).coins + waiting.reduce((n, x) => n + (x.coins ?? 0), 0) + levels.reduce((n, l) => n + l.coins, 0));
+  expect(s.points).toBe(before.points + streakReward(2).points + waiting.reduce((n, x) => n + x.points, 0) + levels.reduce((n, l) => n + l.points, 0));
   expect(DAY_ONE.some(x => x.id === 'first-task')).toBe(true);
   expect(unclaimed(achOfSave(s.ach), day)).toBe(0);
 });
@@ -152,15 +155,15 @@ test('a save from before achievements loads with everything in place', () => {
   expect(a.certs).toEqual([]);
 });
 
-test('the Achievements page: a badge won on the farm is claimed on the page, and today’s reward with it', async ({ page }) => {
+test('My Progress: a badge won on the farm is claimed on the page, and today’s reward with it', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => (window as unknown as Win).__lima.jump({ view: 'classic', coins: 5000, points: 0 }));
   // a farming task: the pop-up says a badge was won
   await page.evaluate(() => (window as unknown as Win).__lima.dispatch({ type: 'task', step: 'landprep', id: 'clearing', price: 40, name: 'Clearing' }));
   await expect(page.locator('.award-pop')).toContainText('badges won');
-  await expect(page.getByRole('button', { name: /^Achievements: 1-day streak, \d+ rewards? to claim/ })).toBeVisible();
-  await page.evaluate(() => (window.location.hash = '#/achievements/today'));
-  await expect(page.locator('.set-title-bar')).toContainText('Achievements · Today');
+  await expect(page.getByRole('button', { name: /^My Progress: .*1-day streak, \d+ rewards? to claim/ })).toBeVisible();
+  await page.evaluate(() => (window.location.hash = '#/progress/today'));
+  await expect(page.locator('.set-title-bar')).toContainText('My Progress · Today');
   await page.getByRole('button', { name: /^Claim First task/ }).click();
   await expect.poll(async () => (await state(page)).points).toBe(25);
   await page.getByRole('button', { name: /^Claim all/ }).click();
@@ -168,7 +171,7 @@ test('the Achievements page: a badge won on the farm is claimed on the page, and
   await expect(page.locator('.ach-daily')).toContainText('claimed');
   // the badges and the certificates
   await page.getByRole('button', { name: 'Badges', exact: true }).click();
-  await expect(page).toHaveURL(/#\/achievements\/badges$/);
+  await expect(page).toHaveURL(/#\/progress\/badges$/);
   await page.getByRole('tab', { name: /Tractor \d/ }).click();
   await expect(page.locator('.ach-badge').first()).toBeVisible();
   await page.getByRole('button', { name: 'Certificates', exact: true }).click();

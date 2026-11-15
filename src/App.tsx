@@ -16,6 +16,7 @@ import { WelcomeModal } from './screens/Meta';
 import { SettingsPage } from './screens/Settings';
 import { ClimatePage } from './screens/Climate';
 import { AchievementsPage } from './screens/Achievements';
+import { PartnersPage } from './screens/Partners';
 import { ArtContext, VoiceContext } from './art/style';
 import { speak, stopSpeaking } from './speech';
 import { setSoundOn, sfx, warmSfx } from './sfx';
@@ -267,6 +268,7 @@ export default function App() {
         {m?.kind === 'settings' && <SettingsPage s={s} dispatch={dispatch} tab={m.tab} />}
         {m?.kind === 'climate' && <ClimatePage s={s} dispatch={dispatch} tab={m.tab} />}
         {m?.kind === 'achievements' && <AchievementsPage s={s} dispatch={dispatch} tab={m.tab} />}
+        {m?.kind === 'partners' && <PartnersPage s={s} dispatch={dispatch} tab={m.tab} brand={m.brand} />}
         {m?.kind === 'shop' && <ShopModal s={s} tab={m.tab} dispatch={dispatch} />}
         {m?.kind === 'steps' && <StepsModal s={s} step={m.step} dispatch={dispatch} />}
         {m?.kind === 'sale' && <SaleModal s={s} dispatch={dispatch} />}
@@ -285,7 +287,7 @@ export default function App() {
 
         {awardVisible && s.award && !m && (
           <div key={`award-${s.award.id}`} className="award-pop" role="status">
-            <span aria-hidden="true">🏅</span>
+            <span aria-hidden="true">{s.award.title.startsWith('Certified') ? '🎓' : '🏅'}</span>
             <span>
               <b>{s.award.title}</b>
               <small>{s.award.line}</small>

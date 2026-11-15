@@ -1,0 +1,194 @@
+/* Partners: the brands that sponsor parts of the game, and every place in the game a brand can appear (a slot).
+
+   This one file is the whole partnership set-up. To sign a partner, add (or edit) its brand below and put its id on
+   the slots it has bought; a slot with no brand shows as Available on the Partners page's Placements tab, which is
+   the inventory to sell. The game reads only these tables, so no screen needs changing to swap a brand.
+
+   Hello Tractor is the game's tractor partner (the tractor business is built to its brief). Every other brand here is
+   a SAMPLE, made up for the game (sample: true), standing in until a real partner signs for its slot: no real
+   company is named or implied. */
+
+export type BrandId = 'hello-tractor' | 'rutuba' | 'shina' | 'tangi' | 'pesa' | 'kinga' | 'jua' | 'ujuzi';
+
+export type PartnerCategory = 'Tractors' | 'Fertilizer' | 'Seed' | 'Water' | 'Finance' | 'Insurance' | 'Solar' | 'Training';
+
+export interface Brand {
+  id: BrandId;
+  name: string;
+  category: PartnerCategory;
+  /** a few words under the name, on billboards and cards */
+  tagline: string;
+  /** the brand's colours: background and the accent on it (text on the background is white) */
+  color: string;
+  accent: string;
+  /** a mark for the brand where no logo file is supplied */
+  mark: string;
+  /** the offer a player can save from the Partners page */
+  offer: { title: string; line: string };
+  /** where "Visit" goes (opened in a new tab); none for sample brands */
+  url?: string;
+  /** a made-up brand standing in until a real partner signs */
+  sample: boolean;
+}
+
+export const BRANDS: Brand[] = [
+  {
+    id: 'hello-tractor',
+    name: 'Hello Tractor',
+    category: 'Tractors',
+    tagline: 'Tractor services, booked near you',
+    color: '#1f6f5c',
+    accent: '#f5c21b',
+    mark: '🚜',
+    offer: { title: 'Book a tractor through a booking agent', line: 'Ploughing, harrowing and planting at an agreed price per acre' },
+    url: 'https://hellotractor.com',
+    sample: false,
+  },
+  {
+    id: 'rutuba',
+    name: 'Rutuba Gold',
+    category: 'Fertilizer',
+    tagline: 'Feed the soil, grow more maize',
+    color: '#2f8a3c',
+    accent: '#ffd23f',
+    mark: '🌿',
+    offer: { title: '10% off Rutuba Gold NPK', line: 'In the Shop’s fertilizer section, and a planting guide with every bag' },
+    sample: true,
+  },
+  {
+    id: 'shina',
+    name: 'Shina Seeds',
+    category: 'Seed',
+    tagline: 'Certified seed for every season',
+    color: '#b5651d',
+    accent: '#ffe08a',
+    mark: '🌽',
+    offer: { title: 'Seed discount voucher', line: 'Redeem points for certified maize seed in the Rewards hub' },
+    sample: true,
+  },
+  {
+    id: 'tangi',
+    name: 'Tangi Tanks',
+    category: 'Water',
+    tagline: 'Store the rain, water all season',
+    color: '#2a7fd0',
+    accent: '#bfe7f2',
+    mark: '💧',
+    offer: { title: 'Free gutter kit with a 5,000 L tank', line: 'With the Tangi tank in the Shop’s water-tank section' },
+    sample: true,
+  },
+  {
+    id: 'pesa',
+    name: 'PesaShamba',
+    category: 'Finance',
+    tagline: 'Farm loans you can plan for',
+    color: '#5b3fa0',
+    accent: '#ffcf3f',
+    mark: '📱',
+    offer: { title: 'Plan a farm loan', line: 'See what a loan costs in the Loan calculator before you borrow' },
+    sample: true,
+  },
+  {
+    id: 'kinga',
+    name: 'Kinga Cover',
+    category: 'Insurance',
+    tagline: 'Crop cover for dry spells and floods',
+    color: '#c0392b',
+    accent: '#fff1c2',
+    mark: '☂️',
+    offer: { title: 'Learn about crop cover', line: 'What a drought or a flood costs your farm, on the Climate page' },
+    sample: true,
+  },
+  {
+    id: 'jua',
+    name: 'JuaPower Solar',
+    category: 'Solar',
+    tagline: 'Pump water with the sun',
+    color: '#e67e22',
+    accent: '#fff6d6',
+    mark: '☀️',
+    offer: { title: 'Solar pump discount', line: 'Redeem points for solar power and irrigation in the Rewards hub' },
+    sample: true,
+  },
+  {
+    id: 'ujuzi',
+    name: 'Ujuzi Agri Academy',
+    category: 'Training',
+    tagline: 'Learn by farming, get certified',
+    color: '#1e5b78',
+    accent: '#ffcf3f',
+    mark: '🎓',
+    offer: { title: 'Your farming certificates', line: 'Earn certification levels in My Progress as you play' },
+    sample: true,
+  },
+];
+
+export const brandOf = (id: BrandId | null | undefined) => (id ? BRANDS.find(b => b.id === id) : undefined);
+
+/* ---------------- the slots: every place a brand can appear ---------------- */
+
+export type SlotId =
+  | 'world-billboard-west'
+  | 'world-billboard-east'
+  | 'world-tractor'
+  | 'world-stall'
+  | 'classic-billboard'
+  | 'shop-fertilizer'
+  | 'shop-tank'
+  | 'shop-equipment'
+  | 'rewards'
+  | 'loan'
+  | 'training'
+  | 'certification'
+  | 'climate'
+  | 'progress-button';
+
+export type Surface = '3D farm' | 'Classic farm' | 'Shop' | 'Rewards' | 'Finance' | 'Learning' | 'Climate' | 'Home';
+
+export interface Slot {
+  id: SlotId;
+  surface: Surface;
+  /** where it is, as a player finds it */
+  where: string;
+  /** what the partner gets there */
+  format: string;
+  /** the brand on it now, or null: open to a partner */
+  brand: BrandId | null;
+}
+
+export const SLOTS: Slot[] = [
+  { id: 'world-billboard-west', surface: '3D farm', where: 'Billboard in the yard, west of the farmhouse path', format: 'Billboard: name, tagline, tap for the offer', brand: 'rutuba' },
+  { id: 'world-billboard-east', surface: '3D farm', where: 'Billboard in the yard, east of the coop', format: 'Billboard: name, tagline, tap for the offer', brand: 'kinga' },
+  { id: 'world-tractor', surface: '3D farm', where: 'The farm’s tractor, both sides of the bonnet', format: 'Tractor livery and name on the tractor', brand: 'hello-tractor' },
+  { id: 'world-stall', surface: '3D farm', where: 'The market stall’s awning, where harvests are sold', format: 'Awning branding', brand: null },
+  { id: 'classic-billboard', surface: 'Classic farm', where: 'Roadside sign on the painted farm', format: 'Rotating sign: every partner in turn', brand: null },
+  { id: 'shop-fertilizer', surface: 'Shop', where: 'Shop › Buy Fertilizer', format: 'Branded product: Rutuba Gold NPK, used for the NPK task', brand: 'rutuba' },
+  { id: 'shop-tank', surface: 'Shop', where: 'Shop › Buy Tank', format: 'Branded product: a 5,000 L tank', brand: 'tangi' },
+  { id: 'shop-equipment', surface: 'Shop', where: 'Shop › Buy Equipment', format: 'Branded product: a tool', brand: null },
+  { id: 'rewards', surface: 'Rewards', where: 'Rewards & Discounts Hub vouchers', format: 'Voucher sponsor: name on the voucher card', brand: null },
+  { id: 'loan', surface: 'Finance', where: 'Loan calculator and quote', format: '“Loan quotes with” line', brand: 'pesa' },
+  { id: 'training', surface: 'Learning', where: 'Training: book a farmer course', format: '“Courses with” line', brand: 'ujuzi' },
+  { id: 'certification', surface: 'Learning', where: 'My Progress: certification levels and every certificate', format: 'Certificate co-branding', brand: 'ujuzi' },
+  { id: 'climate', surface: 'Climate', where: 'Climate › Shocks', format: '“Crop cover with” line', brand: 'kinga' },
+  { id: 'progress-button', surface: 'Home', where: 'The PROGRESS button on the farm', format: 'Sponsor of the progress journey', brand: 'ujuzi' },
+];
+
+export const slotOf = (id: SlotId) => SLOTS.find(x => x.id === id)!;
+/** The brand on a slot, if one has signed for it. */
+export const slotBrand = (id: SlotId) => brandOf(slotOf(id).brand);
+
+/** Each Rewards-hub voucher's sponsor (the rewards slot as a whole can also be sold to one brand). */
+export const REWARD_SPONSOR: Record<string, BrandId | undefined> = {
+  fertilizer: 'rutuba',
+  seed: 'shina',
+  equipment: 'hello-tractor',
+  irrigation: 'jua',
+  phone: 'pesa',
+  solar: 'jua',
+};
+
+/** Brands that have at least one slot, or a voucher: the ones shown to players. */
+export const activeBrands = () => BRANDS.filter(b => SLOTS.some(x => x.brand === b.id) || Object.values(REWARD_SPONSOR).includes(b.id));
+
+/** The rotating sign: every brand with a slot, in turn. */
+export const ROTATION_MS = 6000;

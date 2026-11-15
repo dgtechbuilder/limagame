@@ -6,6 +6,7 @@ import type { Action, GameState } from '../state';
 import { money } from '../money';
 import { achOfSave, streakNow, unclaimed } from '../achievements/model';
 import { achClock } from '../achievements/track';
+import { currentLevel } from '../progress/model';
 
 /* The main menu: one place to reach every part of the game from any screen. It opens on top of whatever the player
    is doing, so Back (or the close button) returns to it. */
@@ -19,6 +20,7 @@ export function MainMenu({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
   const ach = achOfSave(s.ach);
   const waiting = unclaimed(ach, today);
   const streak = streakNow(ach, today);
+  const { level } = currentLevel(ach);
   const items: Item[] = intro
     ? [
         { label: 'Back to the game', note: 'Carry on where you were', run: () => dispatch({ type: 'close' }) },
@@ -32,9 +34,14 @@ export function MainMenu({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
         { label: 'Tractor', note: 'Pick a type and tool, work a plot', run: () => dispatch({ type: 'ride' }) },
         { label: 'Tractor business', note: 'Serve farms, plan routes, partners', run: () => dispatch({ type: 'biz', open: true }) },
         { label: 'Shop', note: 'Seeds, fertilizer, tools', run: () => open({ kind: 'shop', tab: 'food' }) },
-        { label: waiting ? `Achievements (${waiting})` : 'Achievements', note: streak ? `${streak}-day streak · badges, certificates` : 'Daily streak, badges, certificates', run: () => open({ kind: 'achievements' }) },
+        {
+          label: waiting ? `My Progress (${waiting})` : 'My Progress',
+          note: `${level ? `Level ${level.n} · ${level.name}` : 'Certification levels'}${streak ? ` · ${streak}-day streak` : ', badges, credits'}`,
+          run: () => open({ kind: 'achievements' }),
+        },
         { label: 'Climate', note: 'Emissions, water, soil, credits', run: () => open({ kind: 'climate' }) },
         { label: 'Rewards', note: 'Points for real discounts', run: () => open({ kind: 'rewards' }) },
+        { label: 'Partners & offers', note: 'Offers from the brands on your farm', run: () => open({ kind: 'partners', tab: 'offers' }) },
         { label: 'Training', note: (s.trainings ?? []).length ? `${(s.trainings ?? []).length} booked · book a course` : 'Book a farmer course', run: () => open({ kind: 'training' }) },
         { label: 'Loan calculator', note: 'What a farm loan costs', run: () => open({ kind: 'loan', view: 'calc' }) },
         { label: 'Farming steps', note: 'The classic maize season', run: () => open({ kind: 'steps', step: 'landprep' }) },

@@ -5,6 +5,7 @@
 
 import * as THREE from 'three';
 import { RIDE_SPEED, TRACTOR_EDGE, type ImplId } from '../tractor/data';
+import { slotBrand, type SlotId } from '../partners/data';
 import { JOB_INFO, TOOL_JOB, TRACTOR_PLOT, toolName, type PlotJob, type TractorId } from '../plots/data';
 import { CHECK_DAYS, CROP_WORDS, checkKey, cropOf, farmName, harvestFarm, hazardFor, plotGrowth, type Trial, type TrialHazard } from '../trials/model';
 import {
@@ -40,6 +41,9 @@ import {
   G,
   at,
   badgeTexture,
+  billboardTexture,
+  liveryTexture,
+  makeBillboard,
   board,
   bush,
   forest,
@@ -107,6 +111,19 @@ const TRACTOR_HOME = { x: -17.4, z: 6.4 };
 /** The mini forest: 10 acres of idle land, top right of the farm, above the pond (the pond is at x 18.4, z 0). */
 export const FOREST = { x0: 14.8, z0: -18.2, x1: 21.8, z1: -5.2, sign: { x: 13.6, z: -4.4 } };
 export const TRACTOR_BOARD = { x: -17.4, z: 8.6 };
+
+/** The partner billboards in the yard, either side of the farmhouse path (src/partners/data.ts sets the brand on each);
+    they face the camera. */
+export const BILLBOARDS: { slot: SlotId; x: number; z: number }[] = [
+  { slot: 'world-billboard-west', x: -7.6, z: -14.9 },
+  { slot: 'world-billboard-east', x: 12.6, z: -14.6 },
+];
+
+/** The tractor partner's name on the bonnet, if one has the slot. */
+function tractorLivery() {
+  const b = slotBrand('world-tractor');
+  return b ? { side: liveryTexture(b.name, b.color, b.accent), top: liveryTexture(b.name, b.color, b.accent, 180) } : undefined;
+}
 
 export const STAGE_W = 874;
 export const STAGE_H = 402;
@@ -220,7 +237,7 @@ export class FarmWorld {
   private goatState = { farm: -1, at: new THREE.Vector2(), to: new THREE.Vector2(), leaving: 0 };
   private birds: ReturnType<typeof makeBird>[] = [];
   private birdState = { farm: -1, leaving: 0 };
-  private tractor = makeTractor();
+  private tractor = makeTractor(tractorLivery());
   private oxen = new THREE.Group();
   private hire: { farms: number[]; path: THREE.Vector2[]; i: number; farmOf: number[]; home: THREE.Vector2 } | null = null;
   private pickups: Partial<Record<Place, THREE.Group>> = {};
@@ -440,6 +457,16 @@ export class FarmWorld {
     smooth.push(...place(shed(), at(-18.6, 0, 0, { ry: Math.PI / 2 })));
     smooth.push(...place(stall(), at(0, 0, 15.6, { ry: Math.PI })));
     smooth.push(...place(board(), at(4.4, 0, -12.4)));
+    // partner billboards (a slot with no partner has no billboard)
+    for (const bb of BILLBOARDS) {
+      const brand = slotBrand(bb.slot);
+      if (!brand) continue;
+      const g = makeBillboard(billboardTexture(brand));
+      g.position.set(bb.x, 0, bb.z);
+      g.scale.setScalar(1.3);
+      this.scene.add(g);
+      this.obstacles.push({ x: bb.x - 1.6, z: bb.z, r: 0.35 }, { x: bb.x + 1.6, z: bb.z, r: 0.35 });
+    }
     smooth.push(...place(pond(), at(18.4, 0, 0)));
     smooth.push(...place(trough(), at(-15, 0, -13.6)));
     // a little coop

@@ -321,6 +321,75 @@ export function signTexture(n: number) {
   });
 }
 
+/** A partner's billboard face: the brand's colours, its mark, name and tagline, and a small PARTNER tag. */
+export function billboardTexture(b: { name: string; tagline: string; color: string; accent: string; mark: string }) {
+  return canvasTex(512, 256, g => {
+    g.fillStyle = b.color;
+    g.fillRect(0, 0, 512, 256);
+    g.fillStyle = b.accent;
+    g.fillRect(0, 214, 512, 42);
+    // the mark in a round badge
+    g.fillStyle = 'rgba(255,255,255,0.18)';
+    g.beginPath();
+    g.arc(92, 106, 66, 0, Math.PI * 2);
+    g.fill();
+    g.strokeStyle = b.accent;
+    g.lineWidth = 8;
+    g.stroke();
+    g.font = '72px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(b.mark, 92, 110);
+    // the name and tagline, shrunk to fit
+    g.textAlign = 'left';
+    g.fillStyle = '#ffffff';
+    let size = 54;
+    g.font = `bold ${size}px Poppins, Arial, sans-serif`;
+    while (g.measureText(b.name).width > 330 && size > 26) g.font = `bold ${(size -= 2)}px Poppins, Arial, sans-serif`;
+    g.fillText(b.name, 172, 88);
+    size = 28;
+    g.font = `600 ${size}px Poppins, Arial, sans-serif`;
+    while (g.measureText(b.tagline).width > 320 && size > 16) g.font = `600 ${(size -= 1)}px Poppins, Arial, sans-serif`;
+    g.fillStyle = 'rgba(255,255,255,0.9)';
+    g.fillText(b.tagline, 174, 146);
+    g.fillStyle = b.color;
+    g.font = 'bold 22px Poppins, Arial, sans-serif';
+    g.fillText('PARTNER · TAP FOR THE OFFER', 24, 236);
+  });
+}
+
+/** A partner's name for the side of the tractor's bonnet. */
+export function liveryTexture(name: string, color: string, accent: string, h = 80) {
+  return canvasTex(256, h, g => {
+    g.fillStyle = color;
+    g.fillRect(0, 0, 256, h);
+    g.fillStyle = accent;
+    g.fillRect(0, h - 14, 256, 14);
+    g.fillStyle = '#ffffff';
+    let size = Math.round(h * 0.42);
+    g.font = `bold ${size}px Poppins, Arial, sans-serif`;
+    while (g.measureText(name).width > 236 && size > 16) g.font = `bold ${(size -= 2)}px Poppins, Arial, sans-serif`;
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(name, 128, (h - 14) / 2 + 2);
+  });
+}
+
+/** A billboard: two posts, a frame and a face (the face's material is the partner's texture). */
+export function makeBillboard(face: THREE.Texture) {
+  const g = new THREE.Group();
+  const wood = lam('#6e4a2a');
+  for (const x of [-1.25, 1.25]) g.add(mesh(G.box, wood, at(x, 1.1, 0, { sx: 0.16, sy: 2.2, sz: 0.16 })));
+  g.add(mesh(G.box, lam('#3a2a1c'), at(0, 2.35, -0.02, { sx: 3.3, sy: 1.75, sz: 0.12 })));
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(3.1, 1.55), new THREE.MeshBasicMaterial({ map: face }));
+  plane.position.set(0, 2.35, 0.05);
+  g.add(plane);
+  g.traverse(o => {
+    if ((o as THREE.Mesh).isMesh && o !== plane) (o as THREE.Mesh).castShadow = true;
+  });
+  return g;
+}
+
 /* ---------------- scenery pieces (built at the origin) ---------------- */
 
 export function fencePost(): Part[] {
@@ -847,7 +916,8 @@ export function makeBird() {
   return { root: g, wl, wr };
 }
 
-export function makeTractor() {
+/** The tractor; with a partner's livery, its name on both sides of the bonnet. */
+export function makeTractor(livery?: { side: THREE.Texture; top: THREE.Texture }) {
   const g = new THREE.Group();
   const yellow = lam('#f5c21b');
   const teal = lam('#1f9d8f');
@@ -862,6 +932,21 @@ export function makeTractor() {
     g.add(mesh(G.cyl, black, at(x, 0.35, 0.75, { sx: 0.7, sy: 0.25, sz: 0.7, rz: Math.PI / 2 })));
   }
   g.add(mesh(G.box, lam('#9aa3a8'), at(0, 0.3, -1.25, { sx: 1.4, sy: 0.25, sz: 0.4 })));
+  if (livery) {
+    const mat = new THREE.MeshBasicMaterial({ map: livery.side });
+    for (const side of [-1, 1]) {
+      const plate = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.3), mat);
+      plate.position.set(side * 0.56, 0.86, 0.58);
+      plate.rotation.y = (side * Math.PI) / 2;
+      g.add(plate);
+    }
+    // across the top of the bonnet, reading along the tractor (the farm's camera looks down on it)
+    const top = new THREE.PlaneGeometry(0.94, 0.66);
+    top.applyMatrix4(new THREE.Matrix4().makeBasis(new THREE.Vector3(0, 0, 1), new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0)));
+    const roof = new THREE.Mesh(top, new THREE.MeshBasicMaterial({ map: livery.top }));
+    roof.position.set(0, 1.056, 0.57);
+    g.add(roof);
+  }
   g.traverse(o => {
     if ((o as THREE.Mesh).isMesh) (o as THREE.Mesh).castShadow = true;
   });
