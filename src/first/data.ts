@@ -235,7 +235,7 @@ export const STORY: StoryPage[] = [
           maize: 'Tap the maize seeds, then tap the maize bed to sow them.',
           kale: 'Now tap the sukuma seeds, then tap the sukuma bed.',
         },
-        after: 'Seed, fertiliser and labour went in: KSh 380,000 spent.',
+        after: `Seed, fertiliser and labour went in: ${kshText(38000)} spent.`,
         cheer: { title: 'Well done, {name}!', line: 'Your maize and sukuma wiki are in the ground. The season has begun.' },
       },
       {
@@ -249,7 +249,7 @@ export const STORY: StoryPage[] = [
         id: 'harvest',
         button: 'Harvest',
         doing: 'Harvesting…',
-        after: 'Only a little was left to sell: KSh 145,000.',
+        after: `Only a little was left to sell: ${kshText(14500)}.`,
         cheer: { title: 'Congratulations!', line: 'Your first harvest is done, {name}.' },
       },
     ],

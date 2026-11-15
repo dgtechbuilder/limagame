@@ -1,3 +1,4 @@
+import { money } from '../src/money';
 import { expect, test, type Page } from '@playwright/test';
 import { boot, closeCheer, eventNames, flipMistakes, lookAtAll, playLastSeason, readStory, state, type Win } from './helpers';
 
@@ -75,7 +76,7 @@ test('the story so far: sign for the farm, play last season, press =, turn over 
   await expect(page.locator('.story-cheer-title')).toHaveText('Well done, Wanjiku!', { timeout: 5000 });
   await expect(card.locator('.story-step', { hasText: 'Weed the farm' })).toBeDisabled();
   await closeCheer(page, 'Well done, Wanjiku!');
-  await expect(card.locator('.story-caption')).toHaveText('Seed, fertiliser and labour went in: KSh 380,000 spent.');
+  await expect(card.locator('.story-caption')).toHaveText(`Seed, fertiliser and labour went in: ${money(38000)} spent.`);
   // the financial result waits for the harvest
   await expect(card.locator('.story-sum')).toHaveCount(0);
   await playLastSeason(page);
@@ -113,18 +114,18 @@ test('the farm update on arriving at the maize, and what each problem puts at st
   await expect.poll(async () => (await state(page)).fs.phase).toBe('update');
   await expect(card).toContainText('Week 7 of the season');
   await expect(card).toContainText('running for 7 weeks this season, Wanjiku');
-  await expect(card).toContainText('KSh 214,000');
+  await expect(card).toContainText(money(21400));
   await expect(card).toContainText('lose most of that money');
   await expect(card.locator('.update-crops li')).toHaveCount(2);
-  await expect(card).toContainText('KSh 100,000 at stake');
-  await expect(card).toContainText('KSh 50,000 at stake');
+  await expect(card).toContainText(`${money(10000)} at stake`);
+  await expect(card).toContainText(`${money(5000)} at stake`);
   // Back from the update returns to the walk; on to the check, the stake shows while the player reads the maize
   await page.locator('.nav-btn[aria-label="Back"]').click();
   await expect.poll(async () => (await state(page)).fs.phase).toBe('walk1');
   await walkToBed(page);
-  await expect(page.locator('.stake')).toHaveText('!This problem will cost you about KSh 100,000 of harvest if it is left alone.');
+  await expect(page.locator('.stake')).toHaveText(`!This problem will cost you about ${money(10000)} of harvest if it is left alone.`);
   await review(page, 'first', true);
-  await expect(page.locator('.stake.is-saved')).toContainText('about KSh 100,000 of harvest saved', { timeout: 10_000 });
+  await expect(page.locator('.stake.is-saved')).toContainText(`about ${money(10000)} of harvest saved`, { timeout: 10_000 });
   expect(await eventNames(page)).toContain('farm_update_shown');
 });
 

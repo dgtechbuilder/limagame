@@ -348,7 +348,7 @@ function HelpTab({ s, dispatch }: Props) {
           Open
         </GoldButton>
       </Row>
-      <Row title="Reset progress" body={confirmReset ? 'This erases your farmer, seasons, coins and points on this device. Your settings stay.' : 'Start again with a new farmer.'}>
+      <Row title="Reset progress" body={confirmReset ? 'This erases your farmer, seasons, money and points on this device. Your settings stay.' : 'Start again with a new farmer.'}>
         <div style={{ display: 'flex', gap: 6 }}>
           {confirmReset && (
             <button type="button" className="set-link" onClick={() => setConfirmReset(false)}>

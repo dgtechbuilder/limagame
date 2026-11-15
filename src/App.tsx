@@ -136,6 +136,19 @@ export default function App() {
     return () => window.removeEventListener('pointerdown', warmSfx);
   }, [s.settings.sound]);
 
+  // the daily climate payment (climate/land.ts): a day that has ended is paid on opening the game, on coming back
+  // to it, and within a minute of midnight while it is open
+  useEffect(() => {
+    const tick = () => document.visibilityState !== 'hidden' && dispatch({ type: 'climateTick' });
+    tick();
+    const id = window.setInterval(tick, 60_000);
+    document.addEventListener('visibilitychange', tick);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', tick);
+    };
+  }, [dispatch]);
+
   // a badge, a certificate or a new day of the streak: a pop-up for a few seconds
   useEffect(() => {
     if (!s.award) return;

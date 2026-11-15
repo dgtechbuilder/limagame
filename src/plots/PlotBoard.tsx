@@ -118,7 +118,7 @@ export function PlotBoard({
                     <em>{op.bestFor}</em>
                   </span>
                   <span className="pb-opt-side">
-                    <i>{price ? `${money(price)} coins` : 'Free'}</i>
+                    <i>{price ? `${money(price)}` : 'Free'}</i>
                     {at >= 0 && <small>This farm</small>}
                   </span>
                 </button>
@@ -126,7 +126,7 @@ export function PlotBoard({
             );
           })}
         </ul>
-        {growing && kind !== 'sprayer' && <p className="pb-note">Changing a seed or fertilizer now pays (or refunds) the difference. You have {money(coins)} coins.</p>}
+        {growing && kind !== 'sprayer' && <p className="pb-note">Changing a seed or fertilizer now pays (or refunds) the difference. You have {money(coins)}.</p>}
       </div>
     </div>
   );

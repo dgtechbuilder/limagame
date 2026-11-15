@@ -44,7 +44,7 @@ export function MainMenu({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
     <ModalShell frame="shop" x={178} y={28} title="Main menu" close={[633, 56]} onClose={() => dispatch({ type: 'close' })} isMenu>
       <div className="panel" style={{ left: 213, top: 78, width: 446, height: 254, padding: '12px 18px' }}>
         <p className="section-title">
-          {s.farmer?.name ?? 'Farmer'} · Level {s.level} <span style={{ fontWeight: 400, opacity: 0.75 }}>· {money(s.coins)} coins · {fmt(s.points)} points</span>
+          {s.farmer?.name ?? 'Farmer'} · Level {s.level} <span style={{ fontWeight: 400, opacity: 0.75 }}>· {money(s.coins)} · {fmt(s.points)} points</span>
         </p>
         <MenuScroll>
           {items.map(it => (

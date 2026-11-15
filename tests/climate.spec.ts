@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { boot, scenario, state } from './helpers';
+import { money } from '../src/money';
+import { FARM_ACRES } from '../src/farmSize';
 
 /* Climate tracking: every job records its climate effect, and the Climate page shows it. */
 
@@ -39,7 +41,7 @@ test('the CLIMATE button sits beside MISSION and opens the Climate page; Back, M
 test('a Farm Moja task is tracked: manure stores carbon, earns credits and shows in Activity', async ({ page }) => {
   await boot(page);
   await jump(page, { view: 'classic', modal: { kind: 'steps', step: 'landprep' } });
-  await page.getByRole('button', { name: 'Organic Manure, 400 coins' }).click();
+  await page.getByRole('button', { name: `Organic Manure, ${money(40)}` }).click();
   await expect.poll(async () => (await climate(page)).total.stored).toBe(40);
   const c = await climate(page);
   expect(c.total.co2).toBeCloseTo(6, 5);
@@ -47,7 +49,7 @@ test('a Farm Moja task is tracked: manure stores carbon, earns credits and shows
   expect(c.log[0].label).toContain('Organic Manure');
 
   // a chemical task pollutes
-  await page.getByRole('button', { name: 'Herbicide, 400 coins' }).click();
+  await page.getByRole('button', { name: `Herbicide, ${money(40)}` }).click();
   await expect.poll(async () => (await climate(page)).total.pollution).toBe(8);
 
   await act(page, { type: 'open', modal: { kind: 'climate', tab: 'activity' } });
@@ -58,7 +60,7 @@ test('a Farm Moja task is tracked: manure stores carbon, earns credits and shows
 test('six farms: planting records each plan; tractor work and drives burn diesel; the harvest closes the cycle', async ({ page }) => {
   await boot(page);
   // a planned cycle (the first one plants itself: maize and sukuma wiki), so the plans can differ
-  await jump(page, { view: 'classic', coins: 5000, trialHistory: [{ cycle: 1, farms: 2, best: 0, bags: [5, 5], profit: [0, 0] }] });
+  await jump(page, { view: 'classic', coins: 100000, trialHistory: [{ cycle: 1, farms: 2, best: 0, bags: [5, 5], profit: [0, 0] }] });
   await act(page, { type: 'trialNew' });
   // six farms may not share a plan: one change each, then Farm 2's own
   await act(page, { type: 'trialSuggest' });
@@ -76,8 +78,9 @@ test('six farms: planting records each plan; tractor work and drives burn diesel
   await act(page, { type: 'fieldMark', farm: 1, job: 'prep', bits: mask(0), tractor: true, rig: { tractor: 'compact', tool: 'plough', job: 'prep' } });
   await act(page, { type: 'fieldMark', farm: 1, job: 'prep', bits: mask(1), tractor: true, rig: { tractor: 'large', tool: 'harrow', job: 'prep' } });
   c = await climate(page);
-  // five plots are a quarter of the farm; a compact tractor burns 6/9 of the standard's diesel, a large one 14/9
-  const litres = (13 / 6) * 0.25 * (6 / 9 + 14 / 9);
+  // five plots are a quarter of a 4-acre farm (13 L an acre to plough); a compact tractor burns 6/9 of the standard's
+  // diesel, a large one 14/9
+  const litres = 13 * FARM_ACRES * 0.25 * (6 / 9 + 14 / 9);
   expect(c.total.diesel).toBeCloseTo(litres, 3);
   expect(c.co2By.fuel).toBeCloseTo(litres * 2.68, 3);
 
@@ -122,4 +125,40 @@ test('credits past a climate level pay points once', async ({ page }) => {
   expect(s.climate.level).toBe(1);
   expect(s.points).toBe(100);
   expect(s.toast.text).toContain('Grower');
+});
+
+test('Land & pay and Farm areas: the six farms plot by plot, every area, and the day’s credits paid in dollars at midnight', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-11-15T23:57:00') });
+  await boot(page);
+  await jump(page, { view: 'classic', coins: 1000 });
+  // today's work: organic manure stores 40 kg (4 credits); the first action starts the day's count
+  await act(page, { type: 'task', step: 'landprep', id: 'lp-manure', price: 40, name: 'Organic Manure' });
+  let s = await state(page);
+  expect(s.climate.pay.day).toBe('2026-11-15');
+  expect(s.coins).toBe(960);
+
+  await act(page, { type: 'open', modal: { kind: 'climate', tab: 'land' } });
+  await expect.poll(() => page.evaluate(() => window.location.hash)).toBe('#/climate/land-and-pay');
+  await expect(dialog(page).getByRole('button', { name: 'Land & pay', exact: true })).toHaveAttribute('aria-current', 'page');
+  // no crop yet: all 120 plots idle; the forest and the pen still earn
+  await expect(dialog(page).getByRole('img', { name: 'Land today: 0 plots farmed, 0 bare, 120 idle' })).toBeVisible();
+  await expect(dialog(page).getByText(/About \$\d+\.\d\d tonight/)).toBeVisible();
+
+  // past midnight: the game's minute check pays the day's credits: the manure's 4, the forest's 11, the pen's 0.1
+  await page.clock.fastForward('05:00');
+  await expect.poll(async () => (await state(page)).coins).toBeGreaterThan(960);
+  s = await state(page);
+  const p = s.climate.pay.payments[0];
+  expect(p).toMatchObject({ label: 'Sun 15 Nov', idle: 120 });
+  expect(p.credits).toBeCloseTo(4 + 11 + 0.1, 6);
+  expect(s.coins).toBeCloseTo(960 + p.coins, 6);
+  expect(s.climate.pay.day).toBe('2026-11-16');
+  await expect(dialog(page).getByText(`+${money(p.coins)}`, { exact: true })).toBeVisible();
+
+  // every area of the farm, evaluated
+  await dialog(page).getByRole('button', { name: 'Farm areas', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => window.location.hash)).toBe('#/climate/farm-areas');
+  const table = dialog(page).getByRole('table', { name: 'Every area of the farm, today' });
+  for (const name of ['Six farms', 'Farm Moja', 'Mini forest', 'Grazing pen', 'Cows and hens', 'Pond', 'Homestead']) await expect(table.getByRole('rowheader', { name: new RegExp(name) })).toBeVisible();
+  await expect(table.getByRole('row', { name: /Mini forest/ })).toContainText('+110 kg');
 });

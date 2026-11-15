@@ -5,6 +5,7 @@
    problem costs when it is caught or missed) is in the tables below, so an agronomist can review and tune them
    without touching any code. The numbers are illustrative until that review is done. */
 
+import { FARM_SCALE } from '../farmSize';
 import {
   FERTS,
   MISFIT_COST,
@@ -66,7 +67,8 @@ export interface PlanStep {
   options: PlanOption[];
 }
 
-const o = (id: string, label: string, does: string, cost: number, factor: number): PlanOption => ({ id, label, does, cost, factor });
+/** A plan option; its cost is given for the base farm size and paid for the farm's real size (src/farmSize.ts). */
+const o = (id: string, label: string, does: string, cost: number, factor: number): PlanOption => ({ id, label, does, cost: Math.round(cost * FARM_SCALE), factor });
 
 /** Coins per L/m² per week of watering, for one farm over the whole cycle. */
 export const WATER_COST_PER_L = 4;
@@ -240,7 +242,7 @@ export function weightsFor(p: Plan, f: Forecast, day: number): Partial<Record<Tr
 
 /** What a problem costs. `missed`: share of the yield lost when it is not caught that day. `caught`: lost when it is
     read right and treated. `treat`: coins the treatment costs. Weather can't be treated, only recovered from. */
-export const DAMAGE: Record<TrialHazard, { missed: number; caught: number; treat: number; fix: string }> = {
+const DAMAGE_BASE: Record<TrialHazard, { missed: number; caught: number; treat: number; fix: string }> = {
   healthy: { missed: 0, caught: 0, treat: 0, fix: '' },
   drought: { missed: 0.13, caught: 0.04, treat: 40, fix: 'Emergency watering' },
   flood: { missed: 0.1, caught: 0.04, treat: 30, fix: 'A drain dug' },
@@ -258,6 +260,10 @@ export const DAMAGE: Record<TrialHazard, { missed: number; caught: number; treat
   harvestEarly: { missed: 0, caught: 0, treat: 0, fix: '' },
   harvestLate: { missed: 0, caught: 0, treat: 0, fix: '' },
 };
+/** Treatments are paid for the whole farm: their base cost times the farm's size (src/farmSize.ts). */
+export const DAMAGE: Record<TrialHazard, { missed: number; caught: number; treat: number; fix: string }> = Object.fromEntries(
+  Object.entries(DAMAGE_BASE).map(([h, d]) => [h, { ...d, treat: Math.round(d.treat * FARM_SCALE) }]),
+) as typeof DAMAGE_BASE;
 
 /** Pests and disease are only treated on a farm whose plan includes pest control. */
 export const PEST_HAZARDS: TrialHazard[] = ['armyworm', 'aphids', 'disease'];
@@ -411,8 +417,9 @@ export interface TrialSummary {
   profit: number[];
 }
 
-export const POTENTIAL_BAGS = 6; // 90 kg bags of maize from one farm (a sixth of an acre) when everything goes right
-export const BEANS_BAGS = 0.8;
+/** 90 kg bags of maize from one farm when everything goes right: 6 from a sixth of an acre, so 144 from 4 acres (36 an acre). */
+export const POTENTIAL_BAGS = 6 * FARM_SCALE;
+export const BEANS_BAGS = 0.8 * FARM_SCALE;
 export const BEANS_PRICE = 350;
 export const PRICE_BY_QUALITY = [0, 220, 260, 300, 340, 360];
 export const farmName = (i: number) => `Farm ${i + 1}`;
@@ -734,7 +741,7 @@ export function explain(t: Trial, results: FarmResult[]): { best: number; worst:
   // the farm that grew most is not always the one that made most
   const rich = results.map((_, i) => i).sort((a, b) => results[b].profit - results[a].profit)[0];
   if (rich !== best) {
-    lines.push(`But ${farmName(rich)} made the most money: ${money(results[rich].profit)} coins against ${money(B.profit)}, because it cost less to grow.`);
+    lines.push(`But ${farmName(rich)} made the most money: ${money(results[rich].profit)} against ${money(B.profit)}, because it cost less to grow.`);
   }
   return { best, worst, lines };
 }
@@ -824,7 +831,7 @@ export function planProblem(t: Pick<Trial, 'plans' | 'plots'>, coins: number): s
     if (twin >= 0) return `${farmName(i)} has the same plan and plots as ${farmName(twin)}. Change at least one thing.`;
   }
   const cost = trialCost(t);
-  if (cost > coins) return `These plans cost ${money(cost)} coins and you have ${money(coins)}.`;
+  if (cost > coins) return `These plans cost ${money(cost)} and you have ${money(coins)}.`;
   return null;
 }
 

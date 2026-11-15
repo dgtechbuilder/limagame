@@ -1,3 +1,4 @@
+import { money } from '../src/money';
 import { expect, type Page } from '@playwright/test';
 
 /* Helpers for the play-tests: the game is driven through its real screens; window.__lima (src/dev/hook.ts) sets up
@@ -153,7 +154,7 @@ export async function playLastSeason(page: Page) {
   }
   await expect(page.locator('.story-sum-title')).toHaveText('Your first harvest: here is the financial result');
   await page.getByRole('button', { name: 'Equals: see how the season went' }).click();
-  await expect(page.locator('.story-sum .is-lost')).toContainText('KSh 235,000');
+  await expect(page.locator('.story-sum .is-lost')).toContainText(money(23500));
 }
 
 /** The story's page 3: turn over each mistake to see what to do instead. */
