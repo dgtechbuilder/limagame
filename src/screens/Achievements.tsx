@@ -303,10 +303,10 @@ function Certificates({ s, v }: { s: GameState; v: AchView }) {
             <b>Certification levels</b>: from day 1 to week 4, on the Journey tab
           </li>
           <li>
-            <b>Mastery</b>: every bronze, silver or gold badge in one part of the game
+            <b>Mastery</b>: every badge tier in one part of the game
           </li>
         </ul>
-        {v.days === 0 && <p className="set-body">Do one job on the farm today to count your first day.</p>}
+        {v.days === 0 && <p className="set-body">Do one farm job today to count day one.</p>}
       </div>
     );
   }
@@ -457,7 +457,7 @@ function Journey({ s, dispatch, p, go }: { s: GameState; dispatch: Dispatch<Acti
             </p>
           </>
         ) : (
-          <p className="set-title">Every certification level reached. Keep going for gold badges in every module.</p>
+          <p className="set-title">Every level reached. Go for gold in every module.</p>
         )}
         {toClaim.length > 1 && (
           <button type="button" className="ach-claim" onClick={() => dispatch({ type: 'achClaimAll' })}>
@@ -534,7 +534,7 @@ function Modules({ dispatch, p }: { dispatch: Dispatch<Action>; p: ProgressView 
           );
         })}
       </div>
-      <p className="pg-foot">Badges pay credits into their module: day-one 1, bronze 2, silver 4, gold 8. Each course booked pays 5.</p>
+      <p className="pg-foot">Badge credits: day-one 1, bronze 2, silver 4, gold 8. A booked course pays 5.</p>
     </div>
   );
 }

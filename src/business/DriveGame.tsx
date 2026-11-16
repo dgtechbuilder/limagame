@@ -137,7 +137,7 @@ export function DriveGame({ drive, farm, job, onDone }: DriveProps) {
         onPointerUp={() => (ctl.current.hold = false)}
         onPointerCancel={() => (ctl.current.hold = false)}
       />
-      <p className="drv-tip">{drive.kind === 'field' ? `${toolName(drive.tool)}: tap and hold where to go. Work every strip once; the hub driver manages ${Math.round(BASELINE * 100)}%.` : `Trailer: tap a lane to miss the potholes. Every hit drops a bag; the hub driver keeps ${Math.round(BASELINE * 100)}%.`}</p>
+      <p className="drv-tip">{drive.kind === 'field' ? `${toolName(drive.tool)}: tap and hold where to go. Beat the hub driver’s ${Math.round(BASELINE * 100)}%.` : `Trailer: tap a lane to miss potholes. Each hit drops a bag.`}</p>
     </div>
   );
 }

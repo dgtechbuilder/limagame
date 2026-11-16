@@ -8,9 +8,9 @@ import type { Action, GameState } from '../state';
 type Props = { s: GameState; dispatch: Dispatch<Action> };
 
 const POINTS = [
-  ['Farm step by step', 'Six steps from land prep to harvest, each a real maize practice.'],
-  ['Good practice, bigger harvest', 'Recommended tasks keep the crop healthy. Skipping them costs bags.'],
-  ['Sell smart, earn rewards', 'Pick when to harvest, how to store and whether to process. Points unlock real partner discounts.'],
+  ['Farm step by step', 'Six real maize steps, land prep to harvest.'],
+  ['Good practice, bigger harvest', 'Recommended tasks keep the crop healthy.'],
+  ['Sell smart, earn rewards', 'Choose harvest timing, storage and processing. Points unlock partner discounts.'],
 ];
 
 /** First-run introduction. */

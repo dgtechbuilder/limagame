@@ -95,14 +95,14 @@ export const SHAMBAS: Record<string, ShambaReview> = {
     rows: 5,
     hints: 'full',
     captions: {
-      crop: 'Compare a plant from the front row with one from the middle.',
-      pests: 'Look down into the leaf funnel.',
-      soil: 'Feel the soil between the rows.',
-      layout: 'See which rows look different from above.',
+      crop: 'Compare a front-row plant with a middle one.',
+      pests: 'Look into the funnel.',
+      soil: 'Feel the soil.',
+      layout: 'Which rows differ from above?',
     },
-    clue: { part: 'pests', text: 'See the holes and the sawdust in the funnel, {name}? Something is eating it.' },
+    clue: { part: 'pests', text: 'Holes and sawdust in the funnel, {name}: something is eating it.' },
     right: 'Fall armyworm! Well read, {name}.',
-    practice: 'A pinch of ash or sand in each funnel stops them early.',
+    practice: 'Ash or sand in each funnel stops them early.',
     retry: 'lower',
     atStake: 10000,
   },
@@ -110,7 +110,7 @@ export const SHAMBAS: Record<string, ShambaReview> = {
     id: 'lower',
     crop: 'maize',
     title: "{name}'s back maize",
-    intro: 'Same maize, {name}. Look closely at every part this time.',
+    intro: 'Same maize, {name}. Look closely at every part.',
     condition: 'armyworm',
     correct: 'pests',
     photos: { pests: 'armyworm/pests', soil: '_normal/soil' },
@@ -118,21 +118,21 @@ export const SHAMBAS: Record<string, ShambaReview> = {
     rows: 5,
     hints: 'full',
     captions: {
-      crop: 'Compare a plant from the front row with one from the back.',
-      pests: 'Look down into the leaf funnel.',
-      soil: 'Feel the soil between the rows.',
-      layout: 'See which rows look different from above.',
+      crop: 'Compare a front-row plant with a back one.',
+      pests: 'Look into the funnel.',
+      soil: 'Feel the soil.',
+      layout: 'Which rows differ from above?',
     },
     clue: { part: 'pests', text: 'Ragged holes and sawdust mean caterpillars, {name}.' },
     right: 'Fall armyworm! You caught it, {name}.',
-    practice: 'A pinch of ash or sand in each funnel stops them early.',
+    practice: 'Ash or sand in each funnel stops them early.',
     atStake: 10000,
   },
   sukuma: {
     id: 'sukuma',
     crop: 'kale',
     title: "{name}'s sukuma wiki",
-    intro: 'Now your sukuma wiki, {name}. Look at every part first.',
+    intro: 'Now your sukuma wiki, {name}. Look at every part.',
     condition: 'drought',
     correct: 'water',
     photos: { soil: 'drought/soil' },
@@ -147,7 +147,7 @@ export const SHAMBAS: Record<string, ShambaReview> = {
     },
     clue: { part: 'soil', text: 'No holes, {name}, but the soil at the back is cracked and dry.' },
     right: 'They are thirsty! Good eye, {name}.',
-    practice: 'Water at the roots in the cool of the morning.',
+    practice: 'Water the roots in the cool morning.',
     atStake: 5000,
   },
 };
@@ -210,8 +210,8 @@ export const STORY: StoryPage[] = [
     id: 'bought',
     title: 'A farm of my own',
     lines: [
-      'For years, {name} saved from a job in town. Last year, the savings bought this farm: red soil, a water tank and a small hut.',
-      'The plan was simple: plant maize and sukuma wiki, come back at harvest, and sell.',
+      'For years, {name} saved from a job in town, and bought this farm: red soil, a water tank, a small hut.',
+      'The plan: plant maize and sukuma wiki, return at harvest, sell.',
     ],
     deed: {
       title: 'Title deed',
@@ -225,7 +225,7 @@ export const STORY: StoryPage[] = [
   {
     id: 'failed',
     title: 'Last season’s Harvest results',
-    lines: ['Last season, a step at a time. Press each step to play it, {name}.'],
+    lines: ['Last season, step by step. Press each one, {name}.'],
     replay: [
       {
         id: 'plant',
@@ -236,13 +236,13 @@ export const STORY: StoryPage[] = [
           kale: 'Now tap the sukuma seeds, then tap the sukuma bed.',
         },
         after: `Seed, fertiliser and labour went in: ${kshText(38000)} spent.`,
-        cheer: { title: 'Well done, {name}!', line: 'Your maize and sukuma wiki are in the ground. The season has begun.' },
+        cheer: { title: 'Well done, {name}!', line: 'Your crops are in. The season has begun.' },
       },
       {
         id: 'care',
         button: 'Weed the farm',
         doing: 'Pulling the weeds…',
-        after: 'The weeds were out, but nobody looked closely: caterpillars were eating the maize, and the sukuma wiki at the back dried out.',
+        after: 'Weeded, but nobody looked closely: caterpillars ate the maize, and the back sukuma dried out.',
         cheer: { title: 'Good job!', line: 'The weeds are out of your farm, {name}.' },
       },
       {
@@ -264,12 +264,12 @@ export const STORY: StoryPage[] = [
   {
     id: 'learn',
     title: 'What went wrong',
-    lines: ['This season, {name} learns from each of last season’s mistakes.'],
+    lines: ['This season, {name} learns from each mistake.'],
     tapHint: 'Tap each mistake to see what to do instead.',
     mistakes: [
-      { icon: 'pests', what: 'Checked the crops only now and then.', lesson: 'Walk every bed every 2 days. Look in the leaf funnels and under the leaves, and treat pests that same day.' },
-      { icon: 'water', what: 'Watered when it was easy.', lesson: 'Feel the soil every 2 days; water at the roots when it is dry a finger deep. The soil changes after planting, weeding and top-dressing: check again after each.' },
-      { icon: 'harvestEarly', what: 'Sold everything at harvest, at the lowest price.', lesson: 'Dry the maize, store it in sealed bags, and sell in batches as the price rises.' },
+      { icon: 'pests', what: 'Checked the crops only now and then.', lesson: 'Walk every bed every 2 days. Check funnels and under leaves; treat pests the same day.' },
+      { icon: 'water', what: 'Watered when it was easy.', lesson: 'Feel the soil every 2 days; water the roots when dry a finger deep. Recheck after planting, weeding and top-dressing.' },
+      { icon: 'harvestEarly', what: 'Sold everything at harvest, at the lowest price.', lesson: 'Dry the maize, store it sealed, and sell in batches as the price rises.' },
     ],
     button: 'Start with my maize',
   },
@@ -294,8 +294,8 @@ export const FARM_UPDATE = {
   atThisRate: 6000,
   title: 'How your farm is doing',
   lines: [
-    'Your farm has been running for {weeks} weeks this season, {name}, and you have spent {spent} on seed, fertilizer and labour.',
-    'The way it is going, you will lose most of that money again.',
+    'Your farm has been running for {weeks} weeks this season, {name}. You have spent {spent}.',
+    'At this rate, you will lose most of that money again.',
   ],
   crops: [
     { crop: 'maize' as Crop, name: 'Maize', sign: 'Some rows look ragged.', stake: 'first' },
@@ -305,5 +305,5 @@ export const FARM_UPDATE = {
 };
 
 /** What a problem puts at stake, in words for the check screen. */
-export const stakeLine = (n: number) => `This problem will cost you about ${ksh(n)} of harvest if it is left alone.`;
+export const stakeLine = (n: number) => `Left alone, this costs about ${ksh(n)} of harvest.`;
 export const savedLine = (n: number) => `Caught in time: about ${ksh(n)} of harvest saved.`;

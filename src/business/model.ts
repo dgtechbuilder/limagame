@@ -74,9 +74,9 @@ export const TOOLS: Record<BizTool, ToolInfo> = {
   ridger: fromImpl('ridger', 'landprep'),
   planter: fromImpl('planter', 'planting'),
   spreader: fromImpl('spreader', 'fertilizer'),
-  trailer: { name: 'Trailer', activity: 'transport', does: 'Hauls inputs to the farm and the harvest to the road, in season and out of it.', hire: 1500, lpa: 2.5, manual: 3 },
+  trailer: { name: 'Trailer', activity: 'transport', does: 'Hauls inputs in and the harvest out, all year.', hire: 1500, lpa: 2.5, manual: 3 },
   harvester: fromImpl('maizeH', 'harvest', 'Tractor harvester'),
-  combine: { name: 'Combine harvester', activity: 'harvest', does: 'Cuts and threshes wheat and barley in one pass. A separate asset, not a tractor.', hire: 4500, lpa: 9, manual: 14 },
+  combine: { name: 'Combine harvester', activity: 'harvest', does: 'Cuts and threshes wheat and barley in one pass.', hire: 4500, lpa: 9, manual: 14 },
 };
 export const toolName = (tool: BizTool) => TOOLS[tool].name;
 export const hireOf = (tool: BizTool) => TOOLS[tool].hire;
@@ -100,11 +100,11 @@ export interface CropInfo {
 /** Narok's planting calendar (long rains March to May, short rains October to December). Seeded from public
     agronomy for Narok County; to be signed off by Hello Tractor's agronomy team before the territory ships. */
 export const CROPS: Record<Crop, CropInfo> = {
-  maize: { name: 'Maize', window: { landprep: [1, 2, 3], planting: [3, 4], fertilizer: [5, 6], harvest: [8, 9, 10] }, harvestTool: 'harvester', prepTool: 'plough', note: 'Planted at the start of the long rains; top-dressed knee high; harvested from August.' },
+  maize: { name: 'Maize', window: { landprep: [1, 2, 3], planting: [3, 4], fertilizer: [5, 6], harvest: [8, 9, 10] }, harvestTool: 'harvester', prepTool: 'plough', note: 'Planted with the long rains; harvested from August.' },
   wheat: { name: 'Wheat', window: { landprep: [3, 4, 5], planting: [5, 6], fertilizer: [7, 8], harvest: [10, 11, 12] }, harvestTool: 'combine', prepTool: 'harrow', note: 'Narok’s big crop: planted May to June, combined from October.' },
-  barley: { name: 'Barley', window: { landprep: [3, 4], planting: [5, 6], fertilizer: [7], harvest: [10, 11] }, harvestTool: 'combine', prepTool: 'harrow', note: 'Grown on contract for the breweries; the same calendar as wheat, a little tighter.' },
+  barley: { name: 'Barley', window: { landprep: [3, 4], planting: [5, 6], fertilizer: [7], harvest: [10, 11] }, harvestTool: 'combine', prepTool: 'harrow', note: 'Brewery contract crop; a tighter wheat calendar.' },
   beans: { name: 'Beans', window: { landprep: [2, 3, 9], planting: [3, 4, 10], fertilizer: [5, 11], harvest: [6, 7, 12, 1] }, harvestTool: 'harvester', prepTool: 'harrow', note: 'Two seasons a year, with the long and the short rains.' },
-  potatoes: { name: 'Potatoes', window: { landprep: [2, 3, 8, 9], planting: [3, 4, 9, 10], fertilizer: [5, 11], harvest: [7, 8, 12, 1] }, harvestTool: 'harvester', prepTool: 'ridger', note: 'Ridged, planted twice a year; the harvest is heavy to carry.' },
+  potatoes: { name: 'Potatoes', window: { landprep: [2, 3, 8, 9], planting: [3, 4, 9, 10], fertilizer: [5, 11], harvest: [7, 8, 12, 1] }, harvestTool: 'harvester', prepTool: 'ridger', note: 'Ridged, planted twice a year; a heavy harvest.' },
 };
 export const cropName = (c: Crop) => CROPS[c].name;
 
@@ -234,11 +234,11 @@ export interface Partner {
 
 /** Game partners, each a real kind of partner a tractor business works with. */
 export const PARTNERS: Partner[] = [
-  { id: 'kimani', name: 'Kimani Tractor Hire', kind: 'Tractor owner', does: 'Takes the bookings you pass on, with his own tractor. You keep 10% of the hire, and the farmer is helped.', fee: 0, level: 1 },
+  { id: 'kimani', name: 'Kimani Tractor Hire', kind: 'Tractor owner', does: 'Takes the bookings you pass on. You keep 10% of the hire.', fee: 0, level: 1 },
   { id: 'coop', name: 'Narok Farmers’ Co-op', kind: 'Farmers’ co-op', does: 'Sends you two more farms’ bookings every day.', fee: 5000, level: 2 },
   { id: 'fuel', name: 'Rafiki Fuel', kind: 'Fuel station', does: 'Sells you diesel 10% cheaper.', fee: 3000, level: 2 },
-  { id: 'county', name: 'County Roads Office', kind: 'Hires tractors', does: `Rents your tractor for a whole day, with your driver: ${kshText(12000)}, no farms that day.`, fee: 0, level: 2 },
-  { id: 'app', name: 'Hello Tractor app', kind: 'Booking app', does: 'Puts your stops in the shortest order with one tap.', fee: 4000, level: 3 },
+  { id: 'county', name: 'County Roads Office', kind: 'Hires tractors', does: `Rents your tractor and driver for a day: ${kshText(12000)}.`, fee: 0, level: 2 },
+  { id: 'app', name: 'Hello Tractor app', kind: 'Booking app', does: 'Orders your stops shortest-first in one tap.', fee: 4000, level: 3 },
 ];
 export const partnerOf = (id: PartnerId) => PARTNERS.find(p => p.id === id)!;
 export const FUEL_DISCOUNT = 0.1;
@@ -254,8 +254,8 @@ export const SHOP: { id: FleetItem; name: string; does: string; price: number; l
   { id: 'spreader', name: 'Fertilizer spreader', does: TOOLS.spreader.does, price: 20000, level: 2 },
   { id: 'planter', name: 'Maize planter', does: TOOLS.planter.does, price: 35000, level: 2 },
   { id: 'harvester', name: 'Tractor harvester', does: TOOLS.harvester.does, price: 60000, level: 3 },
-  { id: 'large', name: 'Large tractor', does: 'Dispatch the hub’s large tractor: 30% faster, so more acres fit in a day. It burns 50% more diesel.', price: 90000, level: 3 },
-  { id: 'combine', name: 'Combine harvester', does: 'Harvests wheat and barley. Not financed under PAYG: it comes once you own both tractors.', price: 150000, level: 4 },
+  { id: 'large', name: 'Large tractor', does: '30% faster, so more acres a day; 50% more diesel.', price: 90000, level: 3 },
+  { id: 'combine', name: 'Combine harvester', does: 'Harvests wheat and barley. Opens once you own both tractors.', price: 150000, level: 4 },
 ];
 
 /* ---------------- growing the business ---------------- */
@@ -504,11 +504,11 @@ export function requestsFor(b: Pick<Biz, 'day' | 'helped' | 'partners' | 'booked
 
 /** The sub-optimal practice Campbell flags for each activity a farmer has not booked, and the advice to deliver. */
 const FLAGS: Record<Activity, { flag: string; advice: string }> = {
-  landprep: { flag: 'plans to break the ground by hand, three weeks of hoeing', advice: 'a tractor turns it in a morning, ready for the rains' },
-  planting: { flag: 'will plant by hand two weeks after the land is ready', advice: 'plant with the tractor right after land prep, inside the window, and every seed comes up together' },
-  fertilizer: { flag: 'puts fertilizer on at planting only, nothing in the growing season', advice: 'a top-dressing while the crop grows is where the yield is' },
-  transport: { flag: 'hauls seed and fertilizer in, and the harvest out, a sack at a time on a donkey', advice: 'one trailer load does the whole trip the same day' },
-  harvest: { flag: 'will harvest by hand over a month, losing grain to the rain', advice: 'a tractor harvest brings it in while the price is good' },
+  landprep: { flag: 'plans three weeks of hoeing by hand', advice: 'a tractor does it in a morning' },
+  planting: { flag: 'will plant by hand, two weeks late', advice: 'plant by tractor right after land prep, so every seed comes up together' },
+  fertilizer: { flag: 'fertilizes at planting only', advice: 'a top-dressing mid-season is where the yield is' },
+  transport: { flag: 'hauls everything a sack at a time by donkey', advice: 'one trailer load does the whole trip the same day' },
+  harvest: { flag: 'will harvest by hand for a month, losing grain to rain', advice: 'a tractor harvest beats the rain and the price drop' },
 };
 
 export interface Scan {
@@ -1033,12 +1033,12 @@ export function planDay(b: Biz, requests: ReqKey[], bookings: Bookings, route: s
   const allField = mineAll.reduce((n, x) => n + (x.activity === 'transport' ? 0 : x.part.acres), 0);
   const noTool = mineAll.find(x => !b.tools.includes(x.part.tool));
   let problem: string | null = null;
-  if (noTool) problem = `You have no ${toolName(noTool.part.tool).toLowerCase()} for ${noTool.client.name}'s ${noTool.part.name.toLowerCase()}: pass it to a partner, or buy one in Fleet.`;
+  if (noTool) problem = `No ${toolName(noTool.part.tool).toLowerCase()} for ${noTool.client.name}'s ${noTool.part.name.toLowerCase()}: pass it on, or buy one in Fleet.`;
   else if (!mineFarms.length && !theirs.length) problem = 'Book at least one job: tap a farm on the map.';
-  else if (mineFarms.length < needed) problem = `Book at least ${needed} farms for your tractor to visit: ${mineFarms.length} so far.`;
-  else if (fitH > DAY_HOURS + 1e-9) problem = `That is ${workH.toFixed(1)} hours of work, and the driving still to add: a day has ${DAY_HOURS}. Pass a job to a partner, or drop one.`;
-  else if (allField > rig.capacity + 1e-9) problem = `${rig.name[0].toUpperCase()}${rig.name.slice(1)} can do ${rig.capacity} acres of field work a day: that is ${allField.toFixed(1)}. Pass a job to a partner.`;
-  else if (unrouted.length) problem = `Plan your route: tap the farms in the order your tractor will visit them (${routed.length} of ${mineFarms.length}).`;
+  else if (mineFarms.length < needed) problem = `Book at least ${needed} farms: ${mineFarms.length} so far.`;
+  else if (fitH > DAY_HOURS + 1e-9) problem = `${workH.toFixed(1)} hours of work plus driving: a day has ${DAY_HOURS}. Pass on or drop a job.`;
+  else if (allField > rig.capacity + 1e-9) problem = `${rig.name[0].toUpperCase()}${rig.name.slice(1)} does ${rig.capacity} acres a day, not ${allField.toFixed(1)}. Pass a job to a partner.`;
+  else if (unrouted.length) problem = `Plan your route: tap farms in visiting order (${routed.length} of ${mineFarms.length}).`;
   return {
     stops,
     km,

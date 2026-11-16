@@ -126,7 +126,7 @@ export function PlotBoard({
             );
           })}
         </ul>
-        {growing && kind !== 'sprayer' && <p className="pb-note">Changing a seed or fertilizer now pays (or refunds) the difference. You have {money(coins)}.</p>}
+        {growing && kind !== 'sprayer' && <p className="pb-note">Changes now pay or refund the difference. You have {money(coins)}.</p>}
       </div>
     </div>
   );

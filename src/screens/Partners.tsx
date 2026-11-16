@@ -169,7 +169,7 @@ function Placements() {
         </tbody>
       </table>
       <p className="pg-foot">
-        {BRANDS.filter(b => b.sample).length} sample brands stand in for partners still to sign. Slots marked Available are open to a partner.
+        {BRANDS.filter(b => b.sample).length} sample brands hold slots for partners still to sign.
       </p>
     </div>
   );

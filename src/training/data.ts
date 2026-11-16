@@ -24,7 +24,7 @@ export const COURSES: Course[] = [
   {
     id: 'soil',
     title: 'Healthy soil, bigger harvests',
-    learn: 'Test your soil, use manure and lime, and feed the crop at the right time.',
+    learn: 'Test soil, use manure and lime, and feed on time.',
     host: 'Ward extension officer',
     place: 'Demo farm, Kiambu road',
     inDays: 3,
@@ -38,7 +38,7 @@ export const COURSES: Course[] = [
   {
     id: 'pests',
     title: 'Scouting pests early',
-    learn: 'Walk your rows, spot fall armyworm and aphids, and treat only what needs it.',
+    learn: 'Spot armyworm and aphids; treat only what needs it.',
     host: 'Lima field trainer',
     place: 'Co-op hall',
     inDays: 5,
@@ -52,7 +52,7 @@ export const COURSES: Course[] = [
   {
     id: 'storage',
     title: 'Storing grain without losses',
-    learn: 'Dry, sort and store maize so mould and weevils do not take the profit.',
+    learn: 'Dry, sort and store maize to beat mould and weevils.',
     host: 'Cooperative warehouse team',
     place: 'Cooperative warehouse',
     inDays: 8,
@@ -66,7 +66,7 @@ export const COURSES: Course[] = [
   {
     id: 'money',
     title: 'Farm records and loans',
-    learn: 'Keep simple records, price your harvest, and work out what a loan really costs.',
+    learn: 'Keep records, price your harvest, and cost a loan.',
     host: 'Farm business coach',
     place: 'On your phone (online)',
     inDays: 10,

@@ -58,7 +58,7 @@ export function trialRounds(t: Trial, day: number): TrialRound[] {
       trialHazard: h,
       after: {
         right: [cause, h === 'healthy' ? '' : treated].filter(Boolean).join(' '),
-        wrong: d.missed ? 'Until it is read right, this problem costs the farm part of its harvest.' : '',
+        wrong: d.missed ? 'Until read right, this costs part of the harvest.' : '',
       },
     };
   });

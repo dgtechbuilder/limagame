@@ -54,12 +54,12 @@ export function TractorPick({ tr, field, day, rig, onGo, onLeave }: { tr: Trial;
   if (step === 'tractor') {
     line = tractor
       ? `The ${tractorName(tractor).toLowerCase()} tractor: ${TRACTOR_PLOT[tractor].teach} Next, pick the tool.`
-      : 'Pick a tractor. Work some farms by tractor and some by hand, and the harvest shows what each one did.';
+      : 'Pick a tractor. Work some farms by hand to compare at harvest.';
   } else if (!tool) {
-    line = firstDue ? `Pick the tool. Due now: ${JOB_INFO[firstDue].name.toLowerCase()} on ${farmsText(due[firstDue]!)}.` : 'Pick the tool for the job you want to do. Nothing is due on the farms right now.';
+    line = firstDue ? `Pick the tool. Due now: ${JOB_INFO[firstDue].name.toLowerCase()} on ${farmsText(due[firstDue]!)}.` : 'Pick a tool. Nothing is due right now.';
   } else {
     const j = TOOL_JOB[tool];
-    line = due[j] ? `${toolName(tool)}: ${JOB_INFO[j].name.toLowerCase()} on ${farmsText(due[j]!)}. Drive over a farm's plots to work them.` : `${toolName(tool)} (${JOB_INFO[j].name.toLowerCase()}): no farm is waiting for this job right now. You can still drive, or pick another tool.`;
+    line = due[j] ? `${toolName(tool)}: ${JOB_INFO[j].name.toLowerCase()} on ${farmsText(due[j]!)}. Drive over its plots.` : `${toolName(tool)} (${JOB_INFO[j].name.toLowerCase()}): no farm needs this now. Drive anyway, or pick another tool.`;
   }
 
   return (

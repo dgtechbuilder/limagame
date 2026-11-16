@@ -288,7 +288,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     track('tractor_ride', { stage: 'seat', ...(rig ?? {}) });
     if (rig) {
       const j = TOOL_JOB[rig.tool];
-      say(`${tractorName(rig.tractor)} tractor with the ${toolName(rig.tool).toLowerCase()}: drive over a farm's plots to ${JOB_INFO[j].name.toLowerCase()} them. +${TRACTOR_BONUS.perJob} points for a whole farm`);
+      say(`${tractorName(rig.tractor)} tractor, ${toolName(rig.tool).toLowerCase()}: drive over plots to ${JOB_INFO[j].name.toLowerCase()}. +${TRACTOR_BONUS.perJob} points a farm`);
     } else say('On the tractor');
   }
 
@@ -298,7 +298,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     if (!w) return;
     if (w.isRiding()) {
       w.dismount();
-      return say('You got off. Small jobs (weeds, water, spray) are done on foot');
+      return say('Off the tractor: small jobs are done on foot');
     }
     if (w.nearTractor()) return mountTractor();
     rideIntent.current = true;
@@ -564,7 +564,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     else if (job && canTreat(h, plan)) then = `Now ${JOB_HINT[job]} (${money(DAMAGE[h].treat)}).`;
     else if (DAMAGE[h].treat > 0) then = 'It stays untreated, so the damage goes on.';
     const voice = voiceFor(t.cycle, checking.farm, checking.day, h, !!returnedProblem(t, checking.farm, checking.day));
-    return { r, voice, after: { right: [cause, h === 'healthy' ? '' : then].filter(Boolean).join(' '), wrong: DAMAGE[h].missed ? `Look again in ${CHECK_WAIT_S} seconds: until it is read right, it costs harvest.` : '' } };
+    return { r, voice, after: { right: [cause, h === 'healthy' ? '' : then].filter(Boolean).join(' '), wrong: DAMAGE[h].missed ? `Look again in ${CHECK_WAIT_S} seconds: until read right, it costs harvest.` : '' } };
   }, [checking, t]);
 
   /* ---------------- pointer: tap to walk, drag for the joystick ---------------- */

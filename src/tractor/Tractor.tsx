@@ -302,7 +302,7 @@ export function Tractor({ farm, cycle, best, name, demo, onFinish, onClose }: Tr
           </li>
           <li>Time limit: {job.limit} seconds</li>
           <li>Field: {acresText}, with rocks and fallen trunks</li>
-          <li>You choose the tractor and the implement. The wrong one does a poor job.</li>
+          <li>The wrong tractor or implement does a poor job.</li>
           <li>
             A tractor works {TRACTOR_EDGE}× the ground of a farmer on foot, and earns +{TRACTOR_BONUS.perDrive} bonus points.
           </li>
@@ -423,9 +423,9 @@ export function Tractor({ farm, cycle, best, name, demo, onFinish, onClose }: Tr
         </div>
         <ul className="tc-info is-tips">
           <li>
-            <b>How to drive:</b> tap where to go and hold to keep steering, or use the arrow keys.
+            <b>Drive:</b> tap and hold where to go, or use the arrow keys.
           </li>
-          <li>Steer around rocks and trunks. Drive in straight rows and don't cover the same ground twice.</li>
+          <li>Avoid rocks and trunks. Drive straight rows; don't overlap.</li>
         </ul>
         <button type="button" className="tc-btn" disabled={!all} onClick={start}>
           {all ? `Start the engine · ${job.limit}s` : 'Tick both first'}
@@ -436,7 +436,7 @@ export function Tractor({ farm, cycle, best, name, demo, onFinish, onClose }: Tr
     const left = stats.left;
     side = (
       <>
-        <p className="tc-note">{auto ? `Autopilot is driving (up to ${TRACTOR_REWARD.autopilotStars} stars). Tap Autopilot to take over.` : 'Tap where to drive. Hold to keep steering.'}</p>
+        <p className="tc-note">{auto ? `Autopilot is driving (max ${TRACTOR_REWARD.autopilotStars} stars). Tap it to take over.` : 'Tap where to drive. Hold to keep steering.'}</p>
         <Stat label="Done" value={`${Math.round(stats.cov)}%`} bar={stats.cov} />
         <Stat label="Time left" value={`${Math.floor(left / 60)}:${String(Math.ceil(left) % 60).padStart(2, '0')}`} bar={(left / job.limit) * 100} low={left < job.limit * 0.2} kind="time" />
         <Stat label="Fuel" value={`${stats.fuel.toFixed(2)} L`} bar={(stats.fuel / Math.max(0.01, job.tankL)) * 100} kind="fuel" />

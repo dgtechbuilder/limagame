@@ -116,16 +116,16 @@ function Intro({ s, dispatch, t }: Props & { s: GameState }) {
         <p className="tr-card-title">{first ? t('Your first planting, {name}') : t('Plan your six farms, {name}')}</p>
         {first ? (
           <>
-            <p>Two farms of 20 plots each: maize on Farm 1, sukuma wiki on Farm 2.</p>
+            <p>Two farms: maize on Farm 1, sukuma wiki on Farm 2.</p>
             <ol>
-              <li>Farm 1 is not ready yet: clear each plot, then plant the maize.</li>
-              <li>Farm 2 is already cleared: plant the sukuma wiki on each plot.</li>
-              <li>Check both farms every day for six days, treat what you find, then harvest.</li>
+              <li>Farm 1: clear each plot, then plant maize.</li>
+              <li>Farm 2 is cleared: plant sukuma wiki.</li>
+              <li>Check both daily for six days, then harvest.</li>
             </ol>
-            <p className="tr-card-small">About 10 minutes. Your money pays for the seed and inputs; the harvest is sold for you.</p>
+            <p className="tr-card-small">About 10 minutes. You pay for inputs; the harvest is sold for you.</p>
           </>
         ) : (
-          <p>Give each of your six farms a different plan, grow them side by side, and compare the harvests.</p>
+          <p>Give each farm a different plan and compare the harvests.</p>
         )}
         <GoldButton font={12} height={36} style={{ width: 220, marginTop: 8 }} onClick={() => dispatch({ type: 'trialNew' })}>
           {first ? 'Start planting' : 'Plan my six farms'}
@@ -153,12 +153,12 @@ function PlanBoard({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) 
   if (tr.guided) {
     line =
       changed.length === 0
-        ? t('Farm 1 grows maize a common way, {name}. Change one thing on Farm 2: tap any of its boxes.')
+        ? t('Change one thing on Farm 2, {name}: tap any of its boxes.')
         : changed.length === 1
-          ? t(`Farm 2 now differs in one thing: ${stepOf(changed[0]).label.toLowerCase()}. Plant both farms and see what it does.`)
-          : t(`Farm 2 differs in ${changed.length} things, {name}. With only one change you will know what made the difference.`);
+          ? t(`Farm 2 now differs in one thing: ${stepOf(changed[0]).label.toLowerCase()}. Plant both to see what it does.`)
+          : t(`Farm 2 differs in ${changed.length} things, {name}. Change just one to know what made the difference.`);
   } else {
-    line = problem ?? t('Each farm tests something, {name}. Change one thing per farm against Farm 1 to see what each choice does.');
+    line = problem ?? t('Change one thing per farm against Farm 1, {name}.');
   }
 
   const inWorld = s.view === 'world';
@@ -259,15 +259,15 @@ function PlanBoard({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) 
           <div className="tr-card" onClick={e => e.stopPropagation()}>
             <CloseX onClick={() => setPlanting(false)} />
             <p className="tr-card-title">How should the days pass?</p>
-            <p>Each cycle has six days of checks before the harvest.</p>
+            <p>Six days of checks, then harvest.</p>
             <div className="tr-choice">
               <button type="button" onClick={() => sow('daily')}>
                 <b>One day each real day</b>
-                <span>Check your farms once a day, like a real farm. Harvest in about a week.</span>
+                <span>Check once a day. Harvest in about a week.</span>
               </button>
               <button type="button" onClick={() => sow('fast')}>
                 <b>Play the six days now</b>
-                <span>A new day starts as soon as every farm is checked.</span>
+                <span>A new day starts once every farm is checked.</span>
               </button>
             </div>
           </div>
@@ -336,7 +336,7 @@ function Growing({ tr, dispatch, t, inWorld }: Props & { tr: Trial; inWorld: boo
   let line: string;
   let action: { label: string; onClick: () => void } | undefined;
   if (ready) {
-    line = t('Harvest time, {name}! Pick every farm and see which grew the most.');
+    line = t('Harvest time, {name}! See which farm grew the most.');
     action = inWorld
       ? { label: 'Go and harvest', onClick: () => dispatch({ type: 'trials', open: false }) }
       : { label: 'Harvest all farms', onClick: () => dispatch({ type: 'trialHarvest' }) };
@@ -418,7 +418,7 @@ function Growing({ tr, dispatch, t, inWorld }: Props & { tr: Trial; inWorld: boo
           })}
         </div>
         <div className="tr-foot">
-          <span>{tr.clock === 'daily' ? 'One day each real day. Come back tomorrow for the next check.' : 'A new day starts once every farm is checked.'}</span>
+          <span>{tr.clock === 'daily' ? 'One day each real day. Come back tomorrow.' : 'A new day starts once every farm is checked.'}</span>
           {!ready && tr.clock === 'daily' && (
             <button type="button" className="tr-link" onClick={() => dispatch({ type: 'trialClock', clock: 'fast' })}>
               Play the rest now
@@ -525,8 +525,8 @@ function Compare({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) {
       <GuideLine
         text={t(
           tr.guided
-            ? `Both farms are harvested and sold for ${money(income)}, {name}. Next: six farms, each testing a different change.`
-            : `Cycle ${tr.cycle} is harvested and sold for ${money(income)}, {name}. Keep the plan that worked and test more changes.`,
+            ? `Both farms sold for ${money(income)}, {name}. Next: six farms, six changes.`
+            : `Cycle ${tr.cycle} sold for ${money(income)}, {name}. Keep what worked; test more.`,
         )}
         action={{ label: 'Plan the next cycle', onClick: () => dispatch({ type: 'trialNew' }) }}
       />
