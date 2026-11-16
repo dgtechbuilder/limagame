@@ -493,7 +493,7 @@ function Today({ b, name, dispatch, onDone }: { b: Biz; name: string; dispatch: 
           <div className="biz-farm is-empty">
             <p>Tap a farm to scout it, then book it for {rig.name} or a partner (you keep {Math.round(PARTNER_CUT * 100)}%).</p>
             <p>
-              Visit at least <b>{plan.needed} farms</b>, close together: acres per km driven is your Service Efficiency Ratio.
+              Visit at least <b>{plan.needed} farms</b>, close together: acres per kilometre driven is your Service Efficiency Ratio.
             </p>
             {offers.length > 0 && (
               <div className="ht-offers">
