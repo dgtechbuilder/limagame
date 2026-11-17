@@ -338,7 +338,7 @@ function CertificateCard({ c, name }: { c: Certificate; name: string }) {
   const partner = slotBrand('certification');
   return (
     <article className={`ach-cert is-${tone}`} aria-label={`Certificate: ${c.title}`}>
-      <p className="ach-cert-org">Lima Farming Game{partner ? ` × ${partner.name}` : ''}</p>
+      <p className="ach-cert-org">TemoLima{partner ? ` × ${partner.name}` : ''}</p>
       <p className="ach-cert-kind">{c.kind === 'level' ? 'Certificate of certification' : 'Certificate of achievement'}</p>
       <p className="ach-cert-to">This certifies that</p>
       <p className="ach-cert-name">{name}</p>

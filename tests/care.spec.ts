@@ -88,6 +88,21 @@ test('a spray job: the safety kit, then the product', async ({ page }) => {
   await expect(page.locator('.pb-grid .pb-cell')).toContainText('Knapsack');
   await page.getByRole('button', { name: 'Pick up the sprayer', exact: true }).click();
   await expect.poll(async () => (await state(page)).field.carry).toBe('sprayer');
+  // from the sprayer shed's door to Farm 1's first plot, the path crosses the fertilizer shed's door: walking through
+  // on the way keeps the sprayer (it used to be swapped for fertilizer, and the spray never started)
+  const sheds = await page.evaluate(() => (window as unknown as Win).__lima.places);
+  await page.evaluate(at => {
+    const w = (window as unknown as Win).__limaWorld!;
+    w.spawn(at.x, at.z);
+    const t = w.nextTile(0);
+    w.walkTo(t.x, t.z);
+  }, sheds['shed-sprayer']);
+  // past the fertilizer shed's door and on the way into Farm 1
+  await page.waitForFunction(z => (window as unknown as Win).__limaWorld!.farmerAt().z < z - 3, sheds['shed-fertilizer'].z);
+  expect((await state(page)).field.carry).toBe('sprayer');
   await workFarm(page, 0, async () => !!(await state(page)).trial.checks[`0:${c.day}`]?.treated, 120);
   expect(await eventNames(page)).toEqual(expect.arrayContaining(['kit_on', 'product']));
+  // walking to a shed on purpose still hands over its load
+  await page.evaluate(p => (window as unknown as Win).__limaWorld!.walkTo(p.x, p.z), sheds['shed-fertilizer']);
+  await expect(page.locator('.hud-hint')).toHaveText('Picked up: fertilizer bag');
 });
