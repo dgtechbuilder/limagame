@@ -149,7 +149,7 @@ export function Inspect({
         {second ? ' · second look' : ''}
       </span>
       <span className="rr-roundtag rr-cropnote">{note ?? `${CROP_NAME[round.crop]} · ${STAGE_LABELS[round.stage]} · day ${round.day + 1} of ${CYCLE_DAYS}`}</span>
-      <NavBar horizontal onBack={onLeave} style={{ right: 6, top: 4 }} />
+      <NavBar horizontal onBack={onLeave} style={{ right: 28, top: 8 }} />
 
       <ol className="review-steps" aria-label="Check steps">
         {steps.map(([, label], i) => (
@@ -159,7 +159,7 @@ export function Inspect({
         ))}
       </ol>
 
-      <div className="fs-panel" style={{ left: 24, top: 78, width: 826, height: 246 }}>
+      <div className="fs-panel" style={{ left: 30, top: 78, width: 814, height: 246 }}>
         {step === 'look' && (
           <div className="part-row five">
             <p className="rr-progress">

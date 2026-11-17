@@ -71,7 +71,7 @@ export function SettingsPage({ s, dispatch, tab: startTab }: Props) {
   return (
     <div className="abs settings-page" style={{ inset: 0 }} role="dialog" aria-modal="true" aria-label="Settings">
       <div className="scrim" onClick={close} />
-      <div className="fs-panel set-panel" style={{ left: 18, top: 40, width: 838, height: 348 }}>
+      <div className="fs-panel set-panel" style={{ left: 24, top: 46, width: 826, height: 334 }}>
         <nav className="set-tabs" aria-label="Settings sections">
           <p className="set-heading">Settings</p>
           {TABS.map(t => (
@@ -93,7 +93,7 @@ export function SettingsPage({ s, dispatch, tab: startTab }: Props) {
           {tab === 'help' && <HelpTab s={s} dispatch={dispatch} />}
         </section>
       </div>
-      <NavBar horizontal onBack={close} hideHome={s.fs.phase !== 'done'} style={{ right: 44, top: 6 }} />
+      <NavBar horizontal onBack={close} hideHome={s.fs.phase !== 'done'} style={{ right: 62, top: 8 }} />
       <CloseX className="page-x" onClick={close} />
       <p className="set-title-bar">
         <span aria-hidden="true">⚙</span> Settings · <b>{TABS.find(t => t.id === tab)!.label}</b>

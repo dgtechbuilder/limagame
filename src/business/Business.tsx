@@ -133,7 +133,7 @@ export function Business({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
           Tractor business
         </span>
       </div>
-      <NavBar horizontal onBack={close} style={{ right: 6, top: 4 }} />
+      <NavBar horizontal onBack={close} style={{ right: 28, top: 8 }} />
 
       {/* the business at a glance: its level, the two numbers, and counted acres on the way to a tractor */}
       <div className="biz-head">
@@ -571,7 +571,7 @@ function Today({ b, name, dispatch, onDone }: { b: Biz; name: string; dispatch: 
         </div>
       </aside>
 
-      <GuideLine text={line} face={<Face who="caro" size={40} />} style={{ left: 16, right: 16, bottom: 4, minHeight: 0, padding: '2px 10px 2px 4px' }} />
+      <GuideLine text={line} face={<Face who="caro" size={40} />} style={{ left: 30, right: 30, bottom: 8, minHeight: 0, padding: '2px 10px 2px 4px' }} />
     </>
   );
 }

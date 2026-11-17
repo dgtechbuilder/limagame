@@ -153,6 +153,10 @@ small margin (3–4%, at most 48px) on larger screens. It is re-taken on resize,
 ResizeObserver, and re-checked for 700 ms after each, because iOS browsers report a rotation before the new size is
 readable (the stage otherwise kept its portrait size, small in the middle of a landscape screen).
 
+The stage is drawn as a phone, with rounded corners (a 50px radius). Nothing a player reads or taps sits in those
+corners: the nav row and Close sit 28px in from the right and 8px down, the side-tab pages' panel is 24px in, and the
+HUD pills, the stake banner and the guide line clear the curve. `tests/frame.spec.ts` checks every screen.
+
 | Figma group | Frames | Code |
 | --- | --- | --- |
 | Game Design | Game (3 variants), Food, Fertilizer, Water tanks, Equipments | `components/FarmScene.tsx`, `screens/Catalog.tsx` → `ShopModal` |
@@ -1024,8 +1028,14 @@ each. To sign a partner, add or edit its brand and put its id on the slots it bo
   Tangi Tanks, PesaShamba, Kinga Cover, JuaPower Solar, Ujuzi Agri Academy) is made up for the game
   (`sample: true`) and stands in until a real partner signs; no real company is named or implied.
 - **The Partners page** (Main menu → *Partners & offers*; every billboard, sign and "with <brand>" line opens it at
-  that brand): *Offers* lists each brand's offer, to save to Messages (and a *Visit* link for brands with a web
+  that brand, with its offer open): *Offers* lists each brand's offer (and a *Visit* link for brands with a web
   address); *Placements* lists every slot, its brand or *Available*, and how often it was seen and tapped.
+- **Getting an offer.** *Get offer* opens a sheet with what the offer gives and where it is used; *Get this offer*
+  takes it and shows the player's code (`offerCode()`: the brand's first letters and four from the farmer's name,
+  so it needs nothing more in the save), which also goes into Messages. The sheet's button, and *Use it* on the card
+  afterwards, go to where the offer is used (`offer.use.to`, a game address: the Shop's fertilizer or tank section,
+  the Rewards hub, the Loan calculator, Climate › Shocks, My Progress or the Tractor business). Offers do not change
+  prices in the game yet.
 - **Engagement** (views and taps per slot) is counted on the device only, apart from the saved game
   (`src/partners/track.ts`): nothing is sent anywhere, and Reset progress does not clear it.
 

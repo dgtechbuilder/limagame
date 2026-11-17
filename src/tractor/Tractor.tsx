@@ -560,7 +560,7 @@ export function Tractor({ farm, cycle, best, name, demo, onFinish, onClose }: Tr
         onPointerCancel={() => (ctl.current.hold = false)}
       />
       {over}
-      <NavBar horizontal onBack={back} onHome={phase === 'done' ? onClose : undefined} style={{ left: 6, top: 4 }} />
+      <NavBar horizontal onBack={back} onHome={phase === 'done' ? onClose : undefined} style={{ left: 28, top: 8 }} />
       {msg && (
         <p key={msg.id} className="tc-msg" role="status">
           {msg.text}

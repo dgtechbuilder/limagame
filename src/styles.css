@@ -389,7 +389,7 @@ button.card:active { transform: scale(0.98); }
 
 /* guide line: one sentence, always in the same place */
 .guide-line {
-  position: absolute; left: 24px; right: 24px; bottom: 8px; min-height: 54px; z-index: 30;
+  position: absolute; left: 30px; right: 30px; bottom: 12px; min-height: 54px; z-index: 30;
   display: flex; align-items: center; gap: 10px;
   padding: 5px 10px 5px 5px; border-radius: 16px;
   background: var(--cream);
@@ -563,7 +563,7 @@ button.card:active { transform: scale(0.98); }
 .update-nudge { margin: 0 auto 0 0; max-width: 220px; font-size: 11px; font-weight: 700; line-height: 1.25; color: var(--green-text); }
 /* on a check: what the problem costs if it is left alone */
 .stake {
-  position: absolute; left: 24px; top: 6px; z-index: 3; width: 290px; margin: 0; display: flex; align-items: center; gap: 7px;
+  position: absolute; left: 34px; top: 10px; z-index: 3; width: 290px; margin: 0; display: flex; align-items: center; gap: 7px;
   padding: 5px 10px 5px 6px; border-radius: 12px; background: #fff1ee; color: #a3271b;
   font-size: 10.5px; font-weight: 800; line-height: 1.25; box-shadow: 0 0 0 2px #e05a4a, 0 3px 8px rgba(0, 0, 0, 0.25); animation: pop 0.3s ease both;
 }
@@ -750,7 +750,7 @@ button.card:active { transform: scale(0.98); }
 }
 
 .rr-pin-label { font-size: 8px; font-weight: 800; fill: #fff; stroke: #3d2614; stroke-width: 2.4px; paint-order: stroke; font-family: Poppins, sans-serif; }
-.rr-cycle { position: absolute; left: 12px; bottom: 10px; margin: 0; padding: 3px 12px; border-radius: 100px; background: rgba(40, 24, 12, 0.66); color: #fff; font-size: 10px; font-weight: 700; z-index: 4; }
+.rr-cycle { position: absolute; left: 30px; bottom: 14px; margin: 0; padding: 3px 12px; border-radius: 100px; background: rgba(40, 24, 12, 0.66); color: #fff; font-size: 10px; font-weight: 700; z-index: 4; }
 .rr-summary li small { font-weight: 500; opacity: 0.7; }
 .rr-credit {
   position: absolute; right: 0; bottom: 0; max-width: 100%;
@@ -878,7 +878,7 @@ button.card:active { transform: scale(0.98); }
 }
 
 /* top left: the farmer and their level, settings */
-.hud-avatar { position: absolute; left: 12px; top: 8px; width: 50px; height: 54px; z-index: 5; pointer-events: none; }
+.hud-avatar { position: absolute; left: 18px; top: 12px; width: 50px; height: 54px; z-index: 5; pointer-events: none; }
 .hud-hex {
   position: absolute; inset: 0; display: grid; place-items: center; overflow: hidden;
   clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
@@ -908,7 +908,7 @@ button.card:active { transform: scale(0.98); }
 .hud-shop { right: 10px; top: 136px; }
 
 /* top right: coins and points */
-.hud-pills { position: absolute; right: 10px; top: 8px; z-index: 5; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.hud-pills { position: absolute; right: 30px; top: 10px; z-index: 5; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 .hud-pill {
   position: relative; display: flex; align-items: center; gap: 4px; height: 24px; min-width: 96px; padding: 0 2px 0 26px;
   border-radius: 7px; background: rgba(40, 30, 20, 0.58); color: #fff; font-size: 12.5px; font-weight: 800;
@@ -943,7 +943,7 @@ button.card:active { transform: scale(0.98); }
 .hud-task-text i { font-style: normal; font-size: 10.5px; font-weight: 600; opacity: 0.75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* bottom left: day and load */
-.hud-status { position: absolute; left: 12px; bottom: 10px; z-index: 5; display: flex; gap: 6px; pointer-events: none; }
+.hud-status { position: absolute; left: 30px; bottom: 14px; z-index: 5; display: flex; gap: 6px; pointer-events: none; }
 .hud-status span {
   padding: 4px 10px; border-radius: 100px; background: rgba(40, 30, 20, 0.58); color: #fff; font-size: 11px; font-weight: 800;
 }
@@ -1265,7 +1265,7 @@ button.card:active { transform: scale(0.98); }
 .settings-page { z-index: 40; }
 .set-panel { display: flex; overflow: hidden; animation: pop 0.2s ease both; }
 .set-title-bar {
-  position: absolute; left: 22px; top: 9px; z-index: 31; margin: 0;
+  position: absolute; left: 30px; top: 10px; z-index: 31; margin: 0;
   padding: 4px 12px; border-radius: 100px; background: rgba(40, 24, 12, 0.7);
   color: #fff; font-size: 11px; font-weight: 600;
 }
@@ -1477,7 +1477,7 @@ button.card:active { transform: scale(0.98); }
 .biz-tag { display: block; padding: 4px 0; border-radius: 100px; text-align: center; font-size: 10px; font-weight: 800; background: #eefbe8; color: var(--green-text); }
 .biz-tag.is-off { background: var(--brown-05); color: var(--brown-50); }
 
-.biz .guide-line { height: 50px; }
+.biz .guide-line { height: 46px; }
 .biz .guide-face { width: 40px; height: 40px; }
 .biz-seg button { display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05; height: 30px !important; }
 .biz-seg button i { font-style: normal; font-size: 8.5px; font-weight: 700; opacity: 0.85; }
@@ -1834,7 +1834,7 @@ button.card:active { transform: scale(0.98); }
 .x-btn:hover { transform: scale(1.08); filter: brightness(1.12); }
 .x-btn:active { transform: scale(0.94); }
 /* full pages (Settings, Climate, Achievements): the ✕ in the stage's top-right corner, beside Back · Menu · Farm */
-.x-btn.page-x { position: absolute; right: 8px; top: 5px; width: 30px; height: 30px; z-index: 6; }
+.x-btn.page-x { position: absolute; right: 26px; top: 6px; width: 30px; height: 30px; z-index: 6; }
 /* cards that hold a ✕ */
 .tr-card, .tr-picker, .ending-card, .story-cheer-card, .rr-summary { position: relative; }
 .tr-card > .x-btn, .tr-picker > .x-btn, .ending-card > .x-btn, .story-cheer-card > .x-btn, .rr-summary > .x-btn, .ht-card > .x-btn, .biz-result > .x-btn { right: 10px; top: 10px; }
@@ -2088,19 +2088,60 @@ button.card:active { transform: scale(0.98); }
 .hud-bill span { font-size: 9px; font-weight: 700; color: var(--accent); }
 
 /* the Partners page */
-.pt-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 6px; }
+.pt-offers { padding-bottom: 10px; }
+.pt-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 10px; }
 .pt-card {
-  display: flex; flex-direction: column; gap: 5px; padding: 8px 10px; border-radius: 12px; background: #fff8ea;
-  border: 1px solid var(--brown-10); border-left: 5px solid var(--brand);
+  display: flex; flex-direction: column; gap: 7px; min-width: 0; padding: 11px 14px 12px 13px; border-radius: 12px; background: #fff8ea;
+  border: 1px solid var(--brown-10); border-left: 5px solid var(--brand); box-shadow: 0 1px 2px rgba(80, 50, 20, 0.08);
 }
-.pt-card.is-focus { box-shadow: 0 0 0 2px var(--gold); }
-.pt-card header { display: flex; align-items: center; gap: 8px; }
-.pt-card header span { display: flex; flex-direction: column; min-width: 0; }
-.pt-card header b { font-size: 12px; }
-.pt-card header small, .pt-offer small { font-size: 8.5px; opacity: 0.8; line-height: 1.3; }
-.pt-offer { display: flex; flex-direction: column; gap: 1px; margin: 0; }
-.pt-offer b { font-size: 10.5px; }
-.pt-card footer { display: flex; align-items: center; gap: 10px; margin-top: auto; }
+.pt-card.is-focus { border-color: var(--gold); border-left-color: var(--brand); box-shadow: 0 0 0 1.5px var(--gold); }
+.pt-card.is-got { background: #fbf6ea; }
+.pt-card header { display: flex; align-items: center; gap: 9px; }
+.pt-card header span { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.pt-card header b { font-size: 12.5px; line-height: 1.15; }
+.pt-card header small, .pt-offer small { font-size: 8.5px; opacity: 0.8; line-height: 1.35; }
+.pt-offer { display: flex; flex-direction: column; gap: 2px; margin: 0; }
+.pt-offer b { font-size: 10.5px; line-height: 1.25; }
+.pt-card footer { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 2px; }
+.pt-card footer .ach-claim, .pt-card footer .set-link { height: 26px; padding: 0 12px; font-size: 10px; }
+.pt-card .set-link { display: inline-flex; align-items: center; font-weight: 700; text-decoration: none; }
+.pt-visit { margin-left: auto; }
+.pt-code {
+  display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: 8px;
+  background: #e3f3da; color: #2e7a2a; font-size: 10px; font-weight: 800;
+}
+.pt-code b { font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.6px; color: var(--brown); }
+
+/* getting an offer: a sheet over the panel */
+.pt-sheet-wrap { position: absolute; inset: 0; z-index: 8; display: grid; place-items: center; }
+.pt-sheet-scrim { position: absolute; inset: 0; border-radius: 16px; background: rgba(40, 24, 12, 0.45); animation: fadein 0.2s ease both; }
+.pt-sheet {
+  position: relative; width: 400px; max-height: calc(100% - 28px); overflow-y: auto; display: flex; flex-direction: column; gap: 9px;
+  padding: 16px 20px 16px; border-radius: 14px; background: var(--cream); border-top: 6px solid var(--brand);
+  box-shadow: 0 0 0 3px #eea660, 0 12px 28px rgba(0, 0, 0, 0.35); animation: pop 0.2s ease both;
+}
+.pt-sheet .x-btn.pt-sheet-x { right: 10px; top: 10px; width: 24px; height: 24px; font-size: 12px; }
+.pt-sheet header { display: flex; align-items: center; gap: 11px; padding-right: 26px; }
+.pt-sheet header span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pt-sheet header small { font-size: 9px; font-weight: 700; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.4px; }
+.pt-sheet header b { font-size: 14px; line-height: 1.2; }
+.pt-sheet-head { margin: 2px 0 0; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.65; }
+.pt-gets { display: flex; flex-direction: column; gap: 5px; margin: 0; padding: 0; list-style: none; }
+.pt-gets li { position: relative; padding: 6px 10px 6px 26px; border-radius: 8px; background: #fff8ea; font-size: 10.5px; font-weight: 600; line-height: 1.3; }
+.pt-gets li::before { content: '✓'; position: absolute; left: 9px; top: 6px; color: #2f9b14; font-weight: 900; }
+.pt-sheet-where { display: flex; gap: 6px; margin: 0; font-size: 9.5px; line-height: 1.4; opacity: 0.85; }
+.pt-sheet-where i { font-style: normal; }
+.pt-sheet-fine { margin: -3px 0 0; font-size: 8.5px; font-style: italic; opacity: 0.6; }
+.pt-sheet-actions { display: flex; align-items: center; gap: 8px; margin-top: 3px; }
+.pt-sheet-actions .ach-claim.is-big { height: 30px; margin: 0; padding: 0 18px; font-size: 11.5px; }
+.pt-sheet-actions .set-link { font-weight: 700; }
+.pt-voucher {
+  display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 12px 10px; border-radius: 12px;
+  border: 2px dashed var(--brand); background: #fff8ea; text-align: center; animation: pop 0.25s ease both;
+}
+.pt-voucher small { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.65; }
+.pt-voucher b { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 22px; letter-spacing: 2px; line-height: 1.2; }
+.pt-voucher span { font-size: 10px; font-weight: 800; color: #2e7a2a; }
 .ach-claim.is-done, .ach-claim:disabled { background: #e6d6bd; color: var(--brown-70); box-shadow: none; cursor: default; }
 .pt-note { font-size: 8.5px; opacity: 0.7; }
 .pt-table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 8.5px; }

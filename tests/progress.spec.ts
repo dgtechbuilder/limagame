@@ -3,7 +3,7 @@ import { initialState, reducer, type GameState } from '../src/state';
 import { achOfSave, initialAch, unclaimed } from '../src/achievements/model';
 import { achClock, viewOf } from '../src/achievements/track';
 import { LEVELS, MODULES, currentLevel, dueLevels, moduleCredits, moduleMax, totalCredits } from '../src/progress/model';
-import { BRANDS, SLOTS, brandOf, slotBrand } from '../src/partners/data';
+import { BRANDS, SLOTS, brandOf, offerCode, slotBrand } from '../src/partners/data';
 import { pathOf, routeTo } from '../src/route';
 import { boot, state, type Win } from './helpers';
 
@@ -100,6 +100,12 @@ test('branded fertilizer does the NPK job, and a saved offer goes to Messages', 
   const o = reducer(s, { type: 'partnerSave', id: 'rutuba' });
   expect(o.offers).toEqual(['rutuba']);
   expect(o.note).toContain('Rutuba Gold');
+  // the code is the player's own, the same each time it is worked out, and kept in Messages
+  const code = offerCode('rutuba', o.farmer?.name);
+  expect(code).toMatch(/^RUTU-[2-9A-HJKMNP-Z]{4}$/);
+  expect(offerCode('rutuba', o.farmer?.name)).toBe(code);
+  expect(offerCode('rutuba', 'Someone else')).not.toBe(code);
+  expect(o.note).toContain(code);
   expect(reducer(o, { type: 'partnerSave', id: 'rutuba' })).toBe(o);
 });
 
@@ -135,9 +141,62 @@ test('the PROGRESS button opens the journey; a partner sign opens its offer', as
   await page.getByRole('button', { name: /^Partner sign: / }).click();
   await expect(page.locator('.set-title-bar')).toContainText('Partners · Offers');
   await expect(page).toHaveURL(/#\/partners\/offers\/[a-z-]+$/);
-  await page.locator('.pt-card.is-focus').getByRole('button', { name: /^Save the / }).click();
+  // the sign opens its offer's sheet: what it gives, then the code once it is taken
+  const sheet = page.getByRole('dialog', { name: / offer$/ });
+  await expect(sheet).toContainText('What you get');
+  await sheet.getByRole('button', { name: 'Get this offer', exact: true }).click();
   await expect.poll(async () => ((await state(page)).offers ?? []).length).toBe(1);
+  await expect(sheet.locator('.pt-voucher')).toContainText('Saved to Messages');
+  await sheet.getByRole('button', { name: 'Back to offers', exact: true }).click();
+  await expect(sheet).toBeHidden();
+  await expect(page.locator('.pt-card.is-focus .pt-code')).toBeVisible();
   await page.getByRole('button', { name: 'Placements', exact: true }).click();
   await expect(page.locator('.pt-table tbody tr').first()).toBeVisible();
   await expect(page.locator('.pt-open').first()).toHaveText('Available');
+});
+
+test('Get offer: the details, then the code, then Use it opens where the offer is used', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => (window as unknown as Win).__lima.jump({ coins: 5000 }));
+  await expect.poll(async () => (await state(page)).fs.phase).toBe('done');
+  await page.evaluate(() => (window.location.hash = '/partners/offers'));
+  const card = page.locator('.pt-card[data-brand="tangi"]');
+  await card.getByRole('button', { name: 'Get the Tangi Tanks offer' }).click();
+  const sheet = page.getByRole('dialog', { name: 'Tangi Tanks offer' });
+  for (const line of brandOf('tangi')!.offer.get) await expect(sheet).toContainText(line);
+  // Not now leaves it, and Escape closes only the sheet
+  await sheet.getByRole('button', { name: 'Not now', exact: true }).click();
+  await expect(sheet).toBeHidden();
+  await card.getByRole('button', { name: 'Get the Tangi Tanks offer' }).click();
+  await page.keyboard.press('Escape');
+  await expect(sheet).toBeHidden();
+  await expect(page.locator('.set-title-bar')).toContainText('Partners · Offers');
+  expect((await state(page)).offers ?? []).toEqual([]);
+  // taken: the code shows on the sheet and the card, and goes into Messages
+  await card.getByRole('button', { name: 'Get the Tangi Tanks offer' }).click();
+  await sheet.getByRole('button', { name: 'Get this offer', exact: true }).click();
+  const s = await state(page);
+  const code = offerCode('tangi', s.farmer?.name);
+  expect(s.offers).toEqual(['tangi']);
+  expect(s.note).toContain(code);
+  await expect(sheet.locator('.pt-voucher b')).toHaveText(code);
+  await expect(page.locator('.set-tab', { hasText: 'Offers' })).toContainText('1 got');
+  // Use it goes where the offer is used: the Shop's water tanks
+  await sheet.getByRole('button', { name: 'Open the water-tank shop ›' }).click();
+  await expect.poll(() => page.evaluate(() => window.location.hash)).toBe('#/shop/water-tanks');
+  // back on the page, the card has the code and Use it
+  await page.evaluate(() => (window.location.hash = '/partners/offers'));
+  await expect(card.locator('.pt-code')).toHaveText(`✓ ${code}`);
+  await card.getByRole('button', { name: 'Use it ›' }).click();
+  await expect.poll(() => page.evaluate(() => window.location.hash)).toBe('#/shop/water-tanks');
+});
+
+test('every offer says what it gives and goes to an address the game has', () => {
+  const s: GameState = { ...initialState, fs: { ...initialState.fs, phase: 'done' } } as GameState;
+  for (const b of BRANDS) {
+    expect(b.offer.get.length, b.id).toBeGreaterThan(0);
+    const acts = routeTo(s, b.offer.use.to);
+    expect(acts.length, b.id).toBeGreaterThan(0);
+    expect(acts.some(a => a.type === 'toast'), `${b.id}: ${b.offer.use.to}`).toBe(false);
+  }
 });
