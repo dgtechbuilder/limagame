@@ -12,13 +12,14 @@
     "test": "playwright test"
   },
   "dependencies": {
-    "@sentry/react": "^11.11.0",
+    "@sentry/react": "^11.14.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "three": "0.170.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
+    "@sentry/bundler-plugins": "^11.14.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/three": "0.170.0",

@@ -27,6 +27,12 @@ jobs:
         run: npm run typecheck
         continue-on-error: true
       - run: npm run build
+        env:
+          # Uploads source maps to Sentry; the build skips the upload when this secret is missing.
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          # Tags Sentry events with the deployed commit.
+          SENTRY_RELEASE: ${{ github.sha }}
+          VITE_SENTRY_RELEASE: ${{ github.sha }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

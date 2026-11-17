@@ -32,5 +32,12 @@ export default defineConfig({
   ],
   webServer: process.env.LIMA_URL
     ? undefined
-    : { command: `npm run dev -- --port ${PORT} --strictPort`, url: `http://localhost:${PORT}/`, reuseExistingServer: !process.env.CI, timeout: 120_000 },
+    : {
+        command: `npm run dev -- --port ${PORT} --strictPort`,
+        url: `http://localhost:${PORT}/`,
+        reuseExistingServer: !process.env.CI,
+        timeout: 120_000,
+        // An empty DSN turns Sentry off, so test runs send nothing to the project.
+        env: { VITE_SENTRY_DSN: '' },
+      },
 });
