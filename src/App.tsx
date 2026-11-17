@@ -141,7 +141,7 @@ export default function App() {
     firstSync.current = false;
     fromUrl.current = false;
     const words = path.slice(1).split('/').map(w => w.replace(/-/g, ' ').replace(/^./, c => c.toUpperCase()));
-    document.title = `${words.join(' · ')} · Lima Farming Game`;
+    document.title = `${words.join(' · ')} · TemoLima`;
     if (window.location.hash === `#${path}`) return;
     const url = `${window.location.pathname}${window.location.search}#${path}`;
     if (replace) window.history.replaceState(null, '', url);
@@ -317,7 +317,7 @@ export default function App() {
           <ReviewPicker s={s} dispatch={dispatch} />
         </Suspense>
       )}
-      <div className="rotate-hint">Rotate your phone to landscape to play Lima Farming Game.</div>
+      <div className="rotate-hint">Rotate your phone to landscape to play TemoLima.</div>
     </div>
     </VoiceContext.Provider>
     </ArtContext.Provider>

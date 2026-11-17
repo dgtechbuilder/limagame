@@ -4,19 +4,25 @@ import { CloseX } from '../components/Success';
 import { BRANDS, REWARD_SPONSOR, SLOTS, activeBrands, brandOf, offerCode, type Brand, type BrandId } from '../partners/data';
 import { engagement } from '../partners/track';
 import { BrandMark } from '../partners/ui';
+import { AREAS, PARTNER_EMAIL, RULES, STATUS, WAYS, areaOf, shortlistText, wayOf, type AreaId, type WayToPartner } from '../partners/catalogue';
 import { REWARDS } from '../data';
 import type { Action, GameState, PartnersTab } from '../state';
 
 /* Partners: for players, the offers from the brands that sponsor the game (Get offer shows what it gives, then the
    player's code, kept in Messages, and a button to where it is used); for partners (and
    the team selling to them), every place in the game a brand can appear, who has it, and how often it was seen and
-   tapped on this device. The brands and slots are set in src/partners/data.ts. */
+   tapped on this device; and for partners still to sign, every way to partner with Lima (Partner with us), with a
+   shortlist to send. The brands and slots are set in src/partners/data.ts, the ways to partner in catalogue.ts.
+   Opened from PARTNERS on the farm, the main menu, a billboard or sponsor line, or #/partners (also before the farm
+   opens, for a partner visiting before they play). */
 
 type Props = { s: GameState; dispatch: Dispatch<Action>; tab?: PartnersTab; brand?: BrandId };
 
 const TABS: { id: PartnersTab; label: string; icon: string }[] = [
   { id: 'offers', label: 'Offers', icon: '🎁' },
   { id: 'placements', label: 'Placements', icon: '📍' },
+  { id: 'join', label: 'Partner with us', icon: '🤝' },
+  { id: 'shortlist', label: 'Shortlist', icon: '★' },
 ];
 
 export function PartnersPage({ s, dispatch, tab: startTab, brand }: Props) {
@@ -39,6 +45,7 @@ export function PartnersPage({ s, dispatch, tab: startTab, brand }: Props) {
               <i aria-hidden="true">{t.icon}</i>
               {t.label}
               {t.id === 'offers' && (s.offers ?? []).length > 0 && <small className="ach-count">{(s.offers ?? []).length} got</small>}
+              {t.id === 'shortlist' && (s.partnerPicks ?? []).length > 0 && <small className="ach-count">{(s.partnerPicks ?? []).length}</small>}
             </button>
           ))}
           <p className="set-foot">
@@ -46,7 +53,10 @@ export function PartnersPage({ s, dispatch, tab: startTab, brand }: Props) {
           </p>
         </nav>
         <section className="set-content ach-content" aria-label={TABS.find(t => t.id === tab)!.label}>
-          {tab === 'offers' ? <Offers s={s} dispatch={dispatch} focus={brand} /> : <Placements />}
+          {tab === 'offers' && <Offers s={s} dispatch={dispatch} focus={brand} />}
+          {tab === 'placements' && <Placements />}
+          {tab === 'join' && <Join s={s} dispatch={dispatch} />}
+          {tab === 'shortlist' && <Shortlist s={s} dispatch={dispatch} />}
         </section>
       </div>
       <NavBar horizontal onBack={close} hideHome={s.fs.phase !== 'done'} style={{ right: 62, top: 8 }} />
@@ -294,6 +304,203 @@ function Placements() {
       <p className="pg-foot pt-foot">
         {BRANDS.filter(b => b.sample).length} sample brands hold slots for partners still to sign.
       </p>
+    </div>
+  );
+}
+
+/* ---------------- Partner with us: every way to partner, for partners still to sign ---------------- */
+
+function StatusChip({ w }: { w: WayToPartner }) {
+  return (
+    <em className={`pj-status is-${w.status}`} title={STATUS[w.status].means}>
+      {STATUS[w.status].label}
+    </em>
+  );
+}
+
+/** Who holds the placements an option sells: a signed partner, or open. */
+function holder(w: WayToPartner): { brand?: Brand; open: number } {
+  const slots = SLOTS.filter(x => w.slots?.includes(x.id));
+  return { brand: brandOf(slots.find(x => x.brand)?.brand ?? undefined), open: slots.filter(x => !x.brand).length };
+}
+
+function Join({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
+  const [area, setArea] = useState<AreaId | 'all'>('all');
+  const [open, setOpen] = useState<string | null>(null);
+  const picks = s.partnerPicks ?? [];
+  const shown = WAYS.filter(w => area === 'all' || w.area === area);
+  const sheet = open ? wayOf(open) : undefined;
+  return (
+    <div className="pj-join">
+      <div className="ach-row-head">
+        <p className="set-title">Ways to partner with Lima</p>
+        <small className="pt-note">
+          {WAYS.length} ways · {WAYS.filter(w => w.status === 'now').length} in the game now
+        </small>
+      </div>
+      <div className="pj-areas" role="group" aria-label="Areas">
+        {[{ id: 'all' as const, label: 'All', icon: '' }, ...AREAS].map(a => (
+          <button key={a.id} type="button" className={`pj-area${area === a.id ? ' is-on' : ''}`} aria-pressed={area === a.id} onClick={() => setArea(a.id)}>
+            {a.icon && <i aria-hidden="true">{a.icon}</i>}
+            {a.label}
+          </button>
+        ))}
+      </div>
+      <div className="pj-grid">
+        {shown.map(w => {
+          const picked = picks.includes(w.id);
+          const h = holder(w);
+          return (
+            <button key={w.id} type="button" className={`pj-card${picked ? ' is-picked' : ''}`} onClick={() => setOpen(w.id)} aria-label={`${w.name}: ${STATUS[w.status].label}. ${picked ? 'On your shortlist. ' : ''}See details`}>
+              <span className="pj-card-head">
+                <i aria-hidden="true">{w.icon}</i>
+                <b>{w.name}</b>
+                {picked && <span className="pj-tick" aria-hidden="true">✓</span>}
+              </span>
+              <span className="pj-pitch">{w.pitch}</span>
+              <span className="pj-card-foot">
+                <StatusChip w={w} />
+                {h.brand ? <small>With {h.brand.name}</small> : h.open > 0 ? <small className="is-open">Open</small> : null}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <ul className="pj-rules">
+        {RULES.map(r => (
+          <li key={r}>{r}</li>
+        ))}
+      </ul>
+      {sheet && <WaySheet w={sheet} s={s} picked={picks.includes(sheet.id)} dispatch={dispatch} onClose={() => setOpen(null)} />}
+    </div>
+  );
+}
+
+/** One way to partner: where players meet it, what the partner gets, Interested, and the screen that shows it. */
+function WaySheet({ w, s, picked, dispatch, onClose }: { w: WayToPartner; s: GameState; picked: boolean; dispatch: Dispatch<Action>; onClose: () => void }) {
+  const main = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.stopImmediatePropagation();
+      onClose();
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [onClose]);
+  useEffect(() => main.current?.focus(), []);
+  const h = holder(w);
+  // the game's other screens open once the farm is open
+  const canGo = s.fs.phase === 'done';
+  return (
+    <div className="pt-sheet-wrap">
+      <div className="pt-sheet-scrim" onClick={onClose} />
+      <div className="pt-sheet pj-sheet" role="dialog" aria-modal="true" aria-label={w.name}>
+        <CloseX className="pt-sheet-x" onClick={onClose} />
+        <header>
+          <span className="pj-sheet-icon" aria-hidden="true">
+            {w.icon}
+          </span>
+          <span>
+            <small>
+              {areaOf(w.area).label} · {STATUS[w.status].label}
+            </small>
+            <b>{w.name}</b>
+          </span>
+        </header>
+        <p className="pj-sheet-pitch">{w.pitch}</p>
+        <p className="pt-sheet-head">Where players meet it</p>
+        <ul className="pj-where">
+          {w.where.map(x => (
+            <li key={x}>{x}</li>
+          ))}
+        </ul>
+        <p className="pt-sheet-head">What you get</p>
+        <p className="pj-gets">{w.gets}</p>
+        {(h.brand || h.open > 0) && (
+          <p className="pt-sheet-where">
+            <i aria-hidden="true">📍</i>
+            {h.brand ? `Held today by ${h.brand.name}${h.brand.sample ? ' (a sample partner)' : ''}.` : 'Its placement is open.'}
+          </p>
+        )}
+        <div className="pt-sheet-actions">
+          <button ref={main} type="button" className={`ach-claim is-big pj-pick${picked ? ' is-on' : ''}`} aria-pressed={picked} onClick={() => dispatch({ type: 'partnerPick', id: w.id })}>
+            {picked ? '✓ On my shortlist' : '+ Interested'}
+          </button>
+          {w.see && canGo && (
+            <button type="button" className="set-link" onClick={() => dispatch({ type: 'route', path: w.see!.to })}>
+              {w.see.label} ›
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Shortlist({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
+  const [copied, setCopied] = useState<'yes' | 'no' | null>(null);
+  const picks = s.partnerPicks ?? [];
+  const picked = picks.map(wayOf).filter((w): w is WayToPartner => !!w);
+  const text = shortlistText(picks);
+  if (picked.length === 0)
+    return (
+      <div className="pj-empty">
+        <p className="set-title">Your shortlist is empty</p>
+        <p>Open Partner with us, tap a way to partner, then + Interested.</p>
+        <button type="button" className="ach-claim is-big" onClick={() => dispatch({ type: 'open', modal: { kind: 'partners', tab: 'join' } })}>
+          See the ways to partner
+        </button>
+      </div>
+    );
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied('yes');
+    } catch {
+      setCopied('no');
+    }
+  };
+  return (
+    <div className="pj-short">
+      <div className="ach-row-head">
+        <p className="set-title">Your shortlist</p>
+        <small className="pt-note">
+          {picked.length} of {WAYS.length} ways
+        </small>
+      </div>
+      <ul className="pj-list">
+        {picked.map(w => (
+          <li key={w.id}>
+            <i aria-hidden="true">{w.icon}</i>
+            <span>
+              <b>{w.name}</b>
+              <small>
+                {areaOf(w.area).label} · {STATUS[w.status].label}
+              </small>
+            </span>
+            <button type="button" className="pj-remove" onClick={() => dispatch({ type: 'partnerPick', id: w.id })} aria-label={`Take ${w.name} off the shortlist`}>
+              ✕
+            </button>
+          </li>
+        ))}
+      </ul>
+      <div className="pt-sheet-actions">
+        <button type="button" className="ach-claim is-big" onClick={copy}>
+          Copy the shortlist
+        </button>
+        {PARTNER_EMAIL && (
+          <a className="set-link" href={`mailto:${PARTNER_EMAIL}?subject=${encodeURIComponent('Lima partnership')}&body=${encodeURIComponent(text)}`}>
+            Email it to the Lima team ›
+          </a>
+        )}
+        {copied && (
+          <span className="pj-copied" role="status">
+            {copied === 'yes' ? 'Copied. Paste it into an email or a message.' : 'This browser would not copy it: select the text below.'}
+          </span>
+        )}
+      </div>
+      {copied === 'no' && <textarea className="pj-text" readOnly value={text} aria-label="The shortlist as text" />}
     </div>
   );
 }

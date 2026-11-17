@@ -36,16 +36,17 @@ import {
   type Task,
   type TaskIcon,
   type TreatJob,
+  type SprayFor,
 } from './field';
 import { BILLBOARDS, FarmWorld, PLACES, STAGE_H, STAGE_W, TRACTOR_BOARD, type Fx } from './engine';
 import { slotBrand, type SlotId } from '../partners/data';
 import { useSlotView } from '../partners/track';
 import { BrandMark, openOffer } from '../partners/ui';
 import { useNav } from '../components/Nav';
-import { ClimateIcon } from '../components/Icons';
+import { ClimateIcon, PartnersIcon } from '../components/Icons';
 import { rating } from '../climate/model';
 import { TRACTOR_BONUS } from '../tractor/data';
-import { JOB_INFO, KIND_WORDS, TOOL_JOB, toolName, tractorName, type PlotKind } from '../plots/data';
+import { JOB_INFO, KIND_WORDS, toolJobs, toolName, tractorName, type PlotKind } from '../plots/data';
 import type { Rig } from '../plots/TractorPick';
 import { currency, money, moneyShort } from '../money';
 import { sfx } from '../sfx';
@@ -67,7 +68,7 @@ const TractorPick = lazy(() => import('../plots/TractorPick').then(m => ({ defau
 /** Design review (?review=1): the farm world opens straight into one of these (GameState.worldDemo). */
 export type WorldDemo = 'check' | 'prescribe' | 'spray' | 'tractor' | 'tractor-summary' | 'rig' | 'board';
 
-type Care = { kind: 'fix'; farm: number; day: number } | { kind: 'spray'; jobs: { farm: number; hazard: import('../trials/model').TrialHazard }[] } | { kind: 'tractor'; farm: number; demo?: 'summary' }
+type Care = { kind: 'fix'; farm: number; day: number } | { kind: 'spray'; jobs: { farm: number; hazard: SprayFor }[] } | { kind: 'tractor'; farm: number; demo?: 'summary' }
   // the inputs board at a shed (then the item is picked up), and the tractor's type and tool
   | { kind: 'board'; farm: number; kinds: PlotKind[]; then: 'seeds' | 'fertilizer' | 'sprayer' }
   | { kind: 'rig' };
@@ -363,8 +364,8 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     setRig(rig);
     track('tractor_ride', { stage: 'seat', ...(rig ?? {}) });
     if (rig) {
-      const j = TOOL_JOB[rig.tool];
-      say(`${tractorName(rig.tractor)} tractor, ${toolName(rig.tool).toLowerCase()}: drive over plots to ${JOB_INFO[j].name.toLowerCase()}. +${TRACTOR_BONUS.perJob} points a farm`);
+      const jobs = toolJobs(rig.tool).map(j => JOB_INFO[j].name.toLowerCase());
+      say(`${tractorName(rig.tractor)} tractor, ${toolName(rig.tool).toLowerCase()}: drive over plots to ${jobs.join(' or ')}. +${TRACTOR_BONUS.perJob} points a farm`);
     } else say('On the tractor');
   }
 
@@ -798,6 +799,10 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         <span>MISSION</span>
       </button>
       <WaterButton s={s} dispatch={dispatch} />
+      <button type="button" className="hud-round hud-partners" onClick={() => dispatch({ type: 'open', modal: { kind: 'partners' } })} aria-label="Partners: offers, placements and ways to partner with Lima">
+        <PartnersIcon />
+        <span>PARTNERS</span>
+      </button>
       <button type="button" className="hud-round hud-shop" onClick={() => dispatch({ type: 'open', modal: { kind: 'shop', tab: 'food' } })} aria-label="Shop">
         <img src={img.cart} alt="" width={30} height={30} />
         <span>SHOP</span>

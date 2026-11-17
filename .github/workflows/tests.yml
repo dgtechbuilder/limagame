@@ -27,7 +27,13 @@ jobs:
       - name: Build
         run: npm run build
       - name: Install Chromium for Playwright
-        run: npx playwright install --with-deps chromium
+        # the system packages come from Ubuntu's mirrors, which sometimes fail to resolve: try three times
+        run: |
+          for i in 1 2 3; do
+            npx playwright install --with-deps chromium && exit 0
+            echo "Install failed (try $i of 3)"; sleep 20
+          done
+          exit 1
       - name: Play-tests
         run: npm test
       - name: Keep the test report

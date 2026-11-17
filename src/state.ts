@@ -36,10 +36,10 @@ import {
   type TrialSummary,
 } from './trials/model';
 import { FOLLOW_UP } from './care/data';
-import { FULL, carryNeeded, doneMask, emptyField, followUpLeft, plotLocked, treatCostFor, treatLeft, type Carry, type Field } from './world/field';
+import { FULL, ROUTINE_POINTS, carryNeeded, doneMask, emptyField, followUpLeft, plotLocked, routineLeft, treatCostFor, treatLeft, type Carry, type Field } from './world/field';
 import { TRACTOR_BONUS, type ImplId } from './tractor/data';
 import { rewardFor } from './tractor/sim';
-import { TRACTOR_PLOT, plotCost, setPlotInput, toolName, type PlotJob, type PlotKind, type TractorId } from './plots/data';
+import { ROUTINE, TRACTOR_PLOT, plotCost, setPlotInput, toolName, type PlotJob, type PlotKind, type TractorId } from './plots/data';
 import { initialClimate, type ClimateState } from './climate/model';
 import { settleDays, trackClimate } from './climate/track';
 import { achClock, trackAchievements } from './achievements/track';
@@ -141,7 +141,7 @@ export type SettingsTab = 'farmer' | 'game' | 'display' | 'help';
 export type ClimateTab = 'overview' | 'land' | 'areas' | 'emissions' | 'water' | 'tank' | 'credits' | 'shocks' | 'activity';
 /** My Progress (the achievements page): the journey of certification levels, the modules, today, badges, certificates */
 export type AchTab = 'journey' | 'modules' | 'today' | 'badges' | 'certificates';
-export type PartnersTab = 'offers' | 'placements';
+export type PartnersTab = 'offers' | 'placements' | 'join' | 'shortlist';
 export const DEFAULT_SETTINGS: Settings = { art: 'anime', graphics: 'auto', reduceMotion: false, voice: false, sound: true, upgradeNotes: true, country: '' };
 
 /** Stage index: 0–5 = the farming step being worked on, 6 = harvested and selling, 7 = season sold. */
@@ -253,6 +253,8 @@ export interface GameState {
   trainings?: TrainingBooking[];
   /** partner offers the player saved (src/partners/data.ts; missing in older saves) */
   offers?: BrandId[];
+  /** Partners › Partner with us: the ways a partner tapped Interested on (src/partners/catalogue.ts; missing in older saves) */
+  partnerPicks?: string[];
   /** money at risk: the button as last seen, and every problem dealt with (src/risk/model.ts; missing in older saves) */
   risk?: RiskState;
   /** water: the tank, the animals, the shared catchment, crop cover (src/water; missing in older saves) */
@@ -340,6 +342,7 @@ export const initialState: GameState = {
   loan: DEFAULT_LOAN,
   trainings: [],
   offers: [],
+  partnerPicks: [],
   collectedDay: {},
   season: 1,
   ...freshSeason,
@@ -522,6 +525,8 @@ export type Action =
   | { type: 'levelClaim'; id: string }
   /** partners: get a brand's offer (its code is kept in Messages) */
   | { type: 'partnerSave'; id: BrandId }
+  /** Partners › Partner with us: tap Interested on a way to partner, or tap again to take it off the shortlist */
+  | { type: 'partnerPick'; id: string }
   /** go to a web address (src/route.ts): the screen it names, if the player may go there now */
   | { type: 'route'; path: string }
   | RiskAction
@@ -915,7 +920,9 @@ function play(s: GameState, a: Action): GameState {
       return {
         ...s,
         coins: s.coins - cost,
-        trial: { ...t, phase: 'growing', clock: a.clock, planted: dayNumber(), day: 1 },
+        // scheduled care (weeding, the stalk-borer spray, the top-dress) from the second cycle, when the farms are worked
+        // in the farm world: the six farms screen has no field work to do it with
+        trial: { ...t, phase: 'growing', clock: a.clock, planted: dayNumber(), day: 1, ...(!t.guided && s.view === 'world' ? { routine: [] } : {}) },
         field: emptyField(t.cycle),
         ...gainXp(s, 0.1),
         toast: toast(s.view === 'world' ? `${t.plans.length} farm plans paid: ${money(cost)} · now get them planted` : `${t.plans.length} farms planted for ${money(cost)} · day 1: check every farm`),
@@ -1005,7 +1012,7 @@ function play(s: GameState, a: Action): GameState {
           fuel = Math.min(s.coins, TRACTOR_PLOT[a.rig.tractor].fuel);
           let next = rows.map((r, i) => (i === 0 ? { ...r, tractor: r.tractor ?? a.rig!.tractor, tools: { ...(r.tools ?? {}), [a.rig!.job]: a.rig!.tool } } : r));
           // spraying from the seat is the boom sprayer's work
-          if (a.rig.job === 'spray' && here.sprayer !== 'boom') next = setPlotInput(next, 'sprayer', 0, 'boom');
+          if ((a.rig.job === 'spray' || a.rig.job === 'borer') && here.sprayer !== 'boom') next = setPlotInput(next, 'sprayer', 0, 'boom');
           const plots = t.plans.map((_, i) => (i === a.farm ? next : plotsOf(t!, i)));
           const spent = t.plans.map((_, i) => (t!.fuel?.[i] ?? 0) + (i === a.farm ? fuel : 0));
           t = { ...t, plots, fuel: spent };
@@ -1075,6 +1082,14 @@ function play(s: GameState, a: Action): GameState {
           field = putDown(trial);
           return { ...s1, field, trial, ...gainXp(s1, 0.03), toast: toast(`${farmName(a.farm)}: follow-up done · the problem stays away`) };
         }
+      }
+      // scheduled care counts once its last plot is done
+      const due = routineLeft(f, t, a.farm, currentDay(t, dayNumber())).find(r => r.key === a.job);
+      if (due && (after & due.need) === due.need) {
+        const trial: Trial = { ...t, routine: [...(t.routine ?? []), `${a.farm}:${due.job}`] };
+        field = putDown(trial);
+        const points = ROUTINE_POINTS + bonus;
+        return { ...s1, field, trial, points: s1.points + points, ...gainXp(s1, 0.03), toast: toast(`${farmName(a.farm)} ${ROUTINE[due.job].done} · +${points} points`) };
       }
       if (bonus) return { ...s1, field, points: s1.points + bonus, ...gainXp(s1, 0.02), toast: toast(`Tractor bonus · +${bonus} points · ${farmName(a.farm)} done by tractor${fuel ? ` · −${money(fuel)} of fuel` : ''}`) };
       if (fuel && a.rig) return { ...s1, field, toast: toast(`${farmName(a.farm)}: the ${a.rig.tractor} tractor's ${toolName(a.rig.tool).toLowerCase()} at work · −${money(fuel)} of fuel`) };
@@ -1341,6 +1356,10 @@ function play(s: GameState, a: Action): GameState {
     case 'riskFixed':
     case 'riskTap':
       return { ...s, risk: riskReduce(s.risk, a) };
+    case 'partnerPick': {
+      const picks = s.partnerPicks ?? [];
+      return { ...s, partnerPicks: picks.includes(a.id) ? picks.filter(x => x !== a.id) : [...picks, a.id] };
+    }
     case 'partnerSave': {
       const b = brandOf(a.id);
       const saved = s.offers ?? [];

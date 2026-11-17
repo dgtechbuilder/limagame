@@ -41,7 +41,7 @@ export function MainMenu({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
         },
         { label: 'Climate', note: 'Emissions, water, soil, credits', run: () => open({ kind: 'climate' }) },
         { label: 'Rewards', note: 'Points for real discounts', run: () => open({ kind: 'rewards' }) },
-        { label: 'Partners & offers', note: 'Offers from the brands on your farm', run: () => open({ kind: 'partners', tab: 'offers' }) },
+        { label: 'Partners & offers', note: 'Offers, and ways to partner with Lima', run: () => open({ kind: 'partners', tab: 'offers' }) },
         { label: 'Training', note: (s.trainings ?? []).length ? `${(s.trainings ?? []).length} booked · book a course` : 'Book a farmer course', run: () => open({ kind: 'training' }) },
         { label: 'Loan calculator', note: 'What a farm loan costs', run: () => open({ kind: 'loan', view: 'calc' }) },
         { label: 'Farming steps', note: 'The classic maize season', run: () => open({ kind: 'steps', step: 'landprep' }) },

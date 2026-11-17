@@ -1,4 +1,4 @@
-/* Lima Farming Game — design tokens and component styles.
+/* TemoLima — design tokens and component styles.
    Values come from the Figma file "29 Oct Farm Management App". The game is laid out on a
    fixed 874 × 402 landscape stage (iPhone landscape) that is scaled to fit the window. */
 
@@ -2220,6 +2220,9 @@ button.card:active { transform: scale(0.98); }
 /* ================================================================== */
 
 .hud-progress { right: 70px; top: 136px; }
+/* PARTNERS on the farm: left of WATER, under PROGRESS */
+.hud-partners { right: 70px; top: 196px; }
+.hud-partners > svg { background: radial-gradient(circle at 50% 35%, #fff8e6, #f0dcb4); }
 .hud-progress > svg { padding: 3px; background: radial-gradient(circle at 50% 35%, #fff8e6, #f0dcb4); }
 .hud-progress .hud-badge { right: -6px; font-size: 9px; }
 .progress-chip { gap: 3px; background: rgba(30, 91, 120, 0.85); }
@@ -2520,3 +2523,60 @@ button.card:active { transform: scale(0.98); }
 .set-tags i button { width: 16px; height: 16px; border-radius: 100px; background: #fff; font-size: 10px; line-height: 1; }
 .set-tags input { width: 110px; height: 24px; border-radius: 7px; border: 1.5px solid #ecd2ac; padding: 0 6px; font: inherit; font-size: 11px; }
 .sg-done { height: 26px; padding: 0 18px; border-radius: 8px; background: var(--gold, #ffb005); color: #fff; font-size: 11.5px; font-weight: 900; }
+
+/* ------------------------------------------------------------------ */
+/* Partners › Partner with us and Shortlist (screens/Partners.tsx)      */
+/* Built to docs/ui-spacing-plan.md: spacing 4/8/12/16, text 10px+,     */
+/* solid ink colours, 32px+ tap targets.                                */
+/* ------------------------------------------------------------------ */
+.pj-areas { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.pj-area {
+  display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 10px; border-radius: 999px;
+  border: 1px solid rgba(107, 64, 43, 0.2); background: #fff; color: var(--brown); font: inherit; font-size: 11px; font-weight: 600;
+}
+.pj-area i { font-style: normal; font-size: 12px; }
+.pj-area.is-on { background: var(--brown); border-color: var(--brown); color: #fff; }
+.pj-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+.pj-card {
+  position: relative; display: flex; flex-direction: column; gap: 4px; min-width: 0; min-height: 96px; padding: 12px;
+  border-radius: 14px; border: 1px solid rgba(107, 64, 43, 0.12); background: #fff8ea; color: var(--brown);
+  font: inherit; text-align: left; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+.pj-card:hover { border-color: var(--gold); }
+.pj-card.is-picked { border-color: var(--gold); box-shadow: 0 0 0 1.5px var(--gold); }
+.pj-card-head { display: flex; align-items: center; gap: 8px; }
+.pj-card-head i { font-style: normal; font-size: 16px; }
+.pj-card-head b { flex: 1; min-width: 0; font-size: 12px; line-height: 1.25; }
+.pj-tick { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 999px; background: var(--gold); color: #4a2a10; font-size: 10px; font-weight: 900; }
+.pj-pitch { font-size: 11px; line-height: 1.4; color: #7d5440; }
+.pj-card-foot { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 4px; }
+.pj-card-foot small { font-size: 10px; font-weight: 600; color: #7d5440; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pj-card-foot small.is-open { color: #2e6b35; }
+.pj-status {
+  flex-shrink: 0; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-style: normal; font-weight: 700; white-space: nowrap;
+}
+.pj-status.is-now { background: #e3f2d6; color: #2e6b35; }
+.pj-status.is-build { background: #fdf0d2; color: #7a4f00; }
+.pj-status.is-new { background: #e6eefb; color: #2f5a9a; }
+.pj-rules { margin: 16px 0 0; padding-left: 16px; font-size: 11px; line-height: 1.5; color: #7d5440; }
+.pj-sheet { width: 380px; border-top: 6px solid var(--gold); }
+.pj-sheet-icon { display: grid; place-items: center; width: 38px; height: 38px; flex-shrink: 0; border-radius: 10px; background: #fff8ea; font-size: 20px; }
+.pj-sheet-pitch { margin: 0; font-size: 12px; font-weight: 600; line-height: 1.45; }
+.pj-where { margin: 0; padding-left: 16px; font-size: 11px; line-height: 1.5; }
+.pj-gets { margin: 0; font-size: 11px; line-height: 1.5; }
+.pj-pick.is-on { background: #fff; }
+.pj-empty { padding: 24px 4px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; font-size: 12px; color: #7d5440; }
+.pj-empty p { margin: 0; }
+.pj-list { list-style: none; margin: 12px 0; padding: 0; }
+.pj-list li { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 4px 0; border-top: 1px solid rgba(107, 64, 43, 0.12); }
+.pj-list li:first-child { border-top: 0; }
+.pj-list i { font-style: normal; font-size: 18px; }
+.pj-list span { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pj-list b { font-size: 12px; }
+.pj-list small { font-size: 10px; color: #7d5440; }
+.pj-remove { width: 32px; height: 32px; border-radius: 10px; border: 1px solid rgba(107, 64, 43, 0.2); background: #fff; color: var(--brown); font-size: 11px; }
+.pj-copied { font-size: 11px; color: #2e6b35; }
+.pj-text { width: 100%; height: 90px; margin-top: 8px; font: inherit; font-size: 11px; }
+.partners-page .set-tab { white-space: nowrap; }
+.pj-card-foot { flex-wrap: wrap; row-gap: 4px; }
+.pj-card-foot small { overflow: visible; }
