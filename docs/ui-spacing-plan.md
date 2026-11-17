@@ -189,13 +189,22 @@ one button.
 
 **Phase 1: collisions and contrast**
 
-1. **Pop-ups hide the HUD** and use the top-bar navigation (layout C). Fixes every overlap in the Rewards picture.
-2. **Gold buttons**: `--ink-on-gold` text. One change in `GoldButton` and the gold button classes.
-3. **Climate**: nine tabs become five (Overview, Farm areas, Emissions, Water, Activity; Land & pay and Credits move
-   into Overview, Shocks into Activity). *Farm areas* shows each area's name, its status and one line; the numbers
-   open on a tap, as on Partners › Partner with us.
+1. ✅ **Pop-ups hide the HUD.** Done: on the 3D farm, every screen on top hides the HUD buttons, the task card, the
+   coin and point pills and the on-field prompts (the classic farm already did). This clears every overlap in the
+   Rewards picture. The pop-ups' Back / Menu / Farm column stays on the left for now: with the HUD gone it no longer
+   collides, and moving it to the top bar waits for Phase 2, where the frames' close buttons move too.
+2. ✅ **Gold buttons.** Done: `.gold-btn` text is `--ink-on-gold` (6.9 : 1, was white at 1.86 : 1) and `GoldButton`
+   text is 10px at least (it defaulted to 8px).
+3. **Climate** (still to do): nine tabs become five (Overview, Farm areas, Emissions, Water, Activity; Land & pay and
+   Credits move into Overview, Shocks into Activity). *Farm areas* shows each area's name, its status and one line;
+   the numbers open on a tap, as on Partners › Partner with us.
    ![Climate › Farm areas today](ui-audit/climate-dense.webp)
-4. **Spacing, type, radius and colour tokens** added to `:root` in `src/styles.css`, with the faded text replaced.
+4. **Tokens.** ✅ Added to `:root` in `src/styles.css`: `--space-1…6`, `--text-label…display`, `--radius-sm…pill`,
+   `--ink`, `--ink-2`, `--ink-3`, `--ink-on-gold`, `--good`, `--bad`. Still to do: replace the 99 faded-text rules
+   with `--ink-2` / `--ink-3`, screen by screen with Phase 2 (some of those rules fade icons, not text).
+
+Checked by `tests/ui-quality.spec.ts`: eleven pop-ups over the 3D farm, with no HUD button, task card or pill
+under any of them, and every visible gold button dark-on-gold at 10px or more.
 
 **Phase 2: the older pop-ups** (the smallest text in the game)
 
