@@ -168,6 +168,7 @@ test('from the tractor seat: the inter-row cultivator weeds a farm', async ({ pa
   await scenario(page, 'routine');
   await page.evaluate(() => (window as unknown as Win).__limaWorld!.spawn(-17.4, 8.6));
   await page.locator('.hud-tractor').click();
+  await page.getByRole('dialog', { name: 'Tractor' }).getByRole('button', { name: 'Hop on', exact: true }).click();
   await page.locator('.tp-card', { hasText: 'Standard' }).click();
   await page.getByRole('button', { name: 'Next: the tool', exact: true }).click();
   // today's scheduled care is due on both farms; the cultivator is the weeding tool

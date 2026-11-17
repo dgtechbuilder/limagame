@@ -8,6 +8,8 @@ test('hire the tractor: choose it and the implement, drive on autopilot, see the
   await boot(page);
   await scenario(page, 'tractor');
   await tapTask(page, 'Hire the tractor');
+  // the Train spot opens the tractor screen on Hire
+  await page.getByRole('dialog', { name: 'Tractor' }).getByRole('button', { name: 'Hire now', exact: true }).click();
   await expect(page.locator('.tc-side')).toContainText('Mama Achieng');
   await page.getByRole('button', { name: 'Choose a tractor', exact: true }).click();
   await page.locator('.tc-card', { hasText: 'Compact' }).click();

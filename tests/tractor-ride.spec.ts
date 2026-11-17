@@ -40,7 +40,9 @@ test('pick a tractor and a tool, then work a farm\'s plots from the seat', async
   await page.evaluate(() => (window as unknown as Win).__limaWorld!.spawn(-17.4, 8.6));
   const button = page.locator('.hud-tractor');
   await expect(button).toHaveAttribute('aria-label', 'Drive the tractor');
+  // the tractor screen opens on Drive
   await button.click();
+  await page.getByRole('dialog', { name: 'Tractor' }).getByRole('button', { name: 'Hop on', exact: true }).click();
   await expect(page.locator('.tp-card', { hasText: 'Large' })).toContainText('Fuel');
   await page.locator('.tp-card', { hasText: 'Standard' }).click();
   await page.getByRole('button', { name: 'Next: the tool', exact: true }).click();
@@ -93,6 +95,7 @@ test('far from the tractor, the button walks to it, then asks for the type and t
   const button = page.locator('.hud-tractor');
   await expect(button).toHaveAttribute('aria-label', 'Walk to the tractor');
   await button.click();
+  await page.getByRole('dialog', { name: 'Tractor' }).getByRole('button', { name: 'Hop on', exact: true }).click();
   await expect(page.locator('.tp-card').first()).toBeVisible({ timeout: 60_000 });
   await pick(page, 'Compact', 'Maize planter');
   await expect(page.locator('.hud-status')).toContainText('On the tractor · Compact · Maize planter');

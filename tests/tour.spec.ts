@@ -67,6 +67,8 @@ test('tour of the Wakala moments on a phone-sized screen', async ({ page }) => {
   // the tractor
   await scenario(page, 'tractor');
   await tapTask(page, 'Hire the tractor');
+  // the Train spot opens the tractor screen on Hire
+  await page.getByRole('dialog', { name: 'Tractor' }).getByRole('button', { name: 'Hire now', exact: true }).click();
   await expect(page.locator('.tc-side')).toBeVisible();
   await settle(page);
   await page.screenshot({ path: shot('10-tractor-brief') });
@@ -121,6 +123,8 @@ test('tour of the Wakala moments on a phone-sized screen', async ({ page }) => {
     )
     .toBe('Drive the tractor');
   await page.locator('.hud-tractor').click();
+  // the tractor screen opens on Drive
+  await page.getByRole('dialog', { name: 'Tractor' }).getByRole('button', { name: 'Hop on', exact: true }).click();
   await expect(page.locator('.tp-card').first()).toBeVisible();
   await page.locator('.tp-card', { hasText: 'Compact' }).click();
   await settle(page);

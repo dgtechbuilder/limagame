@@ -72,7 +72,7 @@ export function addEntry<S extends { wallet?: Partial<WalletState>; life?: GameS
   };
 }
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
+const round2 = (n: number) => Math.round(n * 10000) / 10000;
 
 /** What the player did, for the wallet's words. */
 function describe(a: Action, prev: GameState, next: GameState): { kind: WalletKind; label: string } {
@@ -168,7 +168,7 @@ export function trackWallet(prev: GameState, next: GameState, a: Action): GameSt
   const fresh = after.slice(0, at < 0 ? after.length : at);
   const written = fresh.reduce((n, e) => n + e.amount, 0);
   const rest = round2(next.coins - prev.coins - written);
-  if (Math.abs(rest) < 0.005) return next;
+  if (Math.abs(rest) < 0.0001) return next;
   const d = describe(a, prev, next);
   return addEntry(next, d.kind, d.label, rest, next.coins);
 }

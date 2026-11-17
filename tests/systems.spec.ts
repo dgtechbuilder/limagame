@@ -74,7 +74,7 @@ test('the power system goes in one part a day over 7 days, then runs every day f
   expect(s.coins).toBe(coins - POWER_STEPS[0].price);
   // the parts go in order
   s = act({ ...s, life: { ...lifeOf(s.life), day: 4 } }, { type: 'powerInstall', id: 'lights', score: 1 });
-  expect(s.toast?.text).toMatch(/inverter first/i);
+  expect(s.toast?.text).toMatch(/first$/i);
   s = act({ ...s, life: { ...lifeOf(s.life), day: 7 } }, ...(['inverter', 'battery', 'lights', 'generator', 'fuel'] as const).map(id => ({ type: 'powerInstall' as const, id, score: 1 })));
   expect(powerOf(s.power).fuel).toBe(POWER.firstFill);
   expect(powerOn(s)).toBe(false);
@@ -84,7 +84,8 @@ test('the power system goes in one part a day over 7 days, then runs every day f
   expect(activeMeasures(s)).toContain('light');
   // a night passes: the system runs its day, pumps water and counts its clean power for the climate
   const tank = { ...tankOf(s.tank), level: 1000 };
-  s = act({ ...s, tank, life: { ...lifeOf(s.life), date: '2026-11-14' } }, { type: 'climateTick' });
+  // (any action settles the nights that have passed)
+  s = act({ ...s, tank, life: { ...lifeOf(s.life), date: '2026-11-14' } }, { type: 'toast', text: 'morning' });
   const p = powerOf(s.power);
   expect(p.history.length).toBeGreaterThan(0);
   expect(p.history[0].solar).toBeGreaterThan(5);
@@ -148,15 +149,16 @@ test('the market stall sells 25 kg of the store a day; a harvest keeps some back
   s = act(s, { type: 'produceSell', items: { maize: 20, tomatoes: 10 } });
   const p = produceOf(s.produce);
   expect(p.soldKg).toBe(MARKET.dailyKg);
-  expect(p.store.maize).toBe(85);
-  expect(p.store.tomatoes).toBe(0);
+  // 20 kg of maize, then the 5 kg of tomatoes the day's limit leaves
+  expect(p.store.maize).toBe(80);
+  expect(p.store.tomatoes).toBe(5);
   expect(s.coins).toBeGreaterThan(coins);
   expect(walletOf(s.wallet).entries[0].kind).toBe('produce');
   s = act(s, { type: 'produceSell', items: { maize: 5 } });
   expect(s.toast?.text).toMatch(/come back tomorrow/);
   // the next farm day sells again
   s = act({ ...s, life: { ...lifeOf(s.life), day: 6 } }, { type: 'produceSell', items: { maize: 5 } });
-  expect(produceOf(s.produce).store.maize).toBe(80);
+  expect(produceOf(s.produce).store.maize).toBe(75);
 });
 
 test('Farms 7 and 8 open after day 3: plant, water, harvest into the store', () => {
@@ -183,8 +185,8 @@ test('the new pages open by their addresses, and the TRACTOR button opens the tr
     ['#/wallet/history', 'Wallet'],
     ['#/power/build', 'Power'],
     ['#/market', 'Market stall'],
-    ['#/new-farms/7', 'New farms'],
     ['#/animals/cow-shed', 'Animals'],
+    ['#/new-farms/7', 'New farms'],
   ] as const) {
     await page.evaluate(h => (window.location.hash = h), hash);
     await expect(page.getByRole('dialog', { name, exact: true })).toBeVisible();

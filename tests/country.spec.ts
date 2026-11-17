@@ -50,6 +50,9 @@ const SCREENS = [
   ...['land-prep', 'planting', 'fertilizer', 'pesticides', 'water', 'harvest'].map(t => `/steps/${t}`),
   '/loan-calculator', '/loan-calculator/quote',
   ...['welcome', 'sale', 'storage', 'harvest-timing', 'value-addition', 'process', 'farm-info', 'results', 'rewards', 'training'].map(t => `/${t}`),
+  ...['history', 'climate-payments', 'summary'].map(t => `/wallet/${t}`),
+  ...['build', 'today', 'impact', 'history'].map(t => `/power/${t}`),
+  '/market', '/new-farms/7', '/new-farms/8', '/animals/cow-shed',
 ];
 
 /** The page's words, with its labels and tool tips, and any US dollar amount in them. */

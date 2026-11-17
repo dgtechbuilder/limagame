@@ -142,7 +142,7 @@ export const LAMPS: { x: number; z: number }[] = [
   { x: -2.2, z: 10.8 },
   { x: 2.2, z: 13.6 },
   { x: -12.6, z: 9.0 },
-  { x: 13.4, z: 3.2 },
+  { x: 11.4, z: 2.4 },
 ];
 export const TRACTOR_BOARD = { x: -17.4, z: 8.6 };
 
