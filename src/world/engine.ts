@@ -141,7 +141,17 @@ export const PLACES: Record<Place, { x: number; z: number; r: number }> = {
   hire: { x: -14.6, z: 6.4, r: 1.2 },
   market: { x: 0, z: 12.9, r: 1.3 },
   house: { x: 0, z: -15.2, r: 1.2 },
+  /** the cow pen's gate and the chicken coop's door: the Animals page (src/livestock) */
+  pen: { x: -10.7, z: -13.0, r: 1.0 },
+  coop: { x: 8.2, z: -16.0, r: 1.0 },
 };
+
+/** How many cows and hens there are, and the coop (src/livestock): the 3D farm shows them. */
+export interface FarmLife {
+  cows: number;
+  hens: number;
+  coop: 'basic' | 'secure' | null;
+}
 
 const PICKUP_OF: Partial<Record<Place, Exclude<Carry, null>>> = { 'shed-seeds': 'seeds', 'shed-fertilizer': 'fertilizer', 'shed-sprayer': 'sprayer', pond: 'water' };
 
@@ -473,10 +483,7 @@ export class FarmWorld {
     }
     smooth.push(...place(pond(), at(18.4, 0, 0)));
     smooth.push(...place(trough(), at(-15, 0, -13.6)));
-    // a little coop
-    smooth.push({ geo: G.box, color: C.woodPlank, m: at(8.2, 0.7, -18.4, { sx: 2.2, sy: 1.4, sz: 1.6 }) });
-    smooth.push({ geo: G.box, color: C.roof, m: at(8.2, 1.55, -18.4, { sx: 2.6, sy: 0.25, sz: 2.0, rx: 0.15 }) });
-    smooth.push({ geo: G.box, color: '#5c3a20', m: at(8.2, 0.45, -17.58, { sx: 0.6, sy: 0.7, sz: 0.05 }) });
+    // the chicken coop is built by the player from day 2 (buildCoops: a pile of timber until then)
     // fences: the yard, and the cow pen
     smooth.push(...fence(-22.4, -21.2, 22.4, -21.2));
     smooth.push(...fence(-22.4, 17.6, -2.4, 17.6));
@@ -617,6 +624,27 @@ export class FarmWorld {
         g.quadraticCurveTo(-34, 0, 0, -46);
         g.fill();
       },
+      cow: g => {
+        g.fillStyle = '#fff';
+        g.beginPath();
+        g.ellipse(-6, 6, 34, 20, 0, 0, Math.PI * 2);
+        g.fill();
+        g.fillRect(22, -24, 22, 26);
+        g.fillRect(-34, 18, 8, 26);
+        g.fillRect(14, 18, 8, 26);
+      },
+      hen: g => {
+        g.fillStyle = '#fff';
+        g.beginPath();
+        g.ellipse(-4, 10, 30, 24, 0, 0, Math.PI * 2);
+        g.arc(22, -18, 13, 0, Math.PI * 2);
+        g.fill();
+        g.beginPath();
+        g.moveTo(34, -20);
+        g.lineTo(46, -14);
+        g.lineTo(34, -12);
+        g.fill();
+      },
       bag: g => {
         g.fillStyle = '#fff';
         g.beginPath();
@@ -633,6 +661,8 @@ export class FarmWorld {
       ['shed-seeds', 'Seeds', 'bag', 1.6],
       ['shed-fertilizer', 'Fertilizer', 'bag', 1.6],
       ['shed-sprayer', 'Sprayer', 'bag', 1.6],
+      ['pen', 'Cows', 'cow', 1.8],
+      ['coop', 'Hens', 'hen', 1.7],
     ];
     for (const [p, label, glyph, size] of zones) {
       const mat = new THREE.MeshBasicMaterial({ map: zoneTexture(label, glyphs[glyph]), transparent: true, depthWrite: false });
@@ -743,19 +773,25 @@ export class FarmWorld {
   }
 
   private buildAnimals() {
+    // up to six cows in the pen and twelve hens by the coop: as many show as the farm has (setLife)
     for (const [x, z] of [
       [-17, -15],
       [-14.4, -17.6],
+      [-19.2, -18.4],
+      [-13.6, -13.6],
+      [-18.6, -13.2],
+      [-15.8, -19.2],
     ]) {
       const m = makeQuadruped('cow');
       m.root.position.set(x, 0, z);
       this.scene.add(m.root);
       this.cows.push({ m, at: new THREE.Vector2(x, z), to: new THREE.Vector2(x, z), wait: Math.random() * 3 });
     }
-    for (let i = 0; i < 4; i++) {
+    this.buildCoops();
+    for (let i = 0; i < 12; i++) {
       const m = makeChicken();
-      const x = 5.5 + i * 1.2;
-      const z = -16 + (i % 2) * 1.1;
+      const x = 5.0 + (i % 5) * 1.2;
+      const z = -16 + (i % 2) * 1.1 + Math.floor(i / 5) * 0.4;
       m.root.position.set(x, 0, z);
       this.scene.add(m.root);
       this.hens.push({ m, at: new THREE.Vector2(x, z), to: new THREE.Vector2(x, z), wait: Math.random() * 2 });
@@ -768,6 +804,63 @@ export class FarmWorld {
       this.scene.add(b.root);
       this.birds.push(b);
     }
+  }
+
+  private coops: Record<'site' | 'basic' | 'secure', THREE.Group> = { site: new THREE.Group(), basic: new THREE.Group(), secure: new THREE.Group() };
+  private lifeKey = '';
+
+  /** The coop as it can stand: a pile of timber (not built yet), the simple coop, and the raised coop with mesh. */
+  private buildCoops() {
+    const lam = (color: string) => new THREE.MeshLambertMaterial({ color });
+    const box = (g: THREE.Group, color: string, x: number, y: number, z: number, sx: number, sy: number, sz: number, rx = 0) => {
+      const m = new THREE.Mesh(G.box, lam(color));
+      m.position.set(x, y, z);
+      m.scale.set(sx, sy, sz);
+      m.rotation.x = rx;
+      m.castShadow = true;
+      m.receiveShadow = true;
+      g.add(m);
+      return m;
+    };
+    const { site, basic, secure } = this.coops;
+    // timber and iron sheets waiting for day 2
+    for (let i = 0; i < 4; i++) box(site, i % 2 ? C.woodDark : C.woodPlank, 8.2, 0.1 + i * 0.16, -18.4, 2.2 - i * 0.2, 0.14, 0.3 + (i % 2) * 0.9);
+    box(site, '#9aa3a8', 8.9, 0.08, -18.0, 1.0, 0.06, 1.2);
+    // the simple coop: timber walls, an iron-sheet roof, a door
+    box(basic, C.woodPlank, 8.2, 0.7, -18.4, 2.2, 1.4, 1.6);
+    box(basic, C.roof, 8.2, 1.55, -18.4, 2.6, 0.25, 2.0, 0.15);
+    box(basic, '#5c3a20', 8.2, 0.45, -17.58, 0.6, 0.7, 0.05);
+    // the raised coop: on posts, a slatted floor, wire mesh on the front, a ramp and a padlocked door
+    for (const [px, pz] of [[7.0, -19.2], [9.4, -19.2], [7.0, -17.6], [9.4, -17.6]]) box(secure, C.woodDark, px, 0.4, pz, 0.16, 0.8, 0.16);
+    box(secure, C.woodPlank, 8.2, 0.85, -18.4, 2.6, 0.1, 1.8);
+    box(secure, C.woodPlank, 8.2, 1.4, -19.25, 2.6, 1.1, 0.1);
+    box(secure, C.woodPlank, 6.95, 1.4, -18.4, 0.1, 1.1, 1.8);
+    box(secure, C.woodPlank, 9.45, 1.4, -18.4, 0.1, 1.1, 1.8);
+    const mesh = box(secure, '#cfd6da', 8.6, 1.4, -17.52, 1.6, 1.1, 0.04);
+    (mesh.material as THREE.MeshLambertMaterial).transparent = true;
+    (mesh.material as THREE.MeshLambertMaterial).opacity = 0.55;
+    box(secure, '#5c3a20', 7.5, 1.3, -17.52, 0.55, 0.85, 0.06);
+    box(secure, '#e2b23a', 7.72, 1.3, -17.48, 0.09, 0.12, 0.05);
+    box(secure, C.roofDark, 8.2, 2.05, -18.4, 3.0, 0.2, 2.3, 0.15);
+    box(secure, C.woodDark, 7.5, 0.45, -17.0, 0.45, 0.06, 1.2, -0.65);
+    for (const g of [site, basic, secure]) {
+      g.visible = g === site;
+      this.scene.add(g);
+    }
+  }
+
+  /** The herd and the coop as the farm has them now: stolen or dead animals are gone, a built coop stands. */
+  setLife(l: FarmLife) {
+    const key = `${l.cows}:${l.hens}:${l.coop}`;
+    if (key === this.lifeKey) return;
+    this.lifeKey = key;
+    this.cows.forEach((c, i) => (c.m.root.visible = i < l.cows));
+    const hens = Math.min(this.hens.length, l.hens);
+    this.hens.forEach((h, i) => (h.m.root.visible = i < hens));
+    this.coops.site.visible = !l.coop;
+    this.coops.basic.visible = l.coop === 'basic';
+    this.coops.secure.visible = l.coop === 'secure';
+    this.dirty = true;
   }
 
   private buildParticles() {

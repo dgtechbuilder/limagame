@@ -124,6 +124,8 @@ test('in the farm world: weed by hand, spray against stalk borer with the kit, t
   await page.evaluate(() => {
     const l = (window as unknown as Win).__lima;
     l.dispatch({ type: 'trialNextDay' });
+    // the night brings day 2 for the animals (src/livestock): its dialog is closed to get back to the farm
+    l.dispatch({ type: 'dismissSuccess' });
     for (const farm of [0, 1]) l.dispatch({ type: 'trialCheck', farm, day: 4, right: true, tries: 1 });
   });
   await tapTask(page, 'Get fertilizer');

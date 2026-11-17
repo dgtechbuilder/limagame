@@ -22,6 +22,10 @@ export function SuccessLayer({ s, dispatch }: Props) {
       return <Booked x={x} s={s} dispatch={dispatch} done={done} />;
     case 'storage':
       return <Upgraded x={x} s={s} dispatch={dispatch} done={done} />;
+    case 'night':
+      return <NightNews x={x} s={s} dispatch={dispatch} done={done} />;
+    case 'day2':
+      return <DayTwo x={x} s={s} dispatch={dispatch} done={done} />;
   }
 }
 
@@ -73,7 +77,7 @@ function SeasonSale({ x, dispatch, done }: Each<'sale'>) {
       highlight={{ label: 'You earned', value: coins(x.earned) }}
       rows={[
         ['Price a bag', coins(x.price)],
-        ...(x.lost ? ([['Bags lost in storage', fmt(x.lost)]] as [ReactNode, ReactNode][]) : []),
+        ...(x.lost ? ([['Bags lost in storage (spoiled or stolen)', fmt(x.lost)]] as [ReactNode, ReactNode][]) : []),
         ...(x.costs ? ([['Storage and processing', <>−{coins(x.costs)}</>]] as [ReactNode, ReactNode][]) : []),
         ['Points', `+${fmt(x.points)}`],
       ]}
@@ -152,6 +156,74 @@ function Upgraded({ x, s, dispatch, done }: Each<'storage'>) {
         <input type="checkbox" checked={!on} onChange={e => dispatch({ type: 'settings', patch: { upgradeNotes: !e.target.checked } })} />
         Don’t show this after an upgrade
       </label>
+    </SuccessCard>
+  );
+}
+
+/** The morning after a night with news: what was stolen, what predators took, what happened to the animals. */
+function NightNews({ x, dispatch, done }: Each<'night'>) {
+  const lost = x.events.reduce((n, e) => n + (e.kind === 'theft' || e.kind === 'predator' || e.kind === 'death' ? (e.value ?? 0) : 0), 0);
+  const theft = x.events.some(e => e.kind === 'theft' || e.kind === 'predator');
+  const sick = x.events.some(e => e.kind === 'issue' || e.kind === 'death' || e.kind === 'thirst');
+  const tips = [...new Set(x.events.map(e => e.tip).filter(Boolean))].slice(0, 2) as string[];
+  return (
+    <SuccessCard
+      tone="gold"
+      kicker={x.nights > 1 ? `While you were away: ${x.nights} nights` : `Good morning · day ${x.day}`}
+      title={theft ? 'Trouble in the night' : sick ? 'News from the animals' : 'The night’s news'}
+      badge={<span style={{ fontSize: 26 }}>{theft ? '🛡' : '🐄'}</span>}
+      highlight={lost ? { label: 'Lost in the night', value: coins(lost) } : undefined}
+      actions={[
+        { label: 'Back to the farm', plain: true, onClick: done },
+        theft
+          ? { label: 'Protect the farm', onClick: () => dispatch({ type: 'open', modal: { kind: 'security', tab: 'protect' } }) }
+          : { label: 'See the animals', onClick: () => dispatch({ type: 'open', modal: { kind: 'animals', tab: sick ? 'health' : 'today' } }) },
+      ]}
+      onClose={done}
+      label="The night's news"
+      width={460}
+    >
+      <ul className="night-list">
+        {x.events.slice(0, 5).map((e, i) => (
+          <li key={i} className={`is-${e.kind}`}>
+            {e.text}
+            {e.value ? <> ({money(e.value)})</> : null}
+          </li>
+        ))}
+      </ul>
+      {tips.map(t => (
+        <p key={t} className="success-note">
+          {t}
+        </p>
+      ))}
+    </SuccessCard>
+  );
+}
+
+/** Day 2: the animals come into the player's care, the coop can be built, and theft becomes part of every night. */
+function DayTwo({ s, dispatch, done }: Each<'day2'>) {
+  const name = s.farmer?.name ?? 'farmer';
+  return (
+    <SuccessCard
+      kicker="Good morning · day 2"
+      title={`Your animals, ${name}`}
+      lead="The cows and the hens are yours to look after from today."
+      badge={<span style={{ fontSize: 26 }}>🐔</span>}
+      rows={[
+        ['Every day', 'Feed, water, milk, collect eggs'],
+        ['Every 3 days', 'Clean the pen and the coop'],
+        ['Watch for', 'Disease, ticks, a leaking trough'],
+        ['At night', 'Thieves and predators: protect the farm'],
+      ]}
+      actions={[
+        { label: 'Later', plain: true, onClick: done },
+        { label: 'Build the chicken coop', onClick: () => dispatch({ type: 'open', modal: { kind: 'animals', tab: 'coop' } }) },
+      ]}
+      onClose={done}
+      label="Day 2: your animals"
+      width={440}
+    >
+      <p className="success-note">Walk to the pen or the coop, or tap ANIMALS. SECURITY shows what keeps thieves away.</p>
     </SuccessCard>
   );
 }

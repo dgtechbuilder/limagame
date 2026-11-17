@@ -11,6 +11,7 @@ import { ClimateIcon, GoArrow, PartnersIcon, MailIcon, SettingsIcon, TimerIcon }
 import { Img } from './ui';
 import { CHECK_DAYS, checkKey, currentDay } from '../trials/model';
 import { dayNumber } from '../rounds/farms';
+import { ClassicLifeButtons } from '../livestock/HudButtons';
 import { currency, money, moneyShort } from '../money';
 import { ProgressButton } from './ProgressButton';
 import { ClassicBillboard } from '../partners/ui';
@@ -287,6 +288,8 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
             </span>
             <span className="label" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>Six farms</span>
           </button>
+          {/* the cows and hens, and keeping the farm safe (src/livestock, src/security) */}
+          <ClassicLifeButtons s={s} dispatch={dispatch} />
           {s.onboarded && !s.trial && s.trialHistory.length === 0 && !s.plotSelected && (
             <button type="button" className="tr-hint" onClick={() => dispatch({ type: 'trials', open: true })}>
               New: grow maize two ways and see which grows more.
