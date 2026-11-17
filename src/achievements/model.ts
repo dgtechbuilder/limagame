@@ -45,9 +45,11 @@ export interface AchStats {
   collects: number;
   /** coins earned by playing (not by claiming rewards) */
   coinsEarned: number;
+  /** days with the whole daily tidy-up done (every bush and rock cleared; src/tidy) */
+  tidyDays: number;
 }
 
-export const ZERO_STATS: AchStats = { tasks: 0, roundsRight: 0, checksRight: 0, treatments: 0, plantings: 0, drives: 0, topDrives: 0, seatJobs: 0, buys: 0, collects: 0, coinsEarned: 0 };
+export const ZERO_STATS: AchStats = { tasks: 0, roundsRight: 0, checksRight: 0, treatments: 0, plantings: 0, drives: 0, topDrives: 0, seatJobs: 0, buys: 0, collects: 0, coinsEarned: 0, tidyDays: 0 };
 
 /** What a badge can read: the counts above, and what the saved game already holds. */
 export interface AchView {
@@ -120,6 +122,7 @@ export const DAY_ONE: Achievement[] = [
   day1('first-task', 'farm', 'First task', 'Do one Farm Moja farming task', '🌱', v => v.stats.tasks),
   day1('first-buy', 'farm', 'First purchase', 'Buy something in the Shop', '🛒', v => v.stats.buys),
   day1('chores', 'farm', 'Morning chores', 'Collect the milk or the eggs', '🥚', v => v.stats.collects),
+  day1('first-tidy', 'farm', 'Tidy farm', "Clear the day's 3 bushes and 5 rocks", '🧹', v => v.stats.tidyDays),
   day1('first-read', 'rounds', 'Sharp eyes', 'Read one bed right in Field rounds', '👀', v => v.stats.roundsRight),
   day1('first-plant', 'six', 'Seeds in the ground', 'Plant your farms from Mission', '🌾', v => v.stats.plantings),
   day1('first-check', 'six', 'Crop doctor', 'Read one of your farms right on its daily check', '🩺', v => v.stats.checksRight),
@@ -151,6 +154,11 @@ export const ACHIEVEMENTS: Achievement[] = [
     ['Farm hand', 10, 'Do 10 farming tasks'],
     ['Hard worker', 50, 'Do 50 farming tasks'],
     ['Backbone of the farm', 150, 'Do 150 farming tasks'],
+  ]),
+  ...tiers('tidy', 'farm', '🧹', v => v.stats.tidyDays, [
+    ['Tidy farmer', 3, 'Finish the daily tidy-up on 3 days'],
+    ['Good neighbour', 14, 'Finish the daily tidy-up on 14 days'],
+    ['Pride of the village', 50, 'Finish the daily tidy-up on 50 days'],
   ]),
   ...tiers('seasons', 'farm', '🧺', v => v.seasonsSold, [
     ['Market day', 1, 'Sell a season of maize'],

@@ -974,6 +974,28 @@ button.card:active { transform: scale(0.98); }
 .hud-plot b { font-size: 14px; font-weight: 900; }
 .hud-plot i { font-size: 10px; font-weight: 700; font-style: normal; opacity: 0.95; }
 .hud-plot:active { transform: translate(-50%, 0) scale(0.96); }
+/* the daily tidy-up: the button by a bush or rock, and the chip bottom right */
+.hud-plot.is-tidy.is-bush { background: linear-gradient(#7fd35a, #2f9b14); }
+.hud-plot.is-tidy.is-rock { background: linear-gradient(#b9b9b0, #7d7d75); }
+.hud-tidy {
+  position: absolute; right: 30px; bottom: 14px; z-index: 5; display: flex; flex-direction: column; gap: 3px;
+  padding: 5px 10px 6px; border-radius: 12px; text-align: left; color: #5b3418;
+  background: #fff4dd; box-shadow: 0 0 0 2.5px #c9824a, 0 4px 10px rgba(0, 0, 0, 0.25);
+  animation: pop 0.25s ease both, tidy-nudge 3s ease-in-out 1s infinite;
+}
+.hud-tidy:active { transform: scale(0.96); }
+.hud-tidy-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.hud-tidy-head b { font-size: 11.5px; font-weight: 900; white-space: nowrap; }
+.hud-tidy-head i { font-style: normal; font-size: 10.5px; font-weight: 800; }
+.hud-tidy-row { display: flex; gap: 6px; }
+.hud-tidy-row > span {
+  display: flex; align-items: center; gap: 3px; padding: 1px 7px 1px 3px; border-radius: 100px;
+  background: #f1d7a8; font-size: 11px; font-weight: 800; white-space: nowrap;
+}
+.hud-tidy-row > span.is-full { background: #d6f0c4; color: #23720f; }
+.hud-tidy.is-done { background: #eefbe8; color: #23720f; box-shadow: 0 0 0 2.5px #2f9b14, 0 4px 10px rgba(0, 0, 0, 0.2); animation: pop 0.25s ease both; }
+@keyframes tidy-nudge { 0%, 88%, 100% { transform: none; } 92% { transform: rotate(-3deg); } 96% { transform: rotate(3deg); } }
+@media (prefers-reduced-motion: reduce) { .hud-tidy { animation: none; } }
 .hud-timer {
   position: absolute; z-index: 6; transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; gap: 1px;
   pointer-events: none; animation: pop-up 0.2s ease both;

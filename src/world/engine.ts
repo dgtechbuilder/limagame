@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { RIDE_SPEED, TRACTOR_EDGE, type ImplId } from '../tractor/data';
 import { slotBrand, type SlotId } from '../partners/data';
+import { TIDY, type TidyItem } from '../tidy/model';
 import { JOB_INFO, ROUTINE, TRACTOR_PLOT, toolJobs, toolName, type PlotJob, type TractorId } from '../plots/data';
 import { CHECK_DAYS, CROP_WORDS, checkKey, cropOf, farmName, harvestFarm, hazardFor, plotGrowth, type Trial, type TrialHazard } from '../trials/model';
 import {
@@ -71,6 +72,7 @@ import {
   pond,
   puddleTile,
   rock,
+  rockPile,
   roundRect,
   shed,
   signTexture,
@@ -79,6 +81,7 @@ import {
   trough,
   vcMaterial,
   weedTile,
+  wildBush,
   wildTile,
   zoneTexture,
   type Farmer,
@@ -171,7 +174,7 @@ export interface WorldEvents {
   arrived?: () => void;
 }
 
-export type Fx = 'dig' | 'clear' | 'mulch' | 'seed' | 'fert' | 'water' | 'spray' | 'weed' | 'drain' | 'harvest';
+export type Fx = 'dig' | 'clear' | 'mulch' | 'seed' | 'fert' | 'water' | 'spray' | 'weed' | 'drain' | 'harvest' | 'stone';
 
 interface Rect {
   x0: number;
@@ -791,6 +794,7 @@ export class FarmWorld {
       weed: ['#3a8a24', '#7cc23a'],
       drain: ['#7e4425', '#56b9e8'],
       harvest: ['#f2c230', '#e9d27a'],
+      stone: ['#a7a7a0', '#8d8d86', '#c9b79a'],
     };
     const c = new THREE.Color();
     for (let k = 0; k < n; k++) {
@@ -1199,6 +1203,74 @@ export class FarmWorld {
     const plan = this.view?.trial?.plans[0];
     void plan;
     return ({ prep: 'dig', sow: 'seed', setupFeed: 'fert', weeding: 'weed', borer: 'spray', topdress: 'fert', spray: 'spray', harvest: 'harvest' } as const)[job];
+  }
+
+  /* ---------------- the daily tidy-up: today's bushes and rocks (the button and timer are World.tsx's) ---------------- */
+
+  private tidy: TidyItem[] = [];
+  private tidyKey: string | null = null;
+  private tidyMesh: THREE.Mesh | null = null;
+
+  /** Today's bushes and rocks still to clear: drawn as one mesh, rebuilt when one goes (a puff where it stood). */
+  setTidy(items: TidyItem[]) {
+    const key = items.map(i => `${i.id}@${i.x},${i.z}`).join('|');
+    if (key === this.tidyKey) return;
+    const gone = this.tidyKey === null ? [] : this.tidy.filter(o => !items.some(i => i.id === o.id && i.x === o.x && i.z === o.z));
+    this.tidyKey = key;
+    this.tidy = items;
+    for (const g of gone) this.burst(g.kind === 'bush' ? 'clear' : 'stone', g.x, g.z, 10);
+    if (this.tidyMesh) {
+      this.scene.remove(this.tidyMesh);
+      this.tidyMesh.geometry.dispose();
+    }
+    this.tidyMesh = null;
+    if (!items.length) return;
+    const parts: Part[] = [];
+    for (const i of items) parts.push(...place(i.kind === 'bush' ? wildBush(i.s) : rockPile(i.s), at(i.x, 0, i.z, { ry: i.x * 1.7 + i.z })));
+    const m = new THREE.Mesh(merge(parts), vcMaterial(true));
+    m.castShadow = true;
+    m.receiveShadow = true;
+    this.tidyMesh = m;
+    this.scene.add(m);
+  }
+
+  /** The bush or rock the farmer stands by (on foot), the nearest one, or null. */
+  tidyHere(): TidyItem | null {
+    if (this.riding || !this.tidy.length) return null;
+    let best: TidyItem | null = null;
+    let bestD = TIDY.reach;
+    for (const i of this.tidy) {
+      const d = Math.hypot(i.x - this.pos.x, i.z - this.pos.y);
+      if (d < bestD) {
+        bestD = d;
+        best = i;
+      }
+    }
+    return best;
+  }
+
+  /** The nearest bush or rock still to clear, from where the farmer stands. */
+  nearestTidy(): TidyItem | null {
+    let best: TidyItem | null = null;
+    let bestD = Infinity;
+    for (const i of this.tidy) {
+      const d = Math.hypot(i.x - this.pos.x, i.z - this.pos.y);
+      if (d < bestD) {
+        bestD = d;
+        best = i;
+      }
+    }
+    return best;
+  }
+
+  /** The farmer is at work on a bush (with the sickle) or a rock (lifting it): face it, swing, throw leaves or grit. */
+  tidyWorking(item: TidyItem) {
+    this.work = 0.45;
+    this.workFx = item.kind === 'bush' ? 'clear' : 'stone';
+    const dx = item.x - this.pos.x;
+    const dz = item.z - this.pos.y;
+    if (Math.hypot(dx, dz) > 0.05) this.heading = Math.atan2(dx, dz);
+    this.burst(this.workFx, item.x + (Math.random() - 0.5) * 0.6, item.z + (Math.random() - 0.5) * 0.6, 2);
   }
 
   /* ---------------- the frame ---------------- */
