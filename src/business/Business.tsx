@@ -78,7 +78,7 @@ import {
 import { newDrive, type Drive, type DriveResult } from './drive';
 import { DriveGame } from './DriveGame';
 import { Face, Says } from './Cast';
-import { kshText } from '../money';
+import { kshText, withMoney } from '../money';
 import { sfx } from '../sfx';
 
 /* The tractor business, to Hello Tractor's brief: Today (scout farms with Campbell, book each job, plan the route,
@@ -1155,7 +1155,7 @@ function Partners({ b, dispatch }: { b: Biz; dispatch: Dispatch<Action> }) {
           <div key={p.id} className={`biz-card${signed ? ' is-signed' : ''}`}>
             <small>{p.kind}</small>
             <b>{p.name}</b>
-            <p>{p.does}</p>
+            <p>{withMoney(p.does)}</p>
             {signed ? (
               <span className="biz-tag">✓ Signed</span>
             ) : block ? (
