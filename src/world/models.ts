@@ -510,6 +510,40 @@ export function rock(scale = 1): Part[] {
   return [{ geo: G.dodec, color: C.stone, m: at(0, 0.15 * scale, 0, { s: 0.6 * scale, sy: 0.4 * scale }) }];
 }
 
+/** An overgrown bush for the daily tidy-up: scruffy, a little dry, with bare twigs poking out (it reads as untidy next
+    to the farm's own neat bushes). */
+export function wildBush(scale = 1): Part[] {
+  const out: Part[] = [
+    { geo: G.ico1, color: C.weed, m: at(0, 0.42, 0, { s: 0.95, sy: 0.85 }) },
+    { geo: G.ico1, color: C.leaf, m: at(0.42, 0.3, 0.18, { s: 0.7 }) },
+    { geo: G.ico1, color: C.dryLeaf, m: at(-0.38, 0.28, 0.16, { s: 0.62 }) },
+    { geo: G.ico1, color: C.leafLight, m: at(0.05, 0.62, -0.2, { s: 0.55 }) },
+  ];
+  for (let i = 0; i < 5; i++) {
+    const a = i * 1.26 + 0.4;
+    out.push({ geo: G.cone4, color: C.woodDark, m: at(Math.cos(a) * 0.32, 0.72, Math.sin(a) * 0.32, { sx: 0.05, sy: 0.55, sz: 0.05, rz: Math.cos(a) * 0.7, rx: -Math.sin(a) * 0.7 }) });
+  }
+  // dry grass at its foot, on a patch of trampled, dry ground
+  out.push(...place(grassClump(0.9, C.dryLeaf), at(0.55, 0, -0.3)));
+  out.push({ geo: G.disc, color: C.soilDry, m: at(0, 0.02, 0, { sx: 1.9, sz: 1.6 }) });
+  return place(out, at(0, 0, 0, { s: scale }));
+}
+
+/** A pile of rocks for the daily tidy-up: a big one and two small ones. */
+export function rockPile(scale = 1): Part[] {
+  return place(
+    [
+      { geo: G.dodec, color: C.stone, m: at(0, 0.2, 0, { s: 0.7, sy: 0.5, ry: 0.4 }) },
+      { geo: G.dodec, color: '#8d8d86', m: at(0.45, 0.11, 0.22, { s: 0.36, sy: 0.28, ry: 1.1 }) },
+      { geo: G.dodec, color: '#bdbdb5', m: at(-0.38, 0.09, 0.3, { s: 0.28, sy: 0.22, ry: 2.3 }) },
+      { geo: G.dodec, color: '#9a9a92', m: at(0.1, 0.06, -0.48, { s: 0.2, sy: 0.16, ry: 0.7 }) },
+      // the scuffed ground it rolled onto
+      { geo: G.disc, color: C.soilDry, m: at(0, 0.02, 0, { sx: 1.7, sz: 1.4 }) },
+    ],
+    at(0, 0, 0, { s: scale }),
+  );
+}
+
 export function flowers(): Part[] {
   const cols = ['#ffffff', '#ffe04a', '#ff8fb0'];
   const out: Part[] = [];

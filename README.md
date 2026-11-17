@@ -29,6 +29,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [The season](#the-season)
 - [Field rounds](#field-rounds)
 - [The farm world](#the-farm-world)
+- [The daily tidy-up](#the-daily-tidy-up)
 - [The six farms](#the-six-farms)
 - [From Wakala Agent](#from-wakala-agent)
 - [The tractor business](#the-tractor-business)
@@ -65,6 +66,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 | **~2:00** | The whole farm opens. Their sukuma wiki needs the same kind of check, with fewer hints. |
 | **~3:00** | **Field rounds**: checks every bed on the farm, one after another — and comes back often, because every bed changes every day. |
 | **Then** | **The first planting period** (about 10 minutes): maize on Farm 1, which they clear plot by plot, and sukuma wiki on Farm 2, which they plant plot by plot; then they check both every day for six days and harvest. |
+| **Every day** | **The daily tidy-up**: 3 bushes and 5 rocks turn up around the farm each new day; they clear them all to keep the farm and the neighbourhood tidy. |
 | **Every week** | **Six farms**: a different plan on each farm, one day of checks each real day (or all now), then the harvests compared. The plan that worked becomes their recipe for the next cycle. |
 | **Any time** | Plays seasons of maize on Farm Moja: six farming steps, harvest timing, storage, processing, selling, results, rewards. |
 
@@ -129,6 +131,7 @@ src/
   water/                   the tank, the animals, the shared catchment, crop cover: config.ts, model.ts, track.ts, WaterPanel.tsx
   credits/ledger.ts        every kind of credit (CO₂, water) earned and paid
   evidence/                the decision log, programme tags, "tried it on your own farm?": model.ts, Ask.tsx
+  tidy/model.ts            the daily tidy-up: today's bushes and rocks, where they turn up, what they pay, the tidy streak
   risk/                    money at risk: config.ts (every number to tune), model.ts (the list, from the save), RiskHud.tsx (the button)
   climate/                 climate tracking: model.ts (every factor, the ledger, rating, levels), track.ts (which
                            actions record what, and the end-of-day payment), land.ts (land farmed, bare or idle,
@@ -422,6 +425,33 @@ A full guided cycle (clear → plant → fertilize → six days of checks, inclu
 scaring off birds → harvest → sell) has been played end to end with no errors. **Not yet human-tested**: watering,
 spraying, digging drains, chasing the goat, hiring the tractor or oxen, a full six-farm cycle, and the daily clock
 (one day per real day). The first session (the village walk) is still the 2D Figma map, not the 3D world.
+
+## The daily tidy-up
+
+Every new day, **3 overgrown bushes and 5 rocks** turn up around the farm: on the grass, by the paths and on the
+lanes between the farms, each on a patch of scuffed, dry ground. Clearing them is a chore every player does every
+day, to keep the farm and the neighbourhood tidy. Everything is in `src/tidy/model.ts` (`TIDY` holds every number to
+tune); the 3D pieces are `wildBush` and `rockPile` in `src/world/models.ts`, drawn as one mesh (`setTidy` in
+`src/world/engine.ts`); the button, timer and chip are in `src/world/World.tsx`.
+
+- **When they turn up.** The first time the farm opens on a new calendar day (the player's own midnight, the same
+  clock as the daily streak), or when midnight passes while the game is open. A toast says *New day: 3 bushes and
+  5 rocks to clear around the farm*. They show once the first session is done.
+- **Where.** 3 of 12 bush spots and 5 of 12 rock spots (`BUSH_SPOTS`, `ROCK_SPOTS`), picked by the day's date. The
+  same day always shows the same spots, however often the game is opened, and the next day shows others. No spot
+  is on a farm's plots or at a place the farmer walks to, and no two are close enough to mix up their buttons.
+- **Clearing.** Walk up to one and a **Clear bush** or **Move rock** button shows under the farmer. Pressing it
+  starts a short timer: 2.5 seconds for a bush (with the sickle, leaves flying) and 2 for a rock (grit flying).
+  Walking away stops it, and the piece stays. A cleared piece goes in a puff.
+- **The chip** (bottom right): *Daily tidy-up* with bushes 0/3 and rocks 0/5. Tap it to walk to the nearest piece
+  still to clear. When all 8 are cleared it turns green (*✓ Farm tidy*), with the tidy streak.
+- **What it pays.** +5 points a piece; clearing all 8 adds **+40 points and KSh 600** (60 stored coins, shown in the
+  player's currency: $4.65), so 80 points in all. Every piece counts the day as played for the daily streak, and the last one plays the flow sound.
+- **The tidy streak and badges.** Days with the whole tidy-up done in a row make the tidy streak (🧹 on the chip);
+  a missed day starts it again. Badges: *Tidy farm* (day one: the first whole tidy-up), then *Tidy farmer*,
+  *Good neighbour* and *Pride of the village* for 3, 14 and 50 tidy days.
+- **Saved** as `tidy` in the game (today's date, the pieces cleared, tidy days, the streak). Saves from before have
+  none, and start with today's tidy-up.
 
 ## The six farms
 
@@ -1088,9 +1118,9 @@ A reason to come back every day, and something won in every part of the game. Ev
   sound). Days in a row build the streak; a whole day missed starts it again. The day turns at the player's own
   midnight. Each day played has a reward to claim: 200 coins and 10 points on day 1, growing to 1,400 coins and
   70 points from day 7 on (`STREAK_REWARD`).
-- **Badges** (59), by part of the game: *Every day*, *Farm Moja*, *Six farms*, *Field rounds*, *Tractor*,
-  *Tractor business*, *Climate*. Ten **day-one badges** are easy firsts, one or two in each part (finish the first
-  crop checks, do a farming task, buy in the Shop, collect the milk or eggs, read a bed right, plant the farms, read
+- **Badges** (63), by part of the game: *Every day*, *Farm Moja*, *Six farms*, *Field rounds*, *Tractor*,
+  *Tractor business*, *Climate*. Eleven **day-one badges** are easy firsts, one or two in each part (finish the first
+  crop checks, do a farming task, buy in the Shop, collect the milk or eggs, finish the daily tidy-up, read a bed right, plant the farms, read
   a daily check right, finish a tractor drive, run a business day, earn a climate credit). The rest come in
   bronze, silver and gold (a 3-, 7- and 30-day streak; 10, 50 and 150 farming tasks; 3, 10 and 30 drives…), plus
   *Tractor owner*. Badges pay 25 (day one), 50, 100 or 250 points, and 150 for a special one.
