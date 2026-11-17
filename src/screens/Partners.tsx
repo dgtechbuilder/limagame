@@ -1,13 +1,14 @@
-import { useEffect, useRef, type Dispatch } from 'react';
+import { useEffect, useRef, useState, type Dispatch } from 'react';
 import { NavBar } from '../components/Nav';
 import { CloseX } from '../components/Success';
-import { BRANDS, REWARD_SPONSOR, SLOTS, activeBrands, brandOf, type BrandId } from '../partners/data';
+import { BRANDS, REWARD_SPONSOR, SLOTS, activeBrands, brandOf, offerCode, type Brand, type BrandId } from '../partners/data';
 import { engagement } from '../partners/track';
 import { BrandMark } from '../partners/ui';
 import { REWARDS } from '../data';
 import type { Action, GameState, PartnersTab } from '../state';
 
-/* Partners: for players, the offers from the brands that sponsor the game, to save to Messages; for partners (and
+/* Partners: for players, the offers from the brands that sponsor the game (Get offer shows what it gives, then the
+   player's code, kept in Messages, and a button to where it is used); for partners (and
    the team selling to them), every place in the game a brand can appear, who has it, and how often it was seen and
    tapped on this device. The brands and slots are set in src/partners/data.ts. */
 
@@ -30,14 +31,14 @@ export function PartnersPage({ s, dispatch, tab: startTab, brand }: Props) {
   return (
     <div className="abs settings-page partners-page" style={{ inset: 0 }} role="dialog" aria-modal="true" aria-label="Partners">
       <div className="scrim" onClick={close} />
-      <div className="fs-panel set-panel" style={{ left: 18, top: 40, width: 838, height: 348 }}>
+      <div className="fs-panel set-panel" style={{ left: 24, top: 46, width: 826, height: 334 }}>
         <nav className="set-tabs" aria-label="Partners sections">
           <p className="set-heading">Partners</p>
           {TABS.map(t => (
             <button key={t.id} type="button" className={`set-tab${tab === t.id ? ' is-on' : ''}`} aria-current={tab === t.id ? 'page' : undefined} onClick={() => dispatch({ type: 'open', modal: { kind: 'partners', tab: t.id } })}>
               <i aria-hidden="true">{t.icon}</i>
               {t.label}
-              {t.id === 'offers' && (s.offers ?? []).length > 0 && <small className="ach-count">{(s.offers ?? []).length} saved</small>}
+              {t.id === 'offers' && (s.offers ?? []).length > 0 && <small className="ach-count">{(s.offers ?? []).length} got</small>}
             </button>
           ))}
           <p className="set-foot">
@@ -48,7 +49,7 @@ export function PartnersPage({ s, dispatch, tab: startTab, brand }: Props) {
           {tab === 'offers' ? <Offers s={s} dispatch={dispatch} focus={brand} /> : <Placements />}
         </section>
       </div>
-      <NavBar horizontal onBack={close} hideHome={s.fs.phase !== 'done'} style={{ right: 44, top: 6 }} />
+      <NavBar horizontal onBack={close} hideHome={s.fs.phase !== 'done'} style={{ right: 62, top: 8 }} />
       <CloseX className="page-x" onClick={close} />
       <p className="set-title-bar">
         <span aria-hidden="true">🤝</span> Partners · <b>{TABS.find(t => t.id === tab)!.label}</b>
@@ -60,20 +61,33 @@ export function PartnersPage({ s, dispatch, tab: startTab, brand }: Props) {
 function Offers({ s, dispatch, focus }: { s: GameState; dispatch: Dispatch<Action>; focus?: BrandId }) {
   const saved = s.offers ?? [];
   const box = useRef<HTMLDivElement>(null);
-  // opened from a billboard or a sponsor line: that brand's card is brought into view
+  // the offer open in the sheet: from a card's Get offer, or from a billboard or sponsor line (its brand)
+  const [open, setOpen] = useState<BrandId | null>(focus ?? null);
   useEffect(() => {
-    if (focus) box.current?.querySelector(`[data-brand="${focus}"]`)?.scrollIntoView({ block: 'nearest' });
+    if (focus) {
+      box.current?.querySelector(`[data-brand="${focus}"]`)?.scrollIntoView({ block: 'nearest' });
+      setOpen(focus);
+    }
   }, [focus]);
+  const farmer = s.farmer?.name;
+  const canGo = s.fs.phase === 'done';
+  const use = (b: Brand) => dispatch({ type: 'route', path: b.offer.use.to });
+  const sheet = brandOf(open);
   return (
-    <div ref={box}>
-      <p className="set-title">Offers from the partners who back your farm</p>
+    <div ref={box} className="pt-offers">
+      <div className="ach-row-head">
+        <p className="set-title">Offers from the partners who back your farm</p>
+        <small className="pt-note">
+          {saved.length} of {activeBrands().length} offers got
+        </small>
+      </div>
       <div className="pt-grid">
         {activeBrands().map(b => {
           const has = saved.includes(b.id);
           return (
-            <article key={b.id} data-brand={b.id} className={`pt-card${focus === b.id ? ' is-focus' : ''}`} style={{ ['--brand' as string]: b.color, ['--accent' as string]: b.accent }} aria-label={`${b.name}: ${b.offer.title}`}>
+            <article key={b.id} data-brand={b.id} className={`pt-card${focus === b.id ? ' is-focus' : ''}${has ? ' is-got' : ''}`} style={{ ['--brand' as string]: b.color, ['--accent' as string]: b.accent }} aria-label={`${b.name}: ${b.offer.title}`}>
               <header>
-                <BrandMark b={b} size={26} />
+                <BrandMark b={b} size={28} />
                 <span>
                   <b>{b.name}</b>
                   <small>
@@ -86,11 +100,24 @@ function Offers({ s, dispatch, focus }: { s: GameState; dispatch: Dispatch<Actio
                 <small>{b.offer.line}</small>
               </p>
               <footer>
-                <button type="button" className={`ach-claim${has ? ' is-done' : ''}`} disabled={has} onClick={() => dispatch({ type: 'partnerSave', id: b.id })} aria-label={has ? `${b.name} offer saved` : `Save the ${b.name} offer`}>
-                  {has ? 'Saved ✓' : 'Save offer'}
-                </button>
+                {has ? (
+                  <>
+                    <span className="pt-code" aria-label={`${b.name} offer got, code ${offerCode(b.id, farmer)}`}>
+                      ✓ <b>{offerCode(b.id, farmer)}</b>
+                    </span>
+                    {canGo && (
+                      <button type="button" className="set-link pt-use" onClick={() => use(b)}>
+                        Use it ›
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <button type="button" className="ach-claim" onClick={() => setOpen(b.id)} aria-label={`Get the ${b.name} offer`}>
+                    Get offer
+                  </button>
+                )}
                 {b.url && (
-                  <a className="set-link" href={b.url} target="_blank" rel="noopener noreferrer">
+                  <a className="set-link pt-visit" href={b.url} target="_blank" rel="noopener noreferrer">
                     Visit ›
                   </a>
                 )}
@@ -98,6 +125,83 @@ function Offers({ s, dispatch, focus }: { s: GameState; dispatch: Dispatch<Actio
             </article>
           );
         })}
+      </div>
+      {sheet && <OfferSheet b={sheet} got={saved.includes(sheet.id)} code={offerCode(sheet.id, farmer)} canGo={canGo} onGet={() => dispatch({ type: 'partnerSave', id: sheet.id })} onUse={() => use(sheet)} onClose={() => setOpen(null)} />}
+    </div>
+  );
+}
+
+/** Getting an offer: what it gives and where it is used, then the player's code once they take it. */
+function OfferSheet({ b, got, code, canGo, onGet, onUse, onClose }: { b: Brand; got: boolean; code: string; canGo: boolean; onGet: () => void; onUse: () => void; onClose: () => void }) {
+  const main = useRef<HTMLButtonElement>(null);
+  // Escape closes the sheet, not the whole page; the main button has the focus at each step
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.stopImmediatePropagation();
+      onClose();
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [onClose]);
+  useEffect(() => main.current?.focus(), [got]);
+  return (
+    <div className="pt-sheet-wrap">
+      <div className="pt-sheet-scrim" onClick={onClose} />
+      <div className={`pt-sheet${got ? ' is-got' : ''}`} role="dialog" aria-modal="true" aria-label={`${b.name} offer`} style={{ ['--brand' as string]: b.color, ['--accent' as string]: b.accent }}>
+        <CloseX className="pt-sheet-x" onClick={onClose} />
+        <header>
+          <BrandMark b={b} size={38} />
+          <span>
+            <small>
+              {b.name} · {b.category}
+            </small>
+            <b>{b.offer.title}</b>
+          </span>
+        </header>
+        {!got ? (
+          <>
+            <p className="pt-sheet-head">What you get</p>
+            <ul className="pt-gets">
+              {b.offer.get.map(g => (
+                <li key={g}>{g}</li>
+              ))}
+            </ul>
+            <p className="pt-sheet-where">
+              <i aria-hidden="true">📍</i> {b.offer.line}.
+            </p>
+            {b.sample && <p className="pt-sheet-fine">{b.name} is a sample partner made up for the game.</p>}
+            <div className="pt-sheet-actions">
+              <button ref={main} type="button" className="ach-claim is-big" onClick={onGet}>
+                Get this offer
+              </button>
+              <button type="button" className="set-link" onClick={onClose}>
+                Not now
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="pt-voucher" aria-live="polite">
+              <small>Your offer code</small>
+              <b>{code}</b>
+              <span>✓ Saved to Messages</span>
+            </div>
+            <p className="pt-sheet-where">
+              <i aria-hidden="true">📍</i> {b.offer.line}.
+            </p>
+            <div className="pt-sheet-actions">
+              {canGo && (
+                <button ref={main} type="button" className="ach-claim is-big" onClick={onUse}>
+                  {b.offer.use.label} ›
+                </button>
+              )}
+              <button type="button" className="set-link" onClick={onClose}>
+                Back to offers
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

@@ -6,8 +6,6 @@
    is in the tables below. Rewards are claimed by the player on the Achievements page, so an action never changes
    money or points behind the player's back. */
 
-import { money } from '../money';
-
 /* ---------------- the parts of the game ---------------- */
 
 export type AchGame = 'daily' | 'farm' | 'six' | 'rounds' | 'tractor' | 'business' | 'climate';
@@ -160,9 +158,9 @@ export const ACHIEVEMENTS: Achievement[] = [
     ['Maize trader', 15, 'Sell 15 seasons'],
   ]),
   ...tiers('coins', 'farm', '💰', v => v.stats.coinsEarned, [
-    ['Money maker', 1000, `Earn ${money(1000)}`],
-    ['Good business', 10000, `Earn ${money(10000)}`],
-    ['Farm fortune', 50000, `Earn ${money(50000)}`],
+    ['Money maker', 1000, 'Earn {money:1000}'],
+    ['Good business', 10000, 'Earn {money:10000}'],
+    ['Farm fortune', 50000, 'Earn {money:50000}'],
   ]),
   // six farms
   ...tiers('harvests', 'six', '📊', v => v.harvests, [

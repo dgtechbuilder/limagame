@@ -190,7 +190,7 @@ export function PlotScreen({
         </span>
       </div>
       <span className="rr-roundtag">{tag}</span>
-      <NavBar horizontal onBack={onLeave} style={{ right: 6, top: 4 }} />
+      <NavBar horizontal onBack={onLeave} style={{ right: 28, top: 8 }} />
       <div className="fs-panel pb-panel">
         <PlotBoard tr={tr} farm={farm} kinds={kinds} field={field} coins={coins} dispatch={dispatch} onFarm={setFarm} />
       </div>

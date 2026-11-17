@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
-import { COUNTRIES, countryOf, money, moneyIn, moneyShort, setCountry } from '../src/money';
+import { COUNTRIES, countryOf, money, moneyIn, moneyShort, setCountry, withMoney } from '../src/money';
 import { fitScale } from '../src/fit';
-import { boot, state } from './helpers';
+import { boot, closeCheer, plantByHand, signStory, state, type Win } from './helpers';
 
 /* The country step: where the player farms sets the currency every amount is shown in. The stored amounts, and so
    the game's maths, do not change. And the stage fit: it fills the space the page has. */
@@ -29,6 +29,77 @@ test('money is shown in the currency of the country picked; with none it is US d
   expect(countryOf('XX').currency.code).toBe('USD');
   expect(moneyIn(129, countryOf('GH').currency)).toBe('GH₵ 120');
   expect(new Set(COUNTRIES.map(c => c.id)).size).toBe(COUNTRIES.length);
+});
+
+test('money written once in data is shown in the currency picked when it is drawn, not the one at load', () => {
+  setCountry('');
+  expect(withMoney('Earn {money:1000}')).toBe('Earn $77.52');
+  setCountry('KE');
+  expect(withMoney('Earn {money:1000}')).toBe('Earn KSh 10,000');
+  expect(withMoney('From {money:300} to {money:500}, {name}')).toBe('From KSh 3,000 to KSh 5,000, {name}');
+});
+
+/** Every screen with an address (src/route.ts), for a player past the first session. */
+const SCREENS = [
+  '/farm', '/menu', '/mission', '/rounds',
+  ...['my-farmer', 'game', 'display', 'help'].map(t => `/settings/${t}`),
+  ...['overview', 'land-and-pay', 'farm-areas', 'emissions', 'water-and-soil', 'shocks', 'activity'].map(t => `/climate/${t}`),
+  ...['journey', 'modules', 'today', 'badges', 'certificates'].map(t => `/progress/${t}`),
+  '/partners/offers', '/partners/placements',
+  ...['food', 'fertilizer', 'water-tanks', 'equipment'].map(t => `/shop/${t}`),
+  ...['land-prep', 'planting', 'fertilizer', 'pesticides', 'water', 'harvest'].map(t => `/steps/${t}`),
+  '/loan-calculator', '/loan-calculator/quote',
+  ...['welcome', 'sale', 'storage', 'harvest-timing', 'value-addition', 'process', 'farm-info', 'results', 'rewards', 'training'].map(t => `/${t}`),
+];
+
+/** The page's words, with its labels and tool tips, and any US dollar amount in them. */
+const dollars = (page: import('@playwright/test').Page) =>
+  page.evaluate(() => {
+    const labels = [...document.querySelectorAll('[aria-label],[title]')].map(e => `${e.getAttribute('aria-label') ?? ''} ${e.getAttribute('title') ?? ''}`);
+    return [document.body.innerText, ...labels].join(' ').match(/.{0,30}\$.{0,20}/g) ?? [];
+  });
+
+test('once Kenya is picked, no screen shows US dollars', async ({ page }) => {
+  test.setTimeout(240_000);
+  await boot(page);
+  await page.evaluate(() => {
+    const lima = (window as unknown as Win).__lima;
+    lima.jump({ coins: 30000, level: 9, settings: { ...lima.state.settings, country: 'KE' } });
+  });
+  await expect.poll(async () => (await state(page)).settings.country).toBe('KE');
+  for (const path of SCREENS) {
+    await page.evaluate(p => (window.location.hash = p), path);
+    await expect.poll(() => page.evaluate(() => window.location.hash)).toBe(`#${path}`);
+    await page.waitForTimeout(300);
+    expect(await dollars(page), path).toEqual([]);
+  }
+  // the badges' goals were written when the game loaded, before a country was picked
+  await page.evaluate(() => (window.location.hash = '/progress/badges'));
+  await expect(page.getByText('Earn KSh 10,000', { exact: true })).toBeVisible();
+  // the tractor business, each tab (its partners' offers were written at load too)
+  await page.evaluate(() => (window.location.hash = '/tractor-business'));
+  await page.getByRole('dialog', { name: 'Welcome to the Narok hub' }).getByRole('button', { name: /^Let.s go$/ }).click();
+  for (const tab of ['Today', 'Hub', 'Calendar', 'Partners', 'Fleet']) {
+    await page.getByRole('tab', { name: tab }).click();
+    expect(await dollars(page), tab).toEqual([]);
+  }
+  await page.getByRole('tab', { name: 'Partners' }).click();
+  await expect(page.locator('.biz-card', { hasText: 'County Roads Office' })).toContainText('KSh 120,000');
+});
+
+test("the story's last season is told in the currency picked a step before", async ({ page }) => {
+  await boot(page);
+  await page.locator('.name-chip', { hasText: 'Otieno' }).click();
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await page.getByRole('radio', { name: /Kenya/ }).click();
+  await page.getByRole('button', { name: "Twende! Let's go", exact: true }).click();
+  await signStory(page);
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await page.locator('.story-step', { hasText: 'Plant the season' }).click();
+  await plantByHand(page);
+  await closeCheer(page, /^Well done/);
+  await expect(page.locator('.story-caption')).toHaveText('Seed, fertiliser and labour went in: KSh 380,000 spent.');
+  expect(await dollars(page)).toEqual([]);
 });
 
 test('the stage fills a phone held either way up and keeps a margin on a large screen', () => {

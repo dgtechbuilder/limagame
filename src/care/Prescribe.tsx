@@ -72,9 +72,9 @@ export function Prescribe({
       </div>
       <span className="rr-roundtag">{tag}</span>
       <span className="rr-roundtag rr-cropnote">Read right: {HAZARD_WORDS[hazard]}</span>
-      <NavBar horizontal onBack={right ? onDone : onLeave} style={{ right: 6, top: 4 }} />
+      <NavBar horizontal onBack={right ? onDone : onLeave} style={{ right: 28, top: 8 }} />
 
-      <div className="fs-panel" style={{ left: 24, top: 78, width: 826, height: 246 }}>
+      <div className="fs-panel" style={{ left: 30, top: 78, width: 814, height: 246 }}>
         <div className="clue-art">
           <RoundPicture round={round} part={round.clue.part} credit />
           <span className="zoom-label">{ROUND_PART_LABELS[round.clue.part]}</span>

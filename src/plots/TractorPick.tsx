@@ -72,7 +72,7 @@ export function TractorPick({ tr, field, day, rig, onGo, onLeave }: { tr: Trial;
         </span>
       </div>
       <span className="rr-roundtag">Tractor · type and tool</span>
-      <NavBar horizontal onBack={onLeave} style={{ right: 6, top: 4 }} />
+      <NavBar horizontal onBack={onLeave} style={{ right: 28, top: 8 }} />
       <ol className="review-steps" aria-label="Tractor steps">
         <li className={step === 'tractor' ? 'is-now' : 'is-done'}>Tractor</li>
         <li className={step === 'tool' ? (tool ? 'is-done' : 'is-now') : ''}>Tool</li>

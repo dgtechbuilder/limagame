@@ -78,7 +78,7 @@ import {
 import { newDrive, type Drive, type DriveResult } from './drive';
 import { DriveGame } from './DriveGame';
 import { Face, Says } from './Cast';
-import { kshText } from '../money';
+import { kshText, withMoney } from '../money';
 import { sfx } from '../sfx';
 
 /* The tractor business, to Hello Tractor's brief: Today (scout farms with Campbell, book each job, plan the route,
@@ -133,7 +133,7 @@ export function Business({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
           Tractor business
         </span>
       </div>
-      <NavBar horizontal onBack={close} style={{ right: 6, top: 4 }} />
+      <NavBar horizontal onBack={close} style={{ right: 28, top: 8 }} />
 
       {/* the business at a glance: its level, the two numbers, and counted acres on the way to a tractor */}
       <div className="biz-head">
@@ -571,7 +571,7 @@ function Today({ b, name, dispatch, onDone }: { b: Biz; name: string; dispatch: 
         </div>
       </aside>
 
-      <GuideLine text={line} face={<Face who="caro" size={40} />} style={{ left: 16, right: 16, bottom: 4, minHeight: 0, padding: '2px 10px 2px 4px' }} />
+      <GuideLine text={line} face={<Face who="caro" size={40} />} style={{ left: 30, right: 30, bottom: 8, minHeight: 0, padding: '2px 10px 2px 4px' }} />
     </>
   );
 }
@@ -1155,7 +1155,7 @@ function Partners({ b, dispatch }: { b: Biz; dispatch: Dispatch<Action> }) {
           <div key={p.id} className={`biz-card${signed ? ' is-signed' : ''}`}>
             <small>{p.kind}</small>
             <b>{p.name}</b>
-            <p>{p.does}</p>
+            <p>{withMoney(p.does)}</p>
             {signed ? (
               <span className="biz-tag">✓ Signed</span>
             ) : block ? (

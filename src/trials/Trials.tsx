@@ -97,7 +97,7 @@ export function Trials({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
         </span>
       </div>
       {tr && <span className="rr-roundtag">{cropsLine(tr)} · {FORECASTS[tr.forecast].label.split(':')[0]}</span>}
-      <NavBar horizontal onBack={close} style={{ right: 6, top: 4 }} />
+      <NavBar horizontal onBack={close} style={{ right: 28, top: 8 }} />
       {body}
     </div>
   );

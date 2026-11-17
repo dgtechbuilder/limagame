@@ -34,7 +34,7 @@ import { settleDays, trackClimate } from './climate/track';
 import { achClock, trackAchievements } from './achievements/track';
 import { achOf, achOfSave, initialAch, streakReward, type AchState } from './achievements/model';
 import { levelOf } from './progress/model';
-import { brandOf, type BrandId } from './partners/data';
+import { brandOf, offerCode, type BrandId } from './partners/data';
 import { routeTo } from './route';
 import { DEFAULT_LOAN, type LoanAsk } from './finance/loan';
 import { bookingRef, courseDate, courseOf, dayText, type TrainingBooking } from './training/data';
@@ -494,7 +494,7 @@ export type Action =
   | { type: 'achDaily' }
   /** My Progress: claim a certification level's reward */
   | { type: 'levelClaim'; id: string }
-  /** partners: save a brand's offer (it is kept in Messages) */
+  /** partners: get a brand's offer (its code is kept in Messages) */
   | { type: 'partnerSave'; id: BrandId }
   /** go to a web address (src/route.ts): the screen it names, if the player may go there now */
   | { type: 'route'; path: string };
@@ -1232,7 +1232,8 @@ function play(s: GameState, a: Action): GameState {
       const b = brandOf(a.id);
       const saved = s.offers ?? [];
       if (!b || saved.includes(a.id)) return s;
-      return { ...s, offers: [...saved, a.id], note: `Saved offer from ${b.name}: ${b.offer.title}. ${b.offer.line}.`, toast: toast(`Offer saved: ${b.offer.title} · it is in Messages`) };
+      const code = offerCode(b.id, s.farmer?.name);
+      return { ...s, offers: [...saved, a.id], note: `Offer from ${b.name}: ${b.offer.title}, code ${code}. ${b.offer.line}.`, toast: toast(`Offer from ${b.name}: code ${code} · it is in Messages`) };
     }
     case 'achDaily': {
       const ach = achOfSave(s.ach);
