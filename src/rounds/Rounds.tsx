@@ -349,7 +349,7 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
         <FarmerPortrait look={look} size={34} />
         <span>{name}</span>
       </div>
-      <NavBar horizontal onBack={() => dispatch({ type: 'rounds', open: false })} backLabel={trial ? 'Six farms' : 'Back'} style={{ right: 6, top: 4 }} />
+      <NavBar horizontal onBack={() => dispatch({ type: 'rounds', open: false })} backLabel={trial ? 'Six farms' : 'Back'} style={{ right: 28, top: 8 }} />
 
       <p className="rr-cycle">
         {trial

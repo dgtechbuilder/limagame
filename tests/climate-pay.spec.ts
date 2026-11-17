@@ -9,6 +9,7 @@ import { money, toUsd } from '../src/money';
 import { COMMON_PLAN, POTENTIAL_BAGS, type Plan } from '../src/trials/model';
 import { TRIAL_SAMPLES } from '../src/trials/samples';
 import { FULL } from '../src/world/field';
+import { ledgerOf } from '../src/credits/ledger';
 
 /* Every area of the farm, evaluated each day, and the daily climate payment in US dollars, without a browser: what
    each plot of the six 4-acre farms is each day, the forest, the pen, the animals, the pond and the house, the carbon
@@ -129,7 +130,8 @@ test('the end of a day pays every credit earned since the last payment, from eve
   // $0.25 a credit, with the premium of the level the day's credits reached (Grower: ×1.1), to the cent
   expect(s.climate.level).toBe(1);
   expect(toUsd(p.coins)).toBeCloseTo(Math.round(p.credits * 0.25 * 1.1 * 100) / 100, 6);
-  expect(s.coins).toBeCloseTo(afterTask + p.coins, 6);
+  // the day's climate payment, and the water credits for the day (src/water) in the same night
+  expect(s.coins).toBeCloseTo(afterTask + p.coins + ledgerOf(s.ledger).coins.water, 6);
   expect(p.label).toBe('Sun 15 Nov');
   expect(p.areas?.map(a => a.id)).toContain('forest');
   expect(s.climate.log[0].where).toBe('land');
@@ -181,7 +183,7 @@ test('a night slept on the fast clock ends a farm day and pays it', () => {
   const p = payOf(s.climate).payments[0];
   expect(p.label).toBe('Farm day 1');
   expect(p.coins).toBeGreaterThan(0);
-  expect(s.coins).toBeCloseTo(1000 + p.coins, 6);
+  expect(s.coins).toBeCloseTo(1000 + p.coins + ledgerOf(s.ledger).coins.water, 6);
   // the calendar day is still today: it is counted at midnight as usual
   expect(payOf(s.climate).day).toBe('2026-11-15');
 });

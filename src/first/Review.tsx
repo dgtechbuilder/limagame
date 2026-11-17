@@ -302,7 +302,7 @@ export function Review({
         ))}
       </ol>
 
-      <div className="fs-panel" style={{ left: 24, top: 78, width: 826, height: 246 }}>
+      <div className="fs-panel" style={{ left: 30, top: 78, width: 814, height: 246 }}>
         {step === 'look' && (
           <div className="part-row">
             {PARTS.map(p => (

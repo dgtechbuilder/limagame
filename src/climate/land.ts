@@ -24,6 +24,7 @@
    the range of published figures where a source is named. No pictures or screens here, so the saved game can use
    it. */
 
+import { tankOf } from '../water/model';
 import type { GameState } from '../state';
 import type { Plan } from '../trials/model';
 import { FULL, PLOTS, TILES, doneMask } from '../world/field';
@@ -290,14 +291,16 @@ export function areasOf(s: GameState): AreaNow[] {
   });
 
   // the animals
-  const cowCH4 = AREA_SIZE.cows * LAND_FACTORS.cowMethane.value;
-  const manure = AREA_SIZE.cows * LAND_FACTORS.cowManure.value + AREA_SIZE.hens * LAND_FACTORS.henManure.value;
-  const drink = AREA_SIZE.cows * LAND_FACTORS.cowWater.value + AREA_SIZE.hens * LAND_FACTORS.henWater.value;
+  // the herd the player keeps (Water › Animals), 2 cows and 4 hens to start
+  const herd = tankOf(s.tank).herd;
+  const cowCH4 = herd.cows * LAND_FACTORS.cowMethane.value;
+  const manure = herd.cows * LAND_FACTORS.cowManure.value + herd.hens * LAND_FACTORS.henManure.value;
+  const drink = herd.cows * LAND_FACTORS.cowWater.value + herd.hens * LAND_FACTORS.henWater.value;
   const animals = area({
     id: 'animals',
     name: 'Cows and hens',
     icon: '🐄',
-    size: `${AREA_SIZE.cows} cows, ${AREA_SIZE.hens} hens`,
+    size: `${herd.cows} cow${herd.cows === 1 ? '' : 's'}, ${herd.hens} hen${herd.hens === 1 ? '' : 's'}`,
     use: 'Milk, eggs and manure',
     stored: 0,
     emit: { livestock: cowCH4 + manure },

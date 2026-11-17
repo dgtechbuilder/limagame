@@ -20,7 +20,7 @@ import {
   type Certificate,
 } from '../achievements/model';
 import { achClock, viewOf, weekSoFar } from '../achievements/track';
-import { money } from '../money';
+import { money, withMoney } from '../money';
 import type { AchTab, Action, GameState } from '../state';
 import {
   LEVELS,
@@ -80,7 +80,7 @@ export function AchievementsPage({ s, dispatch, tab: startTab }: Props) {
   return (
     <div className="abs settings-page ach-page" style={{ inset: 0 }} role="dialog" aria-modal="true" aria-label="My Progress">
       <div className="scrim" onClick={close} />
-      <div className="fs-panel set-panel" style={{ left: 18, top: 40, width: 838, height: 348 }}>
+      <div className="fs-panel set-panel" style={{ left: 24, top: 46, width: 826, height: 334 }}>
         <nav className="set-tabs ach-tabs" aria-label="My Progress sections">
           <p className="set-heading">My Progress</p>
           {TABS.map(t => (
@@ -103,7 +103,7 @@ export function AchievementsPage({ s, dispatch, tab: startTab }: Props) {
           {tab === 'certificates' && <Certificates s={s} v={v} />}
         </section>
       </div>
-      <NavBar horizontal onBack={close} hideHome={s.fs.phase !== 'done'} style={{ right: 44, top: 6 }} />
+      <NavBar horizontal onBack={close} hideHome={s.fs.phase !== 'done'} style={{ right: 62, top: 8 }} />
       <CloseX className="page-x" onClick={close} />
       <p className="set-title-bar">
         <span aria-hidden="true">🎓</span> My Progress · <b>{TABS.find(t => t.id === tab)!.label}</b>
@@ -117,7 +117,7 @@ export function AchievementsPage({ s, dispatch, tab: startTab }: Props) {
 function Badge({ x, s, v, dispatch, compact }: { x: Achievement; s: GameState; v: AchView; dispatch: Dispatch<Action>; compact?: boolean }) {
   const w = achOfSave(s.ach).won[x.id];
   const p = progressOf(x, v);
-  const label = `${x.name}: ${x.goal}. ${w ? (w.claimed ? 'Won' : 'Won, reward to claim') : `${Math.round(p * 100)}% done`}`;
+  const label = `${x.name}: ${withMoney(x.goal)}. ${w ? (w.claimed ? 'Won' : 'Won, reward to claim') : `${Math.round(p * 100)}% done`}`;
   return (
     <div className={`ach-badge${w ? ' is-won' : ''}${compact ? ' is-compact' : ''} is-${x.tier}`} aria-label={label}>
       <span className="ach-icon" aria-hidden="true">
@@ -125,7 +125,7 @@ function Badge({ x, s, v, dispatch, compact }: { x: Achievement; s: GameState; v
       </span>
       <span className="ach-text">
         <b>{x.name}</b>
-        <small>{x.goal}</small>
+        <small>{withMoney(x.goal)}</small>
         {!w && (
           <span className="ach-meter" role="progressbar" aria-label={`${x.name} progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(p * 100)}>
             <span style={{ width: `${Math.max(4, p * 100)}%` }} />

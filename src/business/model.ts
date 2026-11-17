@@ -166,6 +166,52 @@ export const CLIENTS: Client[] = [
 export const TERRITORY = { name: 'Narok', hub: 'Narok hub' };
 
 export const clientOf = (id: string) => CLIENTS.find(c => c.id === id)!;
+
+/* ---------------- each farmer: urgency, willingness to pay, payment reliability ---------------- */
+
+/** What each farmer is like to work for. The shortest route is not always the best one: a farmer who pays in full,
+    on time, for urgent work can be worth a longer drive. Placeholders (game estimates). */
+export interface Traits {
+  /** how urgent their work usually is: 1 can wait, 2 this week, 3 now */
+  urgency: 1 | 2 | 3;
+  /** what they pay against the list hire (1.1: 10% more for good service; 0.9: they bargain it down) */
+  pay: number;
+  /** the share of what is owed they actually pay (the rest is bad debt) */
+  reliability: number;
+}
+export const TRAITS: Record<string, Traits> = {
+  wanjiru: { urgency: 2, pay: 1.05, reliability: 0.98 },
+  otieno: { urgency: 1, pay: 0.9, reliability: 0.8 },
+  chebet: { urgency: 2, pay: 1, reliability: 0.95 },
+  kamau: { urgency: 3, pay: 1.1, reliability: 0.92 },
+  akinyi: { urgency: 2, pay: 0.95, reliability: 0.7 },
+  mutua: { urgency: 3, pay: 1.15, reliability: 0.97 },
+  njeri: { urgency: 1, pay: 1, reliability: 0.99 },
+  kiprop: { urgency: 2, pay: 0.85, reliability: 0.65 },
+  achieng: { urgency: 1, pay: 1, reliability: 0.9 },
+};
+export const traitsOf = (id: string): Traits => TRAITS[id] ?? { urgency: 2, pay: 1, reliability: 0.9 };
+/** An urgent job (urgency 3) served today: the farmer pays this much more, and it earns points. */
+export const URGENT = { premium: 0.1, points: 10 };
+
+/** What the player's own farm says about the season (the planting window, the rain to come): it makes the
+    territory's bookings more urgent, so the two parts of the game are one ecosystem. */
+export interface FarmSignal {
+  /** the player's own farms are in their planting window (being planned, cleared or sown) */
+  planting: boolean;
+  /** the rain forecast for the season */
+  forecast: 'dry' | 'normal' | 'wet';
+}
+
+/** How urgent one job is today: the farmer's own urgency, the planting window and the rain on the way. */
+export function urgencyOf(clientId: string, activity: Activity, signal?: FarmSignal | null): 1 | 2 | 3 {
+  let u: number = traitsOf(clientId).urgency;
+  if (signal?.planting && (activity === 'landprep' || activity === 'planting')) u += 1;
+  // rain on the way: the ground must be ready and the seed in before it; a dry season: the harvest must be got in
+  if (signal?.forecast === 'wet' && (activity === 'landprep' || activity === 'planting')) u += 1;
+  if (signal?.forecast === 'dry' && (activity === 'harvest' || activity === 'transport')) u += 1;
+  return Math.max(1, Math.min(3, u)) as 1 | 2 | 3;
+}
 /** A booking request: one job on one part of one farm, today: client:part:tool (an old two-part key is the part's
     land preparation job). */
 export type ReqKey = `${string}:${string}` | `${string}:${string}:${string}`;
@@ -237,7 +283,7 @@ export const PARTNERS: Partner[] = [
   { id: 'kimani', name: 'Kimani Tractor Hire', kind: 'Tractor owner', does: 'Takes the bookings you pass on. You keep 10% of the hire.', fee: 0, level: 1 },
   { id: 'coop', name: 'Narok Farmers’ Co-op', kind: 'Farmers’ co-op', does: 'Sends you two more farms’ bookings every day.', fee: 5000, level: 2 },
   { id: 'fuel', name: 'Rafiki Fuel', kind: 'Fuel station', does: 'Sells you diesel 10% cheaper.', fee: 3000, level: 2 },
-  { id: 'county', name: 'County Roads Office', kind: 'Hires tractors', does: `Rents your tractor and driver for a day: ${kshText(12000)}.`, fee: 0, level: 2 },
+  { id: 'county', name: 'County Roads Office', kind: 'Hires tractors', does: 'Rents your tractor and driver for a day: {money:12000}.', fee: 0, level: 2 },
   { id: 'app', name: 'Hello Tractor app', kind: 'Booking app', does: 'Orders your stops shortest-first in one tap.', fee: 4000, level: 3 },
 ];
 export const partnerOf = (id: PartnerId) => PARTNERS.find(p => p.id === id)!;
@@ -352,6 +398,13 @@ export interface DayResult {
   cluster?: { activity: Activity; farms: number };
   cleanFarms: number;
   points: number;
+  /** what was collected from the farmers, and not (missing in days played before farmer traits) */
+  collected?: number;
+  shortfall?: number;
+  urgentServed?: number;
+  urgentWaiting?: number;
+  /** the day's value, 0 to 100 (dayValue) */
+  value?: number;
   /** PAYG after the day: what is owed, and the warning state */
   payg?: { left: number; util: number; fulfil: number; warn: number; repossessed: boolean };
   /** the marketplace contract, on a contract day */
@@ -931,6 +984,15 @@ export interface Plan {
   cluster: { activity: Activity; farms: number } | null;
   cleanFarms: number;
   points: number;
+  /** what the farmers on the hub tractor actually pay: the hire at their willingness to pay, times their reliability */
+  collected: number;
+  /** the hire not collected (bad debt, bargaining), less any premium for urgent work */
+  shortfall: number;
+  /** urgent jobs (urgency 3) served today, and left waiting */
+  urgentServed: number;
+  urgentWaiting: number;
+  /** the day's value, 0 to 100: the route's efficiency, the money collected and the urgent work served */
+  value: number;
   /** why the day can't start, or null */
   problem: string | null;
 }
@@ -939,7 +1001,7 @@ export const serBand = (ser: number): Plan['serBand'] => (ser >= SER.healthy ? '
 
 /** Everything a day would come to: road and work hours, diesel, money, the farmers helped, the SER and the
     fulfilment, with each stop's drive (drives: field efficiency by farm; absent: the planned job, done). */
-export function planDay(b: Biz, requests: ReqKey[], bookings: Bookings, route: string[], drives: Drives = {}): Plan {
+export function planDay(b: Biz, requests: ReqKey[], bookings: Bookings, route: string[], drives: Drives = {}, signal: FarmSignal | null = null): Plan {
   const m = mapFor(b.day);
   const rig = tractorOf(b);
   const rate = WORK_RATE[rig.tractor];
@@ -995,6 +1057,17 @@ export function planDay(b: Biz, requests: ReqKey[], bookings: Bookings, route: s
   const workDiesel = Math.round(workL * price);
   const revenue = mine.reduce((n, x) => n + Math.round(hireOf(x.part.tool) * x.part.acres * share(x.client.id)), 0);
   const commission = theirs.reduce((n, x) => n + Math.round(hireOf(x.part.tool) * x.part.acres * PARTNER_CUT), 0);
+  // what the farmers really pay: their willingness to pay, their reliability, and a premium for urgent work done now
+  const urgentOf = (x: { key: ReqKey; client: Client; activity: Activity }) => urgencyOf(x.client.id, x.activity, signal) === 3;
+  const collected = mine.reduce((n, x) => {
+    const tr = traitsOf(x.client.id);
+    const hire = hireOf(x.part.tool) * x.part.acres * share(x.client.id);
+    return n + Math.round(hire * tr.pay * tr.reliability * (urgentOf(x) ? 1 + URGENT.premium : 1));
+  }, 0);
+  const allReq = requests.map(k => ({ key: k, ...partOf(k) }));
+  const urgentAll = allReq.filter(urgentOf);
+  const urgentServed = urgentAll.filter(x => bookings[x.key] && !dropped.includes(x.key)).length;
+  const urgentWaiting = urgentAll.length - urgentServed;
   const wage = mineFarms.length ? DRIVER_WAGE + Math.round((overH * DRIVER_WAGE * OVERTIME) / DAY_HOURS) : 0;
   const hubFee = rig.own ? 0 : Math.round(revenue * HUB_SHARE);
   const instalment = rig.own ? Math.min(Math.round(revenue * PAYG.share), Math.max(0, rig.own.price - rig.own.paid)) : 0;
@@ -1027,7 +1100,7 @@ export function planDay(b: Biz, requests: ReqKey[], bookings: Bookings, route: s
   const clusterAct = [...byAct.entries()].filter(([, s]) => s.size >= CLUSTER.farms).sort((p, q) => q[1].size - p[1].size)[0];
   const cluster = clusterAct ? { activity: clusterAct[0], farms: clusterAct[1].size } : null;
   const cleanFarms = stops.filter(id => e(id) >= CLEAN_DRIVE.e).length;
-  const points = (farmers + partnerFarmers) * POINTS_A_FARMER + (cluster ? CLUSTER.points : 0) + cleanFarms * CLEAN_DRIVE.points;
+  const points = (farmers + partnerFarmers) * POINTS_A_FARMER + (cluster ? CLUSTER.points : 0) + cleanFarms * CLEAN_DRIVE.points + urgentServed * URGENT.points;
   // the day must fit with the shortest way round: a longer route is the player's to find, and costs diesel and overtime
   const fitH = mineAll.reduce((n, x) => n + x.part.acres / (ACRES_AN_HOUR[x.part.tool] * rate), 0) + bestKm / ROAD_KMH;
   const allField = mineAll.reduce((n, x) => n + (x.activity === 'transport' ? 0 : x.part.acres), 0);
@@ -1060,7 +1133,7 @@ export function planDay(b: Biz, requests: ReqKey[], bookings: Bookings, route: s
     commission,
     hubFee,
     instalment,
-    profit: revenue + commission - diesel - wage - hubFee,
+    profit: revenue - (revenue - collected) + commission - diesel - wage - hubFee,
     saved,
     farmers,
     partnerFarmers,
@@ -1077,9 +1150,19 @@ export function planDay(b: Biz, requests: ReqKey[], bookings: Bookings, route: s
     cluster,
     cleanFarms,
     points,
+    collected,
+    shortfall: revenue - collected,
+    urgentServed,
+    urgentWaiting,
+    value: dayValue(km > 0 && !unrouted.length ? Math.min(1, bestKm / km) : km > 0 ? 0 : 1, revenue ? collected / revenue : 1, urgentAll.length ? urgentServed / urgentAll.length : 1),
     problem,
   };
 }
+
+/** The day's value, out of 100: not only the shortest route, but the money that comes in and the urgent work done. */
+export const VALUE_WEIGHTS = { route: 0.4, paid: 0.35, urgent: 0.25 };
+export const dayValue = (efficiency: number, paidShare: number, urgentShare: number) =>
+  Math.round(100 * (VALUE_WEIGHTS.route * Math.max(0, Math.min(1, efficiency)) + VALUE_WEIGHTS.paid * Math.max(0, Math.min(1, paidShare)) + VALUE_WEIGHTS.urgent * Math.max(0, Math.min(1, urgentShare))));
 
 /** The efficiency score, out of 100: the shortest route's km against the player's. */
 export const effScore = (efficiency: number) => Math.round(Math.max(0, Math.min(1, efficiency)) * 100);
@@ -1123,6 +1206,11 @@ export function runDay(b: Biz, plan: Plan, done: Record<string, Activity[]> = {}
     cluster: plan.cluster ?? undefined,
     cleanFarms: plan.cleanFarms,
     points: plan.points,
+    collected: plan.collected,
+    shortfall: plan.shortfall,
+    urgentServed: plan.urgentServed,
+    urgentWaiting: plan.urgentWaiting,
+    value: plan.value,
   };
   return closeDay(b, result, done);
 }
@@ -1142,6 +1230,7 @@ export function contractDay(b: Biz, offer: Offer, requests: ReqKey[], bookings: 
   const rig = tractorOf(b);
   const theirs = requests.filter(k => bookings[k] === 'partner').map(partOf);
   const commission = theirs.reduce((n, x) => n + Math.round(hireOf(x.part.tool) * x.part.acres * PARTNER_CUT), 0);
+
   const price = MONEY.diesel.value * (b.partners.includes('fuel') ? 1 - FUEL_DISCOUNT : 1);
   const diesel = Math.round((offer.km * ROAD_LPKM + offer.acres * TOOLS[offer.tool].lpa) * fuelFactor(rig.tractor) * price);
   const instalment = rig.own ? Math.min(Math.round(offer.pay * PAYG.share), Math.max(0, rig.own.price - rig.own.paid)) : 0;

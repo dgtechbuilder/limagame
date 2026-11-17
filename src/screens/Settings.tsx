@@ -1,3 +1,4 @@
+import { cleanTag, evidenceExport, evidenceOf, evidenceSummary } from '../evidence/model';
 import { useEffect, useState, type Dispatch, type ReactNode } from 'react';
 import { NavBar } from '../components/Nav';
 import { CloseX } from '../components/Success';
@@ -71,7 +72,7 @@ export function SettingsPage({ s, dispatch, tab: startTab }: Props) {
   return (
     <div className="abs settings-page" style={{ inset: 0 }} role="dialog" aria-modal="true" aria-label="Settings">
       <div className="scrim" onClick={close} />
-      <div className="fs-panel set-panel" style={{ left: 18, top: 40, width: 838, height: 348 }}>
+      <div className="fs-panel set-panel" style={{ left: 24, top: 46, width: 826, height: 334 }}>
         <nav className="set-tabs" aria-label="Settings sections">
           <p className="set-heading">Settings</p>
           {TABS.map(t => (
@@ -93,7 +94,7 @@ export function SettingsPage({ s, dispatch, tab: startTab }: Props) {
           {tab === 'help' && <HelpTab s={s} dispatch={dispatch} />}
         </section>
       </div>
-      <NavBar horizontal onBack={close} hideHome={s.fs.phase !== 'done'} style={{ right: 44, top: 6 }} />
+      <NavBar horizontal onBack={close} hideHome={s.fs.phase !== 'done'} style={{ right: 62, top: 8 }} />
       <CloseX className="page-x" onClick={close} />
       <p className="set-title-bar">
         <span aria-hidden="true">⚙</span> Settings · <b>{TABS.find(t => t.id === tab)!.label}</b>
@@ -358,6 +359,14 @@ function HelpTab({ s, dispatch }: Props) {
           Open
         </GoldButton>
       </Row>
+      <Row title="Programme" body="A programme or cohort code, if you have one. It is saved with your play.">
+        <ProgrammeTags s={s} dispatch={dispatch} />
+      </Row>
+      <Row title="My evidence" body={evidenceLine(s)}>
+        <GoldButton font={10} height={28} style={{ width: 120 }} onClick={() => downloadEvidence(s)}>
+          Download
+        </GoldButton>
+      </Row>
       <Row title="Reset progress" body={confirmReset ? 'Erases your farmer, seasons, money and points here. Settings stay.' : 'Start again with a new farmer.'}>
         <div style={{ display: 'flex', gap: 6 }}>
           {confirmReset && (
@@ -381,4 +390,48 @@ function HelpTab({ s, dispatch }: Props) {
       </Row>
     </div>
   );
+}
+
+/** The programme / cohort tags: type a code, tap × to remove one. */
+function ProgrammeTags({ s, dispatch }: Props) {
+  const [text, setText] = useState('');
+  const tags = evidenceOf(s.evidence).tags;
+  const add = () => {
+    if (!cleanTag(text)) return;
+    dispatch({ type: 'evidenceTag', tag: text, on: true });
+    setText('');
+  };
+  return (
+    <div className="set-tags">
+      {tags.map(t => (
+        <i key={t}>
+          {t}
+          <button type="button" aria-label={`Remove ${t}`} onClick={() => dispatch({ type: 'evidenceTag', tag: t, on: false })}>
+            ×
+          </button>
+        </i>
+      ))}
+      <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === 'Enter' && add()} placeholder="Code" aria-label="Programme code" maxLength={32} />
+      <button type="button" className="set-link" onClick={add}>
+        Add
+      </button>
+    </div>
+  );
+}
+
+function evidenceLine(s: GameState) {
+  const x = evidenceSummary(s);
+  return `${x.decisions} decisions kept on this device: ${x.checks} checks (${x.checksPerDay} a day), ${x.treatments} treatments (${x.climateSmartTreatments} climate-smart)${x.medianMinutesToFix !== null ? `, ${x.medianMinutesToFix} min from seeing a risk to fixing it` : ''}. Download them as a file.`;
+}
+
+function downloadEvidence(s: GameState) {
+  const blob = new Blob([JSON.stringify(evidenceExport(s), null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `lima-evidence-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
