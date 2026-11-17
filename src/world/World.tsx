@@ -54,6 +54,9 @@ import { RiskHud, useRisk } from '../risk/RiskHud';
 import { WaterButton } from '../water/WaterButton';
 import { EvidenceAsk } from '../evidence/Ask';
 import type { RiskItem } from '../risk/model';
+import { AnimalsButton, SecurityButton } from '../livestock/HudButtons';
+import { careOpen, lifeOf } from '../livestock/model';
+import { tankOf } from '../water/model';
 
 // from Wakala Agent: the screens after a right call, at the shed and at the Hire spot, loaded when first opened
 const Prescribe = lazy(() => import('../care/Prescribe').then(m => ({ default: m.Prescribe })));
@@ -268,6 +271,13 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     w.setView({ trial: t, field: s.field, today, look, arrowAt: arrowAt ? { x: arrowAt.x, z: arrowAt.z } : null, focus: 'farm' in target ? target.farm : null, paused: overlay });
   }, [t, s.field, today, look, task, overlay]);
 
+  // the herd and the coop on the 3D farm follow the game: a stolen hen is gone, a built coop stands
+  const herd = tankOf(s.tank).herd;
+  const coop = lifeOf(s.life).coop;
+  useEffect(() => {
+    eng.current?.setLife({ cows: herd.cows, hens: herd.hens, coop });
+  }, [herd.cows, herd.hens, coop]);
+
   function targetOf(tk: Task, w: FarmWorld) {
     const target = tk.target;
     if ('place' in target) return PLACES[target.place];
@@ -379,6 +389,12 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     const tr = st.trial;
     const d = fieldDay(tr, dayNumber());
     if (p === 'mission') return dispatch({ type: 'trials', open: true });
+    // the cow pen and the chicken coop: the animals' page (a coop still to build opens on it)
+    if (p === 'pen' || p === 'coop') {
+      const l = lifeOf(st.life);
+      if (!careOpen(st)) return say(`The animals are in your care from day 2: sleep at the farmhouse first`);
+      return dispatch({ type: 'open', modal: { kind: 'animals', tab: p === 'coop' && !l.coop ? 'coop' : 'today' } });
+    }
     if (p === 'hire') {
       // a tractor-hire farm is driven by the player first (from Wakala Agent); oxen plough by themselves
       const drive = farmToDrive(st);
@@ -730,6 +746,8 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         <span>MISSION</span>
       </button>
       <WaterButton s={s} dispatch={dispatch} />
+      <AnimalsButton s={s} dispatch={dispatch} />
+      <SecurityButton s={s} dispatch={dispatch} />
       <button type="button" className="hud-round hud-shop" onClick={() => dispatch({ type: 'open', modal: { kind: 'shop', tab: 'food' } })} aria-label="Shop">
         <img src={img.cart} alt="" width={30} height={30} />
         <span>SHOP</span>

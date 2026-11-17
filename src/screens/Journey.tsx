@@ -198,7 +198,7 @@ export function StorageModal({ s, dispatch }: Props) {
                       <span className="hair" />
                       <Row size={8} label="Time to market">{o.time}</Row>
                       <span className="hair" />
-                      <Row size={8} label="Bags lost">≈ {q.lost}</Row>
+                      <Row size={8} label="Bags lost">≈ {q.lost}{q.stolen ? ` · ${q.stolen} stolen` : ''}</Row>
                       <span className="hair" />
                       <Row size={8} label="CO₂e">{STORAGE_CO2[o.id] ? `${o.id === 'cold' && hasSolar(s) ? 0.4 : STORAGE_CO2[o.id]} kg/bag` : 'None'}</Row>
                     </div>
@@ -502,7 +502,7 @@ function lessonsFor(r: SeasonResult) {
   else if (r.choice === 'week') out.push({ title: 'Harvest timing', body: 'Waiting a week over-ripened the crop.' });
   else out.push({ title: 'Harvest timing', body: 'Waiting two days gave the best yield and quality.' });
   const lost = r.bagsHarvested - r.bagsSold;
-  if (out.length < 3) out.push({ title: 'Storage', body: lost > 0 ? `${lost} bags spoiled. Better storage or sorting helps.` : 'Good storage: almost nothing spoiled.' });
+  if (out.length < 3) out.push({ title: 'Storage', body: lost > 0 ? `${lost} bags spoiled or were stolen. A guarded co-op warehouse, locks and good sorting help.` : 'Good storage: almost nothing spoiled.' });
   if (out.length < 3) out.push({ title: 'Market timing is key', body: 'Selecting when demand is high maximizes your profit.' });
   return out.slice(0, 3);
 }

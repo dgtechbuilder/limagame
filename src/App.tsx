@@ -12,6 +12,9 @@ const Rounds = lazy(() => import('./rounds/Rounds').then(m => ({ default: m.Roun
 const Trials = lazy(() => import('./trials/Trials').then(m => ({ default: m.Trials })));
 const Business = lazy(() => import('./business/Business').then(m => ({ default: m.Business })));
 const World = lazy(() => import('./world/World').then(m => ({ default: m.World })));
+// the animals' and security pages are loaded when first opened
+const AnimalsPage = lazy(() => import('./livestock/Animals').then(m => ({ default: m.AnimalsPage })));
+const SecurityPage = lazy(() => import('./security/Security').then(m => ({ default: m.SecurityPage })));
 // design review (?review=1) only: its sample screens are computed when it is opened, never for players
 const ReviewPicker = lazy(() => import('./review/Review').then(m => ({ default: m.ReviewPicker })));
 import { WelcomeModal } from './screens/Meta';
@@ -19,6 +22,7 @@ import { SettingsPage } from './screens/Settings';
 import { ClimatePage } from './screens/Climate';
 import { AchievementsPage } from './screens/Achievements';
 import { PartnersPage } from './screens/Partners';
+
 import { ArtContext, VoiceContext } from './art/style';
 import { speak, stopSpeaking } from './speech';
 import { setSoundOn, sfx, warmSfx } from './sfx';
@@ -173,7 +177,7 @@ export default function App() {
   useEffect(() => {
     const x = s.success;
     if (!x || !voiceOn) return;
-    speak(x.kind === 'sale' ? `Sold ${x.qty} ${x.item}` : x.kind === 'training' ? 'Training booked' : 'Storage upgraded');
+    speak(x.kind === 'sale' ? `Sold ${x.qty} ${x.item}` : x.kind === 'training' ? 'Training booked' : x.kind === 'storage' ? 'Storage upgraded' : x.kind === 'day2' ? 'Day 2: your animals are in your care' : x.events.map(e => e.text).join(' '));
   }, [s.success?.id, voiceOn]);
   useEffect(() => {
     if (!voiceOn) stopSpeaking();
@@ -280,6 +284,16 @@ export default function App() {
         {m?.kind === 'climate' && <ClimatePage s={s} dispatch={dispatch} tab={m.tab} />}
         {m?.kind === 'achievements' && <AchievementsPage s={s} dispatch={dispatch} tab={m.tab} />}
         {m?.kind === 'partners' && <PartnersPage s={s} dispatch={dispatch} tab={m.tab} brand={m.brand} />}
+        {m?.kind === 'animals' && (
+          <Suspense fallback={null}>
+            <AnimalsPage s={s} dispatch={dispatch} tab={m.tab} />
+          </Suspense>
+        )}
+        {m?.kind === 'security' && (
+          <Suspense fallback={null}>
+            <SecurityPage s={s} dispatch={dispatch} tab={m.tab} />
+          </Suspense>
+        )}
         {m?.kind === 'shop' && <ShopModal s={s} tab={m.tab} dispatch={dispatch} />}
         {m?.kind === 'steps' && <StepsModal s={s} step={m.step} dispatch={dispatch} />}
         {m?.kind === 'sale' && <SaleModal s={s} dispatch={dispatch} />}

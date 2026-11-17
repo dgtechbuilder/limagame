@@ -33,6 +33,8 @@ export function MainMenu({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
         { label: 'Field rounds', note: 'Check every bed', run: () => dispatch({ type: 'rounds', open: true }) },
         { label: 'Tractor', note: 'Pick a type and tool, work a plot', run: () => dispatch({ type: 'ride' }) },
         { label: 'Tractor business', note: 'Serve farms, plan routes, partners', run: () => dispatch({ type: 'biz', open: true }) },
+        { label: 'Animals', note: 'Cows, hens, the chicken coop', run: () => open({ kind: 'animals' }) },
+        { label: 'Security', note: 'Keep thieves off the farm', run: () => open({ kind: 'security' }) },
         { label: 'Shop', note: 'Seeds, fertilizer, tools', run: () => open({ kind: 'shop', tab: 'food' }) },
         {
           label: waiting ? `My Progress (${waiting})` : 'My Progress',

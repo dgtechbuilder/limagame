@@ -41,6 +41,8 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [Money at risk](#money-at-risk)
 - [Climate-smart farming: row strategies and treatment choices](#climate-smart-farming-row-strategies-and-treatment-choices)
 - [Water as a real resource](#water-as-a-real-resource)
+- [The animals: cows, hens and the chicken coop](#the-animals-cows-hens-and-the-chicken-coop)
+- [Theft, and keeping the farm safe](#theft-and-keeping-the-farm-safe)
 - [The evidence layer](#the-evidence-layer)
 - [Climate tracking](#climate-tracking)
 - [Achievements, the daily streak and certificates](#achievements-the-daily-streak-and-certificates)
@@ -68,6 +70,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 | **Every week** | **Six farms**: a different plan on each farm, one day of checks each real day (or all now), then the harvests compared. The plan that worked becomes their recipe for the next cycle. |
 | **Any time** | Plays seasons of maize on Farm Moja: six farming steps, harvest timing, storage, processing, selling, results, rewards. |
 | **Any time** | Opens **Climate** to see what their farming did to the climate, the water and the soil, and the climate credits it earned. |
+| **From day 2** | Looks after the **cows and hens** every day (feed, water, milk, eggs, cleaning), **builds the chicken coop**, treats their diseases by their signs, and **keeps the farm safe from thieves** at night. |
 
 A wrong call is part of learning: the clue they missed is circled, and they try again on a second maize bed.
 
@@ -130,6 +133,11 @@ src/
   strategy/                climate-smart rows: data.ts (every dimension and option), model.ts, StrategyBoard.tsx
   water/                   the tank, the animals, the shared catchment, crop cover: config.ts, model.ts, track.ts, WaterPanel.tsx
   credits/ledger.ts        every kind of credit (CO₂, water) earned and paid
+  livestock/               the cows and the hens: config.ts (every number: care, coop, prevention, diseases), model.ts
+                           (care, health, problems, a night), track.ts (the nights, day 2), Animals.tsx (the page),
+                           HudButtons.tsx (ANIMALS and SECURITY), rand.ts (seeded nights)
+  security/                theft: config.ts (what is taken, every measure and what it cuts), model.ts (tonight's risks,
+                           a night's thefts, the harvest and store less theft), Security.tsx (the page)
   evidence/                the decision log, programme tags, "tried it on your own farm?": model.ts, Ask.tsx
   risk/                    money at risk: config.ts (every number to tune), model.ts (the list, from the save), RiskHud.tsx (the button)
   climate/                 climate tracking: model.ts (every factor, the ledger, rating, levels), track.ts (which
@@ -769,7 +777,7 @@ Every screen has at least two or three ways to move, and one of them is always t
 | First session | one step where that is safe | ☰ | Settings instead (the farm is not open yet) |
 
 The **main menu** (`src/screens/MainMenu.tsx`, the **MENU** button on the farm) lists My farm, Mission, Field rounds,
-Tractor, Tractor business, Shop, My Progress (achievements), Climate, Rewards, Partners & offers, Training, Loan
+Tractor, Tractor business, Animals, Security, Shop, My Progress (achievements), Climate, Rewards, Partners & offers, Training, Loan
 calculator, Farming steps and Settings. In the first session it lists only Back to the game, How the farm works and
 Settings. The list scrolls, with a gold
 **scroll wheel** beside it (▲ and ▼ buttons and a thumb to drag, since phones hide scroll bars); the mouse wheel and
@@ -836,6 +844,8 @@ reload without losing their place, bookmark a page, and use the browser's **Back
 | `#/loan-calculator` · `#/loan-calculator/quote` · `#/training` | The loan calculator and its quote, farmer training |
 | `#/progress/journey` · `modules` · `today` · `badges` · `certificates` | My Progress, by section (`#/achievements/…` still works) |
 | `#/partners/offers` · `#/partners/offers/<brand>` · `#/partners/placements` | Partners: offers (one brand's in view), placements |
+| `#/animals/today` · `health` · `water` · `coop` · `herd` | Animals, by section |
+| `#/security/protect` · `risks` · `night-reports` | Security, by section |
 
 **The player's session decides where an address can go.** The game's saved state stays the one source of
 truth: the address always names the page on show, and a typed address goes through the same rules as a tap.
@@ -999,6 +1009,66 @@ saves a little less: the money-at-risk cheer and the harvest both use it. Each w
   plans' irrigation that was delivered sets the harvest's watering. Design: [`docs/shared-water.md`](docs/shared-water.md).
 
 Every number is in `src/water/config.ts` (placeholders until confirmed).
+
+## The animals: cows, hens and the chicken coop
+
+The farm's **2 cows and 4 hens** (the herd the water model already counts) come into the player's care on **day 2**
+(`LIFE.startDay` in [`src/livestock/config.ts`](src/livestock/config.ts)). A farm day ends with a night slept on the
+fast clock (the first cycle) or with a calendar day; the first night brings a **Day 2** dialog: *Your animals*, with
+**Build the chicken coop**. Before then the Animals page shows what is coming and nothing can be done.
+
+- **Where:** **ANIMALS** on the farm's HUD (a badge counts the jobs waiting and the problems showing), the main menu,
+  or walking to the **Cows** spot at the pen gate or the **Hens** spot at the coop in the 3D farm. The classic farm has
+  the same buttons.
+- **Today:** the day's jobs. Cows: *Feed* (napier, hay and dairy meal, paid a cow), *Fill the trough* (needs 50 L a cow
+  in the tank), *Milk* (sold to the dairy) and *Clean the pen* every 3 days. Hens: *Feed* (layers mash), *Fresh water*,
+  *Collect the eggs* (sold), *Clean the coop* every 3 days, and *Shut the coop for the night* once it is built. Milk and
+  eggs depend on the animals' health and on being fed and watered first.
+- **Health:** each group has a health of 0–100. At night, a missed feed, water or cleaning, a tank that ran dry, or a
+  problem left costs health; a day of full care brings it back. Under 25 an animal dies. **Problems show by their
+  signs** and the player chooses the fix (three choices, one right, as with the crops): East Coast fever, mastitis,
+  foot-and-mouth, bloat, heat stress and a **leaking trough** for the cows; Newcastle disease, coccidiosis, mites and
+  egg eating for the hens. A wrong fix costs money and teaches why; the right one clears it (+20 points). Some kill if
+  left (East Coast fever after 3 days, bloat and Newcastle after 1). **Prevention:** tick spray (7 days), the
+  foot-and-mouth and Newcastle vaccines, deworming. A dirty pen or coop, unfed animals and a crowded coop make
+  problems likelier; good health and a dry, raised coop make them rarer.
+- **Water:** what the cows and hens drink is drawn by the water model each day; on top, a dry season makes cows drink a
+  fifth more, heat stress more again, and a leaking trough wastes **300 L a day** until its valve is fixed. The Water tab
+  shows every litre and how many days the tank lasts at today's use.
+- **Coop** (from day 2): a **simple coop** (room for 20, +15% eggs) or a **raised coop with wire mesh** (room for 60,
+  +25% eggs, fewer coop diseases); with its door shut it keeps out most thieves and predators. With no coop, hens roost
+  in the trees and lose 30% of their eggs in the bush. It stands in the 3D farm once built (a pile of timber before).
+- **Herd:** cows and hens are bought at a price (a cow KSh 80,000, a hen KSh 700) and sold for 80% of it; the water
+  panel's herd uses the same prices. The 3D farm shows as many as the farm has: a stolen hen is gone from the yard.
+
+## Theft, and keeping the farm safe
+
+From day 2, **every night has its risks** ([`src/security/config.ts`](src/security/config.ts)). Each thing worth taking
+has a chance of being taken that night, and every measure in place cuts that chance by a share (shares from several
+measures multiply, so together they never cut more than 95%). It reaches across the game:
+
+| What | When it is out there | What is lost |
+| --- | --- | --- |
+| Maize in the field | the six farms from day 5 of a cycle, more once ripe and not harvested | 4–10% of one farm's cobs, taken off its bags and income at harvest |
+| Hens · predators | always; no coop or an open door makes it likelier | 2–6 hens stolen; 1–2 to a mongoose or hawk |
+| Cows | always | a cow |
+| Tools in the shed | equipment bought in the Shop | one tool |
+| Maize in the store | the classic season, while it waits to be sold | 6% in home storage, 0.5% in the co-op warehouse (in the sale quote) |
+| Cash at home | the night after a harvest sale | 10–25% of it |
+| Water from the tank | over 1,500 L in it; 2.5× in a dry season | 800–1,500 L |
+| Diesel | once the tractor business is open | KSh 1,500–3,000 of fuel |
+
+What a farmer can do (**SECURITY** on the HUD, or the main menu): hire a **night watchman** (paid each night; he does
+not come if he cannot be paid), keep a **guard dog**, put up a **fence and a locked gate**, **padlocks** on the shed and
+store, a **solar security light**, **brand and ear-tag the cows** (a stolen cow is often found again), **join the
+community watch** (Nyumba Kumi: thefts reported together are found more often), take payments on **mobile money**, a
+**lock on the tank's tap**, and a **GPS tracker and locking fuel cap** for the business tractor; and, in the farming
+itself, shut the coop every night, harvest on time, and store maize in the co-op warehouse. *Risks tonight* shows each
+target's chance before and after the measures, with the best next step; *Night reports* keeps the last 14 nights. A
+night with news opens a **morning dialog**: what was stolen or lost, its value, and what would have stopped it.
+
+Nights are seeded (`src/livestock/rand.ts`): the same farm, night and target always draw the same result, so a reload
+never re-rolls a night. `tests/livestock.spec.ts` plays all of this through the reducer and the two pages.
 
 ## The evidence layer
 

@@ -8,6 +8,11 @@ import type { Ledger } from './credits/ledger';
 import { trackWater } from './water/track';
 import { ROWS_PER_FARM } from './strategy/data';
 import { riskReduce, type RiskAction, type RiskState } from './risk/model';
+import { LIFE, type CareId, type CoopId, type Group, type IssueId, type PreventId } from './livestock/config';
+import { buildCoop, doCare, doPrevent, fixIssue, lifeOf, type LifeEvent, type LifeState } from './livestock/model';
+import { trackLife } from './livestock/track';
+import { measureOf, type MeasureId } from './security/config';
+import { cropsTaken, harvestLessTheft, securityOf, storeTheftShare, type SecurityState } from './security/model';
 import { useEffect, useReducer, useRef } from 'react';
 import { FARMS, ROUND_POINTS, dayNumber } from './rounds/farms';
 import {
@@ -90,7 +95,11 @@ export type Modal =
   /** farmer training: book a seat on a course */
   | { kind: 'training' }
   /** partners: their offers, and (for partners) every place in the game a brand can appear; brand: the offer to show */
-  | { kind: 'partners'; tab?: PartnersTab; brand?: BrandId };
+  | { kind: 'partners'; tab?: PartnersTab; brand?: BrandId }
+  /** the cows and the hens: today's care, their health, water, the coop, the herd (src/livestock) */
+  | { kind: 'animals'; tab?: AnimalsTab }
+  /** keeping the farm safe from theft: what protects it, tonight's risks, the night reports (src/security) */
+  | { kind: 'security'; tab?: SecurityTab };
 
 /** The dialog after something worked: a sale, a training booked, a storage upgrade. It replaces the short message
     at the top of the screen for these, so the player cannot miss it (components/Success.tsx, screens/Success.tsx). */
@@ -117,7 +126,11 @@ export type Success =
       quality?: number;
     }
   | { kind: 'training'; id: number; course: string; date: string; ref: string; price: number }
-  | { kind: 'storage'; id: number; from: string; to: string; saved: number; extra: number };
+  | { kind: 'storage'; id: number; from: string; to: string; saved: number; extra: number }
+  /** the morning after a night with news: thefts, predators, deaths, a new problem with the animals */
+  | { kind: 'night'; id: number; nights: number; day: number; events: LifeEvent[] }
+  /** day 2: the animals come into the player's care, and the farm's safety is theirs to look after */
+  | { kind: 'day2'; id: number };
 
 /** Player settings. They are kept on this device and survive Reset progress. */
 export interface Settings {
@@ -141,6 +154,8 @@ export type ClimateTab = 'overview' | 'land' | 'areas' | 'emissions' | 'water' |
 /** My Progress (the achievements page): the journey of certification levels, the modules, today, badges, certificates */
 export type AchTab = 'journey' | 'modules' | 'today' | 'badges' | 'certificates';
 export type PartnersTab = 'offers' | 'placements';
+export type AnimalsTab = 'today' | 'health' | 'water' | 'coop' | 'herd';
+export type SecurityTab = 'protect' | 'risk' | 'reports';
 export const DEFAULT_SETTINGS: Settings = { art: 'anime', graphics: 'auto', reduceMotion: false, voice: false, sound: true, upgradeNotes: true, country: '' };
 
 /** Stage index: 0–5 = the farming step being worked on, 6 = harvested and selling, 7 = season sold. */
@@ -261,6 +276,10 @@ export interface GameState {
   /** the evidence layer: decisions, cohort tags, "tried it on your farm?" answers (src/evidence; missing in older saves) */
   evidence?: Partial<EvidenceState>;
   collectedDay: Record<string, string>; // milk/eggs → date last collected
+  /** the cows and the hens: care, health, problems, the coop (src/livestock) */
+  life?: Partial<LifeState>;
+  /** theft: the measures in place, what was taken, the night reports (src/security) */
+  security?: Partial<SecurityState>;
   // season
   season: number;
   day: number;
@@ -395,7 +414,9 @@ export function saleQuote(s: GameState, processId: string | null) {
   const harvestCare = s.stepScores.harvest ?? stepScore(s, 'harvest');
   const loss = storage.loss * (1 - 0.5 * harvestCare); // good handling halves losses
   const bags = s.harvested?.bags ?? 0;
-  const bagsSold = Math.round(bags * (1 - loss));
+  // thieves take a share of the maize while it waits in store (src/security): less in a guarded warehouse
+  const stolen = Math.round(bags * storeTheftShare(s));
+  const bagsSold = Math.max(0, Math.round(bags * (1 - loss)) - stolen);
   const process = processId ? PROCESSES.find(p => p.id === processId)! : null;
   // the grade sets the price: a lower grade fetches less a bag
   const price = basePerBag(s.prices) * qualityPrice(s.harvested?.quality ?? 5) * (1 + (process ? process.profitIncrease / 100 : 0));
@@ -403,7 +424,7 @@ export function saleQuote(s: GameState, processId: string | null) {
   const costs = bags * storage.costPerBag + (process ? process.cost : 0);
   const gross = bagsSold * price;
   const revenue = Math.max(0, Math.round(gross - costs));
-  return { bagsSold, lost: bags - bagsSold, price, costs, gross: Math.round(gross), revenue, at: sellAt(s.prices) };
+  return { bagsSold, lost: bags - bagsSold - stolen, stolen, price, costs, gross: Math.round(gross), revenue, at: sellAt(s.prices) };
 }
 
 /** What a shop item cost (one unit), or 0. */
@@ -528,6 +549,15 @@ export type Action =
   | { type: 'coverBuy' }
   /** a row's strategy (src/strategy): one option on one dimension; row -1 sets every row of the farm */
   | { type: 'strategySet'; farm: number; row: number; dim: string; option: string }
+  /** the animals (src/livestock): a day's job, a fix for a problem, a prevention, the coop, buying or selling */
+  | { type: 'animalCare'; id: CareId }
+  | { type: 'animalFix'; issue: IssueId; fix: string }
+  | { type: 'animalPrevent'; id: PreventId }
+  | { type: 'coopBuild'; id: CoopId }
+  | { type: 'herdBuy'; group: Group; n: number }
+  /** theft (src/security): buy a measure; switch a nightly one (the watchman) on or off */
+  | { type: 'securityBuy'; id: MeasureId }
+  | { type: 'securityHire'; id: MeasureId; on: boolean }
 
 let toastId = 0;
 let successId = 0;
@@ -542,6 +572,8 @@ const gainXp = (s: GameState, amount: number) => {
   return { xp, level };
 };
 const fmt = (n: number) => n.toLocaleString('en-US');
+/** What changing a herd from one count to another costs: a full price each animal bought, a share back each one sold. */
+const herdCost = (from: number, to: number, price: number) => (to > from ? (to - from) * price : -Math.round((from - to) * price * LIFE.price.sellShare));
 /** A message's first letter lowered, so names and units like KSh keep their capitals. */
 const lowerFirst = (x: string) => x.charAt(0).toLowerCase() + x.slice(1);
 
@@ -551,7 +583,7 @@ export function reducer(s: GameState, a: Action): GameState {
   if (next === s) return s;
   const kind = soundOf(s, next, a);
   // an action that finished something counts today as a day played (the streak)
-  const tracked = trackEvidence(s, trackAchievements(s, trackWater(s, trackClimate(s, next, a), a), a, kind !== null), a);
+  const tracked = trackEvidence(s, trackAchievements(s, trackLife(s, trackWater(s, trackClimate(s, next, a), a), a), a, kind !== null), a);
   return kind ? { ...tracked, sfx: { id: ++sfxId, kind } } : tracked;
 }
 
@@ -559,7 +591,7 @@ let sfxId = 0;
 /** Flows: finishing one of these ends a whole piece of play. */
 const FLOWS = new Set<Action['type']>(['achClaimAll', 'completeSale', 'trialHarvest', 'bizRun', 'bizHireOut', 'bizContract', 'bizGraduate', 'tractorDone']);
 /** Actions: finishing one of these is one thing done. Some only count when they earned something (their message). */
-const ACTIONS = new Set<Action['type']>(['achClaim', 'achDaily', 'levelClaim', 'partnerSave', 'buy', 'sell', 'bookTraining', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo']);
+const ACTIONS = new Set<Action['type']>(['animalCare', 'animalPrevent', 'coopBuild', 'herdBuy', 'securityBuy', 'achClaim', 'achDaily', 'levelClaim', 'partnerSave', 'buy', 'sell', 'bookTraining', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo']);
 const EARNED = new Set<Action['type']>(['roundResult', 'trialCheck', 'fieldMark']);
 const FS_ORDER: FsPhase[] = ['create', 'story', 'walk1', 'update', 'review1', 'walkRetry', 'retry', 'walk2', 'review2', 'done'];
 
@@ -577,6 +609,7 @@ function soundOf(s: GameState, next: GameState, a: Action): SfxKind | null {
   if (FLOWS.has(a.type)) return 'flow';
   if (ACTIONS.has(a.type)) return 'action';
   if (a.type === 'prescribe') return a.right ? 'action' : null;
+  if (a.type === 'animalFix') return lifeOf(next.life).issues.length < lifeOf(s.life).issues.length ? 'action' : null;
   if (EARNED.has(a.type)) return next.toast && next.toast !== s.toast && !/^(You need|That costs)/.test(next.toast.text) ? 'action' : null;
   return null;
 }
@@ -761,7 +794,7 @@ function play(s: GameState, a: Action): GameState {
           earned: q.revenue,
           points: q.bagsSold * 5,
           at: q.at,
-          lost: q.lost,
+          lost: q.lost + q.stolen,
           process: a.processId,
           costs: q.costs,
           quality: s.harvested.quality,
@@ -954,7 +987,9 @@ function play(s: GameState, a: Action): GameState {
     case 'trialHarvest': {
       const t = s.trial;
       if (!t || t.phase !== 'growing' || currentDay(t, dayNumber()) <= CHECK_DAYS) return s;
-      const results = t.plans.map((_, i) => harvestFarm(t, i));
+      // thieves took a share of some farms' cobs from the field before the harvest (src/security)
+      const theft = harvestLessTheft(t.plans.map((_, i) => harvestFarm(t, i)), cropsTaken(s, t.cycle));
+      const results = theft.results;
       const income = results.reduce((n, r) => n + r.income, 0);
       const why = explain(t, results);
       const summary: TrialSummary = { cycle: t.cycle, farms: t.plans.length, best: why.best, bags: results.map(r => r.bags), profit: results.map(r => r.profit) };
@@ -965,7 +1000,7 @@ function play(s: GameState, a: Action): GameState {
         trial: { ...t, phase: 'done', results },
         trialHistory: [...s.trialHistory, summary],
         ...gainXp(s, 0.4),
-        toast: toast(`Harvest sold for ${money(income)} · +${50 * t.plans.length} points`),
+        toast: toast(`Harvest sold for ${money(income)} · +${50 * t.plans.length} points${theft.bags ? ` · ${theft.bags} bags were stolen from the field (${money(theft.value)})` : ''}`),
       };
     }
     case 'view':
@@ -1285,7 +1320,62 @@ function play(s: GameState, a: Action): GameState {
       const cows = Math.max(0, Math.min(WATER.herd.maxCows, Math.round(a.cows)));
       const hens = Math.max(0, Math.min(WATER.herd.maxHens, Math.round(a.hens)));
       if (cows === tank.herd.cows && hens === tank.herd.hens) return s;
-      return { ...s, tank: { ...tank, herd: { cows, hens } } };
+      // animals are bought at their price and sold for a share of it (src/livestock/config.ts)
+      const cost = herdCost(tank.herd.cows, cows, LIFE.price.cow) + herdCost(tank.herd.hens, hens, LIFE.price.hen);
+      if (cost > s.coins) return { ...s, toast: toast(`That costs ${money(cost)} and you have ${money(s.coins)}`) };
+      return { ...s, coins: s.coins - cost, tank: { ...tank, herd: { cows, hens } } };
+    }
+    case 'herdBuy': {
+      const herd = tankOf(s.tank).herd;
+      const max = a.group === 'cows' ? WATER.herd.maxCows : WATER.herd.maxHens;
+      const to = Math.max(0, Math.min(max, herd[a.group] + a.n));
+      if (to === herd[a.group]) return { ...s, toast: toast(a.n > 0 ? `The farm keeps at most ${max} ${a.group}` : `You have no ${a.group} to sell`) };
+      const next = play(s, { type: 'herdSet', cows: a.group === 'cows' ? to : herd.cows, hens: a.group === 'hens' ? to : herd.hens });
+      if (tankOf(next.tank).herd[a.group] !== to) return next;
+      const n = Math.abs(to - herd[a.group]);
+      const word = a.group === 'cows' ? (n === 1 ? 'cow' : 'cows') : n === 1 ? 'hen' : 'hens';
+      return { ...next, toast: toast(`${to > herd[a.group] ? 'Bought' : 'Sold'} ${n} ${word} · ${money(Math.abs(s.coins - next.coins))}`) };
+    }
+    case 'animalCare': {
+      const r = doCare(s, a.id);
+      return 'error' in r ? { ...s, toast: toast(r.error) } : { ...r.state, ...gainXp(s, 0.02), toast: toast(r.text) };
+    }
+    case 'animalFix': {
+      const r = fixIssue(s, a.issue, a.fix);
+      if ('error' in r) return { ...s, toast: toast(r.error) };
+      return { ...r.state, ...(r.right ? gainXp(s, 0.06) : {}), points: s.points + (r.right ? 20 : 0), toast: toast(r.right ? `${r.text} · +20 points` : r.text) };
+    }
+    case 'animalPrevent': {
+      const r = doPrevent(s, a.id);
+      return 'error' in r ? { ...s, toast: toast(r.error) } : { ...r.state, ...gainXp(s, 0.03), toast: toast(r.text) };
+    }
+    case 'coopBuild': {
+      const r = buildCoop(s, a.id);
+      return 'error' in r ? { ...s, toast: toast(r.error) } : { ...r.state, ...gainXp(s, 0.1), points: s.points + 50, toast: toast(`${r.text} · +50 points`) };
+    }
+    case 'securityBuy': {
+      const m = measureOf(a.id);
+      const sec = securityOf(s.security);
+      if (m.kind === 'nightly') return play(s, { type: 'securityHire', id: a.id, on: true });
+      if (sec.owned.includes(a.id)) return { ...s, toast: toast(`You have the ${m.name.toLowerCase()} already`) };
+      if (s.coins < m.price) return { ...s, toast: toast(`You need ${money(m.price)} for the ${m.name.toLowerCase()}`) };
+      return {
+        ...s,
+        coins: s.coins - m.price,
+        security: { ...sec, owned: [...sec.owned, a.id], totals: { ...sec.totals, spent: sec.totals.spent + m.price } },
+        ...gainXp(s, 0.04),
+        toast: toast(`${m.name}${m.price ? ` · −${money(m.price)}` : ''}${m.nightly ? ` · ${money(m.nightly)} a night` : ''}`),
+      };
+    }
+    case 'securityHire': {
+      const m = measureOf(a.id);
+      const sec = securityOf(s.security);
+      if (m.kind !== 'nightly' || sec.hired.includes(a.id) === a.on) return s;
+      return {
+        ...s,
+        security: { ...sec, hired: a.on ? [...sec.hired, a.id] : sec.hired.filter(x => x !== a.id) },
+        toast: toast(a.on ? `${m.name} hired: ${money(m.nightly ?? 0)} a night, paid each morning` : `${m.name}: no longer hired`),
+      };
     }
     case 'drawPolicy': {
       const tank = tankOf(s.tank);

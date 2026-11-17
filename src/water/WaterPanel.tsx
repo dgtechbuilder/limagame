@@ -132,7 +132,7 @@ export function WaterTab({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
               </div>
             );
           })}
-          <p className="wt-sub">Together {L(animalsUse(herd))} a day. A cow drinks as much as about 170 hens.</p>
+          <p className="wt-sub">Together {L(animalsUse(herd))} a day. A cow drinks as much as about 170 hens. Bought and sold at market prices (Animals › Herd).</p>
         </div>
 
         <p className="set-title" style={{ marginTop: 8 }}>

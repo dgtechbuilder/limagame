@@ -2,7 +2,7 @@ import type { ShopTab, StepId } from './data';
 import { STORY } from './first/data';
 import { CHECK_DAYS, currentDay } from './trials/model';
 import { dayNumber } from './rounds/farms';
-import type { AchTab, Action, ClimateTab, FsPhase, GameState, Modal, PartnersTab, SettingsTab } from './state';
+import type { AchTab, Action, AnimalsTab, ClimateTab, FsPhase, GameState, Modal, PartnersTab, SecurityTab, SettingsTab } from './state';
 import { BRANDS, type BrandId } from './partners/data';
 
 /* Web addresses: every screen has its own address after the # (…/limagame/#/settings/display), so a player can
@@ -20,6 +20,8 @@ const SETTINGS: Record<SettingsTab, string> = { farmer: 'my-farmer', game: 'game
 const CLIMATE: Record<ClimateTab, string> = { overview: 'overview', land: 'land-and-pay', areas: 'farm-areas', emissions: 'emissions', water: 'water-and-soil', tank: 'water-tank', credits: 'credits', shocks: 'shocks', activity: 'activity' };
 const ACH: Record<AchTab, string> = { journey: 'journey', modules: 'modules', today: 'today', badges: 'badges', certificates: 'certificates' };
 const PARTNERS: Record<PartnersTab, string> = { offers: 'offers', placements: 'placements' };
+const ANIMALS: Record<AnimalsTab, string> = { today: 'today', health: 'health', water: 'water', coop: 'coop', herd: 'herd' };
+const SECURITY: Record<SecurityTab, string> = { protect: 'protect', risk: 'risks', reports: 'night-reports' };
 const BRAND_WORD = Object.fromEntries(BRANDS.map(b => [b.id, b.id])) as Record<BrandId, string>;
 const SHOP: Record<ShopTab, string> = { food: 'food', fertilizer: 'fertilizer', tank: 'water-tanks', equipment: 'equipment' };
 const STEPS: Record<StepId, string> = { landprep: 'land-prep', planting: 'planting', fertilizer: 'fertilizer', pesticides: 'pesticides', water: 'water', harvest: 'harvest' };
@@ -75,6 +77,10 @@ function modalPath(s: GameState, m: Modal): string {
       return `/steps/${STEPS[m.step]}`;
     case 'loan':
       return m.view === 'quote' ? '/loan-calculator/quote' : '/loan-calculator';
+    case 'animals':
+      return `/animals/${ANIMALS[m.tab ?? 'today']}`;
+    case 'security':
+      return `/security/${SECURITY[m.tab ?? 'protect']}`;
     default:
       return `/${SIMPLE[m.kind]}`;
   }
@@ -136,6 +142,14 @@ function modalFor(s: GameState, parts: string[]): Modal | null | 'bad' {
   if (first === 'steps') {
     const t = tab(STEPS);
     return t === 'bad' ? 'bad' : { kind: 'steps', step: t ?? 'landprep' };
+  }
+  if (first === 'animals') {
+    const t = tab(ANIMALS);
+    return t === 'bad' || parts.length > 2 ? 'bad' : { kind: 'animals', tab: t ?? 'today' };
+  }
+  if (first === 'security') {
+    const t = tab(SECURITY);
+    return t === 'bad' || parts.length > 2 ? 'bad' : { kind: 'security', tab: t ?? 'protect' };
   }
   if (first === 'loan-calculator') {
     if (second === undefined) return { kind: 'loan', view: 'calc' };
