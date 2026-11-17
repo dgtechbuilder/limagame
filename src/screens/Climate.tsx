@@ -18,7 +18,7 @@ import { hasSolar } from '../climate/track';
 import { TANK_LITRES } from '../data';
 import { SponsorLine } from '../partners/ui';
 import { LAND_FACTORS, LAND_PLOTS, PAY, areasOf, coinsFor, farmedShare, landOf, payRate, type AreaNow, type LandUse } from '../climate/land';
-import { FARM_ACRES, FARM_SCALE, PLOT_ACRES } from '../farmSize';
+import { FARM_ACRES, FARM_SCALE } from '../farmSize';
 import { payOf } from '../climate/model';
 import { COLS } from '../world/field';
 import { currency, fromUsd, money } from '../money';
@@ -203,7 +203,7 @@ function Overview({ s, go }: { s: GameState; go: (t: ClimateTab) => void }) {
 
       <p className="cl-tip">
         {!started ? (
-          <>Every job you do is tracked here: fertilizer, diesel, sprays, water, storage and the trip to market. Plant the six farms or do a Farm Moja task to start.</>
+          <>Every job you do is tracked here. Plant the six farms or do a Farm Moja task to start.</>
         ) : top ? (
           <>
             <b>Biggest source: {top.label.toLowerCase()} ({kg(top.kg)}).</b> {top.fix}{' '}
@@ -212,7 +212,7 @@ function Overview({ s, go }: { s: GameState; go: (t: ClimateTab) => void }) {
             </button>
           </>
         ) : (
-          <>No emissions yet: everything so far was done by hand or stored carbon.</>
+          <>No emissions yet.</>
         )}
       </p>
     </div>
@@ -242,8 +242,8 @@ function LandPay({ s }: { s: GameState }) {
       <div>
         <p className="set-title">Land today</p>
         <p className="set-body">
-          Six farms of {FARM_ACRES} acres: {LAND_PLOTS} plots of {PLOT_ACRES} acre. A crop in the ground stores carbon every day; cleared ground left bare loses it; idle plots earn nothing. The
-          10-acre forest stores {kg(forest.stored)} a day.
+          Six {FARM_ACRES}-acre farms, {LAND_PLOTS} plots. Crops store carbon daily; bare ground loses it; idle earns nothing. The forest stores {kg(forest.stored)} a
+          day.
         </p>
         <div className="cl-land" role="img" aria-label={`Land today: ${l.farmed} plots farmed, ${l.bare} bare, ${l.idle} idle`}>
           {l.farms.map(f => (
@@ -271,7 +271,7 @@ function LandPay({ s }: { s: GameState }) {
           <Tile label={USE_WORD.idle} value={`${l.idle}`} sub="No food, no credits" />
         </div>
         <p className="set-body cl-note">
-          A farmed acre stores {LAND_FACTORS.farmed.value} kg CO₂ a day, more with mulch, beans and manure; a bare acre loses {LAND_FACTORS.bare.value} kg.
+          A farmed acre stores {LAND_FACTORS.farmed.value} kg CO₂ a day (more with mulch, beans, manure); a bare acre loses {LAND_FACTORS.bare.value} kg.
           {allDays > 0 && (
             <>
               {' '}
@@ -283,7 +283,7 @@ function LandPay({ s }: { s: GameState }) {
       <div>
         <p className="set-title">Daily payments</p>
         <p className="set-body">
-          At the end of each day, every credit earned since the last payment, from the forest, the farms, the pen and your work, is paid to you in {currency().name}.
+          Each night, the day’s credits are paid to you in {currency().name}.
         </p>
         <div className="cl-tiles is-three" style={{ marginTop: 6 }}>
           <Tile label="Credits today" value={num(due, 1)} sub={`About ${money(coinsFor(due, c.level))} tonight`} tone={due > 0 ? 'good' : undefined} />
@@ -385,7 +385,7 @@ function Emissions({ s }: { s: GameState }) {
     <div className="cl-two">
       <div>
         <p className="set-title">By source, all time</p>
-        <p className="set-body">kg of CO₂e (carbon dioxide and the other gases, counted as CO₂).</p>
+        <p className="set-body">kg of CO₂e (all gases, counted as CO₂).</p>
         {rows.length ? <Bars label="Emissions by source" rows={rows.sort((a, b) => b.value - a.value)} unit={kg} /> : <Empty>Nothing burned or applied yet.</Empty>}
         <p className="set-body cl-note">
           Stored in the soil: <b>{kg(c.total.stored)}</b>. Net: <b>{kg(net(c.total))}</b>.
@@ -393,7 +393,7 @@ function Emissions({ s }: { s: GameState }) {
       </div>
       <div>
         <p className="set-title">Net emissions by season</p>
-        <p className="set-body">Each finished season or cycle of the six farms, and kg CO₂e per bag grown.</p>
+        <p className="set-body">Each finished season or cycle, with kg CO₂e per bag.</p>
         {cycles.length ? (
           <Bars
             label="Net emissions by season"
@@ -436,7 +436,7 @@ function WaterSoil({ s }: { s: GameState }) {
           <Tile label="Irrigation, all time" value={litres(t.water)} sub={`On top of the rain · ${wp ? `${kg(wp)} of food a 1,000 L` : 'food a 1,000 L after a harvest'}${tanks ? ` · tanks bought ${litres(tanks)}` : ''}`} />
           <Tile label="Pumps" value={solar ? 'Solar' : 'Petrol'} sub={solar ? 'Clean pumping, cold store and mill' : 'Redeem the solar discount in Rewards'} tone={solar ? 'good' : undefined} />
         </div>
-        <p className="set-body cl-note">Maize needs about 35 L/m² a week, rain and watering together. More than 50 waterlogs the roots and washes fertilizer into streams.</p>
+        <p className="set-body cl-note">Maize needs about 35 L/m² a week in all. Over 50 waterlogs roots and washes fertilizer away.</p>
       </div>
       <div>
         <p className="set-title">Pollution and soil</p>
@@ -446,7 +446,7 @@ function WaterSoil({ s }: { s: GameState }) {
           <Tile label="Synthetic nitrogen" value={kg(t.fertN)} sub={`About ${kg(t.fertN * FACTORS.nitrogen.value)} CO₂e`} />
           <Tile label="Soil health" value={signed(t.soil)} sub="Mulch, manure, beans: up · bare soil, compaction: down" tone={t.soil > 0 ? 'good' : t.soil < 0 ? 'bad' : undefined} />
         </div>
-        <p className="set-body cl-note">Check and treat instead of spraying every week; weeding by hand keeps herbicide out of the soil.</p>
+        <p className="set-body cl-note">Check and treat instead of weekly spraying; hand weeding keeps herbicide out.</p>
       </div>
     </div>
   );
@@ -468,21 +468,20 @@ function Shocks({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
         This cycle's rain
       </p>
       <p className="set-body" style={{ maxWidth: 'none' }}>
-        {f ? `${FORECASTS[f].label}.` : 'Plan the six farms to see the forecast.'} A changing climate brings more dry spells, heavier storms and hail. Each is a problem
-        you can spot on the field checks.
+        {f ? `${FORECASTS[f].label}.` : 'Plan the six farms to see the forecast.'} More dry spells, storms and hail are coming: spot them on field checks.
       </p>
       <ul className="cl-list">
         <li>
-          <b>Drought:</b> mulch keeps water in the soil; a rainwater tank carries the crop through a dry spell.
+          <b>Drought:</b> mulch, and a rainwater tank for dry spells.
         </li>
         <li>
-          <b>Flood:</b> dig drains and do not water on top of heavy rain.
+          <b>Flood:</b> dig drains; don’t water after heavy rain.
         </li>
         <li>
-          <b>Hail:</b> beans between the rows and a healthy soil help a crop recover.
+          <b>Hail:</b> beans and healthy soil help recovery.
         </li>
         <li>
-          <b>Crop cover:</b> insurance pays out when a shock takes a harvest, so one bad season does not end the farm.
+          <b>Crop cover:</b> insurance so one bad season doesn’t end the farm.
         </li>
       </ul>
       <SponsorLine slot="climate" label="Crop cover with" dispatch={dispatch} style={{ marginTop: 8 }} />
@@ -496,7 +495,7 @@ const WHERE: Record<Where, string> = { season: 'Farm Moja', farms: 'Six farms', 
 
 function Activity({ s }: { s: GameState }) {
   const log = s.climate.log;
-  if (!log.length) return <Empty>Nothing tracked yet. Every job you do will show here with what it did to the climate.</Empty>;
+  if (!log.length) return <Empty>Nothing tracked yet. Your jobs will show here.</Empty>;
   const bits = (e: ClimateEntry) =>
     [
       e.co2 ? `${signed(e.co2)} kg CO₂e` : '',

@@ -46,7 +46,7 @@ export function Spray({ jobs, name, onDone, onLeave }: { jobs: { farm: number; h
   let line = `Safety first, ${name}. Put on the safety kit.`;
   if (!kitOn && kit.length) line = KIT_LESSON;
   if (ask) line = said && !said.right ? `${said.lesson} Pick again.` : `${said?.right ? `Right: ${said.lesson} ` : ''}Which product goes in the sprayer for ${farmsOf(ask.hazard)} (${HAZARD_WORDS[ask.hazard]})?`;
-  if (ready) line = `${said?.right ? `Right: ${said.lesson} ` : ''}Kit on, sprayer filled. Take it to the farm and spray every row.`;
+  if (ready) line = `${said?.right ? `Right: ${said.lesson} ` : ''}Kit on, sprayer filled. Spray every row.`;
 
   return (
     <div className="abs fs-screen review care-screen" style={{ inset: 0 }}>

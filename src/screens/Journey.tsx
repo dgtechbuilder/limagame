@@ -80,8 +80,8 @@ function Empty({ s, dispatch, title, body, style }: Props & { title: string; bod
 
 const notSellingCopy = (s: GameState) =>
   s.stage === SOLD
-    ? { title: 'This season is sold', body: 'Check your season results, then start the next season to farm again.' }
-    : { title: 'Nothing to sell yet', body: `Your maize is still growing. It will be ready in about ${daysToHarvest(s)} days if you keep up with the farming steps.` };
+    ? { title: 'This season is sold', body: 'Check your results, then start the next season.' }
+    : { title: 'Nothing to sell yet', body: `Your maize is growing: ready in about ${daysToHarvest(s)} days if you keep up.` };
 
 /* ================================================================== */
 /* Sale of produce                                                      */
@@ -245,10 +245,10 @@ export function TimingModal({ s, dispatch }: Props) {
         <p style={{ position: 'absolute', left: 239, top: 80, fontSize: 10, fontWeight: 600 }}>{progress}%</p>
         <p style={{ position: 'absolute', left: 9, top: 98, width: 250, fontSize: 8, lineHeight: 1.5 }}>
           {ready
-            ? 'Your crop is ready. Choose when to harvest: waiting a little can raise yield, waiting too long lowers quality.'
+            ? 'Your crop is ready. A short wait can raise yield; too long lowers quality.'
             : s.stage > stepIndex('harvest')
               ? 'This season is already harvested.'
-              : `Not ready yet: about ${toGo} days to go. Finish ${current.label} and the steps after it first.`}
+              : `About ${toGo} days to go. Finish ${current.label} and the later steps first.`}
         </p>
 
         <div style={box({ left: 272, top: 12, width: 250, height: 108, border: 0, background: 'rgba(255,255,255,0.35)', padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 6 })}>
@@ -498,11 +498,11 @@ function lessonsFor(r: SeasonResult) {
     const [title, body] = STEP_LESSON[id];
     out.push({ title, body: `You did ${Math.round(v * 100)}% of the recommended ${STEPS[stepIndex(id)].label.toLowerCase()} work. ${body}` });
   }
-  if (r.choice === 'now') out.push({ title: 'Harvest timing', body: 'Harvesting straight away cost you about 15% of the yield. A short wait usually pays.' });
-  else if (r.choice === 'week') out.push({ title: 'Harvest timing', body: 'Waiting a week let the crop over-ripen and lowered quality.' });
+  if (r.choice === 'now') out.push({ title: 'Harvest timing', body: 'Harvesting at once cost about 15% of the yield. A short wait pays.' });
+  else if (r.choice === 'week') out.push({ title: 'Harvest timing', body: 'Waiting a week over-ripened the crop.' });
   else out.push({ title: 'Harvest timing', body: 'Waiting two days gave the best yield and quality.' });
   const lost = r.bagsHarvested - r.bagsSold;
-  if (out.length < 3) out.push({ title: 'Storage', body: lost > 0 ? `${lost} bags spoiled in storage. Better storage or sorting cuts losses.` : 'Good storage: almost nothing spoiled.' });
+  if (out.length < 3) out.push({ title: 'Storage', body: lost > 0 ? `${lost} bags spoiled. Better storage or sorting helps.` : 'Good storage: almost nothing spoiled.' });
   if (out.length < 3) out.push({ title: 'Market timing is key', body: 'Selecting when demand is high maximizes your profit.' });
   return out.slice(0, 3);
 }
@@ -540,7 +540,7 @@ export function OutcomeModal({ s, dispatch }: Props) {
             s={s}
             dispatch={dispatch}
             title="No harvest yet"
-            body="Your results appear here after you harvest and sell your first maize crop: yield, quality, money made and what to do better next time."
+            body="Your results appear here after your first harvest and sale."
           />
         ) : (
           <>

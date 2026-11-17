@@ -156,7 +156,7 @@ test('a day: at least three farms, a route through all of them, the efficiency s
   // a job without its implement can't go on the player's tractor
   const ridge = CLIENTS.find(c => c.parts.some(p => p.tool === 'ridger'))!;
   const k = `${ridge.id}:${ridge.parts.find(p => p.tool === 'ridger')!.id}` as ReqKey;
-  expect(planDay(b, [k], { [k]: 'me' }, [ridge.id]).problem).toContain('no ridger');
+  expect(planDay(b, [k], { [k]: 'me' }, [ridge.id]).problem).toContain('No ridger');
   expect(planDay(b, [k], { [k]: 'partner' }, []).problem).toBeNull();
   // too much for one day
   const big = CLIENTS.flatMap(c => c.parts.filter(p => b.tools.includes(p.tool)).map(p => `${c.id}:${p.id}` as ReqKey));
@@ -330,7 +330,7 @@ test('graduation into a PAYG tractor: counted acres and fulfilment, then capacit
   expect(plan.instalment).toBe(Math.round(plan.revenue * PAYG.share));
   const big = CLIENTS.flatMap(c => c.parts.filter(p => own.tools.includes(p.prep)).map(p => `${c.id}:${p.id}` as ReqKey)).slice(0, 4);
   const over = planDay(own, big, Object.fromEntries(big.map(q => [q, 'me'])) as Bookings, big.map(k => k.split(':')[0]));
-  expect(over.problem).toMatch(/hours|acres of field work/);
+  expect(over.problem).toMatch(/hours|acres a day/);
   const after = runDay(own, plan).biz;
   expect(after.owned[0].paid).toBe(plan.instalment);
   expect(after.cash).toBe(own.cash + plan.profit - plan.instalment);

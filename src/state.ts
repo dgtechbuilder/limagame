@@ -883,7 +883,7 @@ function play(s: GameState, a: Action): GameState {
         coins: s.coins - cost,
         trial: { ...trial, phase: 'growing', clock: 'fast', planted: dayNumber(), day: 1 },
         field: emptyField(trial.cycle),
-        toast: toast(`Your first planting: maize on Farm 1, sukuma wiki on Farm 2 · −${money(cost)} for seed and fertilizer`),
+        toast: toast(`Your first planting: maize on Farm 1, sukuma wiki on Farm 2 · −${money(cost)}`),
       };
     }
     case 'trialPlan': {
@@ -1053,7 +1053,7 @@ function play(s: GameState, a: Action): GameState {
             coins: s1.coins - cost,
             trial,
             ...gainXp(s1, 0.03),
-            toast: toast(`${farmName(a.farm)} treated · −${money(cost)} · most of the damage stopped${due ? ` · come back on day ${due}` : ''}`),
+            toast: toast(`${farmName(a.farm)} treated · −${money(cost)} · damage stopped${due ? ` · come back on day ${due}` : ''}`),
           };
         }
       }
@@ -1067,7 +1067,7 @@ function play(s: GameState, a: Action): GameState {
           return { ...s1, field, trial, ...gainXp(s1, 0.03), toast: toast(`${farmName(a.farm)}: follow-up done · the problem stays away`) };
         }
       }
-      if (bonus) return { ...s1, field, points: s1.points + bonus, ...gainXp(s1, 0.02), toast: toast(`Tractor bonus · +${bonus} points · all 20 plots of ${farmName(a.farm)} done from the seat${fuel ? ` · −${money(fuel)} of fuel` : ''}`) };
+      if (bonus) return { ...s1, field, points: s1.points + bonus, ...gainXp(s1, 0.02), toast: toast(`Tractor bonus · +${bonus} points · ${farmName(a.farm)} done by tractor${fuel ? ` · −${money(fuel)} of fuel` : ''}`) };
       if (fuel && a.rig) return { ...s1, field, toast: toast(`${farmName(a.farm)}: the ${a.rig.tractor} tractor's ${toolName(a.rig.tool).toLowerCase()} at work · −${money(fuel)} of fuel`) };
       return { ...s1, field };
     }
@@ -1388,7 +1388,7 @@ function loadSaved(): GameState {
     if (!raw) return initialState;
     const saved = JSON.parse(raw);
     // Saves from before the farm had one owner may carry a reminder about neighbours.
-    if (typeof saved.note === 'string' && /Achieng|neighbour/i.test(saved.note)) saved.note = 'Check every bed on your farm often: open Rounds on the farm.';
+    if (typeof saved.note === 'string' && /Achieng|neighbour/i.test(saved.note)) saved.note = 'Check every bed often: open Rounds.';
     return { ...initialState, ...saved, fromMenu: false, navSeq: 0, rideReq: 0, modal: null, plotSelected: false, toast: null, success: null, sfx: null, award: null, ach: achOfSave(saved.ach), roundsOpen: false, roundsView: null, roundsDemo: null, worldDemo: null, trialsOpen: false, bizOpen: false, roundsTrial: false, rounds: { ...initialState.rounds, ...(saved.rounds ?? {}) }, settings: { ...DEFAULT_SETTINGS, ...(saved.settings ?? {}) }, climate: { ...initialClimate, ...(saved.climate ?? {}) } };
   } catch {
     return initialState;

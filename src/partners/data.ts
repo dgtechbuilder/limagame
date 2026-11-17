@@ -47,7 +47,7 @@ export const BRANDS: Brand[] = [
     color: '#1f6f5c',
     accent: '#f5c21b',
     mark: '🚜',
-    offer: { title: 'Book a tractor through a booking agent', line: 'Ploughing, harrowing and planting at an agreed price per acre', get: ['Ploughing, harrowing and planting booked for farmers near you', 'An agreed price per acre, settled before the tractor comes', 'Book the jobs yourself in the Tractor business'], use: { label: 'Open the Tractor business', to: '/tractor-business' } },
+    offer: { title: 'Book a tractor through a booking agent', line: 'Ploughing, harrowing and planting at a set price per acre', get: ['Ploughing, harrowing and planting booked for farmers near you', 'An agreed price per acre, settled before the tractor comes', 'Book the jobs yourself in the Tractor business'], use: { label: 'Open the Tractor business', to: '/tractor-business' } },
     url: 'https://hellotractor.com',
     sample: false,
   },
@@ -59,7 +59,7 @@ export const BRANDS: Brand[] = [
     color: '#2f8a3c',
     accent: '#ffd23f',
     mark: '🌿',
-    offer: { title: '10% off Rutuba Gold NPK', line: 'In the Shop’s fertilizer section, and a planting guide with every bag', get: ['10% off Rutuba Gold NPK in the Shop', 'A planting guide with every bag: how much, and when to top-dress'], use: { label: 'Open the fertilizer shop', to: '/shop/fertilizer' } },
+    offer: { title: '10% off Rutuba Gold NPK', line: 'In the Shop, with a planting guide in every bag', get: ['10% off Rutuba Gold NPK in the Shop', 'A planting guide with every bag: how much, and when to top-dress'], use: { label: 'Open the fertilizer shop', to: '/shop/fertilizer' } },
     sample: true,
   },
   {
@@ -70,7 +70,7 @@ export const BRANDS: Brand[] = [
     color: '#b5651d',
     accent: '#ffe08a',
     mark: '🌽',
-    offer: { title: 'Seed discount voucher', line: 'Redeem points for certified maize seed in the Rewards hub', get: ['A voucher for certified maize seed', 'Redeemed with your points in the Rewards hub'], use: { label: 'Open the Rewards hub', to: '/rewards' } },
+    offer: { title: 'Seed discount voucher', line: 'Redeem points for certified seed in Rewards', get: ['A voucher for certified maize seed', 'Redeemed with your points in the Rewards hub'], use: { label: 'Open the Rewards hub', to: '/rewards' } },
     sample: true,
   },
   {
@@ -92,7 +92,7 @@ export const BRANDS: Brand[] = [
     color: '#5b3fa0',
     accent: '#ffcf3f',
     mark: '📱',
-    offer: { title: 'Plan a farm loan', line: 'See what a loan costs in the Loan calculator before you borrow', get: ['A loan quote: what you pay each month, and in all', 'How much of the farm’s income the payments would take'], use: { label: 'Open the Loan calculator', to: '/loan-calculator' } },
+    offer: { title: 'Plan a farm loan', line: 'See what a loan costs before you borrow', get: ['A loan quote: what you pay each month, and in all', 'How much of the farm’s income the payments would take'], use: { label: 'Open the Loan calculator', to: '/loan-calculator' } },
     sample: true,
   },
   {
@@ -103,7 +103,7 @@ export const BRANDS: Brand[] = [
     color: '#c0392b',
     accent: '#fff1c2',
     mark: '☂️',
-    offer: { title: 'Learn about crop cover', line: 'What a drought or a flood costs your farm, on the Climate page', get: ['What a dry spell or a flood would cost your farm', 'How crop cover would pay out if one comes'], use: { label: 'Open Climate › Shocks', to: '/climate/shocks' } },
+    offer: { title: 'Learn about crop cover', line: 'What a drought or flood costs, on the Climate page', get: ['What a dry spell or a flood would cost your farm', 'How crop cover would pay out if one comes'], use: { label: 'Open Climate › Shocks', to: '/climate/shocks' } },
     sample: true,
   },
   {
@@ -114,7 +114,7 @@ export const BRANDS: Brand[] = [
     color: '#e67e22',
     accent: '#fff6d6',
     mark: '☀️',
-    offer: { title: 'Solar pump discount', line: 'Redeem points for solar power and irrigation in the Rewards hub', get: ['A discount on a solar pump and irrigation', 'Redeemed with your points in the Rewards hub'], use: { label: 'Open the Rewards hub', to: '/rewards' } },
+    offer: { title: 'Solar pump discount', line: 'Redeem points for solar and irrigation in Rewards', get: ['A discount on a solar pump and irrigation', 'Redeemed with your points in the Rewards hub'], use: { label: 'Open the Rewards hub', to: '/rewards' } },
     sample: true,
   },
   {

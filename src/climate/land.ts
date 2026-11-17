@@ -227,9 +227,9 @@ export function areasOf(s: GameState): AreaNow[] {
     water: 0,
     soil: -l.bare * LAND_FACTORS.bareSoil.value,
     note: l.bare
-      ? `${l.bare} plots are cleared but bare, losing ${kg1(l.lost)} CO₂ a day: plant them.`
+      ? `${l.bare} bare plots losing ${kg1(l.lost)} CO₂ a day: plant them.`
       : !l.farmed
-        ? 'Idle: plant the farms to store carbon and earn credits every day.'
+        ? 'Idle: plant to store carbon and earn credits.'
         : practices.length
           ? `Storing ${kg1(l.stored)} CO₂ a day, helped by ${practices.join(', ').toLowerCase()}.`
           : `Storing ${kg1(l.stored)} CO₂ a day. Mulch, beans or manure would store more.`,
@@ -254,7 +254,7 @@ export function areasOf(s: GameState): AreaNow[] {
       m.use === 'farmed'
         ? `Storing ${kg1(mRate)} CO₂ a day${m.practices.length ? ` (${m.practices.join(', ')})` : ''}.`
         : m.use === 'bare'
-          ? 'Bare after clearing: seed it soon, or the soil loses its carbon.'
+          ? 'Bare: seed it soon, or the soil loses carbon.'
           : 'Idle: seed it to start storing carbon.',
   });
 
@@ -271,7 +271,7 @@ export function areasOf(s: GameState): AreaNow[] {
     lost: 0,
     water: 0,
     soil: 0,
-    note: `The farm's biggest carbon store: ${kg1(fStored)} CO₂ a day, shade, and a home for birds that eat pests.`,
+    note: `Biggest carbon store: ${kg1(fStored)} CO₂ a day, and home to pest-eating birds.`,
   });
 
   // the grazing pen
@@ -287,7 +287,7 @@ export function areasOf(s: GameState): AreaNow[] {
     lost: 0,
     water: 0,
     soil: 0,
-    note: 'Grass roots hold the soil. Move the cows round so it is never grazed bare.',
+    note: 'Grass roots hold the soil. Rotate the cows so it’s never bare.',
   });
 
   // the animals
@@ -308,7 +308,7 @@ export function areasOf(s: GameState): AreaNow[] {
     water: drink,
     soil: 0,
     tone: 'bad',
-    note: `${kg1(cowCH4 + manure)} CO₂e a day, mostly methane from the cows' digestion. Good forage and putting their manure on the farms (not left in a heap) cut it.`,
+    note: `${kg1(cowCH4 + manure)} CO₂e a day, mostly cow methane. Good forage and spreading manure cut it.`,
   });
 
   // the pond
@@ -328,7 +328,7 @@ export function areasOf(s: GameState): AreaNow[] {
     note:
       health >= 70
         ? `Clean (${health}/100): little fertilizer or spray has washed in this season.`
-        : `${health < 40 ? 'Polluted' : 'Some runoff'} (${health}/100): fertilizer and sprays from the farms wash into it. Check and treat, and never a double dose.`,
+        : `${health < 40 ? 'Polluted' : 'Some runoff'} (${health}/100): farm runoff. Check and treat; never double-dose.`,
   });
 
   // the homestead
@@ -345,7 +345,7 @@ export function areasOf(s: GameState): AreaNow[] {
     water: LAND_FACTORS.houseWater.value,
     soil: 0,
     tone: 'none',
-    note: `Cooking gives off ${kg1(cook)} CO₂e a day. Biogas from the cows' manure would cut it, and their methane too.`,
+    note: `Cooking: ${kg1(cook)} CO₂e a day. Biogas from manure would cut it.`,
   });
 
   return [farms, moja, forest, pasture, animals, pond, homestead];

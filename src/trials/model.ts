@@ -83,11 +83,11 @@ export const PLAN_STEPS: PlanStep[] = [
     key: 'land',
     label: 'Land prep',
     options: [
-      o('slash', 'Slash and clear', 'Cut the bush and weeds down and clear them away. No digging.', 40, 0.85),
+      o('slash', 'Slash and clear', 'Cut and clear the bush and weeds. No digging.', 40, 0.85),
       o('hoe', 'Hand hoe', 'Dig the whole farm with a hoe.', 80, 0.95),
       o('ox', 'Ox plough', 'Hire oxen to plough the farm.', 120, 1),
-      o('tractor', 'Tractor hire', 'Hire a tractor to plough and harrow. Fastest, and the deepest tillage.', 180, 1.03),
-      o('mulch', 'Mulch, no dig', 'Dig only the planting holes and cover the ground with dry grass.', 110, 1),
+      o('tractor', 'Tractor hire', 'Plough and harrow by tractor. Fastest and deepest.', 180, 1.03),
+      o('mulch', 'Mulch, no dig', 'Dig only planting holes; cover the ground with dry grass.', 110, 1),
     ],
   },
   {
@@ -100,8 +100,8 @@ export const PLAN_STEPS: PlanStep[] = [
     key: 'date',
     label: 'Planting date',
     options: [
-      o('early', 'Before the rains', 'Plant two weeks before the rains are due, to be first.', 0, 0.8),
-      o('rains', 'With the rains', 'Plant once the first good rain has soaked the soil.', 0, 1),
+      o('early', 'Before the rains', 'Plant two weeks before the rains.', 0, 0.8),
+      o('rains', 'With the rains', 'Plant after the first soaking rain.', 0, 1),
       o('late', '3 weeks late', 'Plant three weeks after the rains start.', 0, 0.78),
     ],
   },
@@ -116,22 +116,22 @@ export const PLAN_STEPS: PlanStep[] = [
     label: 'Pest control',
     options: [
       o('none', 'None', 'Leave the crop to itself.', 0, 1),
-      o('scout', 'Check and treat', 'Check the crop and treat a pest or disease when you find one.', 30, 1),
-      o('spray', 'Spray every week', 'Spray insecticide every week, whether or not there are pests.', 300, 1),
+      o('scout', 'Check and treat', 'Treat pests or disease when you find them.', 30, 1),
+      o('spray', 'Spray every week', 'Spray insecticide weekly, pests or not.', 300, 1),
     ],
   },
   {
     key: 'water',
     label: 'Water',
-    options: WATER_LEVELS.map(l => o(String(l), l === 0 ? 'Rain only' : `${l} L a week`, l === 0 ? 'No watering: the crop gets the rain only.' : `Water ${l} L per m² every week, on top of the rain.`, l * WATER_COST_PER_L, 1)),
+    options: WATER_LEVELS.map(l => o(String(l), l === 0 ? 'Rain only' : `${l} L a week`, l === 0 ? 'No watering: the crop gets the rain only.' : `${l} L per m² a week, plus rain.`, l * WATER_COST_PER_L, 1)),
   },
   {
     key: 'harvest',
     label: 'Harvest',
     options: [
       o('early', 'Early', 'Pick the cobs while the husks are still green.', 0, 0.82),
-      o('ready', 'When ready', 'Pick when the husks are dry and the grain is hard.', 0, 1),
-      o('late', '2 weeks late', 'Leave the dry cobs standing two more weeks before picking.', 0, 0.88),
+      o('ready', 'When ready', 'Pick when husks are dry and grain is hard.', 0, 1),
+      o('late', '2 weeks late', 'Leave dry cobs standing two more weeks.', 0, 0.88),
     ],
   },
 ];
@@ -731,7 +731,7 @@ export function plotLessons(t: Trial): PlotLesson[] {
       .sort((x, y) => y.change - x.change);
     const pc = (x: number) => (Math.abs(x) < 0.005 ? '±0%' : `${x > 0 ? '+' : '−'}${Math.round(Math.abs(x) * 100)}%`);
     if (tp.topic === 'Sprayer' && options.every(o => Math.abs(o.change) < 0.005)) {
-      out.push({ topic: tp.topic, line: 'Sprayers made no difference this cycle: no farm needed spraying.', options: [] });
+      out.push({ topic: tp.topic, line: 'Sprayers made no difference: no farm needed spraying.', options: [] });
       continue;
     }
     const body = options.map(o => `${o.name} ${o.k === tp.ref ? '(the yardstick)' : pc(o.change)}`).join(', ');
@@ -785,7 +785,7 @@ export function explain(t: Trial, results: FarmResult[]): { best: number; worst:
     return { best, worst, lines };
   }
   if (gap < 0.05) {
-    lines.push(`${farmName(best)} and ${farmName(worst)} grew the same: what you changed made no difference to the harvest this time.`);
+    lines.push(`${farmName(best)} and ${farmName(worst)} grew the same: your change made no difference.`);
     return { best, worst, lines };
   }
   lines.push(`${farmName(best)} grew ${B.bags} bags of ${cropB}; ${farmName(worst)} grew ${W.bags}. That is ${bagsText(gap)} more.`);
@@ -806,7 +806,7 @@ export function explain(t: Trial, results: FarmResult[]): { best: number; worst:
     .slice(0, 2);
   for (const x of top) {
     if (x.what === 'plots') {
-      lines.push(`Inputs: the seed, fertilizer and machines on ${farmName(best)} gave ${bagsText(x.bags)} more than ${farmName(worst)}'s.`);
+      lines.push(`Inputs on ${farmName(best)} gave ${bagsText(x.bags)} more than ${farmName(worst)}'s.`);
     } else if (x.what === 'problems') {
       const worstProblems = [...new Set(W.problems.filter(q => q.loss >= 0.05).map(q => HAZARD_WORDS[q.hazard]))].slice(0, 2);
       lines.push(
@@ -822,7 +822,7 @@ export function explain(t: Trial, results: FarmResult[]): { best: number; worst:
   // the farm that grew most is not always the one that made most
   const rich = results.map((_, i) => i).sort((a, b) => results[b].profit - results[a].profit)[0];
   if (rich !== best) {
-    lines.push(`But ${farmName(rich)} made the most money: ${money(results[rich].profit)} against ${money(B.profit)}, because it cost less to grow.`);
+    lines.push(`But ${farmName(rich)} made the most: ${money(results[rich].profit)} vs ${money(B.profit)}, as it cost less.`);
   }
   return { best, worst, lines };
 }
@@ -833,11 +833,11 @@ export function causeOf(h: TrialHazard, p: Plan, f: Forecast, rows?: PlotRecord[
   // the farm's inputs, on all its plots
   const r = rows?.[0];
   if (r && h === 'nitrogen') {
-    if (r.fert === 'none' || r.fert === 'manure') return 'This farm got no fertilizer or only manure, so the plants are hungry.';
-    if (r.fert === 'basalTop' || r.fert === 'double') return 'The plants are short of food this week, but the CAN top-dress keeps the loss small.';
+    if (r.fert === 'none' || r.fert === 'manure') return 'No fertilizer or only manure: the plants are hungry.';
+    if (r.fert === 'basalTop' || r.fert === 'double') return 'Short of food, but the CAN top-dress keeps the loss small.';
     return 'The plants are short of food this week.';
   }
-  if (r && h === 'drought' && r.seed === 'dt') return `${causeOf(h, p, f)} Its drought-tolerant seed copes better than most.`;
+  if (r && h === 'drought' && r.seed === 'dt') return `${causeOf(h, p, f)} Its drought-tolerant seed copes better.`;
   if (r && h === 'disease' && p.pest !== 'none' && (r.seed === 'dense' || r.seed === 'saved')) return 'Close spacing or saved seed catch rust worst.';
   const total = waterTotal(p, f);
   switch (h) {
@@ -846,19 +846,19 @@ export function causeOf(h: TrialHazard, p: Plan, f: Forecast, rows?: PlotRecord[
         ? `This farm gets ${p.water ? `${p.water} L/m² of water a week plus about ${FORECASTS[f].rain} of rain` : `only the rain, about ${FORECASTS[f].rain} L/m² a week`}. Maize needs about ${WATER_NEED}.`
         : 'A dry spell came even with the watering.';
     case 'flood':
-      return total > WATER_TOO_MUCH ? `This farm gets about ${total} L/m² of water a week with the rain: more than maize can use.` : 'Heavy rain came this week.';
+      return total > WATER_TOO_MUCH ? `About ${total} L/m² a week with rain: more than maize can use.` : 'Heavy rain came this week.';
     case 'nitrogen':
       return p.fert === 'none'
         ? 'This farm got no fertilizer.'
         : p.fert === 'manure'
           ? 'Manure alone does not feed maize all season.'
           : p.fert === 'basal'
-            ? 'Planting fertilizer runs out mid-season. Maize needs a top-dress at knee height.'
+            ? 'Planting fertilizer runs out; maize needs a knee-high top-dress.'
             : p.seed === 'dense'
-              ? 'Planted close, the plants share the food between too many.'
+              ? 'Planted close, too many plants share the food.'
               : 'The plants are short of food this week.';
     case 'weeds':
-      return p.land === 'slash' ? 'Slashing leaves weed roots in the ground, and they grow back.' : p.land === 'mulch' ? 'A few weeds came through the mulch.' : 'Weeds grow back after the first rains.';
+      return p.land === 'slash' ? 'Slashing leaves weed roots, so they grow back.' : p.land === 'mulch' ? 'A few weeds came through the mulch.' : 'Weeds grow back after the first rains.';
     case 'armyworm':
     case 'aphids':
     case 'disease':
@@ -866,13 +866,13 @@ export function causeOf(h: TrialHazard, p: Plan, f: Forecast, rows?: PlotRecord[
     case 'wildlife':
       return p.harvest === 'late' ? 'Dry cobs left standing feed the birds.' : '';
     case 'plantEarly':
-      return 'This farm was planted before the rains: that was its plan.';
+      return 'Planted before the rains, as planned.';
     case 'plantLate':
-      return 'This farm was planted three weeks after the rains began: that was its plan.';
+      return 'Planted three weeks late, as planned.';
     case 'harvestEarly':
-      return 'This farm was picked while the husks were green: that was its plan.';
+      return 'Picked while husks were green, as planned.';
     case 'harvestLate':
-      return 'This farm was left two weeks past ready: that was its plan.';
+      return 'Left two weeks past ready, as planned.';
     default:
       return '';
   }

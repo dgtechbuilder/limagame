@@ -40,7 +40,7 @@ export const SHOP_TABS: ShopTabDef[] = [
     id: 'food',
     label: 'Sell Food',
     title: 'Sell your Grown Food',
-    speech: 'Sell your freshly harvested crops to earn money',
+    speech: 'Sell your harvest for money',
     icon: asset('tab-food.png'),
     iconOn: asset('tab-food-on.png'),
     iconSize: [48, 37],
@@ -81,7 +81,7 @@ export const SHOP_TABS: ShopTabDef[] = [
     id: 'tank',
     label: 'Buy Tank',
     title: 'Buy Water Tank',
-    speech: 'Plants need clean water. Buy a water tank to store your water.',
+    speech: 'Plants need clean water. Buy a tank to store it.',
     icon: asset('tab-tank.png'),
     iconOn: asset('tab-tank-on.png'),
     iconSize: [32, 41],
@@ -100,7 +100,7 @@ export const SHOP_TABS: ShopTabDef[] = [
     id: 'equipment',
     label: 'Buy Equipment',
     title: 'Buy Equipments',
-    speech: 'Use equipment to farm better and faster',
+    speech: 'Farm better and faster',
     icon: asset('tab-equip.png'),
     iconOn: asset('tab-equip-on.png'),
     iconSize: [40, 29],
@@ -338,7 +338,7 @@ export const TIMELINE = [
 ];
 
 export const TIP =
-  'Farmers across Africa dry, mill and package their products to earn more and reduce losses.';
+  'Dry, mill and package to earn more and lose less.';
 
 /* ------------------------------------------------------------------ */
 /* Season rules                                                         */
@@ -355,34 +355,34 @@ export const STEP_META: Record<StepId, { days: number; need: number; purpose: st
 
 /** One-line lesson shown when a task is done. */
 export const TASK_TIPS: Record<string, string> = {
-  'land-selection': 'Pick well-drained land in full sun; maize hates waterlogged soil.',
-  clearing: 'Clear weeds and stumps so seedlings are not fighting for light and water.',
-  tilling: 'Tilling loosens the soil so roots grow deep and rain soaks in.',
-  leveling: 'Level ground spreads water evenly and stops puddles that rot seed.',
-  'lp-manure': 'Manure dug in before planting feeds the soil all season.',
-  herbicide: 'A pre-planting herbicide clears weeds that would choke seedlings.',
-  seeding: 'Plant certified seed about 75 cm between rows and 25 cm apart.',
-  intercropping: 'Beans between maize rows add nitrogen and a second harvest.',
-  transplanting: 'Fill gaps with seedlings within two weeks so the stand stays even.',
-  'pl-manure': 'A handful of manure in each hole gives seedlings a strong start.',
+  'land-selection': 'Pick sunny, well-drained land.',
+  clearing: 'Clear weeds and stumps so seedlings get light and water.',
+  tilling: 'Tilling lets roots grow deep and rain soak in.',
+  leveling: 'Level ground stops puddles that rot seed.',
+  'lp-manure': 'Manure dug in feeds the soil all season.',
+  herbicide: 'Pre-planting herbicide clears choking weeds.',
+  seeding: 'Certified seed, rows 75 cm apart, plants 25 cm apart.',
+  intercropping: 'Beans between rows add nitrogen and a harvest.',
+  transplanting: 'Fill gaps within two weeks for an even stand.',
+  'pl-manure': 'Manure in each hole gives seedlings a strong start.',
   'f-nitrogen': 'Top-dress nitrogen at knee height; it drives leaf growth.',
   'f-phosphorus': 'Phosphorus at planting builds strong roots.',
   'f-potassium': 'Potassium helps maize resist drought and disease.',
-  'f-npk': 'A balanced NPK covers all three main nutrients at once.',
-  'f-manure': 'Organic manure improves soil structure and holds moisture.',
-  herbicides: 'Control weeds in the first six weeks, when maize suffers most.',
+  'f-npk': 'Balanced NPK covers all three main nutrients.',
+  'f-manure': 'Manure improves soil and holds moisture.',
+  herbicides: 'Weed hard in the first six weeks.',
   fungicides: 'Fungicide protects leaves from blight in wet weather.',
-  nematicides: 'Nematicides protect roots from soil worms that stunt growth.',
-  insecticides: 'Scout weekly for fall armyworm and spray early, into the funnel.',
+  nematicides: 'Nematicides protect roots from soil worms.',
+  insecticides: 'Scout weekly for armyworm; spray into the funnel.',
   'w-1000': 'Even a little water at tasseling protects yield.',
   'w-5000': 'Water most when the crop tassels and silks.',
   'w-10000': 'Deep, less frequent watering grows deeper roots.',
   'w-20000': 'A full tank carries the crop through a dry spell.',
   protection: 'Guard the ripe crop from birds, rodents and theft.',
-  timing: 'Harvest when husks are dry and kernels are hard and dented.',
-  reaping: 'Reap carefully so cobs are not dropped and broken.',
-  sorting: 'Sorting out damaged cobs stops the rest from rotting.',
-  packaging: 'Clean, sealed bags keep grain dry and fetch better prices.',
+  timing: 'Harvest when husks are dry and kernels hard.',
+  reaping: 'Reap carefully; don’t drop or break cobs.',
+  sorting: 'Remove damaged cobs to stop rot spreading.',
+  packaging: 'Sealed bags keep grain dry and fetch more.',
   storage: 'Dry grain well before storing to stop mould.',
 };
 

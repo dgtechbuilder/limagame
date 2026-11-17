@@ -93,7 +93,7 @@ export function loanQuote(ask: LoanAsk, income: number, voucher: boolean): LoanQ
 }
 
 export const VERDICT_TEXT: Record<Affordability, { label: string; line: string }> = {
-  comfortable: { label: 'Comfortable', line: 'The repayment takes under a third of what the farm earns a month.' },
-  tight: { label: 'Tight', line: 'The repayment takes up to half of what the farm earns a month: one poor harvest and it hurts.' },
-  risky: { label: 'Risky', line: 'The repayment takes more than half of what the farm earns a month. Borrow less, or over more months.' },
+  comfortable: { label: 'Comfortable', line: 'Repayment is under a third of monthly farm income.' },
+  tight: { label: 'Tight', line: 'Repayment is up to half of monthly income: one poor harvest hurts.' },
+  risky: { label: 'Risky', line: 'Repayment is over half of monthly income. Borrow less, or for longer.' },
 };

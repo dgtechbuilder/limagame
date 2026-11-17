@@ -60,7 +60,7 @@ export function FarmUpdate({ name, onDone }: { name: string; onDone: () => void 
         </div>
 
         <div className="story-foot">
-          <p className="update-nudge">Find each problem and you can still save most of it.</p>
+          <p className="update-nudge">Find each problem to save most of it.</p>
           <GoldButton font={13} height={40} style={{ minWidth: 190, padding: '0 18px' }} onClick={onDone} ariaLabel={u.button}>
             {u.button}
           </GoldButton>

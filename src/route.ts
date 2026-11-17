@@ -102,7 +102,7 @@ export function cleanPath(raw: string): string {
 }
 
 const say = (text: string): Action[] => [{ type: 'toast', text }];
-const NOT_FOUND = 'There is no page at that address, so you stayed where you were.';
+const NOT_FOUND = 'There is no page at that address.';
 
 /** A screen that opens on top, from its address; null when the address is not one. */
 function modalFor(s: GameState, parts: string[]): Modal | null | 'bad' {
@@ -158,7 +158,7 @@ export function routeTo(s: GameState, raw: string): Action[] {
   /* ---------- the first session ---------- */
   if (phase !== 'done') {
     // the menu and Settings are open during the first session, as their buttons are
-    if (modal) return modal.kind === 'menu' || modal.kind === 'settings' ? [{ type: 'open', modal }] : say('Finish checking your first crops to open the rest of the farm.');
+    if (modal) return modal.kind === 'menu' || modal.kind === 'settings' ? [{ type: 'open', modal }] : say('Finish checking your first crops to open the farm.');
     const close: Action[] = s.modal ? [{ type: 'close' }, { type: 'close' }] : [];
     const step = (to: FsPhase, page?: number): Action[] => [...close, { type: 'fs', phase: to, page }];
     // the step the player is on (e.g. Back from the menu to it)
@@ -168,15 +168,15 @@ export function routeTo(s: GameState, raw: string): Action[] {
     if (parts[0] === 'story') {
       const n = parts.length === 1 ? 1 : Number(parts[1]);
       if (parts.length > 2 || !Number.isInteger(n) || n < 1 || n > STORY_PAGES) return say(NOT_FOUND);
-      if (!s.farmer) return say('Name your farmer first, then the story begins.');
-      return early ? step('story', n - 1) : say('You have read the story already: your farm is waiting.');
+      if (!s.farmer) return say('Name your farmer first.');
+      return early ? step('story', n - 1) : say('Story read: your farm is waiting.');
     }
     const to = key(FIRST, parts.join('/'));
-    if (to === 'create') return early ? step('create') : say('Your farmer is ready: carry on with your crops.');
-    if (to === 'walk1') return s.farmer && early ? step('walk1') : say('Read your story first, then walk to your maize.');
+    if (to === 'create') return early ? step('create') : say('Your farmer is ready: carry on.');
+    if (to === 'walk1') return s.farmer && early ? step('walk1') : say('Read your story first.');
     // the farm update comes on arriving at the maize: it can be read again from the first check
-    if (to === 'update') return phase === 'review1' ? step('update') : say('Walk to your maize first: the farm update is waiting there.');
-    if (to || ['farm', 'rounds', 'mission', 'tractor-business'].includes(parts[0])) return say('Finish checking your first crops to open the rest of the farm.');
+    if (to === 'update') return phase === 'review1' ? step('update') : say('Walk to your maize first.');
+    if (to || ['farm', 'rounds', 'mission', 'tractor-business'].includes(parts[0])) return say('Finish checking your first crops to open the farm.');
     return say(NOT_FOUND);
   }
 
@@ -184,9 +184,9 @@ export function routeTo(s: GameState, raw: string): Action[] {
   if (modal) return [{ type: 'open', modal }];
   if (path === '/farm') return [{ type: 'home' }];
   if (path === '/rounds') return [{ type: 'home' }, { type: 'rounds', open: true, trial: false }];
-  if (path === '/rounds/six-farms') return sixFarmsDue(s) ? [{ type: 'home' }, { type: 'rounds', open: true, trial: true }] : say('Your six farms have no checks today: plant them from Mission first.');
+  if (path === '/rounds/six-farms') return sixFarmsDue(s) ? [{ type: 'home' }, { type: 'rounds', open: true, trial: true }] : say('Your farms have no checks today: plant them from Mission.');
   if (path === '/mission') return [{ type: 'home' }, { type: 'trials', open: true }];
   if (path === '/tractor-business') return [{ type: 'home' }, { type: 'biz', open: true }];
-  if (parts[0] === 'story' || key(FIRST, parts.join('/'))) return say('You have finished your first crop checks: welcome back to your farm.');
+  if (parts[0] === 'story' || key(FIRST, parts.join('/'))) return say('You finished your first crop checks.');
   return say(NOT_FOUND);
 }
