@@ -1,5 +1,11 @@
 # Plan: four mini plots per farm, and learning by using each input
 
+> **Replaced (12 Nov 2026).** The game no longer has Plots A to D. Since 10 Nov every farm is 20 plots (its 4 × 5
+> tiles), worked a row or a plot at a time, with **one set of inputs per farm**, so the six farms compare the
+> inputs; the tractor's type and tool are kept per farm, not per plot. See the README's *Plots and inputs* and
+> *Scheduled care*. This plan is kept for its reasoning and its proposed numbers (seed, fertilizer, sprayer,
+> tractor), most of which the game still uses.
+
 Written 7 Nov 2026. Request: every farm gets 4 mini plots (6 farms × 4 = 24 plots); the tractor can be used at any
 point, with the tractor type and tool chosen at the tractor and a tool picker that says what each tool is for; seed,
 fertilizer and sprayer pickers with a choice for each plot; each input used on only one plot of a farm, so the player

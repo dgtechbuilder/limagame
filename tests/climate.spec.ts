@@ -134,8 +134,9 @@ test('Land & pay and Farm areas: the six farms plot by plot, every area, and the
   await jump(page, { view: 'classic', coins: 1000 });
   // today's work: organic manure stores 40 kg (4 credits); the first action starts the day's count
   await act(page, { type: 'task', step: 'landprep', id: 'lp-manure', price: 40, name: 'Organic Manure' });
+  // the state is read once the game has drawn the action
+  await expect.poll(async () => (await state(page)).climate.pay.day).toBe('2026-11-15');
   let s = await state(page);
-  expect(s.climate.pay.day).toBe('2026-11-15');
   expect(s.coins).toBe(960);
 
   await act(page, { type: 'open', modal: { kind: 'climate', tab: 'land' } });
@@ -152,7 +153,10 @@ test('Land & pay and Farm areas: the six farms plot by plot, every area, and the
   const p = s.climate.pay.payments[0];
   expect(p).toMatchObject({ label: 'Sun 15 Nov', idle: 120 });
   expect(p.credits).toBeCloseTo(4 + 11 + 0.1, 6);
-  expect(s.coins).toBeCloseTo(960 + p.coins, 6);
+  // the water credits are paid at midnight too (src/water): the tank's day
+  const water = s.ledger.entries.filter((e: { type: string }) => e.type === 'water').reduce((n: number, e: { coins: number }) => n + e.coins, 0);
+  expect(water).toBeGreaterThan(0);
+  expect(s.coins).toBeCloseTo(960 + p.coins + water, 6);
   expect(s.climate.pay.day).toBe('2026-11-16');
   await expect(dialog(page).getByText(`+${money(p.coins)}`, { exact: true })).toBeVisible();
 
