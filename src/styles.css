@@ -978,7 +978,7 @@ button.card:active { transform: scale(0.98); }
 .hud-plot.is-tidy.is-bush { background: linear-gradient(#7fd35a, #2f9b14); }
 .hud-plot.is-tidy.is-rock { background: linear-gradient(#b9b9b0, #7d7d75); }
 .hud-tidy {
-  position: absolute; right: 10px; bottom: 12px; z-index: 5; display: flex; flex-direction: column; gap: 3px;
+  position: absolute; right: 30px; bottom: 14px; z-index: 5; display: flex; flex-direction: column; gap: 3px;
   padding: 5px 10px 6px; border-radius: 12px; text-align: left; color: #5b3418;
   background: #fff4dd; box-shadow: 0 0 0 2.5px #c9824a, 0 4px 10px rgba(0, 0, 0, 0.25);
   animation: pop 0.25s ease both, tidy-nudge 3s ease-in-out 1s infinite;
