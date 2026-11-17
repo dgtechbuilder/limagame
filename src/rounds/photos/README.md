@@ -1,7 +1,7 @@
 # Real photos for the field rounds
 
 Every bed check shows five pictures: the crop, pests and disease, soil, water, and the state of the farm. The game ships
-with real, openly licensed photos from Wikimedia Commons for many of them (see `CREDITS.md`); any picture without a
+with 131 real, openly licensed photos (Wikimedia Commons, Bugwood / IPM Images, Flickr; see `CREDITS.md`); any picture without a
 photo is drawn in code, so nothing breaks while the set grows.
 
 A bed meets a different situation each day (see `src/rounds/hazards.ts`), so photos are filed by **situation**, not by
@@ -36,6 +36,14 @@ round. One photo then serves every bed that meets that situation.
 When the player looks again after a wrong call, the clue picture can show a ring around the sign. Set it with `ring: [x, y, r]` in the
 photo's `credits.json` entry (percent of the width and height, radius in percent of the width); without it the picture
 gets a gold frame instead.
+
+## Where the photos come from
+
+`photo-library/` at the repository root holds every reviewed candidate (about 310 photos), already cropped and
+compressed, with licences, match grades and notes in `photo-library/manifest.json`, a browsable contact sheet in
+`photo-library/gallery.html`, and the list of slots still missing a photo in `photo-library/GAPS.md`. To swap a photo,
+copy another candidate's `.webp` over the file here and copy its credit into `credits.json`. Photos marked
+`commercialUse: false` (NC) or `modificationAllowed: false` (ND) need the owner's permission first.
 
 ## Situations to photograph
 

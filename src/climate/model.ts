@@ -1,4 +1,4 @@
-/* Climate tracking: what every farming choice in Lima does to the climate, the water and the land.
+/* Climate tracking: what every farming choice in TemoLima does to the climate, the water and the land.
 
    The game records a climate entry whenever work is actually done: a season task on Farm Moja, the inputs of a
    six-farm plan when it is planted, field work by hand or from the tractor seat, a tractor drive, a treatment, a
@@ -190,12 +190,12 @@ export const FACTORS = {
   bag: { value: 90, unit: 'kg a bag', what: 'A bag of maize' },
   farmM2: { value: FARM_ACRES * M2_PER_ACRE, unit: 'm²', what: `One of the six farms (${FARM_ACRES} acres)` },
   weeks: { value: 3, unit: 'weeks', what: 'A cycle of the six farms (21 days)' },
-  credit: { value: 10, unit: 'kg CO₂e', what: 'One Lima climate credit (a real carbon credit is 1,000 kg)' },
+  credit: { value: 10, unit: 'kg CO₂e', what: 'One TemoLima climate credit (a real carbon credit is 1,000 kg)' },
 } satisfies Record<string, Factor>;
 
 const N = FACTORS.nitrogen.value;
 /** litres of diesel an acre for each job a tractor can do (the tractor drive's implements: plough + harrow, planter, harvester) */
-export const TRACTOR_LPA: Record<string, number> = { prep: 13, sow: 4, setupFeed: 4, spray: 3, harvest: 10 };
+export const TRACTOR_LPA: Record<string, number> = { prep: 13, sow: 4, setupFeed: 4, weeding: 3, borer: 3, topdress: 2, spray: 3, harvest: 10 };
 /** how much diesel each tractor type burns next to the standard one: its fuel cost a plot (6, 9, 14) over the standard's 9 */
 export const TRACTOR_FUEL: Record<string, number> = { compact: 6 / 9, standard: 1, large: 14 / 9 };
 
@@ -304,6 +304,15 @@ export function treatDelta(job: string, solar: boolean): Delta {
     default:
       return {};
   }
+}
+
+/** Scheduled care done on a farm (plots/data.ts ROUTINE). Weeding by hand keeps herbicide off (from the seat, the
+    diesel is counted with the tractor's work); the stalk-borer spray is one spray. The top-dress's CAN is already
+    counted with the plan's fertilizer at planting. */
+export function routineDelta(job: string, byTractor: boolean, solar: boolean): Delta {
+  if (job === 'weeding') return byTractor ? {} : treatDelta('weed', solar);
+  if (job === 'borer') return treatDelta('spray', solar);
+  return {};
 }
 
 /** A wrong fix that still went on the field. */

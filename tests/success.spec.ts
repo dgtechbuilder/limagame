@@ -113,7 +113,7 @@ test('training: book a seat, the Booking Success dialog, then the course shows a
   const ok = page.getByRole('dialog', { name: 'Booking confirmed' });
   await expect(ok).toBeVisible();
   await expect(ok).toContainText('You’re booked, Wanjiku!');
-  await expect(ok.locator('.success-ref')).toHaveText(/^LIMA-SOIL-\d{4}$/);
+  await expect(ok.locator('.success-ref')).toHaveText(/^TEMO-SOIL-\d{4}$/);
   await ok.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(ok).toBeHidden();
   await expect(list.getByRole('button', { name: /Healthy soil, bigger harvests: booked/ })).toBeVisible();

@@ -26,6 +26,7 @@ import {
   marketDelta,
   planDelta,
   record,
+  routineDelta,
   tractorWork,
   treatDelta,
   waterTask,
@@ -218,7 +219,7 @@ export function trackClimate(prev: GameState, s: GameState, a: Action): GameStat
         const newly = popcount((s.field.marks[key] ?? 0) & ~before);
         if (newly > 0) {
           const type = a.rig?.tractor ?? 'standard';
-          const words: Record<string, string> = { prep: 'ploughed', sow: 'sown', setupFeed: 'fertilized', spray: 'sprayed', harvest: 'harvested' };
+          const words: Record<string, string> = { prep: 'ploughed', sow: 'sown', setupFeed: 'fertilized', weeding: 'weeded', borer: 'sprayed against stalk borer', topdress: 'top-dressed', spray: 'sprayed', harvest: 'harvested' };
           log(`${farmName(a.farm)} ${words[a.job]} · ${newly} plot${newly > 1 ? 's' : ''} by ${type} tractor`, 'tractor', tractorWork(a.job, newly / TILES, type));
         }
       }
@@ -235,6 +236,12 @@ export function trackClimate(prev: GameState, s: GameState, a: Action): GameStat
           else if (job) log(`${farmName(a.farm)} · ${job === 'weed' ? 'weeded by hand' : `treated (${h})`}`, 'field', treatDelta(job, solar));
         }
       }
+      // scheduled care finished
+      const was = prev.trial?.routine ?? [];
+      (t.routine ?? []).filter(k => !was.includes(k)).forEach(k => {
+        const job = k.split(':')[1];
+        log(`${farmName(a.farm)} · ${job === 'borer' ? 'stalk-borer spray' : job === 'topdress' ? 'top-dress' : 'weeding'}${a.tractor ? ' by tractor' : ' by hand'}`, 'field', routineDelta(job, !!a.tractor, solar));
+      });
       // follow-up care finished
       const before2 = prev.trial?.followUps ?? [];
       (t.followUps ?? []).forEach((u, i) => {

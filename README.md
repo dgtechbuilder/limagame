@@ -1,4 +1,6 @@
-# Lima Farming Game
+# TemoLima
+
+*TemoLima* means **farming** in a combination of Swahili and Sesotho: *temo* is Sesotho and *lima* is Swahili.
 
 A farming game for young Africans who farm or want to — including "satellite farmers" with a city job and a
 rural farm — played on a landscape phone. It is **one farm, the player's own** — there are no neighbours. The
@@ -29,6 +31,8 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [The season](#the-season)
 - [Field rounds](#field-rounds)
 - [The farm world](#the-farm-world)
+  - [Scheduled care](#scheduled-care)
+- [The daily tidy-up](#the-daily-tidy-up)
 - [The six farms](#the-six-farms)
 - [From Wakala Agent](#from-wakala-agent)
 - [The tractor business](#the-tractor-business)
@@ -52,6 +56,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [Design review mode](#design-review-mode)
 - [Saving, events and privacy](#saving-events-and-privacy)
 - [Performance on low-cost phones](#performance-on-low-cost-phones)
+- [Tests](#tests)
 - [Assumptions and open decisions](#assumptions-and-open-decisions)
 
 ---
@@ -67,6 +72,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 | **~2:00** | The whole farm opens. Their sukuma wiki needs the same kind of check, with fewer hints. |
 | **~3:00** | **Field rounds**: checks every bed on the farm, one after another — and comes back often, because every bed changes every day. |
 | **Then** | **The first planting period** (about 10 minutes): maize on Farm 1, which they clear plot by plot, and sukuma wiki on Farm 2, which they plant plot by plot; then they check both every day for six days and harvest. |
+| **Every day** | **The daily tidy-up**: 3 bushes and 5 rocks turn up around the farm each new day; they clear them all to keep the farm and the neighbourhood tidy. |
 | **Every week** | **Six farms**: a different plan on each farm, one day of checks each real day (or all now), then the harvests compared. The plan that worked becomes their recipe for the next cycle. |
 | **Any time** | Plays seasons of maize on Farm Moja: six farming steps, harvest timing, storage, processing, selling, results, rewards. |
 | **Any time** | Opens **Climate** to see what their farming did to the climate, the water and the soil, and the climate credits it earned. |
@@ -82,16 +88,27 @@ npm run dev        # http://localhost:5173
 npm run build      # production build in dist/
 npm run preview    # serve the production build
 npm run typecheck  # TypeScript, no output files
+npm test           # Playwright play-tests (see Tests)
 ```
 
-Needs Node 18 or newer. There is no backend: everything runs in the browser.
+Needs Node 18 or newer (CI uses Node 20). There is no backend: everything runs in the browser.
+
+**Stack**: React 19 and TypeScript 5, Vite 6, [three.js](https://threejs.org) 0.170 for the 3D farm, Playwright for
+the play-tests. No other runtime dependencies. `package-lock.json` pins every install.
 
 ## Deploy
 
 Every push to `main` builds the site and publishes it to GitHub Pages with
 [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) (install → type-check → `vite build` →
-deploy). The workflow can also be started by hand from the *Actions* tab. Pages is set to deploy from
-**GitHub Actions** in the repository settings.
+deploy). A type error stops the deploy. The workflow can also be started by hand from the *Actions* tab. Pages is set
+to deploy from **GitHub Actions** in the repository settings.
+
+**Custom domain.** `CNAME` names `limathegame.online`. With Pages deploying from Actions, the domain that counts is
+the one set under *Settings → Pages → Custom domain* (the file in the repository root is not part of the build);
+set it there, with the domain's DNS pointing at GitHub Pages, and `dgtechbuilder.github.io/limagame/` redirects to it.
+
+Pull requests run [`.github/workflows/tests.yml`](.github/workflows/tests.yml): type-check, build and the
+Playwright play-tests, with the report and screenshots kept for 14 days. Its browser install tries three times.
 
 `vite.config.ts` uses a relative base (`./`), so the same build works at
 `https://<user>.github.io/<repo>/` or any other path.
@@ -106,14 +123,19 @@ src/
   main.tsx                 entry point
   App.tsx                  scales the 874 × 402 stage to the screen; routes first session / farm / modals
   state.ts                 game state, season rules and saving (useReducer + localStorage)
-  route.ts                 page addresses: pathOf (the address of the page on show), routeTo (an address to the page)
+  route.ts                 page addresses: pathOf (the address of the page on show), routeTo (an address to the page); see Page addresses
   data.ts                  farm copy, prices, tasks, rewards, storage and processing options
+  money.ts                 money on screen (money(), kshText()): see Money on screen
+  sfx.ts                   the two sound effects, made in the browser (nothing downloaded)
+  speech.ts                Read aloud: the phone's own voice (speechSynthesis)
   assets.ts                image paths (art exported from Figma into public/assets)
   styles.css               design tokens (colours, gold button, panels) and component styles
   components/
     Nav.tsx                Back / Menu / Farm buttons shared by every screen (NavBar, NavContext)
     FarmMap.tsx            the Figma farm map: the ground of the whole game (1× and 2×)
-    FarmScene.tsx          farm screen: HUD, Next Task, field bubbles, selected plot
+    FarmScene.tsx          the classic farm screen: HUD, Next Task, field bubbles, selected plot
+    PhotoPicture.tsx       a real photo with its clue ring and credit (author and licence)
+    TractorArt.tsx         the tractor types, drawn
     Modal.tsx, ui.tsx, Icons.tsx   modal frames, buttons, chips, inline SVG icons
   screens/
     MainMenu.tsx           the main menu
@@ -123,13 +145,35 @@ src/
     Settings.tsx           the Settings page: My farmer, Game, Display, Help & data
     Climate.tsx            the Climate page: Overview, Emissions, Water & soil, Climate shocks, Activity
     Achievements.tsx       My Progress: Journey, Modules, Today, Badges, Certificates
-    Partners.tsx           the Partners page: Offers, Placements
+    Partners.tsx           the Partners page: Offers, Placements, Partner with us, Shortlist
   progress/model.ts        My Progress: modules, learning credits, certification levels (no screens)
-  partners/                partner brands and every slot they can buy (data.ts), engagement counts (track.ts),
+  partners/                partner brands and every slot they can buy (data.ts), the ways to partner (catalogue.ts), engagement counts (track.ts),
                            sponsor lines, ribbons and the classic farm's sign (ui.tsx)
   art/                     retro anime characters: anime.tsx (SVG kit: farmer, guide, shopkeeper, Ojuok),
                            Cast.tsx (anime or original picture), style.ts (style and read-aloud contexts)
-  speech.ts                Read aloud: the phone's own voice (speechSynthesis)
+  achievements/            badges, the daily streak and certificates: model.ts (every rule), track.ts
+  finance/loan.ts          the loan calculator (no coins change hands)
+  training/data.ts         farmer training courses and bookings
+  farmSize.ts              how big the six farms are (4 acres, 20 plots) and FARM_SCALE
+  fit.ts                   the 874 × 402 stage and how it fits the screen
+  first/                   the first session (see below): Story.tsx the story so far, Update.tsx the farm update,
+                           Village.tsx, Create.tsx, Review.tsx; data.ts its words, track.ts the events
+  rounds/                  field rounds (see below), loaded only when opened:
+    data.ts, farms.ts      the beds, their crops and the points a check pays
+    hazards.ts             every situation, by crop and stage, and the calls
+    walk.ts                the walking network over the painted map
+    Rounds.tsx, Inspect.tsx, scene.tsx   the rounds, a bed's check, and the drawn pictures
+    trial.ts               a six-farm check: what a farm shows today, from its own plan
+    photos.ts, photos/     real photos from Wikimedia Commons by situation, credits.json + CREDITS.md (see photos/README.md)
+  world/                   the 3D farm world (see below): field.ts the work by hand and the task card (no three.js),
+                           engine.ts the scene, models.ts the low-poly models, toon.ts the cel shading, World.tsx the HUD
+  trials/                  the six farms (see below): model.ts holds every number; Trials.tsx the screens (loaded when
+                           opened); samples.ts sample cycles for design review and the play-tests
+  care/                    from Wakala Agent: the fix after a right call, the safety kit and product, follow-ups (data.ts),
+                           Mama Achieng's lines (voice.ts), and their screens Prescribe.tsx, Spray.tsx (loaded when opened)
+  plots/                   plots and inputs: data.ts (20 plots a farm; seeds, fertilizers, sprayers, tractor types and
+                           tools, scheduled care, with what each does and costs); PlotBoard.tsx (a farm's seed,
+                           fertilizer and sprayer); TractorPick.tsx (the tractor's type and tool)
   strategy/                climate-smart rows: data.ts (every dimension and option), model.ts, StrategyBoard.tsx
   water/                   the tank, the animals, the shared catchment, crop cover: config.ts, model.ts, track.ts, WaterPanel.tsx
   credits/ledger.ts        every kind of credit (CO₂, water) earned and paid
@@ -139,30 +183,26 @@ src/
   security/                theft: config.ts (what is taken, every measure and what it cuts), model.ts (tonight's risks,
                            a night's thefts, the harvest and store less theft), Security.tsx (the page)
   evidence/                the decision log, programme tags, "tried it on your own farm?": model.ts, Ask.tsx
+  tidy/model.ts            the daily tidy-up: today's bushes and rocks, where they turn up, what they pay, the tidy streak
   risk/                    money at risk: config.ts (every number to tune), model.ts (the list, from the save), RiskHud.tsx (the button)
+  tractor/                 from Wakala Agent: the tractor drive before planting: data.ts, sim.ts (no DOM), Tractor.tsx
+  business/                the tractor business (see below): model.ts every rule and number, drive.ts the ten-second
+                           drive, Business.tsx and DriveGame.tsx the screens, Cast.tsx and cast/ the brand characters
   climate/                 climate tracking: model.ts (every factor, the ledger, rating, levels), track.ts (which
                            actions record what, and the end-of-day payment), land.ts (land farmed, bare or idle,
                            and what a credit pays), Tag.tsx (climate tags on choices), sample.ts (design review)
-  first/                   the first session, including the story so far (see below)
-  world/                   the farm world (see below): field.ts the work by hand, engine.ts the 3D farm, World.tsx the HUD
-  trials/                  the six farms (see below): model.ts holds every number; Trials.tsx the screens (loaded when opened)
-  care/                    from Wakala Agent: the fix after a right call, the safety kit and product, follow-ups (data.ts),
-                           Mama Achieng's lines (voice.ts), and their screens (loaded when opened)
-  plots/                   plots and inputs: data.ts (20 plots a farm; seeds, fertilizers, sprayers, tractor types and
-                           tools, with what each does and costs); PlotBoard.tsx (a farm's seed, fertilizer and sprayer); TractorPick.tsx
-  tractor/                 from Wakala Agent: the tractor drive before planting: data.ts, sim.ts (no DOM), Tractor.tsx
-  rounds/                  field rounds: checks of every bed on the farm, back to back (see below); loaded only when opened
-    trial.ts               a six-farm check: what a farm shows today, from its own plan
-    photos/                real photos from Wikimedia Commons by situation, credits.json + CREDITS.md (see photos/README.md)
-  review/Review.tsx        design review's menu and sample screens (a separate chunk, loaded only in review mode)
+  review/Review.tsx        design review (?review=1): sample states for every screen, loaded only in review
   dev/hook.ts              ?dev in dev builds only: state and jump-to-state helpers for the play-tests
-tests/                     Playwright play-tests (npm test)
+tests/                     Playwright play-tests (npm test, see Tests); helpers.ts the shared set-up
 public/
   assets/                  130 images exported from Figma, incl. bg-farm.webp and bg-farm@2x.webp
-  manifest.webmanifest     installable web app (landscape, full screen) + icons
-  sw.js                    service worker: keeps the published game on the phone for repeat visits
+  manifest.webmanifest     installable web app (landscape, full screen) + icon-192.png, icon-512.png
+  sw.js                    service worker (published game only): a second visit opens without downloading again
 design-refs/               PNG renders of the 22 Figma frames, for side-by-side checks
-docs/                      screenshots used in this README
+docs/                      screenshots used in this README (docs/wakala/ for the Wakala moments) and
+                           plot-trials-plan.md (the November plan for plots A to D, kept for its reasoning)
+.github/workflows/         deploy.yml (GitHub Pages, on main) and tests.yml (pull requests)
+CNAME                      the custom domain (see Deploy)
 ```
 
 ## How the Figma design maps to code
@@ -234,7 +274,7 @@ A new player never sees the farm screen first. Everything happens on their own f
    - **What is at stake, on every check**: a red line at the top left while the player reads the crop, *This problem
      will cost you about KSh 100,000 of harvest if it is left alone* (KSh 50,000 on the sukuma wiki: `atStake` on each
      shamba), which turns green once it is caught: *Caught in time: about KSh 100,000 of harvest saved*.
-4. **First check (the aha moment)** — four steps, the template for every check in Lima:
+4. **First check (the aha moment)** — four steps, the template for every check in TemoLima:
    - **Look** at four pictures (the crop, pests & disease, soil & water, layout). Tap to zoom; the next one glows.
    - **Spot** the rows that look wrong in the field.
    - **Judge**: healthy · needs water · pests · needs fertiliser.
@@ -302,7 +342,7 @@ One season of maize on *Farm Moja* (the maize beds on the map):
    more a bag, at the gate or at market after transport and storage; the grade sets the price (a lower grade
    fetches less, as on the six farms: `PRICE_BY_QUALITY`); storage costs every bag put in store, against bags
    lost; processing raises the price. *Confirm and sell* pays out coins and points.
-5. **Season results** compare seasons, name the three steps that cost the most, and *Lima AI* explains the
+5. **Season results** compare seasons, name the three steps that cost the most, and *TemoLima AI* explains the
    result from the player's own numbers. *Start season N+1* keeps coins, points and history.
 
 Points: +100 × score for each finished step, +5 per bag sold. Rewards cost 800 or 1,500 points. Play time
@@ -436,6 +476,61 @@ scaring off birds → harvest → sell) has been played end to end with no error
 spraying, digging drains, chasing the goat, hiring the tractor or oxen, a full six-farm cycle, and the daily clock
 (one day per real day). The first session (the village walk) is still the 2D Figma map, not the 3D world.
 
+### Scheduled care
+
+From the second cycle, every farm worked in the farm world also needs **care on set days after planting**, whatever
+its checks show. It is what a farmer does every season, and missing it costs the harvest:
+
+| Care | When | Which farms | By hand | From the seat | Missed |
+| --- | --- | --- | --- | --- | --- |
+| **Weed** | day 2 or 3 | every farm | walk over the plots | inter-row cultivator | a tenth of the harvest |
+| **Spray against stalk borer** | day 3 or 4 | maize with a sprayer | the sprayer from the shed (safety kit, then the product) | boom sprayer | 8% of the harvest; a spray keeps what the farm's sprayer reaches |
+| **Top-dress with CAN** | day 4 or 5 | DAP + CAN, or the double dose | the fertilizer bag from the shed | fertilizer spreader | the farm grows like DAP alone (0.75 instead of 1) and goes hungrier |
+
+- The **task card** shows each job on its days (*Day 2 or 3*, then *Last day: day 3*), after the day's checks and any
+  treatment or follow-up. With the sprayer or the fertilizer in hand, the farms that need it come first, so one trip
+  to the shed does them all. A job counts once all 20 plots are done: **+40 points**.
+- A farm with **no sprayer** (the check strip) is never sprayed and always loses its 8% to stalk borer: that is what
+  the strip is for. Sukuma wiki is not sprayed against stalk borer.
+- **At harvest** the results have a **Care** row (*All done*, or *Missed: weeding, top-dress*), and TemoLima AI says what a
+  miss cost the farm that grew least.
+- **Not in every cycle**: the guided first cycle, farms planted from the six farms screen in the classic farm view
+  (it has no field work), and saves from before scheduled care have none (`Trial.routine` is missing). Without it,
+  DAP + CAN pays without a top-dress, as it did before.
+- Every day, word and number is in `ROUTINE`, `WEEDS_MISSED`, `STALK_BORER` and each fertilizer's `withoutTop` in
+  `src/plots/data.ts`; the harvest maths is `growPlot` and `routineMissed` in `src/trials/model.ts`; the field work is
+  `routineLeft` in `src/world/field.ts`. Proposed numbers, for the agronomist's review. The top-dress's CAN is counted
+  in the climate ledger at planting, with the plan's fertilizer.
+- Rebuilt from an earlier draft for four plots A to D, where each plot was planted a day apart with its own care.
+  Planting the rows of a farm on different days is not in the game yet: it is an open decision (see below).
+
+## The daily tidy-up
+
+Every new day, **3 overgrown bushes and 5 rocks** turn up around the farm: on the grass, by the paths and on the
+lanes between the farms, each on a patch of scuffed, dry ground. Clearing them is a chore every player does every
+day, to keep the farm and the neighbourhood tidy. Everything is in `src/tidy/model.ts` (`TIDY` holds every number to
+tune); the 3D pieces are `wildBush` and `rockPile` in `src/world/models.ts`, drawn as one mesh (`setTidy` in
+`src/world/engine.ts`); the button, timer and chip are in `src/world/World.tsx`.
+
+- **When they turn up.** The first time the farm opens on a new calendar day (the player's own midnight, the same
+  clock as the daily streak), or when midnight passes while the game is open. A toast says *New day: 3 bushes and
+  5 rocks to clear around the farm*. They show once the first session is done.
+- **Where.** 3 of 12 bush spots and 5 of 12 rock spots (`BUSH_SPOTS`, `ROCK_SPOTS`), picked by the day's date. The
+  same day always shows the same spots, however often the game is opened, and the next day shows others. No spot
+  is on a farm's plots or at a place the farmer walks to, and no two are close enough to mix up their buttons.
+- **Clearing.** Walk up to one and a **Clear bush** or **Move rock** button shows under the farmer. Pressing it
+  starts a short timer: 2.5 seconds for a bush (with the sickle, leaves flying) and 2 for a rock (grit flying).
+  Walking away stops it, and the piece stays. A cleared piece goes in a puff.
+- **The chip** (bottom right): *Daily tidy-up* with bushes 0/3 and rocks 0/5. Tap it to walk to the nearest piece
+  still to clear. When all 8 are cleared it turns green (*✓ Farm tidy*), with the tidy streak.
+- **What it pays.** +5 points a piece; clearing all 8 adds **+40 points and KSh 600** (60 stored coins, shown in the
+  player's currency: $4.65), so 80 points in all. Every piece counts the day as played for the daily streak, and the last one plays the flow sound.
+- **The tidy streak and badges.** Days with the whole tidy-up done in a row make the tidy streak (🧹 on the chip);
+  a missed day starts it again. Badges: *Tidy farm* (day one: the first whole tidy-up), then *Tidy farmer*,
+  *Good neighbour* and *Pride of the village* for 3, 14 and 50 tidy days.
+- **Saved** as `tidy` in the game (today's date, the pieces cleared, tidy days, the streak). Saves from before have
+  none, and start with today's tidy-up.
+
 ## The six farms
 
 The six farms are LIMA's core idea: grow the same maize on up to six farms, each to a **different plan**, and
@@ -461,12 +556,12 @@ today, or **!** at harvest).
    the problem (for a few coins) and stops most of the damage; a missed or wrong call lets it run. After the call the
    player is told why this farm has this problem and what was done about it.
 3. **Harvest and compare.** Bags of maize, quality, and profit per farm, side by side, with the plan rows that
-   differ. **Lima AI** splits the gap between the best and worst farm into its causes from the player's own numbers
+   differ. **TemoLima AI** splits the gap between the best and worst farm into its causes from the player's own numbers
    (for example *Fertilizer: planting + top-dress instead of at planting only gave 0.6 bags more*), and says when the
    farm that grew most is not the one that made most. The player can keep any farm's plan as their **recipe**; the
    next cycle starts from it.
 
-![Six harvests compared, with Lima AI's reasons](docs/six-farms-results.webp)
+![Six harvests compared, with TemoLima AI's reasons](docs/six-farms-results.webp)
 
 **The first planting period** (the first cycle) needs no planning: it starts as soon as the farm opens, with two
 farms grown a common way (hand hoe, planted with the rains, fertilizer at planting only, no pest control, rain only,
@@ -511,7 +606,7 @@ Events: the checks use the field-round events (`round_start`, `round_part_viewed
 ## From Wakala Agent
 
 [Wakala Agent](https://github.com/dgtechbuilder/wakalarepotest2) is a sister game about a village agent who reads
-farms and helps fix them. Its gameplay now runs inside Lima's farm world, on Lima's own state, clock, save and coins:
+farms and helps fix them. Its gameplay now runs inside TemoLima's farm world, on TemoLima's own state, clock, save and coins:
 the logic and data were ported, not its HTML.
 
 **What was added**
@@ -522,7 +617,7 @@ the logic and data were ported, not its HTML.
   check (`fix`, `wrongFixes`), so a reload asks for the fix again only if it was not picked.
 - **Safety kit and product.** Picking up the sprayer for a spray job asks for gloves, mask and boots, then which
   product goes in the sprayer (one question per problem being sprayed). A wrong product says why and costs nothing.
-- **Follow-up care.** Some treatments need doing again on Lima's clock: water again the next day (drought), water the
+- **Follow-up care.** Some treatments need doing again on TemoLima's clock: water again the next day (drought), water the
   top-dress in (low nitrogen), spray again two days on (armyworm, leaf rust), weed again two days on. A follow-up shows
   on the task card on its day, always inside the six check days, and costs no coins. A follow-up whose day ends undone
   is logged, and the problem is back on that farm's next check ("The problem came back").
@@ -557,7 +652,7 @@ with *Tractor hire* or *Check and treat*, and the moments come up as you play.
 
 Lines ported from Wakala are marked `// Wakala` in the data; the rest are new, in the same style.
 
-**Money.** Lima's money (shown in the player's currency) stays the only money. Real-world costs appear only in the tractor summary, to compare, and its
+**Money.** TemoLima's money (shown in the player's currency) stays the only money. Real-world costs appear only in the tractor summary, to compare, and its
 *Sources* button lists each figure with its source: diesel KSh 228 a litre (EPRA's Nairobi cap for 15 October to
 14 November 2026, via [Techish](https://tech-ish.com/2026/10/14/petrol-rises-to-kes-226-96-in-nairobi-and-kerosene-jumps-kes-28-49/)),
 tractor ploughing KSh 3,000 and harrowing KSh 1,500 an acre ([Beyond Forest](https://www.beyondforest.org/post/ploughing-cost-per-acre-in-kenya-2026-guide-virgin-vs-uncultivated-land-explained)),
@@ -587,30 +682,8 @@ morning and evening windows, the three-misses rule, browser notifications, hold-
 harvest tractor stages, the boom-sprayer, delivery and route jobs, gems, hub maps, road walking and its onboarding.
 Wakala's photos were not added yet (Wikimedia could not be reached from the build session).
 
-**Tests.** `npm test` runs the Playwright play-tests in `tests/` against the dev server (run
-`npx playwright install chromium` once):
-
-| File | What it plays |
-| --- | --- |
-| `first-session.spec.ts` | the story so far, the first session read right and wrong, saving and *Reset progress* |
-| `plots.spec.ts` | the first planting period (Clear and Plant with the real 3-second timer, walking off, the order) and the inputs board in the plan |
-| `care.spec.ts` | a world check with a wrong then right fix and the work by hand, a follow-up done and one missed, a spray job with the kit and product |
-| `tractor*.spec.ts` | a tractor drive on autopilot or by steering, its rewards, the tractor's type and tool and a farm's plots from the seat, the hired tractor |
-| `routes.spec.ts` | typed page addresses, Back and Forward, reload, and the blocked cases |
-| `climate.spec.ts`, `climate-pay.spec.ts` | the CLIMATE button, tracking from tasks, plans and sales, climate levels; land, carbon by practice and the end-of-day credit payment |
-| `phases.spec.ts` | row strategies (from the data file, paid when set, into the climate ledger) and diagnose-then-treat costs |
-| `risk.spec.ts` | money at risk: the total, a fix dropping it, escalation, the cost at harvest |
-| `money.spec.ts` | the sale and storage, shop items in a season's costs, equipment, tractor-drive pay, unpaid treatments, a county day |
-| `country.spec.ts` | the country step and its currency, and the stage filling a phone either way up |
-| `business.spec.ts` | the tractor business: each day's village and roads, the shortest route, a day's jobs, Narok's calendar, Campbell |
-| `achievements.spec.ts`, `progress.spec.ts` | streaks, badges, today's reward, certificates; credits, levels, partners and their addresses |
-| `success.spec.ts` | the Sale, Storage and Booking Success dialogs, training bookings and the loan calculator |
-| `frame.spec.ts`, `fixes.spec.ts` | every screen inside the stage's rounded frame; fixed bugs (the guide in the menu, a walk past a shed) |
-| `nav.spec.ts`, `settings.spec.ts` | Back, Menu and Farm on every screen; every Settings section |
-| `perf.spec.ts` | the start and the 3D farm on a 740 × 340 phone screen, with the numbers printed |
-| `tour.spec.ts` | a tour on a 740 × 340 touch screen that saves screenshots to `test-results/tour/` |
-
-They run on every pull request (`.github/workflows/tests.yml`).
+**Tests.** The Wakala moments are played by `tests/care.spec.ts`, `tests/tractor.spec.ts` and `tests/tour.spec.ts`;
+see [Tests](#tests).
 
 ## The tractor business
 
@@ -747,15 +820,17 @@ them. Every word and number is in `src/plots/data.ts`, for an agronomist's revie
   and what it costs. It opens in the plan (the *Inputs* row, one box per farm), and at the fertilizer and sprayer sheds.
   A farm already sown or spread keeps its input; a change while the farms grow pays or refunds the difference.
 - **The tractor can be used at any point.** At the tractor the farmer picks its type (compact, standard, large: fuel,
-  speed, how much it packs the soil) and its tool (plough, harrow, ridger, planter, seed drill, fertilizer spreader,
-  boom sprayer, maize or bean harvester), with what each tool is for and which farms need that job today. The tool
-  decides the job, and the tractor works the plots it drives over. Fuel is paid once per farm and job (24, 36 or 56
+  speed, how much it packs the soil) and its tool (plough, harrow, ridger, planter, seed drill, inter-row cultivator,
+  fertilizer spreader, boom sprayer, maize or bean harvester), with what each tool is for and which farms need that
+  job today. The tool decides the job, and the tractor works the plots it drives over. The spreader also does the
+  CAN top-dress, and the boom sprayer the stalk-borer spray (`toolJobs`); the cultivator weeds. These three jobs show
+  in the picker only in cycles with [scheduled care](#scheduled-care). Fuel is paid once per farm and job (24, 36 or 56
   coins); a farm whose 20 plots are all done from the seat pays 30 points. The first type and tool on a farm are kept
   with its results; spraying from the seat makes the farm's sprayer the boom sprayer. *Change tool* swaps the type or
   tool without getting off.
 - **Growth on the field.** A farm's crop grows taller or shorter, greener or paler, with its inputs.
 - **Results by input.** The results have a *By input* view: every farm's harvest beside its seed, fertilizer, sprayer
-  and tractor, and Lima AI's lessons, each a fair comparison: a farm's harvest against the same farm with one input
+  and tractor, and TemoLima AI's lessons, each a fair comparison: a farm's harvest against the same farm with one input
   changed to a yardstick (long-season hybrid, no fertilizer, work by hand, the tool the farm needed, no spray),
   averaged over the farms with each choice.
 - **Proposed numbers.** Seeds and fertilizers change yield as proposed in `docs/plot-trials-plan.md` (drought-tolerant
@@ -843,7 +918,7 @@ reload without losing their place, bookmark a page, and use the browser's **Back
 | `#/farm-info` · `#/results` · `#/rewards` · `#/welcome` | Farm info, season results, rewards, how the farm works |
 | `#/loan-calculator` · `#/loan-calculator/quote` · `#/training` | The loan calculator and its quote, farmer training |
 | `#/progress/journey` · `modules` · `today` · `badges` · `certificates` | My Progress, by section (`#/achievements/…` still works) |
-| `#/partners/offers` · `#/partners/offers/<brand>` · `#/partners/placements` | Partners: offers (one brand's in view), placements |
+| `#/partners/offers` · `#/partners/offers/<brand>` · `#/partners/placements` · `#/partners/partner-with-us` · `#/partners/shortlist` | Partners: offers (one brand's in view), placements, ways to partner, the shortlist (open before the farm too) |
 | `#/animals/today` · `health` · `water` · `coop` · `herd` | Animals, by section |
 | `#/security/protect` · `risks` · `night-reports` | Security, by section |
 
@@ -967,7 +1042,7 @@ timing). Every option has a cost, labour (person-days, 24 family days a farm, th
 over the co-investment of cash and labour, which can differ by the season's forecast), and climate effects (emissions,
 carbon stored, water, soil health, pollution, and how much of each problem's damage the row takes). Mission ›
 *Rows* (plan) or *Row strategies* (growing) opens the board; a sown farm's rows are locked. After harvest, Mission ›
-*By row* puts the four rows of each farm side by side (bags, profit, return, labour, CO₂, carbon, water) and Lima AI
+*By row* puts the four rows of each farm side by side (bags, profit, return, labour, CO₂, carbon, water) and TemoLima AI
 names the row that paid best and what it did differently. A row left "as the farm plan" changes nothing, so a farm
 whose rows are untouched grows exactly as before. The strategies are paid with the plan (or at once, while growing),
 and their emissions, carbon, water and soil go into the climate ledger at harvest, so they move the climate rating,
@@ -1184,9 +1259,9 @@ A reason to come back every day, and something won in every part of the game. Ev
   sound). Days in a row build the streak; a whole day missed starts it again. The day turns at the player's own
   midnight. Each day played has a reward to claim: 200 coins and 10 points on day 1, growing to 1,400 coins and
   70 points from day 7 on (`STREAK_REWARD`).
-- **Badges** (59), by part of the game: *Every day*, *Farm Moja*, *Six farms*, *Field rounds*, *Tractor*,
-  *Tractor business*, *Climate*. Ten **day-one badges** are easy firsts, one or two in each part (finish the first
-  crop checks, do a farming task, buy in the Shop, collect the milk or eggs, read a bed right, plant the farms, read
+- **Badges** (63), by part of the game: *Every day*, *Farm Moja*, *Six farms*, *Field rounds*, *Tractor*,
+  *Tractor business*, *Climate*. Eleven **day-one badges** are easy firsts, one or two in each part (finish the first
+  crop checks, do a farming task, buy in the Shop, collect the milk or eggs, finish the daily tidy-up, read a bed right, plant the farms, read
   a daily check right, finish a tractor drive, run a business day, earn a climate credit). The rest come in
   bronze, silver and gold (a 3-, 7- and 30-day streak; 10, 50 and 150 farming tasks; 3, 10 and 30 drives…), plus
   *Tractor owner*. Badges pay 25 (day one), 50, 100 or 250 points, and 150 for a special one.
@@ -1270,6 +1345,19 @@ each. To sign a partner, add or edit its brand and put its id on the slots it bo
   prices in the game yet.
 - **Engagement** (views and taps per slot) is counted on the device only, apart from the saved game
   (`src/partners/track.ts`): nothing is sent anywhere, and Reset progress does not clear it.
+- **PARTNERS on the farm** opens the page too: on the 3D farm left of WATER (under PROGRESS), on the classic farm
+  beside Shop. The page also opens before the farm does (`#/partners`), so a partner can visit without playing.
+- **Partner with us** (`src/partners/catalogue.ts`): every way a brand, school or service could be part of TemoLima, for
+  partners still to sign. 23 ways in five areas: *Farm inputs* (seed, fertilizer, crop protection, safety kit),
+  *Tools & machines* (hardware, equipment, water tanks, solar, fuel), *Transport & market* (trucks, buyers, storage,
+  millers, co-ops and booking apps), *Learning* (training courses, certificates, agronomists, a sponsored mission),
+  *Money & climate* (loans, crop insurance, carbon partners, a weather service, telcos). Each card shows a status:
+  *In the game now* (the moment exists; a brand goes onto it), *Small build* (a short new step adds the partner's
+  part) or *New idea*. Tapping a card shows where players meet it, what the partner gets, who holds its placement
+  today (from `SLOTS`), *+ Interested* and, once the farm is open, a button to the screen it is about. The rules every
+  partner keeps are under the list: fair play, no personal data, advice checked by an agronomist.
+- **Shortlist**: the ways tapped *Interested*, saved with the game (`partnerPicks`). *Copy the shortlist* puts it on
+  the clipboard as text; set `VITE_PARTNER_EMAIL` at build time to add an *Email it to the TemoLima team* button.
 
 ## Character art: retro anime
 
@@ -1352,6 +1440,37 @@ player's saved game or events.
   downloading it again, and the game plays on a weak signal. The page is fetched fresh when there is a connection,
   so an update shows at once.
 
+## Tests
+
+`npm test` runs the Playwright play-tests in `tests/` against the dev server, one at a time, on an 874 × 402 screen
+(the 3D farm uses software WebGL, so no GPU is needed). Run `npx playwright install chromium`
+once. To use a Chromium already on the machine instead: `LIMA_CHROMIUM=/path/to/chromium npm test`; to test a
+running build: `LIMA_URL=http://…/ npm test`. The dev server's `?dev` hook (`src/dev/hook.ts`) lets a test jump to
+a moment (`__lima.scenario('spray')`, from `src/trials/samples.ts`) and walk the farmer (`__limaWorld.walkTo`).
+Some tests use no browser: they call the game's rules directly.
+
+| File | What it plays |
+| --- | --- |
+| `first-session.spec.ts` | the story so far, the farm update, the first check read right and wrong, saving and *Reset progress* |
+| `routes.spec.ts`, `nav.spec.ts` | every page by address with Back, Forward and reload; Back, Menu and Farm on every screen |
+| `plots.spec.ts` | the first planting period (Clear and Plant a row at a time); one set of inputs per farm and the results by input |
+| `care.spec.ts` | a world check with a wrong then right fix and the work by hand; a follow-up done and one missed; a spray job with the safety kit and product, walking past the fertilizer shed |
+| `routine.spec.ts` | scheduled care: what a miss costs, its days, by hand (weeding, the stalk-borer spray, the top-dress) and the cultivator from the seat |
+| `tractor-ride.spec.ts`, `tractor-sim.spec.ts`, `tractor.spec.ts` | the tractor's type and tool, fuel and the bonus; the hired tractor; the before-planting drive, on autopilot and steered |
+| `business.spec.ts` | the tractor business: routes, Campbell, SER, counted acres, PAYG, and a day played through the screen |
+| `climate.spec.ts` | the climate ledger: tasks, planting, diesel, selling, credits |
+| `settings.spec.ts` | the Settings page |
+| `tour.spec.ts` | the Wakala moments on a 740 × 340 touch screen, with screenshots in `test-results/tour/` |
+| `perf.spec.ts` | start-up, the farm world's frame cost and draw calls, and the tractor business on a slow phone |
+| `fixes.spec.ts` | the guide in the menu, and a walk that only passes a shed |
+| `money.spec.ts`, `country.spec.ts`, `climate-pay.spec.ts` | sales, storage, drives and treatments paid once; money in the country's currency; 4-acre farms, land and climate credits paid each day |
+| `phases.spec.ts`, `risk.spec.ts` | climate-smart row strategies and treatment choices; money at risk and the evidence log |
+| `achievements.spec.ts`, `progress.spec.ts`, `success.spec.ts` | badges, the streak and certificates; My Progress and partners; the success dialogs, training and the loan quote |
+| `frame.spec.ts` | every screen keeps its boxes and buttons inside the rounded frame |
+
+They run on every pull request (`.github/workflows/tests.yml`), with one retry on CI; the report and screenshots are
+kept with the run for 14 days.
+
 ## Assumptions and open decisions
 
 - **Game balance** (task counts, yields, prices, point costs) is illustrative, not agronomic data.
@@ -1360,7 +1479,7 @@ player's saved game or events.
 - **Field-round advice** (ash or sand for armyworm, soapy water for aphids, top-dressing, drainage after floods, what to
   do after hail, when each crop is ready to pick) needs agronomist review, and so do the crop calendar (21 real days
   stand in for a whole season) and the rotation. Round points are illustrative.
-- **Lima AI** is a rule-based stand-in that reads the season's numbers; it does not call an AI service.
+- **TemoLima AI** is a rule-based stand-in that reads the season's numbers; it does not call an AI service.
 - **Rewards** are saved in the game but nothing is sent to a partner; there is no redemption backend.
 - **Missed checks** cost harvest on the six farms (see `DAMAGE` in `src/trials/model.ts`); a problem left unresolved
   now stays on its farm until it is dealt with, and costs at harvest what was at risk by then (`src/risk/config.ts`). In the everyday field
@@ -1370,8 +1489,14 @@ player's saved game or events.
   planting period, **sukuma wiki borrows maize's yield and price** (bags, at maize prices) until an agronomist sets its own.
 - **The story so far** uses illustrative numbers (KSh 38,000 spent, 14,500 earned) for a failed first season.
 - **No two plans the same** is enforced; *one change per farm* is suggested, not enforced.
-- **The 3D farm world** needs human play-testing on watering, spraying, drains, the goat, tractor/oxen hire, a
-  full six-farm cycle and the daily (one-day-per-real-day) clock — only a two-farm guided cycle has been run so far.
+- **The 3D farm world** needs human play-testing on watering, spraying, drains, the goat, tractor/oxen hire,
+  scheduled care, a full six-farm cycle and the daily (one-day-per-real-day) clock — only a two-farm guided cycle
+  has been run so far.
+- **Scheduled care** days and losses (weeding 10%, stalk borer 8%, DAP + CAN without its CAN growing like DAP) are
+  proposed, for the agronomist's review. On the daily clock a job's two days are two real days: a player who skips
+  both misses it.
+- **Planting rows on different days** (Row 1 on day 1 … Row 4 on day 4, each row with its own care) is not decided:
+  with six check days, the last row would have only two days of care before harvest.
 - **Art styles**: the farm and UI are the painted Figma art; the first-session crops and the farmer are
   drawn flat in code.
 - **Language**: English with a little Swahili (*Karibu*, *Twende*, shamba, sukuma wiki). Full Swahili is not done.

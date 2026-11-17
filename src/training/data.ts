@@ -39,7 +39,7 @@ export const COURSES: Course[] = [
     id: 'pests',
     title: 'Scouting pests early',
     learn: 'Spot armyworm and aphids; treat only what needs it.',
-    host: 'Lima field trainer',
+    host: 'TemoLima field trainer',
     place: 'Co-op hall',
     inDays: 5,
     time: '10:00 am',
@@ -101,9 +101,9 @@ export function dayText(date: string) {
   return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
 }
 
-/** A short seat reference, the same for the same course and date: LIMA-SOIL-1119 */
+/** A short seat reference, the same for the same course and date: TEMO-SOIL-1119 */
 export function bookingRef(c: Course, date: string) {
-  return `LIMA-${c.id.toUpperCase().slice(0, 4)}-${date.slice(5, 7)}${date.slice(8, 10)}`;
+  return `TEMO-${c.id.toUpperCase().slice(0, 4)}-${date.slice(5, 7)}${date.slice(8, 10)}`;
 }
 
 /** Seats left: a few are taken already, more the closer the day. */

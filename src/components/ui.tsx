@@ -67,7 +67,8 @@ export function GoldButton({
       onClick={selected ? undefined : onClick}
       aria-pressed={selected || undefined}
       aria-label={ariaLabel}
-      style={{ fontSize: font, height, ...style }}
+      // 10px at least: the label floor in docs/ui-spacing-plan.md
+      style={{ fontSize: Math.max(10, font), height, ...style }}
     >
       {children}
     </button>

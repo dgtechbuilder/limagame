@@ -1,6 +1,6 @@
 {
-  "name": "Lima Farming Game",
-  "short_name": "Lima",
+  "name": "TemoLima",
+  "short_name": "TemoLima",
   "description": "Grow maize, learn good farming practice and earn partner discounts.",
   "start_url": "./",
   "scope": "./",

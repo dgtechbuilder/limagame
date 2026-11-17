@@ -3,6 +3,33 @@ import type { Action, GameState } from '../state';
 import { animalsBadge, careOpen, lifeOf } from './model';
 import { activeMeasures, securityOf, theftOpen } from '../security/model';
 
+/** The classic farm's buttons, in its peach style: a badge for jobs and problems, a ! after a theft. */
+export function ClassicLifeButtons({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
+  const n = animalsBadge(s);
+  const sick = lifeOf(s.life).issues.length > 0;
+  const sec = securityOf(s.security);
+  const fresh = sec.reports[0]?.events.some(e => e.kind === 'theft' || e.kind === 'predator') ?? false;
+  const col = { width: 56, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 } as const;
+  return (
+    <>
+      <button type="button" className="abs" style={{ left: 651, top: 238, ...col }} onClick={() => dispatch({ type: 'open', modal: { kind: 'animals', tab: sick ? 'health' : 'today' } })} aria-label={careOpen(s) ? `Animals: ${n ? `${n} thing${n === 1 ? '' : 's'} to do` : 'all cared for today'}` : 'Animals: in your care from day 2'}>
+        <span className="peach-btn" style={{ width: 56, height: 48.66, position: 'relative' }}>
+          <HenIcon />
+          {n > 0 && <span className="tr-badge">{n}</span>}
+        </span>
+        <span className="label" style={{ fontSize: 13 }}>Animals</span>
+      </button>
+      <button type="button" className="abs" style={{ left: 651, top: 310, ...col }} onClick={() => dispatch({ type: 'open', modal: { kind: 'security', tab: fresh ? 'reports' : 'protect' } })} aria-label={`Security: ${activeMeasures(s).length} measures in place${fresh ? ', a theft last night' : ''}`}>
+        <span className="peach-btn" style={{ width: 56, height: 48.66, position: 'relative' }}>
+          <ShieldIcon />
+          {fresh && <span className="tr-badge">!</span>}
+        </span>
+        <span className="label" style={{ fontSize: 13 }}>Security</span>
+      </button>
+    </>
+  );
+}
+
 /* The farm's ANIMALS and SECURITY buttons (the 3D farm and the classic farm): the animals' jobs and problems waiting,
    and how well the farm is watched tonight. */
 
@@ -52,7 +79,7 @@ export function SecurityButton({ s, dispatch, style }: { s: GameState; dispatch:
   );
 }
 
-function HenIcon() {
+export function HenIcon() {
   return (
     <svg viewBox="-14 -14 28 28" width={30} height={30} aria-hidden="true">
       <ellipse cx={-1} cy={3} rx={9} ry={7} fill="#fff" />
@@ -66,7 +93,7 @@ function HenIcon() {
   );
 }
 
-function ShieldIcon() {
+export function ShieldIcon() {
   return (
     <svg viewBox="-14 -14 28 28" width={30} height={30} aria-hidden="true">
       <path d="M0,-12 L10,-8 C10,2 6,8 0,12 C-6,8 -10,2 -10,-8 Z" fill="#fff" />

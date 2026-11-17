@@ -7,11 +7,11 @@ import { useAnime } from '../art/style';
 import { rating } from '../climate/model';
 import { FarmMap } from './FarmMap';
 import { LOOKS } from '../first/data';
-import { ClimateIcon, GoArrow, MailIcon, SettingsIcon, TimerIcon } from './Icons';
+import { ClimateIcon, GoArrow, PartnersIcon, MailIcon, SettingsIcon, TimerIcon } from './Icons';
 import { Img } from './ui';
 import { CHECK_DAYS, checkKey, currentDay } from '../trials/model';
 import { dayNumber } from '../rounds/farms';
-import { AnimalsButton, SecurityButton } from '../livestock/HudButtons';
+import { ClassicLifeButtons } from '../livestock/HudButtons';
 import { currency, money, moneyShort } from '../money';
 import { ProgressButton } from './ProgressButton';
 import { ClassicBillboard } from '../partners/ui';
@@ -97,7 +97,7 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
         <div className="abs" style={{ left: 346, top: 6, width: 203, height: 58 }}>
           <Img src={img.plank} w={203} h={58} />
           <span className="label abs" style={{ left: 0, right: 0, top: 23, textAlign: 'center', fontSize: 14 }}>
-            Lima Farming Game
+            TemoLima
           </span>
         </div>
       )}
@@ -221,6 +221,19 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
             </span>
             <span className="label" style={{ fontSize: 14 }}>Learn</span>
           </button>
+          {/* Partners, beside Shop */}
+          <button
+            type="button"
+            className="abs"
+            style={{ left: 715, top: 310, width: 56, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}
+            onClick={() => open({ kind: 'partners' })}
+            aria-label="Partners: offers, placements and ways to partner with TemoLima"
+          >
+            <span className="peach-btn" style={{ width: 56, height: 48.66 }}>
+              <PartnersIcon size={30} />
+            </span>
+            <span className="label" style={{ fontSize: 13 }}>Partners</span>
+          </button>
           <button
             type="button"
             className="abs"
@@ -276,8 +289,7 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
             <span className="label" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>Six farms</span>
           </button>
           {/* the cows and hens, and keeping the farm safe (src/livestock, src/security) */}
-          <AnimalsButton s={s} dispatch={dispatch} style={{ left: 715, top: 168 }} />
-          <SecurityButton s={s} dispatch={dispatch} style={{ left: 715, top: 310 }} />
+          <ClassicLifeButtons s={s} dispatch={dispatch} />
           {s.onboarded && !s.trial && s.trialHistory.length === 0 && !s.plotSelected && (
             <button type="button" className="tr-hint" onClick={() => dispatch({ type: 'trials', open: true })}>
               New: grow maize two ways and see which grows more.

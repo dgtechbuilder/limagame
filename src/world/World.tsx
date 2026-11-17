@@ -36,16 +36,17 @@ import {
   type Task,
   type TaskIcon,
   type TreatJob,
+  type SprayFor,
 } from './field';
 import { BILLBOARDS, FarmWorld, PLACES, STAGE_H, STAGE_W, TRACTOR_BOARD, type Fx } from './engine';
 import { slotBrand, type SlotId } from '../partners/data';
 import { useSlotView } from '../partners/track';
 import { BrandMark, openOffer } from '../partners/ui';
 import { useNav } from '../components/Nav';
-import { ClimateIcon } from '../components/Icons';
+import { ClimateIcon, PartnersIcon } from '../components/Icons';
 import { rating } from '../climate/model';
 import { TRACTOR_BONUS } from '../tractor/data';
-import { JOB_INFO, KIND_WORDS, TOOL_JOB, toolName, tractorName, type PlotKind } from '../plots/data';
+import { JOB_INFO, KIND_WORDS, toolJobs, toolName, tractorName, type PlotKind } from '../plots/data';
 import type { Rig } from '../plots/TractorPick';
 import { currency, money, moneyShort } from '../money';
 import { sfx } from '../sfx';
@@ -54,6 +55,8 @@ import { RiskHud, useRisk } from '../risk/RiskHud';
 import { WaterButton } from '../water/WaterButton';
 import { EvidenceAsk } from '../evidence/Ask';
 import type { RiskItem } from '../risk/model';
+import { achClock } from '../achievements/track';
+import { TIDY, TIDY_TOTAL, tidyCount, tidyLeft, tidyStreak, type TidyItem } from '../tidy/model';
 import { AnimalsButton, SecurityButton } from '../livestock/HudButtons';
 import { careOpen, lifeOf } from '../livestock/model';
 import { tankOf } from '../water/model';
@@ -68,7 +71,7 @@ const TractorPick = lazy(() => import('../plots/TractorPick').then(m => ({ defau
 /** Design review (?review=1): the farm world opens straight into one of these (GameState.worldDemo). */
 export type WorldDemo = 'check' | 'prescribe' | 'spray' | 'tractor' | 'tractor-summary' | 'rig' | 'board';
 
-type Care = { kind: 'fix'; farm: number; day: number } | { kind: 'spray'; jobs: { farm: number; hazard: import('../trials/model').TrialHazard }[] } | { kind: 'tractor'; farm: number; demo?: 'summary' }
+type Care = { kind: 'fix'; farm: number; day: number } | { kind: 'spray'; jobs: { farm: number; hazard: SprayFor }[] } | { kind: 'tractor'; farm: number; demo?: 'summary' }
   // the inputs board at a shed (then the item is picked up), and the tractor's type and tool
   | { kind: 'board'; farm: number; kinds: PlotKind[]; then: 'seeds' | 'fertilizer' | 'sprayer' }
   | { kind: 'rig' };
@@ -115,9 +118,11 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
   const [care, setCare] = useState<Care | null>(null);
   /** the tractor type and tool on the tractor now */
   const [rig, setRig] = useState<Rig | null>(null);
-  const [anchors, setAnchors] = useState<Anchors>({ farmer: { x: 437, y: 160 }, sign: null, riding: false, nearTractor: false, plot: null });
+  const [anchors, setAnchors] = useState<Anchors>({ farmer: { x: 437, y: 160 }, sign: null, riding: false, nearTractor: false, plot: null, tidy: null });
   /** clearing or planting one plot: started at, and how long it takes (ms) */
   const [working, setWorking] = useState<(PlotHere & { start: number; ms: number }) | null>(null);
+  /** clearing one of the day's bushes or rocks: which, started at, and how long it takes (ms) */
+  const [tidying, setTidying] = useState<{ item: TidyItem; start: number; ms: number } | null>(null);
   /** the farmer is walking to the tractor to hop on */
   const rideIntent = useRef(false);
   const nav = useNav();
@@ -208,7 +213,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     const tick = window.setInterval(() => {
       const f = w.farmerScreen();
       const sg = eng.current && atSignRef.current >= 0 ? signOf(atSignRef.current) : null;
-      const next = { farmer: f, sign: sg ? w.project(sg.x, 2.5, sg.z) : null, riding: w.isRiding(), nearTractor: w.nearTractor(), plot: w.plotJobHere(), bill: billboardNear(w) };
+      const next = { farmer: f, sign: sg ? w.project(sg.x, 2.5, sg.z) : null, riding: w.isRiding(), nearTractor: w.nearTractor(), plot: w.plotJobHere(), bill: billboardNear(w), tidy: w.tidyHere() };
       // the HUD follows the farmer: re-render only when something on it would move or change
       setAnchors(a => (sameAnchors(a, next) ? a : next));
     }, 120);
@@ -263,6 +268,70 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [working, overlay]);
+  /* ---------------- the daily tidy-up: 3 bushes and 5 rocks around the farm, every day ---------------- */
+
+  /** the player's calendar day (the streak's clock), as YYYY-MM-DD: it moves on with `today` */
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const date = useMemo(() => achClock.today(), [today]);
+  const tidyOn = s.fs.phase === 'done' && s.tidy?.date === date;
+  // the farm opened on a new day, or a new day started while it was open: today's bushes and rocks turn up
+  useEffect(() => {
+    if (s.fs.phase === 'done' && s.tidy?.date !== date) dispatch({ type: 'tidyDay' });
+  }, [date, s.tidy?.date, s.fs.phase, dispatch]);
+  const tidyItemsLeft = useMemo(() => (tidyOn ? tidyLeft(s.tidy, date) : []), [tidyOn, s.tidy, date]);
+  useEffect(() => {
+    eng.current?.setTidy(tidyItemsLeft);
+  }, [tidyItemsLeft]);
+  const tidy = tidyCount(s.tidy, date);
+
+  function startTidy(item: TidyItem) {
+    const w = eng.current;
+    if (!w || tidying || working) return;
+    w.stopWalking();
+    setTidying({ item, start: performance.now(), ms: TIDY.workS[item.kind] * 1000 * w.workScale });
+  }
+  useEffect(() => {
+    if (!tidying) return;
+    const id = window.setInterval(() => {
+      const w = eng.current;
+      if (!w) return;
+      // walking away (or a screen opening on top) stops the work; the bush or rock stays
+      if (overlay || w.tidyHere()?.id !== tidying.item.id) {
+        setTidying(null);
+        if (!overlay) say(`Stay by the ${tidying.item.kind} until the timer is done`);
+        return;
+      }
+      w.tidyWorking(tidying.item);
+      if (performance.now() - tidying.start < tidying.ms) return;
+      const done = tidying.item;
+      setTidying(null);
+      dispatch({ type: 'tidyClear', id: done.id });
+      const after = tidyLeft({ ...sRef.current.tidy!, cleared: [...(sRef.current.tidy?.cleared ?? []), done.id] }, date);
+      const bushes = after.filter(i => i.kind === 'bush').length;
+      const rocks = after.filter(i => i.kind === 'rock').length;
+      const left = [bushes ? `${bushes} bush${bushes === 1 ? '' : 'es'}` : '', rocks ? `${rocks} rock${rocks === 1 ? '' : 's'}` : ''].filter(Boolean).join(' and ');
+      // the last one: the toast says the farm is tidy, with the bonus
+      if (left) say(`${done.kind === 'bush' ? 'Bush cleared' : 'Rock moved'} · +${TIDY.pointsEach} points · ${left} to go`);
+    }, 120);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tidying, overlay]);
+
+  /** The tidy-up chip: walk to the nearest bush or rock still to clear. */
+  const goToTidy = () => {
+    const w = eng.current;
+    if (!w) return;
+    if (!tidyItemsLeft.length) return say('The farm is tidy today. New bushes and rocks turn up tomorrow');
+    if (w.isRiding()) w.dismount();
+    const i = w.nearestTidy();
+    if (!i) return;
+    // stop beside it, on the side the farmer comes from
+    const at = w.farmerAt();
+    const d = Math.hypot(at.x - i.x, at.z - i.z) || 1;
+    w.walkTo(i.x + ((at.x - i.x) / d) * 0.9, i.z + ((at.z - i.z) / d) * 0.9);
+    say(`Walking to the ${i.kind}`);
+  };
+
   useEffect(() => {
     const w = eng.current;
     if (!w) return;
@@ -305,8 +374,8 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     setRig(rig);
     track('tractor_ride', { stage: 'seat', ...(rig ?? {}) });
     if (rig) {
-      const j = TOOL_JOB[rig.tool];
-      say(`${tractorName(rig.tractor)} tractor, ${toolName(rig.tool).toLowerCase()}: drive over plots to ${JOB_INFO[j].name.toLowerCase()}. +${TRACTOR_BONUS.perJob} points a farm`);
+      const jobs = toolJobs(rig.tool).map(j => JOB_INFO[j].name.toLowerCase());
+      say(`${tractorName(rig.tractor)} tractor, ${toolName(rig.tool).toLowerCase()}: drive over plots to ${jobs.join(' or ')}. +${TRACTOR_BONUS.perJob} points a farm`);
     } else say('On the tractor');
   }
 
@@ -680,8 +749,9 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         </div>
       )}
 
-      {/* the HUD gives way to the full-screen rounds and six-farms screens, which have their own navigation */}
-      {!(s.roundsOpen || s.trialsOpen || s.bizOpen) && (
+      {/* the HUD gives way to the full-screen rounds and six-farms screens, which have their own navigation, and to every
+          screen on top (a pop-up never shares the stage with HUD buttons: docs/ui-spacing-plan.md) */}
+      {!(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
         <>
       {/* the farmer and their level */}
       <div className="hud-avatar">
@@ -746,6 +816,10 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         <span>MISSION</span>
       </button>
       <WaterButton s={s} dispatch={dispatch} />
+      <button type="button" className="hud-round hud-partners" onClick={() => dispatch({ type: 'open', modal: { kind: 'partners' } })} aria-label="Partners: offers, placements and ways to partner with TemoLima">
+        <PartnersIcon />
+        <span>PARTNERS</span>
+      </button>
       <AnimalsButton s={s} dispatch={dispatch} />
       <SecurityButton s={s} dispatch={dispatch} />
       <button type="button" className="hud-round hud-shop" onClick={() => dispatch({ type: 'open', modal: { kind: 'shop', tab: 'food' } })} aria-label="Shop">
@@ -784,18 +858,61 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         )}
         {s.field.carry && <span className="is-carry">Carrying: {CARRY_NAME[s.field.carry].toLowerCase()}</span>}
       </div>
+
+      {/* the daily tidy-up: today's bushes and rocks; tap to walk to the nearest one */}
+      {tidyOn && (
+        <button
+          type="button"
+          className={`hud-tidy${tidy.done === TIDY_TOTAL ? ' is-done' : ''}`}
+          onClick={goToTidy}
+          aria-label={
+            tidy.done === TIDY_TOTAL
+              ? `Daily tidy-up done${tidyStreak(s.tidy, date) > 1 ? `, ${tidyStreak(s.tidy, date)} days in a row` : ''}`
+              : `Daily tidy-up: ${tidy.bushes} of ${TIDY.bushes} bushes and ${tidy.rocks} of ${TIDY.rocks} rocks cleared. Tap to walk to the nearest.`
+          }
+        >
+          <span className="hud-tidy-head">
+            <b>{tidy.done === TIDY_TOTAL ? '✓ Farm tidy' : 'Daily tidy-up'}</b>
+            {tidyStreak(s.tidy, date) > 0 && <i>🧹{tidyStreak(s.tidy, date)}</i>}
+          </span>
+          <span className="hud-tidy-row">
+            <span className={tidy.bushes === TIDY.bushes ? 'is-full' : ''}>
+              <TidyGlyph kind="bush" /> {tidy.bushes}/{TIDY.bushes}
+            </span>
+            <span className={tidy.rocks === TIDY.rocks ? 'is-full' : ''}>
+              <TidyGlyph kind="rock" /> {tidy.rocks}/{TIDY.rocks}
+            </span>
+          </span>
+        </button>
+      )}
         </>
       )}
 
       {/* the evidence layer: now and then, "have you tried this on your own farm?" */}
-      {!overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen) && <EvidenceAsk s={s} dispatch={dispatch} />}
+      {!overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && <EvidenceAsk s={s} dispatch={dispatch} />}
 
       {/* money at risk on the six farms: the first thing on the farm the eye lands on, beside the task card */}
-      <RiskHud s={s} risk={risk} dispatch={dispatch} hud={!(s.roundsOpen || s.trialsOpen || s.bizOpen) && !overlay} busy={overlay || s.roundsOpen || s.trialsOpen || s.bizOpen} onGo={goToProblem} />
+      <RiskHud s={s} risk={risk} dispatch={dispatch} hud={!(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && !overlay} busy={overlay || s.roundsOpen || s.trialsOpen || s.bizOpen} onGo={goToProblem} />
 
       {/* clearing and planting: the button on the plot under the farmer, then its timer */}
-      {working && !overlay && <PlotTimer at={anchors.farmer} start={working.start} ms={working.ms} verb={working.job === 'prep' ? 'Clearing' : 'Planting'} row={working.row} />}
-      {!working && anchors.plot && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen) && (
+      {working && !overlay && <PlotTimer at={anchors.farmer} start={working.start} ms={working.ms} verb={working.job === 'prep' ? 'Clearing' : 'Planting'} what={rowName(working.row)} />}
+      {tidying && !overlay && <PlotTimer at={anchors.farmer} start={tidying.start} ms={tidying.ms} verb={tidying.item.kind === 'bush' ? 'Clearing' : 'Moving'} what={`the ${tidying.item.kind}`} />}
+      {!working && !tidying && !anchors.plot && anchors.tidy && tidyOn && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
+        <button
+          type="button"
+          className={`hud-plot is-tidy is-${anchors.tidy.kind}`}
+          style={{ left: Math.min(STAGE_W - 90, Math.max(90, anchors.farmer.x)), top: Math.min(STAGE_H - 60, anchors.farmer.y + 70) }}
+          onClick={() => startTidy(anchors.tidy!)}
+          aria-label={`${anchors.tidy.kind === 'bush' ? 'Clear the bush' : 'Move the rock'} (${TIDY.workS[anchors.tidy.kind]} seconds, +${TIDY.pointsEach} points)`}
+        >
+          <TidyGlyph kind={anchors.tidy.kind} />
+          <span>
+            <b>{anchors.tidy.kind === 'bush' ? 'Clear bush' : 'Move rock'}</b>
+            <i>+{TIDY.pointsEach} points</i>
+          </span>
+        </button>
+      )}
+      {!working && !tidying && anchors.plot && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
         <button
           type="button"
           className={`hud-plot is-${anchors.plot.job}`}
@@ -811,7 +928,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         </button>
       )}
 
-      {anchors.bill && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen) && (
+      {anchors.bill && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
         <BillboardTag bill={anchors.bill} dispatch={dispatch} />
       )}
 
@@ -890,12 +1007,15 @@ type Anchors = {
   plot: PlotHere | null;
   /** a partner billboard the farmer is near, where it shows on the stage */
   bill?: { slot: SlotId; x: number; y: number } | null;
+  /** one of the day's bushes or rocks the farmer stands by */
+  tidy?: TidyItem | null;
 };
 const samePlot = (a: PlotHere | null, b: PlotHere | null) => a === b || (!!a && !!b && a.farm === b.farm && a.row === b.row && a.job === b.job);
 const near = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.abs(a.x - b.x) < 1 && Math.abs(a.y - b.y) < 1;
 function sameAnchors(a: Anchors, b: Anchors) {
   if (a.riding !== b.riding || a.nearTractor !== b.nearTractor || !near(a.farmer, b.farmer) || !samePlot(a.plot, b.plot)) return false;
   if (a.bill?.slot !== b.bill?.slot || (a.bill && b.bill && !near(a.bill, b.bill))) return false;
+  if (a.tidy?.id !== b.tidy?.id) return false;
   if (!a.sign || !b.sign) return a.sign === b.sign;
   return a.sign.visible === b.sign.visible && near(a.sign, b.sign);
 }
@@ -913,7 +1033,7 @@ function billboardNear(w: FarmWorld): Anchors['bill'] {
 }
 
 /** The timer over the farmer while a plot is cleared or planted: a stopwatch whose ring fills, and the seconds left. */
-function PlotTimer({ at, start, ms, verb, row }: { at: { x: number; y: number }; start: number; ms: number; verb: string; row: number }) {
+function PlotTimer({ at, start, ms, verb, what }: { at: { x: number; y: number }; start: number; ms: number; verb: string; what: string }) {
   const [now, setNow] = useState(performance.now());
   useEffect(() => {
     let raf = 0;
@@ -929,7 +1049,7 @@ function PlotTimer({ at, start, ms, verb, row }: { at: { x: number; y: number };
   const R = 15;
   const L = 2 * Math.PI * R;
   return (
-    <div className="hud-timer" role="timer" aria-live="polite" aria-label={`${verb} ${rowName(row)}: ${left} seconds left`} style={{ left: Math.min(STAGE_W - 70, Math.max(70, at.x)), top: Math.max(70, at.y - 12) }}>
+    <div className="hud-timer" role="timer" aria-live="polite" aria-label={`${verb} ${what}: ${left} seconds left`} style={{ left: Math.min(STAGE_W - 70, Math.max(70, at.x)), top: Math.max(70, at.y - 12) }}>
       <svg viewBox="-20 -24 40 44" width={46} height={50} aria-hidden="true">
         <rect x={-3} y={-23} width={6} height={5} rx={1.5} fill="#5b3418" />
         <path d="M11,-14 L15,-18" stroke="#5b3418" strokeWidth={3} strokeLinecap="round" />
@@ -941,13 +1061,30 @@ function PlotTimer({ at, start, ms, verb, row }: { at: { x: number; y: number };
         </text>
       </svg>
       <span>
-        {verb} {rowName(row)}
+        {verb} {what}
       </span>
     </div>
   );
 }
 
 /* ---------------- icons ---------------- */
+
+/** The daily tidy-up's pieces: a scruffy bush, a rock. */
+function TidyGlyph({ kind }: { kind: 'bush' | 'rock' }) {
+  return kind === 'bush' ? (
+    <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden="true">
+      <circle cx={8} cy={14} r={6} fill="#2f7d1f" />
+      <circle cx={15} cy={12} r={6.5} fill="#4fa62b" />
+      <circle cx={13} cy={17} r={5} fill="#c9a85c" />
+      <path d="M12 6l-2-4M16 6l2-4M7 9L4 6" stroke="#8a4a14" strokeWidth={1.6} strokeLinecap="round" />
+    </svg>
+  ) : (
+    <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden="true">
+      <path d="M3 19l3-8 6-4 7 3 3 9z" fill="#a7a7a0" stroke="#6f6f68" strokeWidth={1.2} strokeLinejoin="round" />
+      <path d="M8 12l4-2 4 2" stroke="#d4d4cc" strokeWidth={1.4} fill="none" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 /** The tractor business: a tractor beside a map pin. */
 function BizIcon() {

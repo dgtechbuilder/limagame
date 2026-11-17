@@ -41,10 +41,10 @@ import {
   type TrialSummary,
 } from './trials/model';
 import { FOLLOW_UP } from './care/data';
-import { FULL, carryNeeded, doneMask, emptyField, followUpLeft, plotLocked, treatCostFor, treatLeft, type Carry, type Field } from './world/field';
+import { FULL, ROUTINE_POINTS, carryNeeded, doneMask, emptyField, followUpLeft, plotLocked, routineLeft, treatCostFor, treatLeft, type Carry, type Field } from './world/field';
 import { TRACTOR_BONUS, type ImplId } from './tractor/data';
 import { rewardFor } from './tractor/sim';
-import { TRACTOR_PLOT, plotCost, setPlotInput, toolName, type PlotJob, type PlotKind, type TractorId } from './plots/data';
+import { ROUTINE, TRACTOR_PLOT, plotCost, setPlotInput, toolName, type PlotJob, type PlotKind, type TractorId } from './plots/data';
 import { initialClimate, type ClimateState } from './climate/model';
 import { settleDays, trackClimate } from './climate/track';
 import { achClock, trackAchievements } from './achievements/track';
@@ -56,6 +56,7 @@ import { DEFAULT_LOAN, type LoanAsk } from './finance/loan';
 import { bookingRef, courseDate, courseOf, dayText, type TrainingBooking } from './training/data';
 import type { SfxKind } from './sfx';
 import { money } from './money';
+import { clearPiece, tidyFor, TIDY_TOTAL, type TidyState } from './tidy/model';
 import { PAYG, SHOP, activitiesDone, bizOf, contractDay, demoSlots, farmerAccepts, graduation, hireOutDay, offersFor, partnerBlock, partnerOf, planDay, requestsFor, runDay, scanFarm, shopBlock, type Biz, type Bookings, type Crop, type Drives, type FleetItem, type PartnerId } from './business/model';
 import {
   GROWING_STEPS,
@@ -153,7 +154,7 @@ export type SettingsTab = 'farmer' | 'game' | 'display' | 'help';
 export type ClimateTab = 'overview' | 'land' | 'areas' | 'emissions' | 'water' | 'tank' | 'credits' | 'shocks' | 'activity';
 /** My Progress (the achievements page): the journey of certification levels, the modules, today, badges, certificates */
 export type AchTab = 'journey' | 'modules' | 'today' | 'badges' | 'certificates';
-export type PartnersTab = 'offers' | 'placements';
+export type PartnersTab = 'offers' | 'placements' | 'join' | 'shortlist';
 export type AnimalsTab = 'today' | 'health' | 'water' | 'coop' | 'herd';
 export type SecurityTab = 'protect' | 'risk' | 'reports';
 export const DEFAULT_SETTINGS: Settings = { art: 'anime', graphics: 'auto', reduceMotion: false, voice: false, sound: true, upgradeNotes: true, country: '' };
@@ -267,6 +268,8 @@ export interface GameState {
   trainings?: TrainingBooking[];
   /** partner offers the player saved (src/partners/data.ts; missing in older saves) */
   offers?: BrandId[];
+  /** Partners › Partner with us: the ways a partner tapped Interested on (src/partners/catalogue.ts; missing in older saves) */
+  partnerPicks?: string[];
   /** money at risk: the button as last seen, and every problem dealt with (src/risk/model.ts; missing in older saves) */
   risk?: RiskState;
   /** water: the tank, the animals, the shared catchment, crop cover (src/water; missing in older saves) */
@@ -275,6 +278,8 @@ export interface GameState {
   ledger?: Ledger;
   /** the evidence layer: decisions, cohort tags, "tried it on your farm?" answers (src/evidence; missing in older saves) */
   evidence?: Partial<EvidenceState>;
+  /** the daily tidy-up: today's bushes and rocks cleared, and the tidy streak (src/tidy/model.ts; missing in older saves) */
+  tidy?: TidyState;
   collectedDay: Record<string, string>; // milk/eggs → date last collected
   /** the cows and the hens: care, health, problems, the coop (src/livestock) */
   life?: Partial<LifeState>;
@@ -356,6 +361,7 @@ export const initialState: GameState = {
   loan: DEFAULT_LOAN,
   trainings: [],
   offers: [],
+  partnerPicks: [],
   collectedDay: {},
   season: 1,
   ...freshSeason,
@@ -532,10 +538,16 @@ export type Action =
   | { type: 'achClaim'; id: string }
   | { type: 'achClaimAll' }
   | { type: 'achDaily' }
+  /** the farm opened on a new day (or a new day started while it was open): today's bushes and rocks turn up */
+  | { type: 'tidyDay' }
+  /** one of today's bushes or rocks cleared in the farm world */
+  | { type: 'tidyClear'; id: string }
   /** My Progress: claim a certification level's reward */
   | { type: 'levelClaim'; id: string }
   /** partners: get a brand's offer (its code is kept in Messages) */
   | { type: 'partnerSave'; id: BrandId }
+  /** Partners › Partner with us: tap Interested on a way to partner, or tap again to take it off the shortlist */
+  | { type: 'partnerPick'; id: string }
   /** go to a web address (src/route.ts): the screen it names, if the player may go there now */
   | { type: 'route'; path: string }
   | RiskAction
@@ -591,7 +603,7 @@ let sfxId = 0;
 /** Flows: finishing one of these ends a whole piece of play. */
 const FLOWS = new Set<Action['type']>(['achClaimAll', 'completeSale', 'trialHarvest', 'bizRun', 'bizHireOut', 'bizContract', 'bizGraduate', 'tractorDone']);
 /** Actions: finishing one of these is one thing done. Some only count when they earned something (their message). */
-const ACTIONS = new Set<Action['type']>(['animalCare', 'animalPrevent', 'coopBuild', 'herdBuy', 'securityBuy', 'achClaim', 'achDaily', 'levelClaim', 'partnerSave', 'buy', 'sell', 'bookTraining', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo']);
+const ACTIONS = new Set<Action['type']>(['achClaim', 'achDaily', 'levelClaim', 'partnerSave', 'buy', 'sell', 'bookTraining', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo', 'tidyClear', 'animalCare', 'animalPrevent', 'coopBuild', 'herdBuy', 'securityBuy']);
 const EARNED = new Set<Action['type']>(['roundResult', 'trialCheck', 'fieldMark']);
 const FS_ORDER: FsPhase[] = ['create', 'story', 'walk1', 'update', 'review1', 'walkRetry', 'retry', 'walk2', 'review2', 'done'];
 
@@ -607,6 +619,8 @@ function soundOf(s: GameState, next: GameState, a: Action): SfxKind | null {
     return next.fs.phase === 'done' || s.fs.phase === 'story' ? 'flow' : 'action';
   }
   if (FLOWS.has(a.type)) return 'flow';
+  // the last bush or rock of the day finishes the whole tidy-up
+  if (a.type === 'tidyClear' && (next.tidy?.cleared.length ?? 0) === TIDY_TOTAL) return 'flow';
   if (ACTIONS.has(a.type)) return 'action';
   if (a.type === 'prescribe') return a.right ? 'action' : null;
   if (a.type === 'animalFix') return lifeOf(next.life).issues.length < lifeOf(s.life).issues.length ? 'action' : null;
@@ -939,7 +953,9 @@ function play(s: GameState, a: Action): GameState {
       return {
         ...s,
         coins: s.coins - cost,
-        trial: { ...t, phase: 'growing', clock: a.clock, planted: dayNumber(), day: 1 },
+        // scheduled care (weeding, the stalk-borer spray, the top-dress) from the second cycle, when the farms are worked
+        // in the farm world: the six farms screen has no field work to do it with
+        trial: { ...t, phase: 'growing', clock: a.clock, planted: dayNumber(), day: 1, ...(!t.guided && s.view === 'world' ? { routine: [] } : {}) },
         field: emptyField(t.cycle),
         ...gainXp(s, 0.1),
         toast: toast(s.view === 'world' ? `${t.plans.length} farm plans paid: ${money(cost)} · now get them planted` : `${t.plans.length} farms planted for ${money(cost)} · day 1: check every farm`),
@@ -1031,7 +1047,7 @@ function play(s: GameState, a: Action): GameState {
           fuel = Math.min(s.coins, TRACTOR_PLOT[a.rig.tractor].fuel);
           let next = rows.map((r, i) => (i === 0 ? { ...r, tractor: r.tractor ?? a.rig!.tractor, tools: { ...(r.tools ?? {}), [a.rig!.job]: a.rig!.tool } } : r));
           // spraying from the seat is the boom sprayer's work
-          if (a.rig.job === 'spray' && here.sprayer !== 'boom') next = setPlotInput(next, 'sprayer', 0, 'boom');
+          if ((a.rig.job === 'spray' || a.rig.job === 'borer') && here.sprayer !== 'boom') next = setPlotInput(next, 'sprayer', 0, 'boom');
           const plots = t.plans.map((_, i) => (i === a.farm ? next : plotsOf(t!, i)));
           const spent = t.plans.map((_, i) => (t!.fuel?.[i] ?? 0) + (i === a.farm ? fuel : 0));
           t = { ...t, plots, fuel: spent };
@@ -1101,6 +1117,14 @@ function play(s: GameState, a: Action): GameState {
           field = putDown(trial);
           return { ...s1, field, trial, ...gainXp(s1, 0.03), toast: toast(`${farmName(a.farm)}: follow-up done · the problem stays away`) };
         }
+      }
+      // scheduled care counts once its last plot is done
+      const due = routineLeft(f, t, a.farm, currentDay(t, dayNumber())).find(r => r.key === a.job);
+      if (due && (after & due.need) === due.need) {
+        const trial: Trial = { ...t, routine: [...(t.routine ?? []), `${a.farm}:${due.job}`] };
+        field = putDown(trial);
+        const points = ROUTINE_POINTS + bonus;
+        return { ...s1, field, trial, points: s1.points + points, ...gainXp(s1, 0.03), toast: toast(`${farmName(a.farm)} ${ROUTINE[due.job].done} · +${points} points`) };
       }
       if (bonus) return { ...s1, field, points: s1.points + bonus, ...gainXp(s1, 0.02), toast: toast(`Tractor bonus · +${bonus} points · ${farmName(a.farm)} done by tractor${fuel ? ` · −${money(fuel)} of fuel` : ''}`) };
       if (fuel && a.rig) return { ...s1, field, toast: toast(`${farmName(a.farm)}: the ${a.rig.tractor} tractor's ${toolName(a.rig.tool).toLowerCase()} at work · −${money(fuel)} of fuel`) };
@@ -1422,12 +1446,39 @@ function play(s: GameState, a: Action): GameState {
     case 'riskFixed':
     case 'riskTap':
       return { ...s, risk: riskReduce(s.risk, a) };
+    case 'partnerPick': {
+      const picks = s.partnerPicks ?? [];
+      return { ...s, partnerPicks: picks.includes(a.id) ? picks.filter(x => x !== a.id) : [...picks, a.id] };
+    }
     case 'partnerSave': {
       const b = brandOf(a.id);
       const saved = s.offers ?? [];
       if (!b || saved.includes(a.id)) return s;
       const code = offerCode(b.id, s.farmer?.name);
       return { ...s, offers: [...saved, a.id], note: `Offer from ${b.name}: ${b.offer.title}, code ${code}. ${b.offer.line}.`, toast: toast(`Offer from ${b.name}: code ${code} · it is in Messages`) };
+    }
+    case 'tidyDay': {
+      const today = achClock.today();
+      if (s.tidy?.date === today) return s;
+      const first = !s.tidy?.date;
+      return {
+        ...s,
+        tidy: tidyFor(s.tidy, today),
+        toast: toast(first ? 'Tidy-up: clear 3 bushes and 5 rocks around the farm every day' : 'New day: 3 bushes and 5 rocks to clear around the farm'),
+      };
+    }
+    case 'tidyClear': {
+      const r = clearPiece(s.tidy, a.id, achClock.today());
+      if (!r) return s;
+      return {
+        ...s,
+        tidy: r.tidy,
+        points: s.points + r.points,
+        coins: s.coins + r.coins,
+        ...(r.finished
+          ? { toast: toast(`Farm tidy! +${money(r.coins)} · +${r.points} points${r.tidy.streak > 1 ? ` · ${r.tidy.streak}-day tidy streak` : ''}`) }
+          : {}),
+      };
     }
     case 'achDaily': {
       const ach = achOfSave(s.ach);
