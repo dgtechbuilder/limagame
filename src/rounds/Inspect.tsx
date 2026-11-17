@@ -5,7 +5,8 @@ import { img } from '../assets';
 import { FarmMap } from '../components/FarmMap';
 import { CheckBadge } from '../components/Icons';
 import { FarmerFigure, PartArt, WaterArt } from '../first/art';
-import { say, type Call, type Look } from '../first/data';
+import { say, stakeLine, type Call, type Look } from '../first/data';
+import { money } from '../money';
 import { CallIcon, GuideLine } from '../first/Review';
 import { track } from '../first/track';
 import { CHECK_COOLDOWN_S, FARMS, ROUND_PARTS, ROUND_PART_LABELS, usesLegacyArt, type Round, type RoundPart } from './data';
@@ -48,7 +49,10 @@ export function Inspect({
   after,
   voice,
   progress,
+  stake,
 }: {
+  /** what this farm's problem costs if it is left alone (the at-risk amount), shown while it is being read */
+  stake?: number;
   /** the visit in the day's round: farms (or beds) read right so far, of how many, and what they are called */
   progress?: { done: number; total: number; unit: string };
   round: Round;
@@ -77,6 +81,8 @@ export function Inspect({
   const [seen, setSeen] = useState<RoundPart[]>(startView === 'look' ? [] : ROUND_PARTS);
   // what this call pays, fixed when the check starts (the saved result changes `points` as soon as the call is made)
   const [payout] = useState(points);
+  // what is at risk on this farm, fixed when the check starts
+  const [atStake] = useState(stake);
   const [zoom, setZoom] = useState<RoundPart | null>(null);
   const [group, setGroup] = useState<CallGroup | null>(null);
   const started = useRef(performance.now());
@@ -149,6 +155,13 @@ export function Inspect({
         {second ? ' · second look' : ''}
       </span>
       <span className="rr-roundtag rr-cropnote">{note ?? `${CROP_NAME[round.crop]} · ${STAGE_LABELS[round.stage]} · day ${round.day + 1} of ${CYCLE_DAYS}`}</span>
+      {/* the at-risk amount for this farm, the same number as the button on the farm (src/risk) */}
+      {!!atStake && step !== 'right' && (
+        <p className="stake is-check" role="note" title={stakeLine(atStake)}>
+          <span aria-hidden="true">!</span>
+          Will cost you about {money(atStake)} if it is left alone
+        </p>
+      )}
       <NavBar horizontal onBack={onLeave} style={{ right: 28, top: 8 }} />
 
       <ol className="review-steps" aria-label="Check steps">

@@ -2,6 +2,11 @@
    planted, a tile ploughed from the tractor seat, a treatment done, a harvest sold) and record its climate effect.
    Kept out of the main reducer so the farming rules stay readable; the numbers are in model.ts. */
 
+import { pumpCo2, type Source } from './model';
+import { earn } from '../credits/ledger';
+import { TREATMENTS, treatmentOf, type Treatment } from '../care/treatments';
+import { ROWS_PER_FARM } from '../strategy/data';
+import { chosen, hasStrategies, strategiesOf } from '../strategy/model';
 import { TILES, TREAT_JOB, popcount } from '../world/field';
 import { checkKey, farmName, hazardFor, optionOf, type Trial } from '../trials/model';
 import { toast, SELLING, SOLD, type Action, type GameState } from '../state';
@@ -91,7 +96,7 @@ export function settleDays(land: GameState, s: GameState, today = payClock.today
     landKg: { stored: pay.landKg.stored + l.stored * days, lost: pay.landKg.lost + l.lost * days },
     areas: totals,
   };
-  let next: GameState = { ...s, climate: { ...c1, pay: pay1 }, coins: s.coins + coins };
+  let next: GameState = { ...s, climate: { ...c1, pay: pay1 }, coins: s.coins + coins, ledger: coins > 0 ? earn(s.ledger, 'co2', credits, coins, when, today) : s.ledger };
   if (levelUp) next = { ...next, points: next.points + levelUp.points, toast: toast(`Climate level up: ${levelUp.name} · +${levelUp.points} points`) };
   if (coins > 0)
     next = {
@@ -103,6 +108,46 @@ export function settleDays(land: GameState, s: GameState, today = payClock.today
       },
     };
   return next;
+}
+
+/** A treatment done a chosen way: its climate effects for the farm. */
+function treatmentDelta(w: Treatment, solar: boolean): Delta {
+  const water = w.water ?? 0;
+  return {
+    emit: { chemicals: w.co2 ?? 0, ...(water ? { water: pumpCo2(water, solar) } : {}) },
+    water,
+    soil: w.soil ?? 0,
+    pollution: w.pollution ?? 0,
+    stored: w.stored ?? 0,
+    sprays: (w.pollution ?? 0) >= 3 ? 1 : 0,
+  };
+}
+
+/** Where each strategy dimension's emissions go on the climate page. */
+const DIM_SOURCE: Record<string, Source> = { fert: 'fertilizer', fertTiming: 'fertilizer', till: 'fuel', mulch: 'chemicals', seed: 'seed', crop: 'seed' };
+
+/** A farm's row strategies over the cycle, for the climate ledger (null: every row as the plan). */
+function strategyDelta(t: Trial, farm: number, solar: boolean): { delta: Delta; smart: number } | null {
+  if (!hasStrategies(t, farm)) return null;
+  const emit: Partial<Record<Source, number>> = {};
+  let stored = 0;
+  let water = 0;
+  let soil = 0;
+  let pollution = 0;
+  let smart = 0;
+  for (const st of strategiesOf(t, farm))
+    for (const { dim, option } of chosen(st)) {
+      const src = DIM_SOURCE[dim] ?? 'seed';
+      if (option.co2) emit[src] = (emit[src] ?? 0) + option.co2;
+      stored += option.stored ?? 0;
+      water += option.water ?? 0;
+      soil += (option.soil ?? 0) / ROWS_PER_FARM;
+      pollution += option.pollution ?? 0;
+      if (option.smart) smart++;
+    }
+  // water saved (negative) is less pumping
+  if (water) emit.water = (emit.water ?? 0) + pumpCo2(water, solar);
+  return { delta: { emit, stored, water, soil, pollution }, smart };
 }
 
 export function trackClimate(prev: GameState, s: GameState, a: Action): GameState {
@@ -184,7 +229,10 @@ export function trackClimate(prev: GameState, s: GameState, a: Action): GameStat
         if (!prev.trial.checks[ck]?.treated && t.checks[ck]?.treated) {
           const h = hazardFor(prev.trial, a.farm, Number(tr[1]));
           const job = TREAT_JOB[h];
-          if (job) log(`${farmName(a.farm)} · ${job === 'weed' ? 'weeded by hand' : `treated (${h})`}`, 'field', treatDelta(job, solar));
+          // a treatment done another way than the standard one: its own climate effects (care/treatments.ts)
+          const way = treatmentOf(h, t.checks[ck]?.treatment);
+          if (way && way !== TREATMENTS[h]?.[0]) log(`${farmName(a.farm)} · ${way.label.toLowerCase()} (${h})`, 'field', treatmentDelta(way, solar));
+          else if (job) log(`${farmName(a.farm)} · ${job === 'weed' ? 'weeded by hand' : `treated (${h})`}`, 'field', treatDelta(job, solar));
         }
       }
       // follow-up care finished
@@ -223,6 +271,11 @@ export function trackClimate(prev: GameState, s: GameState, a: Action): GameStat
         if (p.land !== 'tractor') return;
         const drove = !!t.tractor?.[i] || popcount(s.field.byTractor?.[`${i}:prep`] ?? 0) > 0;
         if (!drove) log(`${farmName(i)} · ploughed by a hired tractor`, 'tractor', contractorDiesel());
+      });
+      // each farm's row strategies: their emissions, carbon, water and soil over the cycle (src/strategy)
+      t.plans.forEach((_, i) => {
+        const d = strategyDelta(t, i, solar);
+        if (d) log(`${farmName(i)} · row strategies (${d.smart} climate-smart choice${d.smart === 1 ? '' : 's'})`, 'farms', d.delta);
       });
       const kg = t.results.reduce((n, r) => n + (r.bags + r.beans) * 90, 0);
       const lost = t.results.reduce((n, r) => n + (r.lost > 0 && r.lost < 1 ? (r.bags * r.lost) / (1 - r.lost) : 0) * 90, 0);

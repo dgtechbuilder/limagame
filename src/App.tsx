@@ -1,3 +1,5 @@
+import { trackContext } from './first/track';
+import { evidenceOf } from './evidence/model';
 import { Suspense, lazy, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { FarmScene } from './components/FarmScene';
 import { ShopModal, StepsModal } from './screens/Catalog';
@@ -93,6 +95,15 @@ export default function App() {
   const [s, dispatch] = useGame();
   // money is shown in the currency of the player's country (src/money.ts): set before anything below is drawn
   setCountry(s.settings.country);
+  // every event carries the player's programme tags (src/evidence)
+  trackContext.tags = evidenceOf(s.evidence).tags;
+  // a programme link (?cohort=CODE or ?programme=CODE) tags the player once
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const code = q.get('cohort') ?? q.get('programme');
+    if (code) dispatch({ type: 'evidenceTag', tag: code, on: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const review = reviewing();
   const scale = useStageScale(review);
   const toastTimer = useRef<number | undefined>(undefined);

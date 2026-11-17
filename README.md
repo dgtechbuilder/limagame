@@ -38,6 +38,10 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [Sound effects](#sound-effects)
 - [Money on screen](#money-on-screen)
 - [Settings](#settings)
+- [Money at risk](#money-at-risk)
+- [Climate-smart farming: row strategies and treatment choices](#climate-smart-farming-row-strategies-and-treatment-choices)
+- [Water as a real resource](#water-as-a-real-resource)
+- [The evidence layer](#the-evidence-layer)
 - [Climate tracking](#climate-tracking)
 - [Achievements, the daily streak and certificates](#achievements-the-daily-streak-and-certificates)
 - [My Progress: certification levels and learning credits](#my-progress-certification-levels-and-learning-credits)
@@ -121,6 +125,11 @@ src/
   art/                     retro anime characters: anime.tsx (SVG kit: farmer, guide, shopkeeper, Ojuok),
                            Cast.tsx (anime or original picture), style.ts (style and read-aloud contexts)
   speech.ts                Read aloud: the phone's own voice (speechSynthesis)
+  strategy/                climate-smart rows: data.ts (every dimension and option), model.ts, StrategyBoard.tsx
+  water/                   the tank, the animals, the shared catchment, crop cover: config.ts, model.ts, track.ts, WaterPanel.tsx
+  credits/ledger.ts        every kind of credit (CO₂, water) earned and paid
+  evidence/                the decision log, programme tags, "tried it on your own farm?": model.ts, Ask.tsx
+  risk/                    money at risk: config.ts (every number to tune), model.ts (the list, from the save), RiskHud.tsx (the button)
   climate/                 climate tracking: model.ts (every factor, the ledger, rating, levels), track.ts (which
                            actions record what, and the end-of-day payment), land.ts (land farmed, bare or idle,
                            and what a credit pays), Tag.tsx (climate tags on choices), sample.ts (design review)
@@ -867,6 +876,131 @@ four sections. Every control works at once and is saved on the device; *Reset pr
 The settings live in `GameState.settings` (`src/state.ts`). The 3D farm is rebuilt when the character style or the
 graphics change. `tests/settings.spec.ts` plays every section.
 
+## Money at risk
+
+The farm's first button, top centre beside the task card: **the money every unresolved problem on the six farms
+would cost if it is left**, added up and written short in the player's currency (*KSh 50k at risk*, *KSh 1.2M at
+risk*). It makes the daily loop's stakes visible at a glance and gives a reason to open the game every day.
+
+![The at-risk list: each farm, what is at risk and when it grows, never the cause](docs/at-risk-list.webp)
+
+- **What it counts.** Every farm that is planted and shows a problem with a cost (pests, water, plant food, weeds,
+  animals, hail…) that has not been dealt with: read right, and the fix done by hand (hail: read right). A problem's
+  **stated cost** is what the six-farm model takes off that farm's harvest if it is never dealt with
+  (`DAMAGE[…].missed` × what the farm's harvest is worth as it grows), the same number the check shows: *Will cost you
+  about KSh 10,730 if it is left alone*.
+- **It grows if left.** On the day a problem shows, half its stated cost is at risk; each day it is left adds a
+  quarter, up to the whole stated cost. **A problem left unresolved stays on its farm the next day** (until it is
+  dealt with or the harvest), so a player can still catch it late; one never dealt with costs, at harvest, what was at
+  risk by then. A problem the plan cannot treat (pests on a farm with no pest control) does not carry over, and once
+  read right it leaves the list as lost, not saved. All of it is in `src/risk/config.ts` (`startShare`,
+  `escalatePerDay`, `carryOver`).
+- **Tap it** for the list, biggest first: the farm and its plots, what is at risk now, and what it will be in a day
+  (or *Full cost*). The list never says what the problem is, only where the player is with it (*Not checked yet*,
+  *Read wrong: look again*, *Read right: choose the fix*, *Read right: the work is left*). **Tap a farm** to go straight
+  to its sign and into its check (or the fix, or the work left).
+- **Live.** Dealing with a problem takes it off at once: the button pops, a *KSh 9.6k saved* chip floats off it and a
+  *Caught in time* card follows (after any check or fix screen has closed). With nothing at risk the button turns calm
+  green, *All clear* (*Harvest time* once the checks are over). It first appears with the first problem of the first
+  planting period, and stays from then on.
+- **While you were away.** The button as last seen is saved; a player coming back on a later day to more at risk sees
+  what grew (*KSh 3.5k at risk when you left, KSh 11k now*) and can open the list from there.
+- **Forecast shocks** (drought, flood, hail by the season's forecast, less what crop cover pays; cover is the Kinga
+  Cover offer for now) can be added to the total: off (`RISK.includeShocks`) until confirmed.
+- **Evidence** (for the evidence layer to come): every tap on the button and on a farm in its list is counted, and
+  every problem dealt with is kept with when it was first on the button in front of the player and when it was fixed
+  (`GameState.risk`, the last 100). Events: `risk_open`, `risk_row`, `risk_fixed` (with `msFromSeen`).
+- **Not yet:** a push or SMS reminder (*KSh 50k at risk on Farm 2*) is out of scope until confirmed.
+
+`src/risk/model.ts` works the list out from the save (no screens; `riskOf`), `src/risk/RiskHud.tsx` is the button, the
+list and the two cards, and `tests/risk.spec.ts` plays the acceptance checks: three problems add up, a fix drops the
+total by exactly its amount, a day left raises each by the escalation (up to its stated cost), a carried problem
+stays on its farm, the list never names a cause and a tap opens that farm's check.
+
+## Climate-smart farming: row strategies and treatment choices
+
+Partners asked the game to teach climate-smart practices through real trade-offs. Two general systems do it.
+
+**Row strategies.** Each farm's 20 plots make 4 rows of 5, and **each row runs its own strategy**: one option on every
+dimension, grouped as *fertilizer* (as the plan, organic compost, DAP, Rutuba Gold NPK, micro-dosing), *tilling*
+(minimum tillage, deep ploughing), *sowing* (seed, spacing, seedbed: zai pits, tied ridges), *planting* (timing,
+mulching), *planning* (crop, rotation, season) and *farming habits* (check frequency, watering time, fertilizer
+timing). Every option has a cost, labour (person-days, 24 family days a farm, the rest hired), a payoff (the return
+over the co-investment of cash and labour, which can differ by the season's forecast), and climate effects (emissions,
+carbon stored, water, soil health, pollution, and how much of each problem's damage the row takes). Mission ›
+*Rows* (plan) or *Row strategies* (growing) opens the board; a sown farm's rows are locked. After harvest, Mission ›
+*By row* puts the four rows of each farm side by side (bags, profit, return, labour, CO₂, carbon, water) and Lima AI
+names the row that paid best and what it did differently. A row left "as the farm plan" changes nothing, so a farm
+whose rows are untouched grows exactly as before. The strategies are paid with the plan (or at once, while growing),
+and their emissions, carbon, water and soil go into the climate ledger at harvest, so they move the climate rating,
+the credits and soil health. **The whole table is `src/strategy/data.ts`**: a new dimension or option is one more entry,
+no code. Returns are placeholders (organic about 20%, DAP about 15% over the co-investment) to be replaced with verified
+values.
+
+**Diagnose, then choose how to treat.** After the right fix is picked, *How will you do it?* offers the ways to do it,
+each with its cost, labour and payoff: armyworm with pesticide, **a pinch of ash in each funnel** or neem; aphids with
+insecticide, soapy water or neem; a drought with a watering can, a drip line from the tank, or one deep watering and
+mulch; hunger with CAN, manure and compost, or urea; weeds by hand, with a herbicide, or weeded then mulched; and so on.
+A way's `effect` is the share of the avoidable damage it stops (the standard way is 1, as before), so a gentler way
+saves a little less: the money-at-risk cheer and the harvest both use it. Each way has its own climate effects.
+**The table is `src/care/treatments.ts`.**
+
+## Water as a real resource
+
+- **The tank** is on the farm's HUD (**WATER**, under Shop, its level as water in a barrel; orange and pulsing when low)
+  and in **Climate › Water**. 10,000 L to start, plus every tank bought in the Shop. Each day (the player's midnight, or
+  a night slept on the fast clock): **rain** off 120 m² of roofs in (by the season's forecast), the **house** (100 L),
+  the **animals** and the **rows** (a can a row a day by hand, plus their watering habits and mulches) out. **Piped
+  water** (5,000 L) and a **bowser** (10,000 L, dearer a litre) can be bought.
+- **Cows or hens.** The herd can be changed (0–6 cows, 0–60 hens): a cow drinks 50 L a day and gives off methane, a hen
+  a cup. The herd also sets the animals' emissions in Climate › Farm areas.
+- **Shocks have consequences.** With the tank under 20%, a drought on a farm puts 1.5 times as much at risk, and a
+  drought can't be watered by hand until there is water in the tank (the farm world's work waits; on the Mission
+  screen it stays untreated).
+- **Crop cover** (Climate › Water) is bought for a cycle and pays back 70% of what drought, flood and hail took at
+  harvest. **Its price is set by the farm's water practices**: a tank at least half full, rows that keep water in the
+  soil (mulch, zai pits, tied ridges, morning watering, drought-tolerant seed, minimum tillage), and a fair share of the
+  dam each take some off, up to 40%. A dry season loads it.
+- **Credits of every kind.** The credit ledger (`src/credits/ledger.ts`) now holds more than CO₂: **water credits**, one
+  for every 100 L a day under the farm's 700 L baseline (and two more on a rationed day drawn fairly), are paid with the
+  day like CO₂ credits. *Climate › Credits* shows both kinds and every payment.
+- **Climate › Water & soil** now shows real data: the tank now, today's use by what uses it, the last 7 days, water
+  credits and the irrigation drawn.
+- **The shared catchment** (Phase 4): the six farms' irrigation comes from a small dam shared with four neighbours,
+  rationed when it runs low; the player chooses to take what the plans need or a fair share, and the share of the
+  plans' irrigation that was delivered sets the harvest's watering. Design: [`docs/shared-water.md`](docs/shared-water.md).
+
+Every number is in `src/water/config.ts` (placeholders until confirmed).
+
+## The evidence layer
+
+To show that playing changes behaviour (`src/evidence/model.ts`):
+
+- **Every meaningful decision is logged with a timestamp** in the saved game (the last 600): each check (with hours since
+  that farm's last check: check frequency), each fix and way of treating (with the plots it covered), inputs, plans and
+  row strategies, watering time, water bought and used each day, the herd, the dam policy, crop cover, money-at-risk
+  taps and fixes (with the time from first seeing a risk to fixing it), harvests and tractor-business days. Each is also
+  an event (`decision_…`), sent to `VITE_EVENTS_URL` when one is set.
+- **Cohort / programme tags**: Settings › Help & data › *Programme* (type a code), or a link with `?cohort=CODE` (or
+  `?programme=CODE`). Tags go on every event and in the export.
+- **"Have you tried this on your own farm?"**: after a climate-smart practice (a pinch of ash, mulch, zai pits, a fair
+  share of the dam, fixing a problem the day it showed…), at most once a day and once per practice (again after a week
+  for *not yet*), a card asks; *Yes, I have*, *Not yet, but I will*, *No* or *I don't farm (yet)* are kept.
+- **Settings › Help & data › My evidence** sums it up (checks a day, climate-smart treatments, minutes from risk to fix)
+  and downloads everything as JSON.
+
+## Tractor business: farmers, urgency and a trend
+
+- **Each farmer has an urgency, a willingness to pay and a payment reliability** (`TRAITS` in
+  `src/business/model.ts`), shown on every booking (*Urgent*, *Pays 110%*, *Often late or unpaid*). The hire collected is
+  the hire times what they pay and how reliably; urgent work done today pays 10% more and 10 points. The day's result
+  shows what was not collected, and a **day value** (route efficiency, money collected, urgent work served): the
+  shortest route is not always the best one.
+- **The farm drives urgency.** While the player's own six farms are in their planting window, land preparation and
+  planting bookings are more urgent; rain forecast makes them more so, a dry season makes the harvest and transport
+  urgent (`farmSignal`, `urgencyOf`).
+- **My trend**: a chart of the trainee's efficiency score and day value, day by day.
+
 ## Climate tracking
 
 Every job in the game now records what it does to the climate, the water and the land. The **CLIMATE** button
@@ -1128,7 +1262,8 @@ player's saved game or events.
   stand in for a whole season) and the rotation. Round points are illustrative.
 - **Lima AI** is a rule-based stand-in that reads the season's numbers; it does not call an AI service.
 - **Rewards** are saved in the game but nothing is sent to a partner; there is no redemption backend.
-- **Missed checks** cost harvest on the six farms (see `DAMAGE` in `src/trials/model.ts`). In the everyday field
+- **Missed checks** cost harvest on the six farms (see `DAMAGE` in `src/trials/model.ts`); a problem left unresolved
+  now stays on its farm until it is dealt with, and costs at harvest what was at risk by then (`src/risk/config.ts`). In the everyday field
   rounds they still only show as a bed to look at again.
 - **The six-farm model** (yields, problem odds, damage, prices) is illustrative and needs agronomist review before any
   pilot. Only maize is planned in it so far; beans, sukuma wiki and tomatoes would each need their own table.

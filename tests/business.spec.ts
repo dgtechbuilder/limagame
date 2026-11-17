@@ -45,8 +45,7 @@ import {
   yearOf,
   type Bookings,
   type Crop,
-  type ReqKey,
-} from '../src/business/model';
+  type ReqKey, URGENT, traitsOf, urgencyOf } from '../src/business/model';
 import { BAGS, DRIVE_SECS, FIELD_W, HAUL_Y, newFieldDrive, newHaulDrive, stepField, stepHaul } from '../src/business/drive';
 import { initialState, reducer } from '../src/state';
 import { boot, state, type Win } from './helpers';
@@ -136,7 +135,15 @@ test('a day: at least three farms, a route through all of them, the efficiency s
   expect(top.revenue).toBe(mine.reduce((n, x) => n + Math.round(hireOf(x.part.tool) * x.part.acres), 0));
   expect(top.commission).toBe(req.filter(k => bookings[k] === 'partner').map(partOf).reduce((n, x) => n + Math.round(hireOf(x.part.tool) * x.part.acres * PARTNER_CUT), 0));
   expect(top.hubFee).toBe(Math.round(top.revenue * HUB_SHARE)); // the hub's tractor, until the agent owns one
-  expect(top.profit).toBe(top.revenue + top.commission - top.diesel - top.wage - top.hubFee);
+  // what the farmers actually pay: the hire at their willingness to pay and reliability, more for urgent work done now
+  expect(top.collected).toBe(
+    mine.reduce((n, x) => {
+      const tr = traitsOf(x.client.id);
+      return n + Math.round(hireOf(x.part.tool) * x.part.acres * tr.pay * tr.reliability * (urgencyOf(x.client.id, x.activity, null) === 3 ? 1 + URGENT.premium : 1));
+    }, 0),
+  );
+  expect(top.shortfall).toBe(top.revenue - top.collected);
+  expect(top.profit).toBe(top.revenue - top.shortfall + top.commission - top.diesel - top.wage - top.hubFee);
   expect(top.missed).toBe(0);
   const { biz, result } = runDay(b, top);
   expect(biz.day).toBe(2);

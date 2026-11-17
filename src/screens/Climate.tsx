@@ -23,6 +23,10 @@ import { payOf } from '../climate/model';
 import { COLS } from '../world/field';
 import { currency, fromUsd, money } from '../money';
 import { FORECASTS } from '../trials/model';
+import { WaterTab, CreditsTab } from '../water/WaterPanel';
+import { capacityOf, tankOf, useToday } from '../water/model';
+import { WATER } from '../water/config';
+import { ledgerOf } from '../credits/ledger';
 import type { Action, ClimateTab, GameState } from '../state';
 
 /* The Climate page: everything the game tracks about the climate, in seven sections. Overview (rating, level,
@@ -37,6 +41,8 @@ const TABS: { id: ClimateTab; label: string; icon: string }[] = [
   { id: 'land', label: 'Land & pay', icon: '🌱' },
   { id: 'areas', label: 'Farm areas', icon: '🗺' },
   { id: 'emissions', label: 'Emissions', icon: '☁' },
+  { id: 'tank', label: 'Water', icon: '🛢' },
+  { id: 'credits', label: 'Credits', icon: '★' },
   { id: 'water', label: 'Water & soil', icon: '💧' },
   { id: 'shocks', label: 'Climate shocks', icon: '⚡' },
   { id: 'activity', label: 'Activity', icon: '≡' },
@@ -124,6 +130,8 @@ export function ClimatePage({ s, dispatch, tab: startTab }: Props) {
           {tab === 'areas' && <Areas s={s} />}
           {tab === 'emissions' && <Emissions s={s} />}
           {tab === 'water' && <WaterSoil s={s} />}
+          {tab === 'tank' && <WaterTab s={s} dispatch={dispatch} />}
+          {tab === 'credits' && <CreditsTab s={s} />}
           {tab === 'shocks' && <Shocks s={s} dispatch={dispatch} />}
           {tab === 'activity' && <Activity s={s} />}
         </section>
@@ -410,14 +418,22 @@ function WaterSoil({ s }: { s: GameState }) {
   const wp = waterProductivity(t);
   const solar = hasSolar(s);
   const tanks = s.inventory.reduce((n, i) => n + (TANK_LITRES[i] ?? 0), 0);
+  const tank = tankOf(s.tank);
+  const cap = capacityOf(s);
+  const today = useToday(s);
+  const days = tank.days.slice(0, 7);
+  const week = days.reduce((n, d) => n + d.house + d.animals + d.farms - d.short, 0);
+  const credits = ledgerOf(s.ledger);
   return (
     <div className="cl-two">
       <div>
         <p className="set-title">Water</p>
         <div className="cl-tiles is-two">
-          <Tile label="Used, all time" value={litres(t.water)} sub="On top of the rain" />
-          <Tile label="Food per 1,000 L" value={wp ? kg(wp) : '–'} sub="Higher is better" />
-          <Tile label="Rainwater tanks" value={tanks ? litres(tanks) : 'None'} sub="Buy in the Shop: they carry a dry spell" tone={tanks ? 'good' : undefined} />
+          <Tile label="The tank now" value={`${litres(tank.level)} of ${litres(cap)}`} sub={tank.level < cap * WATER.tank.low ? 'Low: buy water in Water' : 'Rain off the roofs fills it'} tone={tank.level < cap * WATER.tank.low ? 'bad' : 'good'} />
+          <Tile label="Used today" value={litres(today.total)} sub={`House ${litres(today.house)} · animals ${litres(today.animals)} · rows ${litres(today.farms)}`} />
+          <Tile label="Last 7 days" value={days.length ? litres(week) : '–'} sub={days.length ? `${days.filter(d => d.short > 0).length} day(s) the tank ran dry` : 'Counted from tonight'} />
+          <Tile label="Water credits" value={num(credits.paid.water, 1)} sub={`Under the ${WATER.credits.baseline} L baseline · ${money(credits.coins.water)} paid`} tone={credits.paid.water > 0 ? 'good' : undefined} />
+          <Tile label="Irrigation, all time" value={litres(t.water)} sub={`On top of the rain · ${wp ? `${kg(wp)} of food a 1,000 L` : 'food a 1,000 L after a harvest'}${tanks ? ` · tanks bought ${litres(tanks)}` : ''}`} />
           <Tile label="Pumps" value={solar ? 'Solar' : 'Petrol'} sub={solar ? 'Clean pumping, cold store and mill' : 'Redeem the solar discount in Rewards'} tone={solar ? 'good' : undefined} />
         </div>
         <p className="set-body cl-note">Maize needs about 35 L/m² a week, rain and watering together. More than 50 waterlogs the roots and washes fertilizer into streams.</p>
