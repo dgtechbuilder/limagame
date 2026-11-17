@@ -2091,20 +2091,31 @@ button.card:active { transform: scale(0.98); }
 .pt-offers { padding-bottom: 10px; }
 .pt-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 10px; }
 .pt-card {
-  display: flex; flex-direction: column; gap: 7px; min-width: 0; padding: 11px 14px 12px 13px; border-radius: 12px; background: #fff8ea;
-  border: 1px solid var(--brown-10); border-left: 5px solid var(--brand); box-shadow: 0 1px 2px rgba(80, 50, 20, 0.08);
+  position: relative; display: flex; flex-direction: column; gap: 9px; min-width: 0; padding: 11px 12px 12px;
+  border-radius: 14px; background: #fffaf1; border: 1px solid var(--brown-10);
+  box-shadow: 0 1px 0 var(--brown-10), 0 2px 6px rgba(107, 64, 43, 0.06); scroll-margin: 8px;
 }
-.pt-card.is-focus { border-color: var(--gold); border-left-color: var(--brand); box-shadow: 0 0 0 1.5px var(--gold); }
 .pt-card.is-got { background: #fbf6ea; }
-.pt-card header { display: flex; align-items: center; gap: 9px; }
-.pt-card header span { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.pt-card header b { font-size: 12.5px; line-height: 1.15; }
-.pt-card header small, .pt-offer small { font-size: 8.5px; opacity: 0.8; line-height: 1.35; }
-.pt-offer { display: flex; flex-direction: column; gap: 2px; margin: 0; }
-.pt-offer b { font-size: 10.5px; line-height: 1.25; }
+.pt-card.is-focus { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold), 0 4px 10px rgba(200, 137, 0, 0.18); }
+.pt-card header { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.pt-who { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.pt-who b { font-size: 12.5px; line-height: 1.2; }
+.pt-who small { font-size: 8.5px; line-height: 1.3; opacity: 0.75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pt-tag {
+  align-self: flex-start; flex-shrink: 0; padding: 2px 7px; border-radius: 100px; font-style: normal; font-size: 8px; font-weight: 700;
+  letter-spacing: 0.3px; text-transform: uppercase; color: color-mix(in srgb, var(--brand) 78%, #2a1a10); background: color-mix(in srgb, var(--brand) 12%, #fff);
+}
+.pt-offer {
+  position: relative; flex: 1; display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 8px 10px 8px 13px;
+  border-radius: 10px; background: color-mix(in srgb, var(--brand) 7%, #fff8ea);
+}
+.pt-offer::before { content: ''; position: absolute; left: 0; top: 9px; bottom: 9px; width: 3px; border-radius: 0 3px 3px 0; background: var(--brand); }
+.pt-offer b { font-size: 11px; line-height: 1.25; }
+.pt-offer small { font-size: 9px; line-height: 1.35; opacity: 0.8; }
 .pt-card footer { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 2px; }
 .pt-card footer .ach-claim, .pt-card footer .set-link { height: 26px; padding: 0 12px; font-size: 10px; }
-.pt-card .set-link { display: inline-flex; align-items: center; font-weight: 700; text-decoration: none; }
+.pt-card .set-link { display: inline-flex; align-items: center; gap: 3px; font-weight: 700; text-decoration: none; background: #fff; }
+.pt-visit span { font-size: 12px; line-height: 1; }
 .pt-visit { margin-left: auto; }
 .pt-code {
   display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: 8px;
@@ -2144,14 +2155,43 @@ button.card:active { transform: scale(0.98); }
 .pt-voucher span { font-size: 10px; font-weight: 800; color: #2e7a2a; }
 .ach-claim.is-done, .ach-claim:disabled { background: #e6d6bd; color: var(--brown-70); box-shadow: none; cursor: default; }
 .pt-note { font-size: 8.5px; opacity: 0.7; }
-.pt-table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 8.5px; }
-.pt-table th { text-align: left; font-size: 8px; text-transform: uppercase; letter-spacing: 0.4px; opacity: 0.65; padding: 3px 5px; }
-.pt-table td { padding: 4px 5px; border-top: 1px solid var(--brown-10); vertical-align: middle; line-height: 1.3; }
-.pt-table td:nth-child(n + 4), .pt-table th:nth-child(n + 4) { text-align: right; width: 38px; }
-.pt-table td i { display: inline-block; font-style: normal; font-weight: 800; font-size: 7.5px; padding: 0 4px; border-radius: 4px; background: #f1dcbd; margin-right: 3px; }
-.pt-brand { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; white-space: nowrap; }
-.pt-brand em { font-style: normal; font-weight: 600; font-size: 7px; padding: 0 3px; border-radius: 3px; background: #efe3cf; opacity: 0.85; }
-.pt-open { display: inline-block; padding: 1px 6px; border-radius: 100px; background: #dff3d6; color: #2e7a2a; font-weight: 800; }
+.pt-offers-head { margin-bottom: 10px; }
+.pt-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
+.pt-stats p {
+  display: flex; flex-direction: column; gap: 1px; margin: 0; padding: 8px 12px; border-radius: 12px; background: #fffaf1;
+  border: 1px solid var(--brown-10); box-shadow: 0 1px 0 var(--brown-10);
+}
+.pt-stats b { font-size: 17px; line-height: 1.15; }
+.pt-stats b small { font-size: 11px; opacity: 0.6; }
+.pt-stats p > small { font-size: 8.5px; font-weight: 600; opacity: 0.7; }
+.pt-stats p.is-open b { color: #2e7a2a; }
+.pt-table-card {
+  border-radius: 14px; background: #fffaf1; border: 1px solid var(--brown-10); overflow: hidden;
+  box-shadow: 0 1px 0 var(--brown-10), 0 2px 6px rgba(107, 64, 43, 0.06);
+}
+.pt-table { width: 100%; border-collapse: collapse; font-size: 9.5px; }
+.pt-table thead th {
+  text-align: left; font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.6;
+  padding: 8px 12px 6px;
+}
+.pt-table td { padding: 7px 12px; border-top: 1px solid var(--brown-10); vertical-align: middle; }
+.pt-where, .pt-format { display: block; }
+.pt-table th:nth-child(2), .pt-table td:nth-child(2) { width: 170px; }
+.pt-table th:nth-child(n + 3), .pt-table td:nth-child(n + 3) { width: 44px; text-align: right; font-variant-numeric: tabular-nums; }
+.pt-table td:nth-child(n + 3) { font-weight: 700; }
+.pt-table td.is-zero { color: var(--brown-50); font-weight: 600; }
+.pt-table tr.pt-group th {
+  padding: 6px 12px; text-align: left; background: #f6e5c9; border-top: 1px solid var(--brown-10);
+  font-size: 8.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.pt-table tr.pt-group th small { margin-left: 4px; padding: 0 5px; border-radius: 100px; background: rgba(255, 255, 255, 0.7); font-size: 8px; }
+.pt-table tr.is-open td { background: rgba(223, 243, 214, 0.25); }
+.pt-where { font-size: 10px; font-weight: 700; line-height: 1.3; }
+.pt-format { font-size: 8.5px; line-height: 1.3; opacity: 0.7; }
+.pt-brand { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; white-space: nowrap; }
+.pt-brand em { font-style: normal; font-weight: 600; font-size: 7.5px; padding: 1px 5px; border-radius: 100px; background: #efe3cf; opacity: 0.85; }
+.pt-open { display: inline-block; padding: 2px 9px; border-radius: 100px; background: #dff3d6; color: #2e7a2a; font-size: 9px; font-weight: 800; }
+.pg-foot.pt-foot { margin: 10px 2px 2px; }
 
 /* ================================================================== */
 /* My Progress: the PROGRESS button, the journey and the modules       */
