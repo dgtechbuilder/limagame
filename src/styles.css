@@ -2089,18 +2089,38 @@ button.card:active { transform: scale(0.98); }
 
 /* the Partners page */
 .pt-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 6px; }
+.pt-offers-head { margin-bottom: 10px; }
+.pt-offers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding-bottom: 4px; }
 .pt-card {
-  display: flex; flex-direction: column; gap: 5px; padding: 8px 10px; border-radius: 12px; background: #fff8ea;
-  border: 1px solid var(--brown-10); border-left: 5px solid var(--brand);
+  position: relative; display: flex; flex-direction: column; gap: 9px; min-width: 0; padding: 11px 12px 12px;
+  border-radius: 14px; background: #fffaf1; border: 1px solid var(--brown-10);
+  box-shadow: 0 1px 0 var(--brown-10), 0 2px 6px rgba(107, 64, 43, 0.06); scroll-margin: 8px;
 }
-.pt-card.is-focus { box-shadow: 0 0 0 2px var(--gold); }
-.pt-card header { display: flex; align-items: center; gap: 8px; }
-.pt-card header span { display: flex; flex-direction: column; min-width: 0; }
-.pt-card header b { font-size: 12px; }
-.pt-card header small, .pt-offer small { font-size: 8.5px; opacity: 0.8; line-height: 1.3; }
-.pt-offer { display: flex; flex-direction: column; gap: 1px; margin: 0; }
-.pt-offer b { font-size: 10.5px; }
-.pt-card footer { display: flex; align-items: center; gap: 10px; margin-top: auto; }
+.pt-card.is-focus { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold), 0 4px 10px rgba(200, 137, 0, 0.18); }
+.pt-card header { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.pt-who { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.pt-who b { font-size: 12.5px; line-height: 1.2; }
+.pt-who small { font-size: 8.5px; line-height: 1.3; opacity: 0.75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pt-tag {
+  align-self: flex-start; flex-shrink: 0; padding: 2px 7px; border-radius: 100px; font-style: normal; font-size: 8px; font-weight: 700;
+  letter-spacing: 0.3px; text-transform: uppercase; color: color-mix(in srgb, var(--brand) 78%, #2a1a10); background: color-mix(in srgb, var(--brand) 12%, #fff);
+}
+.pt-offer {
+  position: relative; flex: 1; display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 8px 10px 8px 13px;
+  border-radius: 10px; background: color-mix(in srgb, var(--brand) 7%, #fff8ea);
+}
+.pt-offer::before { content: ''; position: absolute; left: 0; top: 9px; bottom: 9px; width: 3px; border-radius: 0 3px 3px 0; background: var(--brand); }
+.pt-offer b { font-size: 11px; line-height: 1.25; }
+.pt-offer small { font-size: 9px; line-height: 1.35; opacity: 0.8; }
+.pt-card footer { display: flex; align-items: center; gap: 8px; }
+.pt-card footer .ach-claim { height: 26px; padding: 0 14px; font-size: 10.5px; }
+.pt-card.is-saved footer .ach-claim { background: #e3f2d9; color: #2e7a2a; }
+.pt-visit {
+  display: inline-flex; align-items: center; gap: 3px; height: 26px; padding: 0 11px; border-radius: 8px;
+  border: 1.5px solid var(--brown-20); background: #fff; color: var(--brown); font-size: 10px; font-weight: 700; text-decoration: none;
+}
+.pt-visit:hover { border-color: var(--brown-50); }
+.pt-visit span { font-size: 12px; line-height: 1; }
 .ach-claim.is-done, .ach-claim:disabled { background: #e6d6bd; color: var(--brown-70); box-shadow: none; cursor: default; }
 .pt-note { font-size: 8.5px; opacity: 0.7; }
 .pt-table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 8.5px; }

@@ -66,20 +66,22 @@ function Offers({ s, dispatch, focus }: { s: GameState; dispatch: Dispatch<Actio
   }, [focus]);
   return (
     <div ref={box}>
-      <p className="set-title">Offers from the partners who back your farm</p>
-      <div className="pt-grid">
+      <div className="ach-row-head pt-offers-head">
+        <p className="set-title">Offers from the partners who back your farm</p>
+        <small className="pt-note">Saved offers go to Messages</small>
+      </div>
+      <div className="pt-offers">
         {activeBrands().map(b => {
           const has = saved.includes(b.id);
           return (
-            <article key={b.id} data-brand={b.id} className={`pt-card${focus === b.id ? ' is-focus' : ''}`} style={{ ['--brand' as string]: b.color, ['--accent' as string]: b.accent }} aria-label={`${b.name}: ${b.offer.title}`}>
+            <article key={b.id} data-brand={b.id} className={`pt-card${focus === b.id ? ' is-focus' : ''}${has ? ' is-saved' : ''}`} style={{ ['--brand' as string]: b.color, ['--accent' as string]: b.accent }} aria-label={`${b.name}: ${b.offer.title}`}>
               <header>
-                <BrandMark b={b} size={26} />
-                <span>
+                <BrandMark b={b} size={30} />
+                <span className="pt-who">
                   <b>{b.name}</b>
-                  <small>
-                    {b.category} · {b.tagline}
-                  </small>
+                  <small>{b.tagline}</small>
                 </span>
+                <em className="pt-tag">{b.category}</em>
               </header>
               <p className="pt-offer">
                 <b>{b.offer.title}</b>
@@ -90,8 +92,8 @@ function Offers({ s, dispatch, focus }: { s: GameState; dispatch: Dispatch<Actio
                   {has ? 'Saved ✓' : 'Save offer'}
                 </button>
                 {b.url && (
-                  <a className="set-link" href={b.url} target="_blank" rel="noopener noreferrer">
-                    Visit ›
+                  <a className="pt-visit" href={b.url} target="_blank" rel="noopener noreferrer">
+                    Visit site <span aria-hidden="true">›</span>
                   </a>
                 )}
               </footer>
