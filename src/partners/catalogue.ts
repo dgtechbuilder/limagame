@@ -1,6 +1,6 @@
 import type { SlotId } from './data';
 
-/* Partner with us: every way a brand, a school or a service could be part of Lima, grouped by area, each tied to the
+/* Partner with us: every way a brand, a school or a service could be part of TemoLima, grouped by area, each tied to the
    screens where players meet it. It is the pitch for partners still to sign; data.ts holds the ones who have
    (brands, and the slots they hold). Every word on the Partners page's "Partner with us" tab is here.
 
@@ -281,7 +281,7 @@ export const WAYS: WayToPartner[] = [
     name: 'Carbon and climate partners',
     icon: '🌍',
     status: 'build',
-    pitch: 'Lima climate credits turned into rewards, or the real practices behind them funded.',
+    pitch: 'TemoLima climate credits turned into rewards, or the real practices behind them funded.',
     where: ['Climate › Credits: credits and daily payments', 'Manure, solar and less diesel earn credits'],
     gets: 'Measured practice change: what farmers chose, and what it kept out of the air (estimates for learning).',
     see: { label: 'Open Climate › Credits', to: '/climate/credits' },
@@ -302,7 +302,7 @@ export const WAYS: WayToPartner[] = [
     name: 'Telcos and data bundles',
     icon: '📶',
     status: 'new',
-    pitch: 'Lima free on your network, and data bundles as rewards.',
+    pitch: 'TemoLima free on your network, and data bundles as rewards.',
     where: ['A light game that plays on a weak signal', 'Rewards: data bundles for points'],
     gets: 'Young rural customers on your network, playing every day.',
   },
@@ -327,5 +327,5 @@ export function shortlistText(ids: string[]): string {
     .map(wayOf)
     .filter((w): w is WayToPartner => !!w)
     .map(w => `- ${w.name} (${areaOf(w.area).label}, ${STATUS[w.status].label.toLowerCase()}): ${w.pitch}`);
-  return ['Lima partnership shortlist', '', ...lines].join('\n');
+  return ['TemoLima partnership shortlist', '', ...lines].join('\n');
 }

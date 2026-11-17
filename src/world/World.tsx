@@ -733,8 +733,9 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         </div>
       )}
 
-      {/* the HUD gives way to the full-screen rounds and six-farms screens, which have their own navigation */}
-      {!(s.roundsOpen || s.trialsOpen || s.bizOpen) && (
+      {/* the HUD gives way to the full-screen rounds and six-farms screens, which have their own navigation, and to every
+          screen on top (a pop-up never shares the stage with HUD buttons: docs/ui-spacing-plan.md) */}
+      {!(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
         <>
       {/* the farmer and their level */}
       <div className="hud-avatar">
@@ -799,7 +800,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         <span>MISSION</span>
       </button>
       <WaterButton s={s} dispatch={dispatch} />
-      <button type="button" className="hud-round hud-partners" onClick={() => dispatch({ type: 'open', modal: { kind: 'partners' } })} aria-label="Partners: offers, placements and ways to partner with Lima">
+      <button type="button" className="hud-round hud-partners" onClick={() => dispatch({ type: 'open', modal: { kind: 'partners' } })} aria-label="Partners: offers, placements and ways to partner with TemoLima">
         <PartnersIcon />
         <span>PARTNERS</span>
       </button>
@@ -870,15 +871,15 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       )}
 
       {/* the evidence layer: now and then, "have you tried this on your own farm?" */}
-      {!overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen) && <EvidenceAsk s={s} dispatch={dispatch} />}
+      {!overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && <EvidenceAsk s={s} dispatch={dispatch} />}
 
       {/* money at risk on the six farms: the first thing on the farm the eye lands on, beside the task card */}
-      <RiskHud s={s} risk={risk} dispatch={dispatch} hud={!(s.roundsOpen || s.trialsOpen || s.bizOpen) && !overlay} busy={overlay || s.roundsOpen || s.trialsOpen || s.bizOpen} onGo={goToProblem} />
+      <RiskHud s={s} risk={risk} dispatch={dispatch} hud={!(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && !overlay} busy={overlay || s.roundsOpen || s.trialsOpen || s.bizOpen} onGo={goToProblem} />
 
       {/* clearing and planting: the button on the plot under the farmer, then its timer */}
       {working && !overlay && <PlotTimer at={anchors.farmer} start={working.start} ms={working.ms} verb={working.job === 'prep' ? 'Clearing' : 'Planting'} what={rowName(working.row)} />}
       {tidying && !overlay && <PlotTimer at={anchors.farmer} start={tidying.start} ms={tidying.ms} verb={tidying.item.kind === 'bush' ? 'Clearing' : 'Moving'} what={`the ${tidying.item.kind}`} />}
-      {!working && !tidying && !anchors.plot && anchors.tidy && tidyOn && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen) && (
+      {!working && !tidying && !anchors.plot && anchors.tidy && tidyOn && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
         <button
           type="button"
           className={`hud-plot is-tidy is-${anchors.tidy.kind}`}
@@ -893,7 +894,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
           </span>
         </button>
       )}
-      {!working && !tidying && anchors.plot && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen) && (
+      {!working && !tidying && anchors.plot && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
         <button
           type="button"
           className={`hud-plot is-${anchors.plot.job}`}
@@ -909,7 +910,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         </button>
       )}
 
-      {anchors.bill && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen) && (
+      {anchors.bill && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
         <BillboardTag bill={anchors.bill} dispatch={dispatch} />
       )}
 

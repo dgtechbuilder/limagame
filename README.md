@@ -1277,7 +1277,7 @@ each. To sign a partner, add or edit its brand and put its id on the slots it bo
   (`src/partners/track.ts`): nothing is sent anywhere, and Reset progress does not clear it.
 - **PARTNERS on the farm** opens the page too: on the 3D farm left of WATER (under PROGRESS), on the classic farm
   beside Shop. The page also opens before the farm does (`#/partners`), so a partner can visit without playing.
-- **Partner with us** (`src/partners/catalogue.ts`): every way a brand, school or service could be part of Lima, for
+- **Partner with us** (`src/partners/catalogue.ts`): every way a brand, school or service could be part of TemoLima, for
   partners still to sign. 23 ways in five areas: *Farm inputs* (seed, fertilizer, crop protection, safety kit),
   *Tools & machines* (hardware, equipment, water tanks, solar, fuel), *Transport & market* (trucks, buyers, storage,
   millers, co-ops and booking apps), *Learning* (training courses, certificates, agronomists, a sponsored mission),
@@ -1287,7 +1287,7 @@ each. To sign a partner, add or edit its brand and put its id on the slots it bo
   today (from `SLOTS`), *+ Interested* and, once the farm is open, a button to the screen it is about. The rules every
   partner keeps are under the list: fair play, no personal data, advice checked by an agronomist.
 - **Shortlist**: the ways tapped *Interested*, saved with the game (`partnerPicks`). *Copy the shortlist* puts it on
-  the clipboard as text; set `VITE_PARTNER_EMAIL` at build time to add an *Email it to the Lima team* button.
+  the clipboard as text; set `VITE_PARTNER_EMAIL` at build time to add an *Email it to the TemoLima team* button.
 
 ## Character art: retro anime
 

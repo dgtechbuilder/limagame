@@ -11,7 +11,7 @@ import type { Action, GameState, PartnersTab } from '../state';
 /* Partners: for players, the offers from the brands that sponsor the game (Get offer shows what it gives, then the
    player's code, kept in Messages, and a button to where it is used); for partners (and
    the team selling to them), every place in the game a brand can appear, who has it, and how often it was seen and
-   tapped on this device; and for partners still to sign, every way to partner with Lima (Partner with us), with a
+   tapped on this device; and for partners still to sign, every way to partner with TemoLima (Partner with us), with a
    shortlist to send. The brands and slots are set in src/partners/data.ts, the ways to partner in catalogue.ts.
    Opened from PARTNERS on the farm, the main menu, a billboard or sponsor line, or #/partners (also before the farm
    opens, for a partner visiting before they play). */
@@ -333,7 +333,7 @@ function Join({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
   return (
     <div className="pj-join">
       <div className="ach-row-head">
-        <p className="set-title">Ways to partner with Lima</p>
+        <p className="set-title">Ways to partner with TemoLima</p>
         <small className="pt-note">
           {WAYS.length} ways · {WAYS.filter(w => w.status === 'now').length} in the game now
         </small>
@@ -490,8 +490,8 @@ function Shortlist({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }
           Copy the shortlist
         </button>
         {PARTNER_EMAIL && (
-          <a className="set-link" href={`mailto:${PARTNER_EMAIL}?subject=${encodeURIComponent('Lima partnership')}&body=${encodeURIComponent(text)}`}>
-            Email it to the Lima team ›
+          <a className="set-link" href={`mailto:${PARTNER_EMAIL}?subject=${encodeURIComponent('TemoLima partnership')}&body=${encodeURIComponent(text)}`}>
+            Email it to the TemoLima team ›
           </a>
         )}
         {copied && (

@@ -28,6 +28,34 @@
   --button-shadow: 2.08px 0 3.119px rgba(0, 0, 0, 0.35), 0 2.08px 2.08px rgba(0, 0, 0, 0.24),
     0 2.08px 1.04px rgba(0, 0, 0, 0.22), 0 2.08px 2.08px rgba(0, 0, 0, 0.2);
   --gold-inset: inset 0 -2px 2px rgba(0, 0, 0, 0.2), inset 0 2px 4px rgba(255, 255, 255, 0.5);
+
+  /* The spacing and layout plan (docs/ui-spacing-plan.md): one scale for space, type, corners and text colour.
+     New and reworked styles use these; older ones move onto them screen by screen. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --text-label: 10px;   /* uppercase labels and chips only, never sentences */
+  --text-caption: 11px;
+  --text-body-sm: 12px;
+  --text-body: 13px;
+  --text-subhead: 15px;
+  --text-title: 18px;
+  --text-display: 24px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-pill: 999px;
+  /* solid text colours, in place of faded brown (contrast on cream / on a card) */
+  --ink: #6b402b;        /* 7.6 / 8.3 */
+  --ink-2: #7d5440;      /* 5.7 / 6.2 */
+  --ink-3: #86604c;      /* 4.8 / 5.2: the faintest text allowed */
+  --ink-on-gold: #4a2a10; /* 6.9 on gold: text on every gold button */
+  --good: #2e6b35;
+  --bad: #a8382a;
 }
 
 * { box-sizing: border-box; }
@@ -294,7 +322,8 @@ button.card:active { transform: scale(0.98); }
   border-radius: 10px 10px 8px 8px;
   background: var(--gold);
   box-shadow: var(--gold-inset);
-  color: #fff; font-weight: 700; letter-spacing: 1px;
+  /* dark text on gold: 6.9 : 1 (white on gold was 1.86 : 1) */
+  color: var(--ink-on-gold); font-weight: 700; letter-spacing: 1px;
   transition: filter 0.12s ease, transform 0.12s ease;
 }
 .gold-btn:hover { filter: brightness(1.06); }
