@@ -481,7 +481,7 @@ its checks show. It is what a farmer does every season, and missing it costs the
   to the shed does them all. A job counts once all 20 plots are done: **+40 points**.
 - A farm with **no sprayer** (the check strip) is never sprayed and always loses its 8% to stalk borer: that is what
   the strip is for. Sukuma wiki is not sprayed against stalk borer.
-- **At harvest** the results have a **Care** row (*All done*, or *Missed: weeding, top-dress*), and Lima AI says what a
+- **At harvest** the results have a **Care** row (*All done*, or *Missed: weeding, top-dress*), and TemoLima AI says what a
   miss cost the farm that grew least.
 - **Not in every cycle**: the guided first cycle, farms planted from the six farms screen in the classic farm view
   (it has no field work), and saves from before scheduled care have none (`Trial.routine` is missing). Without it,
