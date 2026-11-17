@@ -87,13 +87,12 @@ function Offers({ s, dispatch, focus }: { s: GameState; dispatch: Dispatch<Actio
           return (
             <article key={b.id} data-brand={b.id} className={`pt-card${focus === b.id ? ' is-focus' : ''}${has ? ' is-got' : ''}`} style={{ ['--brand' as string]: b.color, ['--accent' as string]: b.accent }} aria-label={`${b.name}: ${b.offer.title}`}>
               <header>
-                <BrandMark b={b} size={28} />
-                <span>
+                <BrandMark b={b} size={30} />
+                <span className="pt-who">
                   <b>{b.name}</b>
-                  <small>
-                    {b.category} · {b.tagline}
-                  </small>
+                  <small>{b.tagline}</small>
                 </span>
+                <em className="pt-tag">{b.category}</em>
               </header>
               <p className="pt-offer">
                 <b>{b.offer.title}</b>
@@ -118,7 +117,7 @@ function Offers({ s, dispatch, focus }: { s: GameState; dispatch: Dispatch<Actio
                 )}
                 {b.url && (
                   <a className="set-link pt-visit" href={b.url} target="_blank" rel="noopener noreferrer">
-                    Visit ›
+                    Visit site <span aria-hidden="true">›</span>
                   </a>
                 )}
               </footer>
@@ -207,72 +206,92 @@ function OfferSheet({ b, got, code, canGo, onGet, onUse, onClose }: { b: Brand; 
   );
 }
 
+type Row = { id: string; surface: string; where: string; format: string; brand?: BrandId | null; n?: { views: number; taps: number } };
+
 function Placements() {
   const e = engagement();
-  const vouchers = REWARDS.filter(r => REWARD_SPONSOR[r.id]);
+  const rows: Row[] = [
+    ...SLOTS.map(x => ({ id: x.id, surface: x.surface, where: x.where, format: x.format, brand: x.brand, n: e[x.id] ?? { views: 0, taps: 0 } })),
+    ...REWARDS.filter(r => REWARD_SPONSOR[r.id]).map(r => ({ id: r.id, surface: 'Rewards', where: `Voucher: ${r.name}`, format: `Voucher sponsor (${r.off}% off)`, brand: REWARD_SPONSOR[r.id] })),
+  ];
+  // the rows by where in the game they sit, in the order they are listed
+  const groups = [...new Set(rows.map(r => r.surface))].map(surface => ({ surface, rows: rows.filter(r => r.surface === surface) }));
+  const taken = SLOTS.filter(x => x.brand).length;
+  const views = SLOTS.reduce((t, x) => t + (e[x.id]?.views ?? 0), 0);
+  const taps = SLOTS.reduce((t, x) => t + (e[x.id]?.taps ?? 0), 0);
+  const num = (v: number) => v.toLocaleString('en-US');
   return (
     <div className="pt-place">
-      <div className="ach-row-head">
+      <div className="ach-row-head pt-offers-head">
         <p className="set-title">Every place a partner can appear</p>
-        <small className="pt-note">Views and taps are counted on this device only.</small>
+        <small className="pt-note">Views and taps are counted on this device only</small>
       </div>
-      <table className="pt-table">
-        <thead>
-          <tr>
-            <th>Where</th>
-            <th>Format</th>
-            <th>Partner</th>
-            <th>Views</th>
-            <th>Taps</th>
-          </tr>
-        </thead>
-        <tbody>
-          {SLOTS.map(x => {
-            const b = brandOf(x.brand);
-            const n = e[x.id] ?? { views: 0, taps: 0 };
-            return (
-              <tr key={x.id}>
-                <td>
-                  <i>{x.surface}</i> {x.where}
-                </td>
-                <td>{x.format}</td>
-                <td>
-                  {b ? (
-                    <span className="pt-brand">
-                      <BrandMark b={b} size={12} /> {b.name}
-                      {b.sample && <em>sample</em>}
-                    </span>
-                  ) : (
-                    <span className="pt-open">Available</span>
-                  )}
-                </td>
-                <td>{n.views.toLocaleString('en-US')}</td>
-                <td>{n.taps.toLocaleString('en-US')}</td>
+      <div className="pt-stats">
+        <p>
+          <b>
+            {taken}
+            <small> / {SLOTS.length}</small>
+          </b>
+          <small>Placements taken</small>
+        </p>
+        <p className="is-open">
+          <b>{SLOTS.length - taken}</b>
+          <small>Open to a partner</small>
+        </p>
+        <p>
+          <b>{num(views)}</b>
+          <small>Views</small>
+        </p>
+        <p>
+          <b>{num(taps)}</b>
+          <small>Taps</small>
+        </p>
+      </div>
+      <div className="pt-table-card">
+        <table className="pt-table">
+          <thead>
+            <tr>
+              <th scope="col">Placement</th>
+              <th scope="col">Partner</th>
+              <th scope="col">Views</th>
+              <th scope="col">Taps</th>
+            </tr>
+          </thead>
+          {groups.map(g => (
+            <tbody key={g.surface}>
+              <tr className="pt-group">
+                <th scope="colgroup" colSpan={4}>
+                  {g.surface} <small>{g.rows.length}</small>
+                </th>
               </tr>
-            );
-          })}
-          {vouchers.map(r => {
-            const b = brandOf(REWARD_SPONSOR[r.id])!;
-            return (
-              <tr key={r.id}>
-                <td>
-                  <i>Rewards</i> Voucher: {r.name}
-                </td>
-                <td>Voucher sponsor ({r.off}% off)</td>
-                <td>
-                  <span className="pt-brand">
-                    <BrandMark b={b} size={12} /> {b.name}
-                    {b.sample && <em>sample</em>}
-                  </span>
-                </td>
-                <td>–</td>
-                <td>–</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-      <p className="pg-foot">
+              {g.rows.map(r => {
+                const b = brandOf(r.brand ?? undefined);
+                return (
+                  <tr key={r.id} className={b ? undefined : 'is-open'}>
+                    <td>
+                      <b className="pt-where">{r.where}</b>
+                      <small className="pt-format">{r.format}</small>
+                    </td>
+                    <td>
+                      {b ? (
+                        <span className="pt-brand">
+                          <BrandMark b={b} size={16} /> {b.name}
+                          {b.sample && <em>sample</em>}
+                        </span>
+                      ) : (
+                        <span className="pt-open">Available</span>
+                      )}
+                    </td>
+                    <td className={r.n?.views ? undefined : 'is-zero'}>{r.n ? num(r.n.views) : '–'}</td>
+                    <td className={r.n?.taps ? undefined : 'is-zero'}>{r.n ? num(r.n.taps) : '–'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          ))}
+        </table>
+      </div>
+      <p className="pg-foot pt-foot">
         {BRANDS.filter(b => b.sample).length} sample brands hold slots for partners still to sign.
       </p>
     </div>
