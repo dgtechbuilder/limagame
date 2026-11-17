@@ -50,7 +50,7 @@ export function CreateFarmer({ onDone, country: startCountry }: { onDone: (name:
         <div className="abs" style={{ left: 124, top: -22, width: 203, height: 58 }}>
           <img src={img.plank} alt="" width={203} height={58} />
           <span className="label abs" style={{ left: 0, right: 0, top: 21, textAlign: 'center', fontSize: 14 }}>
-            Karibu Lima
+            Karibu TemoLima
           </span>
         </div>
 

@@ -1,4 +1,4 @@
-/* Climate tracking: what every farming choice in Lima does to the climate, the water and the land.
+/* Climate tracking: what every farming choice in TemoLima does to the climate, the water and the land.
 
    The game records a climate entry whenever work is actually done: a season task on Farm Moja, the inputs of a
    six-farm plan when it is planted, field work by hand or from the tractor seat, a tractor drive, a treatment, a
@@ -190,7 +190,7 @@ export const FACTORS = {
   bag: { value: 90, unit: 'kg a bag', what: 'A bag of maize' },
   farmM2: { value: FARM_ACRES * M2_PER_ACRE, unit: 'm²', what: `One of the six farms (${FARM_ACRES} acres)` },
   weeks: { value: 3, unit: 'weeks', what: 'A cycle of the six farms (21 days)' },
-  credit: { value: 10, unit: 'kg CO₂e', what: 'One Lima climate credit (a real carbon credit is 1,000 kg)' },
+  credit: { value: 10, unit: 'kg CO₂e', what: 'One TemoLima climate credit (a real carbon credit is 1,000 kg)' },
 } satisfies Record<string, Factor>;
 
 const N = FACTORS.nitrogen.value;

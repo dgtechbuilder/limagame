@@ -547,7 +547,7 @@ function Compare({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) {
               </button>
             )}
           </div>
-          <p className="tr-why-title">Lima AI</p>
+          <p className="tr-why-title">TemoLima AI</p>
           {byRow ? (
             <div className="tr-lessons">
               {results.map((r, i) => (r.rows ? rowLesson(r.rows, farmName(i)) : null)).filter(Boolean).map(l => (

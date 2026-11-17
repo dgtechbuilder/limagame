@@ -754,7 +754,7 @@ export interface PlotLesson {
 /** Lower the first letter, unless the word is an abbreviation (DAP, CAN). */
 const soft = (x: string) => (/^[A-Z]{2}/.test(x) ? x : x.charAt(0).toLowerCase() + x.slice(1));
 
-/** Lima AI: what the player's plots showed, other things equal. For every plot, its harvest is set against the same
+/** TemoLima AI: what the player's plots showed, other things equal. For every plot, its harvest is set against the same
     plot (same farm, weather, problems and care) with just one input changed to a reference: long-season hybrid
     seed, no fertilizer, no tractor, no spray. The changes are averaged over the plots that had each choice. */
 export function plotLessons(t: Trial): PlotLesson[] {
@@ -825,7 +825,7 @@ export const HAZARD_WORDS: Record<TrialHazard, string> = {
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 const bagsText = (x: number) => `${Math.abs(Math.round(x * 10) / 10)} bag${Math.abs(Math.round(x * 10) / 10) === 1 ? '' : 's'}`;
 
-/** Lima AI: the reasons the farm that grew the most beat the farm that grew the least, from the player's own numbers. */
+/** TemoLima AI: the reasons the farm that grew the most beat the farm that grew the least, from the player's own numbers. */
 export function explain(t: Trial, results: FarmResult[]): { best: number; worst: number; lines: string[] } {
   const order = results.map((_, i) => i).sort((a, b) => results[b].bags - results[a].bags || results[b].profit - results[a].profit);
   const best = order[0];

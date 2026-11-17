@@ -315,7 +315,7 @@ export const LEVELS: { level: number; helped: number; name: string }[] = [
 ];
 export const levelOf = (helped: number) => [...LEVELS].reverse().find(l => helped >= l.helped)!;
 export const nextLevel = (helped: number) => LEVELS.find(l => l.helped > helped) ?? null;
-/** Points for the player (Lima's rewards) for each farmer helped. */
+/** Points for the player (TemoLima's rewards) for each farmer helped. */
 export const POINTS_A_FARMER = 20;
 /** Points for a neighbourhood synchronised: three or more farms booked on the same activity the same day (Loop A). */
 export const CLUSTER = { farms: 3, points: 30 };

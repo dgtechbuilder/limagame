@@ -142,7 +142,7 @@ export function farmStrategyClimate(t: StrategyHost, farm: number) {
   return { co2: sum('co2'), stored: sum('stored'), water: sum('water'), soil: sum('soil') / ROWS_PER_FARM, pollution: sum('pollution') };
 }
 
-/** Lima AI on the rows: which row paid best, and what it did differently from the worst. */
+/** TemoLima AI on the rows: which row paid best, and what it did differently from the worst. */
 export function rowLesson(rows: RowResult[], farmLabel: string): string | null {
   if (rows.length < 2 || rows.every(r => r.options.length === 0)) return null;
   const best = rows.reduce((a, b) => (b.profit > a.profit ? b : a));

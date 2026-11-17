@@ -60,7 +60,7 @@ farm's), fuel by plot-job, paid at planting and adjusted when a plot board is ch
 
 ## Results
 
-The results add a **By plot** view: every farm's four plots with their bags and inputs, and Lima AI's lessons from
+The results add a **By plot** view: every farm's four plots with their bags and inputs, and TemoLima AI's lessons from
 all the plots together: which seed, fertilizer, tractor, tool and sprayer gave the most, other things equal.
 
 ## Steps
