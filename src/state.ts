@@ -140,7 +140,7 @@ export type SettingsTab = 'farmer' | 'game' | 'display' | 'help';
 export type ClimateTab = 'overview' | 'land' | 'areas' | 'emissions' | 'water' | 'tank' | 'credits' | 'shocks' | 'activity';
 /** My Progress (the achievements page): the journey of certification levels, the modules, today, badges, certificates */
 export type AchTab = 'journey' | 'modules' | 'today' | 'badges' | 'certificates';
-export type PartnersTab = 'offers' | 'placements';
+export type PartnersTab = 'offers' | 'placements' | 'join' | 'shortlist';
 export const DEFAULT_SETTINGS: Settings = { art: 'anime', graphics: 'auto', reduceMotion: false, voice: false, sound: true, upgradeNotes: true, country: '' };
 
 /** Stage index: 0–5 = the farming step being worked on, 6 = harvested and selling, 7 = season sold. */
@@ -252,6 +252,8 @@ export interface GameState {
   trainings?: TrainingBooking[];
   /** partner offers the player saved (src/partners/data.ts; missing in older saves) */
   offers?: BrandId[];
+  /** Partners › Partner with us: the ways a partner tapped Interested on (src/partners/catalogue.ts; missing in older saves) */
+  partnerPicks?: string[];
   /** money at risk: the button as last seen, and every problem dealt with (src/risk/model.ts; missing in older saves) */
   risk?: RiskState;
   /** water: the tank, the animals, the shared catchment, crop cover (src/water; missing in older saves) */
@@ -337,6 +339,7 @@ export const initialState: GameState = {
   loan: DEFAULT_LOAN,
   trainings: [],
   offers: [],
+  partnerPicks: [],
   collectedDay: {},
   season: 1,
   ...freshSeason,
@@ -515,6 +518,8 @@ export type Action =
   | { type: 'levelClaim'; id: string }
   /** partners: get a brand's offer (its code is kept in Messages) */
   | { type: 'partnerSave'; id: BrandId }
+  /** Partners › Partner with us: tap Interested on a way to partner, or tap again to take it off the shortlist */
+  | { type: 'partnerPick'; id: string }
   /** go to a web address (src/route.ts): the screen it names, if the player may go there now */
   | { type: 'route'; path: string }
   | RiskAction
@@ -1332,6 +1337,10 @@ function play(s: GameState, a: Action): GameState {
     case 'riskFixed':
     case 'riskTap':
       return { ...s, risk: riskReduce(s.risk, a) };
+    case 'partnerPick': {
+      const picks = s.partnerPicks ?? [];
+      return { ...s, partnerPicks: picks.includes(a.id) ? picks.filter(x => x !== a.id) : [...picks, a.id] };
+    }
     case 'partnerSave': {
       const b = brandOf(a.id);
       const saved = s.offers ?? [];

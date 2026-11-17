@@ -120,9 +120,9 @@ src/
     Settings.tsx           the Settings page: My farmer, Game, Display, Help & data
     Climate.tsx            the Climate page: Overview, Emissions, Water & soil, Climate shocks, Activity
     Achievements.tsx       My Progress: Journey, Modules, Today, Badges, Certificates
-    Partners.tsx           the Partners page: Offers, Placements
+    Partners.tsx           the Partners page: Offers, Placements, Partner with us, Shortlist
   progress/model.ts        My Progress: modules, learning credits, certification levels (no screens)
-  partners/                partner brands and every slot they can buy (data.ts), engagement counts (track.ts),
+  partners/                partner brands and every slot they can buy (data.ts), the ways to partner (catalogue.ts), engagement counts (track.ts),
                            sponsor lines, ribbons and the classic farm's sign (ui.tsx)
   art/                     retro anime characters: anime.tsx (SVG kit: farmer, guide, shopkeeper, Ojuok),
                            Cast.tsx (anime or original picture), style.ts (style and read-aloud contexts)
@@ -835,7 +835,7 @@ reload without losing their place, bookmark a page, and use the browser's **Back
 | `#/farm-info` · `#/results` · `#/rewards` · `#/welcome` | Farm info, season results, rewards, how the farm works |
 | `#/loan-calculator` · `#/loan-calculator/quote` · `#/training` | The loan calculator and its quote, farmer training |
 | `#/progress/journey` · `modules` · `today` · `badges` · `certificates` | My Progress, by section (`#/achievements/…` still works) |
-| `#/partners/offers` · `#/partners/offers/<brand>` · `#/partners/placements` | Partners: offers (one brand's in view), placements |
+| `#/partners/offers` · `#/partners/offers/<brand>` · `#/partners/placements` · `#/partners/partner-with-us` · `#/partners/shortlist` | Partners: offers (one brand's in view), placements, ways to partner, the shortlist (open before the farm too) |
 
 **The player's session decides where an address can go.** The game's saved state stays the one source of
 truth: the address always names the page on show, and a typed address goes through the same rules as a tap.
@@ -1200,6 +1200,19 @@ each. To sign a partner, add or edit its brand and put its id on the slots it bo
   prices in the game yet.
 - **Engagement** (views and taps per slot) is counted on the device only, apart from the saved game
   (`src/partners/track.ts`): nothing is sent anywhere, and Reset progress does not clear it.
+- **PARTNERS on the farm** opens the page too: on the 3D farm left of WATER (under PROGRESS), on the classic farm
+  beside Shop. The page also opens before the farm does (`#/partners`), so a partner can visit without playing.
+- **Partner with us** (`src/partners/catalogue.ts`): every way a brand, school or service could be part of Lima, for
+  partners still to sign. 23 ways in five areas: *Farm inputs* (seed, fertilizer, crop protection, safety kit),
+  *Tools & machines* (hardware, equipment, water tanks, solar, fuel), *Transport & market* (trucks, buyers, storage,
+  millers, co-ops and booking apps), *Learning* (training courses, certificates, agronomists, a sponsored mission),
+  *Money & climate* (loans, crop insurance, carbon partners, a weather service, telcos). Each card shows a status:
+  *In the game now* (the moment exists; a brand goes onto it), *Small build* (a short new step adds the partner's
+  part) or *New idea*. Tapping a card shows where players meet it, what the partner gets, who holds its placement
+  today (from `SLOTS`), *+ Interested* and, once the farm is open, a button to the screen it is about. The rules every
+  partner keeps are under the list: fair play, no personal data, advice checked by an agronomist.
+- **Shortlist**: the ways tapped *Interested*, saved with the game (`partnerPicks`). *Copy the shortlist* puts it on
+  the clipboard as text; set `VITE_PARTNER_EMAIL` at build time to add an *Email it to the Lima team* button.
 
 ## Character art: retro anime
 
