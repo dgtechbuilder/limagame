@@ -55,6 +55,8 @@ test('the menu pauses a tractor drive and Farm closes it', async ({ page }) => {
   await boot(page);
   await scenario(page, 'tractor');
   await page.locator('.hud-task').click();
+  // the Train spot opens the tractor screen on Hire
+  await page.getByRole('dialog', { name: 'Tractor' }).getByRole('button', { name: 'Hire now', exact: true }).click();
   await expect(page.locator('.tc-side')).toBeVisible();
   const nav = page.locator('.navbar');
   await expect(nav.getByRole('button')).toHaveCount(3);

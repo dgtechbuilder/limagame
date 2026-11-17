@@ -86,6 +86,16 @@ export function tileCenter(farm: number, i: number) {
   return { x: p.x + (col - (COLS - 1) / 2) * TILE, z: p.z + (row - (ROWS - 1) / 2) * TILE };
 }
 
+/** Farms 7 and 8, the new farms (src/garden): at the bottom of the farm either side of the market path, 4 × 3 tiles. */
+export const GARDEN_PLOTS: { x: number; z: number }[] = [
+  { x: -7.4, z: 13.0 },
+  { x: 7.4, z: 13.0 },
+];
+export const GARDEN_COLS = 4;
+export const GARDEN_ROWS = 3;
+/** Where a new farm's sign stands: at its top right corner, by the lane. */
+export const gardenSign = (i: number) => ({ x: GARDEN_PLOTS[i].x + (GARDEN_COLS * TILE) / 2 + 0.35, z: GARDEN_PLOTS[i].z - (GARDEN_ROWS * TILE) / 2 - 0.3 });
+
 /** Where the farm's sign stands: at the path side, below the plot. */
 export const signOf = (farm: number) => ({ x: PLOTS[farm].x + PLOT_W / 2 + 0.35, z: PLOTS[farm].z + PLOT_D / 2 + 0.3 });
 
@@ -326,7 +336,7 @@ export interface Task {
   target: { farm: number; at: 'plot' | 'sign' } | { place: Place };
 }
 
-export type Place = 'mission' | 'shed-seeds' | 'shed-fertilizer' | 'shed-sprayer' | 'pond' | 'hire' | 'market' | 'house' | 'pen' | 'coop';
+export type Place = 'mission' | 'shed-seeds' | 'shed-fertilizer' | 'shed-sprayer' | 'pond' | 'hire' | 'market' | 'house' | 'pen' | 'coop' | 'power';
 export type TaskIcon = 'plan' | 'hoe' | 'seeds' | 'fertilizer' | 'check' | 'weed' | 'water' | 'spray' | 'drain' | 'goat' | 'birds' | 'tractor' | 'corn' | 'sleep' | 'wait' | 'results';
 
 /** The task card's icon for each scheduled care job. */

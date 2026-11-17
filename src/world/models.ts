@@ -1069,3 +1069,136 @@ export function makeArrow() {
   g.add(mesh(G.cone4, m, at(0, 0.0, 0, { sx: 0.6, sy: 0.35, sz: 0.6, rx: Math.PI, ry: Math.PI / 4 }), false));
   return g;
 }
+
+/* ---------------- the power yard (src/power) ---------------- */
+
+/** One frame of three solar panels, tilted to the sun, centred at the origin (about 3.6 × 1.6). */
+export function solarFrame(): Part[] {
+  const out: Part[] = [];
+  for (const x of [-1.6, 1.6]) out.push({ geo: G.box, color: '#8d9399', m: at(x, 0.45, 0.5, { sx: 0.1, sy: 0.9, sz: 0.1 }) }, { geo: G.box, color: '#8d9399', m: at(x, 0.85, -0.5, { sx: 0.1, sy: 1.7, sz: 0.1 }) });
+  for (let i = 0; i < 3; i++) {
+    out.push({ geo: G.box, color: '#c9d6e8', m: at(-1.2 + i * 1.2, 1.15, 0, { sx: 1.16, sy: 0.08, sz: 1.7, rx: -0.5 }) });
+    out.push({ geo: G.box, color: '#22406e', m: at(-1.2 + i * 1.2, 1.2, 0.02, { sx: 1.04, sy: 0.04, sz: 1.56, rx: -0.5 }) });
+  }
+  return out;
+}
+
+/** The power hut: a small block room with the inverter on its wall. */
+export function powerHut(): Part[] {
+  return [
+    { geo: G.box, color: '#e9e2d0', m: at(0, 1.0, 0, { sx: 2.2, sy: 2.0, sz: 1.8 }) },
+    { geo: G.box, color: '#9aa3a8', m: at(0, 2.08, 0, { sx: 2.5, sy: 0.16, sz: 2.1, rx: 0.08 }) },
+    { geo: G.box, color: '#6b7378', m: at(-0.45, 0.8, 0.91, { sx: 0.7, sy: 1.5, sz: 0.06 }) },
+  ];
+}
+export function inverterBox(): Part[] {
+  return [
+    { geo: G.box, color: '#f5f5f0', m: at(0, 0, 0, { sx: 0.6, sy: 0.8, sz: 0.2 }) },
+    { geo: G.box, color: '#2a6fd6', m: at(0, 0.18, 0.11, { sx: 0.4, sy: 0.16, sz: 0.02 }) },
+    { geo: G.box, color: '#2e8b47', m: at(-0.14, -0.15, 0.11, { sx: 0.08, sy: 0.08, sz: 0.02 }) },
+  ];
+}
+export function batteryBank(): Part[] {
+  const out: Part[] = [{ geo: G.box, color: '#596066', m: at(0, 0.05, 0, { sx: 1.7, sy: 0.1, sz: 0.7 }) }];
+  for (let i = 0; i < 4; i++) {
+    out.push({ geo: G.box, color: '#2b2f33', m: at(-0.6 + i * 0.4, 0.45, 0, { sx: 0.34, sy: 0.7, sz: 0.55 }) });
+    out.push({ geo: G.box, color: '#e2b23a', m: at(-0.6 + i * 0.4, 0.82, 0.1, { sx: 0.08, sy: 0.05, sz: 0.08 }) });
+  }
+  return out;
+}
+export function generatorSet(): Part[] {
+  return [
+    { geo: G.box, color: '#3a3f44', m: at(0, 0.08, 0, { sx: 1.9, sy: 0.16, sz: 1.0 }) },
+    { geo: G.box, color: '#e0a312', m: at(0, 0.6, 0, { sx: 1.7, sy: 0.9, sz: 0.9 }) },
+    { geo: G.box, color: '#2b2f33', m: at(-0.5, 0.62, 0.46, { sx: 0.5, sy: 0.5, sz: 0.04 }) },
+    { geo: G.cyl, color: '#6b7378', m: at(0.6, 1.3, -0.2, { sx: 0.12, sy: 0.6, sz: 0.12 }) },
+  ];
+}
+export function fuelTank(): Part[] {
+  return [
+    { geo: G.box, color: '#6b7378', m: at(-0.8, 0.3, 0, { sx: 0.12, sy: 0.6, sz: 0.9 }) },
+    { geo: G.box, color: '#6b7378', m: at(0.8, 0.3, 0, { sx: 0.12, sy: 0.6, sz: 0.9 }) },
+    { geo: G.cyl, color: '#c0392b', m: at(0, 0.95, 0, { sx: 1.0, sy: 2.2, sz: 1.0, rz: Math.PI / 2 }) },
+    { geo: G.box, color: '#2b2f33', m: at(0.6, 1.5, 0, { sx: 0.2, sy: 0.15, sz: 0.2 }) },
+  ];
+}
+/** A light pole: the bulb is drawn on its own (it glows at night). */
+export function lampPole(): Part[] {
+  return [
+    { geo: G.cyl6, color: '#6b7378', m: at(0, 1.4, 0, { sx: 0.12, sy: 2.8, sz: 0.12 }) },
+    { geo: G.box, color: '#6b7378', m: at(0, 2.8, 0.25, { sx: 0.08, sy: 0.08, sz: 0.6 }) },
+    { geo: G.box, color: '#3a3f44', m: at(0, 2.76, 0.52, { sx: 0.3, sy: 0.1, sz: 0.24 }) },
+  ];
+}
+
+/* ---------------- the cow shed (src/livestock) ---------------- */
+
+/** The roofed shed: timber posts, an iron-sheet roof, a feed trough. Centred at the origin (about 5 × 3.4). */
+export function roofedShed(): Part[] {
+  const out: Part[] = [];
+  for (const [x, z] of [[-2.4, -1.6], [2.4, -1.6], [-2.4, 1.6], [2.4, 1.6]]) out.push({ geo: G.cyl6, color: C.woodDark, m: at(x, 1.1, z, { sx: 0.18, sy: 2.2, sz: 0.18 }) });
+  out.push({ geo: G.box, color: '#9aa3a8', m: at(0, 2.3, 0, { sx: 5.4, sy: 0.12, sz: 3.8, rx: 0.12 }) });
+  out.push({ geo: G.box, color: C.woodPlank, m: at(0, 0.35, -1.5, { sx: 4.4, sy: 0.5, sz: 0.5 }) });
+  out.push({ geo: G.box, color: C.hay, m: at(0, 0.62, -1.5, { sx: 4.2, sy: 0.08, sz: 0.4 }) });
+  out.push({ geo: G.box, color: '#c9a85c', m: at(0, 0.04, 0.3, { sx: 4.6, sy: 0.06, sz: 2.4 }) });
+  return out;
+}
+/** The zero-grazing unit: a concrete floor, block half-walls, troughs and a gutter into a tank. */
+export function zeroGrazing(): Part[] {
+  const out: Part[] = [{ geo: G.box, color: '#c8c6bf', m: at(0, 0.06, 0, { sx: 5.4, sy: 0.12, sz: 3.8 }) }];
+  out.push({ geo: G.box, color: '#e3ddcf', m: at(0, 0.6, -1.8, { sx: 5.4, sy: 1.0, sz: 0.2 }) });
+  out.push({ geo: G.box, color: '#e3ddcf', m: at(-2.6, 0.6, 0, { sx: 0.2, sy: 1.0, sz: 3.8 }) });
+  out.push({ geo: G.box, color: '#e3ddcf', m: at(2.6, 0.6, 0, { sx: 0.2, sy: 1.0, sz: 3.8 }) });
+  for (const [x, z] of [[-2.6, -1.8], [2.6, -1.8], [-2.6, 1.8], [2.6, 1.8]]) out.push({ geo: G.box, color: C.woodDark, m: at(x, 1.4, z, { sx: 0.22, sy: 2.8, sz: 0.22 }) });
+  out.push({ geo: G.box, color: C.roofDark, m: at(0, 2.9, 0, { sx: 6.0, sy: 0.14, sz: 4.4, rx: 0.12 }) });
+  out.push({ geo: G.box, color: '#9aa3a8', m: at(0, 2.55, 2.25, { sx: 6.0, sy: 0.14, sz: 0.2 }) });
+  out.push({ geo: G.cyl, color: '#2a6fd6', m: at(3.3, 0.7, 2.0, { sx: 0.9, sy: 1.4, sz: 0.9 }) });
+  out.push({ geo: G.box, color: '#8f9396', m: at(-1.0, 0.4, -1.4, { sx: 2.6, sy: 0.5, sz: 0.5 }) });
+  out.push({ geo: G.box, color: C.water, m: at(1.7, 0.42, -1.4, { sx: 1.2, sy: 0.4, sz: 0.5 }) });
+  return out;
+}
+
+/* ---------------- the new farms' crops (src/garden) ---------------- */
+
+/** One tile of a new farm's crop at a stage (0 just planted … 3 ready). */
+export function gardenTile(crop: string, stage: number): Part[] {
+  const g = 0.45 + 0.2 * stage;
+  const out: Part[] = [];
+  const spots = [
+    [-0.25, -0.25],
+    [0.25, -0.25],
+    [-0.25, 0.25],
+    [0.25, 0.25],
+  ];
+  if (crop === 'orchard') {
+    const s = 0.35 + stage * 0.22;
+    out.push({ geo: G.cyl6, color: '#8b5a2b', m: at(0, 0.5 * s, 0, { sx: 0.12, sy: s, sz: 0.12 }) });
+    out.push({ geo: G.ico1, color: '#3f8a2a', m: at(0, 1.05 * s + 0.15, 0, { s: 0.9 * s }) });
+    out.push({ geo: G.ico, color: '#5fae3a', m: at(0.2 * s, 1.25 * s + 0.15, 0.15, { s: 0.5 * s }) });
+    if (stage === 3) for (let i = 0; i < 5; i++) out.push({ geo: G.sphere, color: i % 2 ? '#3a6b22' : '#f2a31b', m: at(Math.cos(i * 1.3) * 0.35, 0.95 * s, Math.sin(i * 1.3) * 0.35, { s: 0.14 }) });
+    return out;
+  }
+  for (const [x, z] of spots) {
+    const p: Part[] = [];
+    if (crop === 'spinach') {
+      for (let i = 0; i < 5; i++) p.push({ geo: G.sphere, color: i % 2 ? '#2f7d3a' : '#3f9a4a', m: at(Math.sin(i * 1.26) * 0.09 * g, 0.06 * g, Math.cos(i * 1.26) * 0.09 * g, { sx: 0.16 * g, sy: 0.05, sz: 0.26 * g, ry: i * 1.26, rx: -0.5 }) });
+    } else if (crop === 'tomatoes') {
+      p.push({ geo: G.cyl6, color: '#8b5a2b', m: at(0.08, 0.35 * g, 0, { sx: 0.03, sy: 0.7 * g, sz: 0.03 }) });
+      p.push({ geo: G.ico1, color: '#4c8f2a', m: at(0, 0.32 * g, 0, { s: 0.32 * g }) });
+      if (stage >= 2) for (let i = 0; i < 3; i++) p.push({ geo: G.sphere, color: stage === 3 ? '#e2382a' : '#9acd52', m: at(Math.cos(i * 2.1) * 0.12, 0.26 * g, Math.sin(i * 2.1) * 0.12, { s: 0.09 }) });
+    } else if (crop === 'beans') {
+      for (let i = 0; i < 3; i++) p.push({ geo: G.cone4, color: i % 2 ? '#6aa336' : '#4f8f2a', m: at(Math.cos(i * 2.1) * 0.06, 0.18 * g, Math.sin(i * 2.1) * 0.06, { sx: 0.14 * g, sy: 0.4 * g, sz: 0.06, ry: i * 2.1 }) });
+      if (stage === 3) p.push({ geo: G.cyl6, color: '#7cbf3a', m: at(0.08, 0.15, 0.05, { sx: 0.03, sy: 0.18, sz: 0.03, rz: 0.4 }) });
+    } else if (crop === 'onions') {
+      for (let i = 0; i < 3; i++) p.push({ geo: G.cone4, color: '#5aa83a', m: at(Math.cos(i * 2.1) * 0.03, 0.22 * g, Math.sin(i * 2.1) * 0.03, { sx: 0.04, sy: 0.45 * g, sz: 0.04 }) });
+      if (stage >= 2) p.push({ geo: G.sphere, color: '#b0628a', m: at(0, 0.05, 0, { s: 0.12 + stage * 0.02 }) });
+    } else {
+      // watermelon: vines along the ground, fruit at the end
+      p.push({ geo: G.box, color: '#3c8a3a', m: at(0, 0.03, 0, { sx: 0.4 * g, sy: 0.04, sz: 0.1, ry: x * 9 }) });
+      p.push({ geo: G.sphere, color: '#4f9a3a', m: at(0.06, 0.05, 0.06, { sx: 0.2 * g, sy: 0.06, sz: 0.2 * g }) });
+      if (stage >= 2) p.push({ geo: G.sphere, color: stage === 3 ? '#2f7a32' : '#7cbf5a', m: at(-0.05, 0.1, -0.05, { sx: 0.22, sy: 0.17, sz: 0.16 }) });
+    }
+    out.push(...place(p, at(x, 0.08, z, { ry: x * 7 + z * 3 })));
+  }
+  return out;
+}

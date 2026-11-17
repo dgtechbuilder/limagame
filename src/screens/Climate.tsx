@@ -126,7 +126,7 @@ export function ClimatePage({ s, dispatch, tab: startTab }: Props) {
         </nav>
         <section className="set-content cl-content" aria-label={TABS.find(t => t.id === tab)!.label}>
           {tab === 'overview' && <Overview s={s} go={setTab} />}
-          {tab === 'land' && <LandPay s={s} />}
+          {tab === 'land' && <LandPay s={s} dispatch={dispatch} />}
           {tab === 'areas' && <Areas s={s} />}
           {tab === 'emissions' && <Emissions s={s} />}
           {tab === 'water' && <WaterSoil s={s} />}
@@ -223,7 +223,7 @@ function Overview({ s, go }: { s: GameState; go: (t: ClimateTab) => void }) {
 
 const USE_WORD: Record<LandUse, string> = { farmed: 'Farmed', bare: 'Bare', idle: 'Idle' };
 
-function LandPay({ s }: { s: GameState }) {
+function LandPay({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
   const c = s.climate;
   const pay = payOf(c);
   const l = landOf(s);
@@ -307,6 +307,9 @@ function LandPay({ s }: { s: GameState }) {
         ) : (
           <Empty>{pay.day ? 'Your first payment comes at the end of today.' : 'Payments start once your farm is open.'}</Empty>
         )}
+        <button type="button" className="set-link" onClick={() => dispatch({ type: 'open', modal: { kind: 'wallet', tab: 'climate' } })}>
+          Every payment, in your wallet ›
+        </button>
       </div>
     </div>
   );

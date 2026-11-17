@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { boot, state, type Win } from './helpers';
+import { boot, playTiming, state, type Win } from './helpers';
 import { initialState, reducer, saleQuote, type GameState } from '../src/state';
 import { payClock } from '../src/climate/track';
 import { achClock } from '../src/achievements/track';
@@ -29,12 +29,10 @@ test('the animals come into the player’s care on day 2, with the coop, and a d
   day = '2026-11-15';
   let s = act(game(), { type: 'climateTick' });
   expect(lifeOf(s.life).day).toBe(1);
-  // before day 2: no care, no coop
+  // before day 2: no care (the coop can be upgraded from day 1: see systems.spec.ts)
   expect(careLeft(s)).toHaveLength(0);
   s = act(s, { type: 'animalCare', id: 'cowFeed' });
   expect(s.toast?.text).toMatch(/from day 2/);
-  s = act(s, { type: 'coopBuild', id: 'basic' });
-  expect(lifeOf(s.life).coop).toBeNull();
   // the night passes: day 2
   day = '2026-11-16';
   s = act(s, { type: 'climateTick' });
@@ -234,6 +232,8 @@ test('in the game: ANIMALS opens the day’s jobs, a job is done, the coop is bu
   // the coop
   await page.getByRole('button', { name: 'Coop', exact: true }).click();
   await page.getByRole('button', { name: /^Build the simple coop/ }).click();
+  // built by hand: the hammer mini-game
+  await playTiming(page, 'Finish the coop');
   await expect(page.locator('.lv-option.is-on')).toContainText('Simple coop');
   expect(lifeOf((await state(page)).life).coop).toBe('basic');
   // a problem by its signs, and the fix

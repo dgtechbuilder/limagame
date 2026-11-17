@@ -33,7 +33,11 @@ export function MainMenu({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
         { label: 'Field rounds', note: 'Check every bed', run: () => dispatch({ type: 'rounds', open: true }) },
         { label: 'Tractor', note: 'Pick a type and tool, work a plot', run: () => dispatch({ type: 'ride' }) },
         { label: 'Tractor business', note: 'Serve farms, plan routes, partners', run: () => dispatch({ type: 'biz', open: true }) },
-        { label: 'Animals', note: 'Cows, hens, the chicken coop', run: () => open({ kind: 'animals' }) },
+        { label: 'Wallet', note: 'Every payment in and out', run: () => open({ kind: 'wallet', tab: 'history' }) },
+        { label: 'Power', note: 'Solar, battery, lights, generator', run: () => open({ kind: 'power', tab: 'build' }) },
+        { label: 'Market stall', note: 'Sell 25 kg of your store a day', run: () => open({ kind: 'market' }) },
+        { label: 'New farms', note: 'Farms 7 and 8: spinach, orchard…', run: () => open({ kind: 'garden', farm: 0 }) },
+        { label: 'Animals', note: 'Cows, hens, the coop and the cow shed', run: () => open({ kind: 'animals' }) },
         { label: 'Security', note: 'Keep thieves off the farm', run: () => open({ kind: 'security' }) },
         { label: 'Shop', note: 'Seeds, fertilizer, tools', run: () => open({ kind: 'shop', tab: 'food' }) },
         {

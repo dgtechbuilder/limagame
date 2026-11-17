@@ -15,6 +15,10 @@ const World = lazy(() => import('./world/World').then(m => ({ default: m.World }
 // the animals' and security pages are loaded when first opened
 const AnimalsPage = lazy(() => import('./livestock/Animals').then(m => ({ default: m.AnimalsPage })));
 const SecurityPage = lazy(() => import('./security/Security').then(m => ({ default: m.SecurityPage })));
+const WalletPage = lazy(() => import('./wallet/Wallet').then(m => ({ default: m.WalletPage })));
+const PowerPage = lazy(() => import('./power/Power').then(m => ({ default: m.PowerPage })));
+const MarketPage = lazy(() => import('./produce/Market').then(m => ({ default: m.MarketPage })));
+const GardenPage = lazy(() => import('./garden/Garden').then(m => ({ default: m.GardenPage })));
 // design review (?review=1) only: its sample screens are computed when it is opened, never for players
 const ReviewPicker = lazy(() => import('./review/Review').then(m => ({ default: m.ReviewPicker })));
 import { WelcomeModal } from './screens/Meta';
@@ -177,7 +181,7 @@ export default function App() {
   useEffect(() => {
     const x = s.success;
     if (!x || !voiceOn) return;
-    speak(x.kind === 'sale' ? `Sold ${x.qty} ${x.item}` : x.kind === 'training' ? 'Training booked' : x.kind === 'storage' ? 'Storage upgraded' : x.kind === 'day2' ? 'Day 2: your animals are in your care' : x.events.map(e => e.text).join(' '));
+    speak(x.kind === 'sale' ? `Sold ${x.qty} ${x.item}` : x.kind === 'training' ? 'Training booked' : x.kind === 'storage' ? 'Storage upgraded' : x.kind === 'day2' ? 'Day 2: your animals are in your care' : x.kind === 'morning' ? x.lines.map(l => l.title).join('. ') : x.events.map(e => e.text).join(' '));
   }, [s.success?.id, voiceOn]);
   useEffect(() => {
     if (!voiceOn) stopSpeaking();
@@ -292,6 +296,26 @@ export default function App() {
         {m?.kind === 'security' && (
           <Suspense fallback={null}>
             <SecurityPage s={s} dispatch={dispatch} tab={m.tab} />
+          </Suspense>
+        )}
+        {m?.kind === 'wallet' && (
+          <Suspense fallback={null}>
+            <WalletPage s={s} dispatch={dispatch} tab={m.tab} />
+          </Suspense>
+        )}
+        {m?.kind === 'power' && (
+          <Suspense fallback={null}>
+            <PowerPage s={s} dispatch={dispatch} tab={m.tab} />
+          </Suspense>
+        )}
+        {m?.kind === 'market' && (
+          <Suspense fallback={null}>
+            <MarketPage s={s} dispatch={dispatch} />
+          </Suspense>
+        )}
+        {m?.kind === 'garden' && (
+          <Suspense fallback={null}>
+            <GardenPage s={s} dispatch={dispatch} farm={m.farm} />
           </Suspense>
         )}
         {m?.kind === 'shop' && <ShopModal s={s} tab={m.tab} dispatch={dispatch} />}

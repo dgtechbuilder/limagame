@@ -1,18 +1,22 @@
-import { useEffect, useMemo, type Dispatch, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type Dispatch, type ReactNode } from 'react';
+import { MiniGame, type GameSpec } from '../minigames/MiniGame';
 import { NavBar } from '../components/Nav';
 import { CloseX } from '../components/Success';
 import { money } from '../money';
 import { WATER } from '../water/config';
 import { capacityOf, tankOf, useToday } from '../water/model';
 import type { Action, AnimalsTab, GameState } from '../state';
-import { CARE, COOPS, ISSUES, LIFE, NO_COOP, PREVENT, coopOption, issueOf, type Group, type IssueId } from './config';
+import { CARE, COOPS, ISSUES, LIFE, NO_COOP, PREVENT, SHEDS, coopOption, issueOf, shedOption, type CoopId, type Group, type IssueId, type ShedId } from './config';
 import {
   animalWater,
   careCost,
   careDoneToday,
   careDue,
   careOpen,
+  coopOpen,
   coopPrice,
+  shedOpen,
+  shedPrice,
   coopRoom,
   countOf,
   crowded,
@@ -37,6 +41,7 @@ const TABS: { id: AnimalsTab; label: string; icon: string }[] = [
   { id: 'health', label: 'Health', icon: '✚' },
   { id: 'water', label: 'Water', icon: '💧' },
   { id: 'coop', label: 'Coop', icon: '⌂' },
+  { id: 'shed', label: 'Cow shed', icon: '🏚' },
   { id: 'herd', label: 'Herd', icon: '🐄' },
 ];
 
@@ -77,11 +82,12 @@ export function AnimalsPage({ s, dispatch, tab: startTab }: Props) {
           </p>
         </nav>
         <section className="set-content cl-content" aria-label={TABS.find(t => t.id === tab)!.label}>
-          {!open && <Locked />}
+          {!open && tab !== 'coop' && tab !== 'shed' && <Locked />}
           {tab === 'today' && <Today s={s} dispatch={dispatch} go={setTab} />}
           {tab === 'health' && <Health s={s} dispatch={dispatch} />}
           {tab === 'water' && <Water s={s} dispatch={dispatch} />}
           {tab === 'coop' && <Coop s={s} dispatch={dispatch} />}
+          {tab === 'shed' && <Shed s={s} dispatch={dispatch} />}
           {tab === 'herd' && <Herd s={s} dispatch={dispatch} />}
         </section>
       </div>
@@ -371,9 +377,13 @@ function Water({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
 
 /* ---------------- Coop ---------------- */
 
+/** Building the coop or the shed: a hammer, in time. */
+export const BUILD_GAME: GameSpec = { type: 'timing', rounds: 4, zone: [40, 62], speed: 150, verb: 'Hammer!', icon: '🔨' };
+
 function Coop({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
   const l = lifeOf(s.life);
-  const open = careOpen(s);
+  const open = coopOpen(s);
+  const [building, setBuilding] = useState<CoopId | null>(null);
   const have = coopOption(l.coop);
   const hens = countOf(s, 'hens');
   return (
@@ -386,8 +396,8 @@ function Coop({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
           </>
         ) : (
           <>
-            No coop yet: {hens} hens roost in the trees. They lay {pct(-NO_COOP.eggs)} of their eggs in the bush, and thieves and mongooses take them at night. Build one from day{' '}
-            {LIFE.startDay}.
+            No coop yet: {hens} hens roost in the trees. They lay {pct(-NO_COOP.eggs)} of their eggs in the bush, and thieves and mongooses take them at night. Upgrade it from day{' '}
+            {LIFE.coopDay}: build it yourself, nail by nail.
           </>
         )}
       </p>
@@ -410,7 +420,7 @@ function Coop({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
               ) : price === null ? (
                 <span className="lv-done is-later">You have a better one</span>
               ) : (
-                <Btn tone="go" disabled={!open} onClick={() => dispatch({ type: 'coopBuild', id: c.id })} label={`${l.coop ? 'Upgrade to' : 'Build'} the ${c.name.toLowerCase()} for ${money(price)}`}>
+                <Btn tone="go" disabled={!open || s.coins < price} onClick={() => setBuilding(c.id)} label={`${l.coop ? 'Upgrade to' : 'Build'} the ${c.name.toLowerCase()} for ${money(price)}`}>
                   {l.coop ? 'Upgrade' : 'Build'} · {money(price)}
                 </Btn>
               )}
@@ -421,6 +431,87 @@ function Coop({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
       <p className="set-body lv-room">
         Room now: {coopRoom(l.coop)} hens{l.coop ? '' : ' in the trees'}. More hens than room make problems {Math.round((LIFE.crowded - 1) * 100)}% likelier.
       </p>
+      {building && (
+        <MiniGame
+          title={`Build the ${COOPS.find(c => c.id === building)!.name.toLowerCase()}`}
+          kicker="Coop upgrade"
+          task="Nail the frame together: press Hammer when the marker is in the green. Four nails."
+          spec={BUILD_GAME}
+          doneLabel="Finish the coop"
+          onClose={() => setBuilding(null)}
+          onDone={() => {
+            dispatch({ type: 'coopBuild', id: building });
+            setBuilding(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ---------------- Cow shed ---------------- */
+
+function Shed({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
+  const l = lifeOf(s.life);
+  const open = shedOpen(s);
+  const have = shedOption(l.shed);
+  const [building, setBuilding] = useState<ShedId | null>(null);
+  return (
+    <div className="lv-coop">
+      <p className="cl-tip">
+        {have ? (
+          <>
+            Your cows sleep in the <b>{have.name.toLowerCase()}</b>: +{pct(have.milk)} milk, −{pct(have.disease)} cow diseases, and its gutters catch rain for the tank.
+          </>
+        ) : open ? (
+          <>The cows sleep in the open pen: mud, ticks and rain cost milk. Upgrade their shed now.</>
+        ) : (
+          <>
+            The cows sleep in the open pen. From <b>day {LIFE.shedDay}</b> (today is day {l.day}) you can upgrade their shed: build it yourself, beam by beam.
+          </>
+        )}
+      </p>
+      <div className="lv-options">
+        {SHEDS.map(c => {
+          const price = shedPrice(l.shed, c.id);
+          const built = l.shed === c.id;
+          return (
+            <div key={c.id} className={`lv-option${built ? ' is-on' : ''}`}>
+              <p className="set-title">{c.name}</p>
+              <p className="set-body">{c.does}</p>
+              <ul className="lv-facts">
+                <li>+{pct(c.milk)} milk</li>
+                <li>−{pct(c.disease)} cow diseases</li>
+                <li>−{pct(c.theft)} cow theft at night</li>
+                <li>Gutters: +{c.gutter} L a day into the tank</li>
+              </ul>
+              {built ? (
+                <span className="lv-done">✓ Built</span>
+              ) : price === null ? (
+                <span className="lv-done is-later">You have a better one</span>
+              ) : (
+                <Btn tone="go" disabled={!open || s.coins < price} onClick={() => setBuilding(c.id)} label={`${l.shed ? 'Upgrade to' : 'Build'} the ${c.name.toLowerCase()} for ${money(price)}`}>
+                  {open ? `${l.shed ? 'Upgrade' : 'Build'} · ${money(price)}` : `From day ${LIFE.shedDay}`}
+                </Btn>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {building && (
+        <MiniGame
+          title={`Build the ${SHEDS.find(c => c.id === building)!.name.toLowerCase()}`}
+          kicker="Cow shed upgrade"
+          task="Fix the roof beams: press Hammer when the marker is in the green. Four beams."
+          spec={BUILD_GAME}
+          doneLabel="Finish the shed"
+          onClose={() => setBuilding(null)}
+          onDone={() => {
+            dispatch({ type: 'shedBuild', id: building });
+            setBuilding(null);
+          }}
+        />
+      )}
     </div>
   );
 }

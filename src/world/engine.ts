@@ -32,6 +32,10 @@ import {
   rowMask,
   rowOf,
   BUTTON_JOBS,
+  GARDEN_COLS,
+  GARDEN_PLOTS,
+  GARDEN_ROWS,
+  gardenSign,
   followUpLeft,
   routineLeft,
   type Carry,
@@ -84,6 +88,16 @@ import {
   wildBush,
   wildTile,
   zoneTexture,
+  solarFrame,
+  powerHut,
+  inverterBox,
+  batteryBank,
+  generatorSet,
+  fuelTank,
+  lampPole,
+  roofedShed,
+  zeroGrazing,
+  gardenTile,
   type Farmer,
   type Part,
 } from './models';
@@ -112,8 +126,24 @@ function phoneLike() {
 }
 /** Where the tractor waits, and a spot beside it to walk to (clear of the Hire spot, which opens the hire screen). */
 const TRACTOR_HOME = { x: -17.4, z: 6.4 };
-/** The mini forest: 10 acres of idle land, top right of the farm, above the pond (the pond is at x 18.4, z 0). */
-export const FOREST = { x0: 14.8, z0: -18.2, x1: 21.8, z1: -5.2, sign: { x: 13.6, z: -4.4 } };
+/** The mini forest: 10 acres of idle land, bottom right of the farm, below the pond (the pond is at x 18.4, z 0). */
+export const FOREST = { x0: 15.0, z0: 5.0, x1: 21.8, z1: 16.4, sign: { x: 13.8, z: 5.4 } };
+/** The power yard (src/power), top right of the farm above the pond: solar panels, the power hut (inverter and
+    batteries), the generator and the diesel tank. */
+export const POWER_YARD = { x0: 14.8, z0: -18.4, x1: 21.8, z1: -5.0 };
+/** The farm's light poles (src/power: day 4), along the paths and by the buildings; the first few carry a real light. */
+export const LAMPS: { x: number; z: number }[] = [
+  { x: -2.4, z: -12.2 },
+  { x: 2.4, z: -9.0 },
+  { x: -12.4, z: -4.0 },
+  { x: 12.0, z: -4.4 },
+  { x: -11.2, z: -11.0 },
+  { x: 10.6, z: -16.6 },
+  { x: -2.2, z: 10.8 },
+  { x: 2.2, z: 13.6 },
+  { x: -12.6, z: 9.0 },
+  { x: 11.4, z: 2.4 },
+];
 export const TRACTOR_BOARD = { x: -17.4, z: 8.6 };
 
 /** The partner billboards in the yard, either side of the farmhouse path (src/partners/data.ts sets the brand on each);
@@ -144,6 +174,8 @@ export const PLACES: Record<Place, { x: number; z: number; r: number }> = {
   /** the cow pen's gate and the chicken coop's door: the Animals page (src/livestock) */
   pen: { x: -10.7, z: -13.0, r: 1.0 },
   coop: { x: 8.2, z: -16.0, r: 1.0 },
+  /** the power yard's gate: the Power page */
+  power: { x: 13.4, z: -9.2, r: 1.1 },
 };
 
 /** How many cows and hens there are, and the coop (src/livestock): the 3D farm shows them. */
@@ -151,6 +183,20 @@ export interface FarmLife {
   cows: number;
   hens: number;
   coop: 'basic' | 'secure' | null;
+  shed?: 'roofed' | 'zero' | null;
+}
+
+/** What the farm's power system has built, and whether its lights are lit (src/power). */
+export interface FarmPower {
+  parts: string[];
+  lit: boolean;
+}
+
+/** A new farm's crop and how far it has grown (src/garden): -1 nothing planted. */
+export interface FarmGarden {
+  crop: string | null;
+  stage: number;
+  open: boolean;
 }
 
 const PICKUP_OF: Partial<Record<Place, Exclude<Carry, null>>> = { 'shed-seeds': 'seeds', 'shed-fertilizer': 'fertilizer', 'shed-sprayer': 'sprayer', pond: 'water' };
@@ -224,6 +270,8 @@ export class FarmWorld {
   private pending = new Map<string, number>();
   /** walking speed multiplier (automated play-tests run faster) */
   speedScale = 1;
+  /** the tractor's speed from the driver's level and its condition (src/tractor/hub.ts) */
+  tractorSpeed = 1;
   /** the farmer is on the tractor: a wider swath on the big jobs, a little faster, and bonus points */
   private riding = false;
   /** the tractor type and tool chosen at the tractor (plots/data.ts): the tool decides the job */
@@ -286,6 +334,7 @@ export class FarmWorld {
     this.scene.fog = new THREE.Fog(C.grass, 30, 60);
 
     const hemi = new THREE.HemisphereLight('#ffffff', '#8fb83a', 1.55);
+    this.hemi = hemi;
     this.scene.add(hemi);
     this.sun = new THREE.DirectionalLight('#fff6e0', 2.2);
     this.sun.castShadow = QUALITY[this.level].shadow > 0;
@@ -498,19 +547,17 @@ export class FarmWorld {
     const trees: [number, number, number][] = [
       [-20, 12, 1],
       [-17.5, 14.8, 0.8],
-      [19.5, 12.5, 1.1],
-      [16.4, 15.0, 0.8],
       [-6.8, -19.4, 0.9],
       [13.2, -19.6, 0.9],
-      [-9.5, 15.6, 0.85],
-      [9.8, 15.4, 0.9],
+      [-11.4, 16.0, 0.85],
+      [12.2, 16.2, 0.9],
       [-20.0, 9.0, 0.7],
     ];
     for (const [x, z, s] of trees) {
       flat.push(...place(tree(s, (x * 7 + z) % 2 ? 1 : 0), at(x, 0, z)));
       this.obstacles.push({ x, z, r: 0.7 * s });
     }
-    // the mini forest: 10 acres of idle land left to grow, top right of the farm above the pond (climate/land.ts)
+    // the mini forest: 10 acres of idle land left to grow, bottom right of the farm below the pond (climate/land.ts)
     const fo = forest(FOREST.x0, FOREST.z0, FOREST.x1, FOREST.z1);
     smooth.push(...fo.floor);
     flat.push(...fo.parts);
@@ -528,10 +575,7 @@ export class FarmWorld {
     }
     const bushes: [number, number, number][] = [
       [-14.2, 10.6, 1],
-      [14.6, 10.2, 0.8],
       [-3.6, -14.0, 0.7],
-      [6.4, 12.2, 0.8],
-      [-6.2, 12.4, 0.7],
       [-19.6, 2.8, 0.8],
     ];
     for (const [x, z, s] of bushes) flat.push(...place(bush(s), at(x, 0, z)));
@@ -547,7 +591,6 @@ export class FarmWorld {
       [-8.4, -12.2, 1],
       [9.6, -12.0, 1.1],
       [-18.2, 8.6, 0.9],
-      [18.6, 6.4, 1],
       [19.6, -3.4, 0.9],
       [-20.4, -4.4, 1],
     ];
@@ -651,9 +694,21 @@ export class FarmWorld {
         g.ellipse(0, 0, 30, 36, 0, 0, Math.PI * 2);
         g.fill();
       },
+      bolt: g => {
+        g.fillStyle = '#fff';
+        g.beginPath();
+        g.moveTo(8, -46);
+        g.lineTo(-26, 4);
+        g.lineTo(-2, 4);
+        g.lineTo(-10, 44);
+        g.lineTo(26, -8);
+        g.lineTo(2, -8);
+        g.closePath();
+        g.fill();
+      },
     };
     const zones: [Place, string, string, number][] = [
-      ['hire', 'Hire', 'tractor', 2.2],
+      ['hire', 'Train', 'tractor', 2.2],
       ['market', 'Sell', 'sell', 2.4],
       ['house', 'Sleep', 'sleep', 2.2],
       ['mission', 'Plan', 'plan', 2.0],
@@ -663,6 +718,7 @@ export class FarmWorld {
       ['shed-sprayer', 'Sprayer', 'bag', 1.6],
       ['pen', 'Cows', 'cow', 1.8],
       ['coop', 'Hens', 'hen', 1.7],
+      ['power', 'Power', 'bolt', 1.9],
     ];
     for (const [p, label, glyph, size] of zones) {
       const mat = new THREE.MeshBasicMaterial({ map: zoneTexture(label, glyphs[glyph]), transparent: true, depthWrite: false });
@@ -704,6 +760,211 @@ export class FarmWorld {
     this.oxen.add(yoke, plough);
     this.oxen.visible = false;
     this.scene.add(this.oxen);
+    this.buildPower();
+    this.buildGarden();
+  }
+
+  /* ---------------- the power yard, the lights and the night (src/power) ---------------- */
+
+  private powerParts: Record<string, THREE.Object3D> = {};
+  private lampGroup = new THREE.Group();
+  private bulbs: THREE.Mesh[] = [];
+  private lampLights: THREE.PointLight[] = [];
+  private lantern = new THREE.PointLight('#ffd9a0', 0, 7, 1.6);
+  private windows: THREE.Mesh[] = [];
+  private hemi!: THREE.HemisphereLight;
+  private nightOn = false;
+  private powerKey = '';
+
+  private buildPower() {
+    const Y = POWER_YARD;
+    const mk = (parts: Part[], x: number, z: number, ry = 0) => {
+      const m = new THREE.Mesh(merge(place(parts, at(x, 0, z, { ry }))), vcMaterial(true));
+      m.castShadow = true;
+      m.receiveShadow = true;
+      this.scene.add(m);
+      return m;
+    };
+    // the yard: gravel and a fence, always there (the parts appear as they are put in)
+    const floor = new THREE.Mesh(roundRect(Y.x0, Y.z0, Y.x1, Y.z1, 0.6), new THREE.MeshLambertMaterial({ color: '#d8cfb8' }));
+    floor.position.y = 0.012;
+    floor.receiveShadow = true;
+    this.scene.add(floor);
+    mk([...fence(Y.x0, Y.z0, Y.x1, Y.z0), ...fence(Y.x0, Y.z0, Y.x0, Y.z1 - 2.6)], 0, 0);
+    const frames: Part[] = [];
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 2; c++) frames.push(...place(solarFrame(), at(16.6 + c * 3.6, 0, -16.8 + r * 2.4)));
+    this.powerParts.panels = mk(frames, 0, 0);
+    this.powerParts.inverter = mk(inverterBox(), 16.2, -7.9);
+    this.powerParts.inverter.position.y = 1.2;
+    this.powerParts.hut = mk(powerHut(), 16.2, -6.9, Math.PI);
+    this.powerParts.battery = mk(batteryBank(), 18.6, -6.7);
+    this.powerParts.generator = mk(generatorSet(), 20.4, -9.0);
+    this.powerParts.fuel = mk(fuelTank(), 20.4, -6.6);
+    this.rects.push({ x0: 15.0, x1: 21.6, z0: -18.2, z1: -10.8 }, { x0: 15.0, x1: 17.4, z0: -7.9, z1: -5.9 }, { x0: 17.6, x1: 21.4, z0: -9.6, z1: -5.9 });
+    // the light poles, and a light at the first few
+    const poles: Part[] = [];
+    const bulbGeo = new THREE.SphereGeometry(0.16, 10, 8);
+    const bulbMat = new THREE.MeshBasicMaterial({ color: '#8a8a7a' });
+    LAMPS.forEach((l, i) => {
+      poles.push(...place(lampPole(), at(l.x, 0, l.z)));
+      const b = new THREE.Mesh(bulbGeo, bulbMat);
+      b.position.set(l.x, 2.66, l.z + 0.52);
+      this.lampGroup.add(b);
+      this.bulbs.push(b);
+      this.obstacles.push({ x: l.x, z: l.z, r: 0.18 });
+      if (i < 4) {
+        const pl = new THREE.PointLight('#ffe7a8', 0, 11, 1.4);
+        pl.position.set(l.x, 2.5, l.z + 0.5);
+        this.lampLights.push(pl);
+        this.scene.add(pl);
+      }
+    });
+    const pm = new THREE.Mesh(merge(poles), vcMaterial(true));
+    pm.castShadow = true;
+    this.lampGroup.add(pm);
+    this.lampGroup.visible = false;
+    this.scene.add(this.lampGroup);
+    // the farmer's lantern at night, and the house windows
+    this.scene.add(this.lantern);
+    const win = new THREE.MeshBasicMaterial({ color: '#ffd27a' });
+    for (const x of [-2.0, 2.0]) {
+      const w = new THREE.Mesh(G.box, win);
+      w.scale.set(1.05, 0.85, 0.05);
+      w.position.set(x, 1.7, -18.6 + 2.29);
+      w.visible = false;
+      this.windows.push(w);
+      this.scene.add(w);
+    }
+    this.setPower({ parts: [], lit: false });
+  }
+
+  /** The power system as built: each part shows once put in; the lights glow at night once lit. */
+  setPower(p: FarmPower) {
+    const key = `${p.parts.join()}:${p.lit}`;
+    if (key === this.powerKey) return;
+    this.powerKey = key;
+    for (const id of ['panels', 'battery', 'generator', 'fuel']) this.powerParts[id].visible = p.parts.includes(id);
+    this.powerParts.inverter.visible = p.parts.includes('inverter');
+    this.lampGroup.visible = p.parts.includes('lights');
+    this.lit = p.lit;
+    this.applyNight();
+  }
+  private lit = false;
+
+  /** Night mode: a dark sky, a moon, the farmer's lantern; the house windows and (once lit) the farm's lights glow. */
+  setNight(on: boolean) {
+    if (on === this.nightOn) return;
+    this.nightOn = on;
+    this.applyNight();
+  }
+  isNight() {
+    return this.nightOn;
+  }
+
+  private applyNight() {
+    const n = this.nightOn;
+    const sky = new THREE.Color(n ? '#0f1c33' : C.grass);
+    this.scene.background = sky;
+    (this.scene.fog as THREE.Fog).color = sky;
+    if (this.hemi) {
+      this.hemi.intensity = n ? 0.5 : 1.55;
+      this.hemi.color.set(n ? '#8ea2d8' : '#ffffff');
+      this.hemi.groundColor.set(n ? '#1d2a1c' : '#8fb83a');
+    }
+    this.sun.intensity = n ? 0.45 : 2.2;
+    this.sun.color.set(n ? '#a9bcff' : '#fff6e0');
+    this.lantern.intensity = n ? 2.2 : 0;
+    const glow = n && this.lit;
+    this.lampLights.forEach(l => (l.intensity = glow ? 9 : 0));
+    this.bulbs.forEach(b => ((b.material as THREE.MeshBasicMaterial).color.set(glow ? '#fff3b0' : '#8a8a7a')));
+    this.windows.forEach(w => {
+      w.visible = n;
+      (w.material as THREE.MeshBasicMaterial).color.set(this.powerKey.includes('switchOn') ? '#fff0b8' : '#e8a24a');
+    });
+    this.dirty = true;
+  }
+
+  /* ---------------- Farms 7 and 8 (src/garden) ---------------- */
+
+  private gardenMeshes: (THREE.Mesh | null)[] = [null, null];
+  private gardenKeys = ['', ''];
+  private gardenSigns: THREE.Sprite[] = [];
+
+  private buildGarden() {
+    const W = GARDEN_COLS * TILE;
+    const D = GARDEN_ROWS * TILE;
+    GARDEN_PLOTS.forEach((p, i) => {
+      const base = new THREE.Mesh(G.box, new THREE.MeshLambertMaterial({ color: '#7a4224' }));
+      base.scale.set(W + 0.5, 0.05, D + 0.5);
+      base.position.set(p.x, 0.02, p.z);
+      base.receiveShadow = true;
+      this.scene.add(base);
+      const beds: Part[] = [];
+      for (let r = 0; r < GARDEN_ROWS; r++) for (let c = 0; c < GARDEN_COLS; c++) beds.push({ geo: G.box, color: C.soil, m: at(p.x + (c - (GARDEN_COLS - 1) / 2) * TILE, 0.06, p.z + (r - (GARDEN_ROWS - 1) / 2) * TILE, { sx: TILE * 0.82, sy: 0.14, sz: TILE * 0.9 }) });
+      const bm = new THREE.Mesh(merge(beds), vcMaterial());
+      bm.receiveShadow = true;
+      this.scene.add(bm);
+      const sg = gardenSign(i);
+      const post = new THREE.Mesh(G.cyl6, new THREE.MeshLambertMaterial({ color: '#8b5a2b' }));
+      post.scale.set(0.12, 1.0, 0.12);
+      post.position.set(sg.x, 0.5, sg.z);
+      const face = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.75, 0.08), new THREE.MeshLambertMaterial({ map: signTexture(i + 7) }));
+      face.position.set(sg.x, 1.15, sg.z);
+      this.scene.add(post, face);
+      this.obstacles.push({ x: sg.x, z: sg.z, r: 0.15 });
+      const badge = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false }));
+      badge.scale.set(0.8, 0.8, 1);
+      badge.position.set(sg.x, 2.05, sg.z);
+      badge.renderOrder = 5;
+      badge.visible = false;
+      this.scene.add(badge);
+      this.gardenSigns.push(badge);
+    });
+  }
+
+  /** The new farms' crops, as grown (stage 0 just planted … 3 ready), and their signs' badges. */
+  setGarden(farms: FarmGarden[]) {
+    farms.forEach((f, i) => {
+      const key = `${f.crop}:${f.stage}:${f.open}`;
+      if (key === this.gardenKeys[i]) return;
+      this.gardenKeys[i] = key;
+      const old = this.gardenMeshes[i];
+      if (old) {
+        this.scene.remove(old);
+        old.geometry.dispose();
+      }
+      this.gardenMeshes[i] = null;
+      const b = this.gardenSigns[i];
+      b.visible = f.open && (!f.crop || f.stage === 3);
+      if (b.visible) b.material.map = f.crop ? this.badgeTex.harvest : this.badgeTex.check;
+      b.material.needsUpdate = true;
+      if (!f.crop || f.stage < 0) return;
+      const p = GARDEN_PLOTS[i];
+      const parts: Part[] = [];
+      const step = f.crop === 'orchard' ? 2 : 1;
+      for (let r = 0; r < GARDEN_ROWS; r++)
+        for (let c = 0; c < GARDEN_COLS; c += step) parts.push(...place(gardenTile(f.crop, f.stage), at(p.x + (c - (GARDEN_COLS - 1) / 2 + (step - 1) / 2) * TILE, 0.06, p.z + (r - (GARDEN_ROWS - 1) / 2) * TILE)));
+      const m = new THREE.Mesh(merge(parts), vcMaterial(true));
+      m.castShadow = true;
+      m.receiveShadow = true;
+      this.scene.add(m);
+      this.gardenMeshes[i] = m;
+    });
+    this.dirty = true;
+  }
+
+  /** The new farm whose sign the farmer stands at, or -1. */
+  gardenHere() {
+    for (let i = 0; i < GARDEN_PLOTS.length; i++) {
+      const sg = gardenSign(i);
+      if (Math.hypot(this.pos.x - sg.x, this.pos.y - sg.z) < 1.4) return i;
+    }
+    return -1;
+  }
+
+  /** The place the farmer stands in (a shed spot, the pond…), or null. */
+  placeHere() {
+    return this.inPlace;
   }
 
   private buildField() {
@@ -847,11 +1108,21 @@ export class FarmWorld {
       g.visible = g === site;
       this.scene.add(g);
     }
+    // the cow shed, upgraded by the player from day 3 (src/livestock)
+    for (const [id, parts] of [['roofed', roofedShed()], ['zero', zeroGrazing()]] as const) {
+      const m = new THREE.Mesh(merge(place(parts, at(-17.4, 0, -18.4))), vcMaterial(true));
+      m.castShadow = true;
+      m.receiveShadow = true;
+      m.visible = false;
+      this.sheds[id] = m;
+      this.scene.add(m);
+    }
   }
+  private sheds: Record<'roofed' | 'zero', THREE.Mesh> = {} as never;
 
   /** The herd and the coop as the farm has them now: stolen or dead animals are gone, a built coop stands. */
   setLife(l: FarmLife) {
-    const key = `${l.cows}:${l.hens}:${l.coop}`;
+    const key = `${l.cows}:${l.hens}:${l.coop}:${l.shed}`;
     if (key === this.lifeKey) return;
     this.lifeKey = key;
     this.cows.forEach((c, i) => (c.m.root.visible = i < l.cows));
@@ -860,6 +1131,8 @@ export class FarmWorld {
     this.coops.site.visible = !l.coop;
     this.coops.basic.visible = l.coop === 'basic';
     this.coops.secure.visible = l.coop === 'secure';
+    this.sheds.roofed.visible = l.shed === 'roofed';
+    this.sheds.zero.visible = l.shed === 'zero';
     this.dirty = true;
   }
 
@@ -1426,7 +1699,7 @@ export class FarmWorld {
     }
     // the green arrow over where the task card points
     const a = this.view?.arrowAt;
-    this.arrow.visible = !!a;
+    this.arrow.visible = !!a && !this.hideArrow;
     if (a) this.arrow.position.set(a.x, 2.0 + Math.sin(time * 4) * 0.18, a.z);
     this.arrow.rotation.y = time * 1.5;
     this.ringLife = Math.max(0, this.ringLife - dt);
@@ -1504,7 +1777,7 @@ export class FarmWorld {
         this.ev.arrived?.();
       }
     }
-    const speed = 4.6 * this.speedScale * (this.riding ? RIDE_SPEED * (this.rig ? TRACTOR_PLOT[this.rig.tractor].speed : 1) : 1);
+    const speed = 4.6 * this.speedScale * (this.riding ? RIDE_SPEED * this.tractorSpeed * (this.rig ? TRACTOR_PLOT[this.rig.tractor].speed : 1) : 1);
     if (dir.lengthSq() > 0) {
       const len = Math.min(1, dir.length());
       dir.normalize();
@@ -1581,7 +1854,8 @@ export class FarmWorld {
           const meant = !this.target || Math.hypot(this.target.x - p.x, this.target.y - p.z) < p.r;
           if (meant && this.view?.field.carry !== item) this.ev.carry(item);
         } else if (now === 'hire') {
-          if (!this.riding) this.startHire();
+          // the Train spot opens the tractor screen (World.tsx); its Hire section starts the oxen or the tractor
+          if (!this.riding) this.ev.place('hire');
         }
         else this.ev.place(now);
       }
@@ -1659,6 +1933,7 @@ export class FarmWorld {
 
   private animateFarmer(dt: number, time: number) {
     const F = this.farmer;
+    if (this.nightOn) this.lantern.position.set(this.pos.x, 2.2, this.pos.y + 0.4);
     F.root.position.set(this.pos.x, 0, this.pos.y);
     // turn smoothly toward the heading
     let d = this.heading - F.root.rotation.y;
@@ -1925,7 +2200,34 @@ export class FarmWorld {
     this.placeCamera();
   }
 
+  /** A fixed camera over the whole farm (the first session's backdrop is a picture taken with it), or null to follow
+      the farmer. `capture` also hides the farmer and the green arrow. */
+  setOverview(v: { x: number; z: number; h: number; back: number; capture?: boolean } | null) {
+    this.overview = v;
+    this.farmer.root.visible = !v?.capture;
+    this.hideArrow = !!v?.capture;
+    this.placeCamera();
+    this.dirty = true;
+  }
+  private overview: { x: number; z: number; h: number; back: number } | null = null;
+  private hideArrow = false;
+
   private placeCamera() {
+    if (this.overview) {
+      const o = this.overview;
+      this.camera.position.set(o.x, o.h, o.z + o.back);
+      this.camera.lookAt(o.x, 0, o.z);
+      this.camera.updateMatrixWorld();
+      this.sun.position.set(o.x - 9, 22, o.z + 9);
+      this.sun.target.position.set(o.x, 0, o.z);
+      const sc = this.sun.shadow.camera;
+      sc.left = -30;
+      sc.right = 30;
+      sc.top = 26;
+      sc.bottom = -26;
+      sc.updateProjectionMatrix();
+      return;
+    }
     const a = this.camAt;
     this.camera.position.set(a.x, 13.5, a.z + 9.6);
     this.camera.lookAt(a.x, 0.4, a.z + 0.6);

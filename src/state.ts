@@ -8,8 +8,15 @@ import type { Ledger } from './credits/ledger';
 import { trackWater } from './water/track';
 import { ROWS_PER_FARM } from './strategy/data';
 import { riskReduce, type RiskAction, type RiskState } from './risk/model';
-import { LIFE, type CareId, type CoopId, type Group, type IssueId, type PreventId } from './livestock/config';
-import { buildCoop, doCare, doPrevent, fixIssue, lifeOf, type LifeEvent, type LifeState } from './livestock/model';
+import { LIFE, type CareId, type CoopId, type Group, type IssueId, type PreventId, type ShedId } from './livestock/config';
+import { buildCoop, buildShed, doCare, doPrevent, fixIssue, lifeOf, type LifeEvent, type LifeState } from './livestock/model';
+import { trackWallet, type WalletState } from './wallet/model';
+import { POWER, stepOf, type LoadId, type StepId as PowerStepId } from './power/config';
+import { loadsAvailable, powerOf, stepBlock, type PowerState } from './power/model';
+import { HUB, hubOf, levelOf as hubLevel, lessonOf, type HubSection, type HubState } from './tractor/hub';
+import { sell as sellProduce, stock, type ProduceId, type ProduceState } from './produce/model';
+import { GARDEN, GARDEN_NAMES, cropOf as gardenCrop, gardenOf, harvestKg, type GardenCropId, type GardenState } from './garden/model';
+import { trackSystems, coldRoom, repairCut } from './systems/track';
 import { trackLife } from './livestock/track';
 import { measureOf, type MeasureId } from './security/config';
 import { cropsTaken, harvestLessTheft, securityOf, storeTheftShare, type SecurityState } from './security/model';
@@ -44,7 +51,7 @@ import { FOLLOW_UP } from './care/data';
 import { FULL, ROUTINE_POINTS, carryNeeded, doneMask, emptyField, followUpLeft, plotLocked, routineLeft, treatCostFor, treatLeft, type Carry, type Field } from './world/field';
 import { TRACTOR_BONUS, type ImplId } from './tractor/data';
 import { rewardFor } from './tractor/sim';
-import { ROUTINE, TRACTOR_PLOT, plotCost, setPlotInput, toolName, type PlotJob, type PlotKind, type TractorId } from './plots/data';
+import { OPTIONS, ROUTINE, TRACTOR_PLOT, plotCost, setPlotInput, toolName, type PlotJob, type PlotKind, type TractorId } from './plots/data';
 import { initialClimate, type ClimateState } from './climate/model';
 import { settleDays, trackClimate } from './climate/track';
 import { achClock, trackAchievements } from './achievements/track';
@@ -100,7 +107,15 @@ export type Modal =
   /** the cows and the hens: today's care, their health, water, the coop, the herd (src/livestock) */
   | { kind: 'animals'; tab?: AnimalsTab }
   /** keeping the farm safe from theft: what protects it, tonight's risks, the night reports (src/security) */
-  | { kind: 'security'; tab?: SecurityTab };
+  | { kind: 'security'; tab?: SecurityTab }
+  /** the farmer's wallet: every payment in and out (src/wallet) */
+  | { kind: 'wallet'; tab?: WalletTab }
+  /** the power system: building it over the first 7 days, today's energy, what it does for the farm (src/power) */
+  | { kind: 'power'; tab?: PowerTab }
+  /** the market stall: up to 25 kg of the store sold a day (src/produce) */
+  | { kind: 'market' }
+  /** Farm 7 or Farm 8, the new farms (src/garden): farm 0 or 1 */
+  | { kind: 'garden'; farm: number };
 
 /** The dialog after something worked: a sale, a training booked, a storage upgrade. It replaces the short message
     at the top of the screen for these, so the player cannot miss it (components/Success.tsx, screens/Success.tsx). */
@@ -131,7 +146,9 @@ export type Success =
   /** the morning after a night with news: thefts, predators, deaths, a new problem with the animals */
   | { kind: 'night'; id: number; nights: number; day: number; events: LifeEvent[] }
   /** day 2: the animals come into the player's care, and the farm's safety is theirs to look after */
-  | { kind: 'day2'; id: number };
+  | { kind: 'day2'; id: number }
+  /** a morning with something new to build or open (the cow shed on day 3, the new farms on day 4, a power part) */
+  | { kind: 'morning'; id: number; day: number; lines: { icon: string; title: string; text: string; go: Modal }[] };
 
 /** Player settings. They are kept on this device and survive Reset progress. */
 export interface Settings {
@@ -149,15 +166,19 @@ export interface Settings {
   upgradeNotes: boolean;
   /** the player's country (ISO code, picked when the farmer is made): money is shown in its currency; "" is US dollars */
   country: string;
+  /** night mode on the 3D farm: follow the phone's clock (night from 7 pm to 6 am), or always day, or always night */
+  night?: 'auto' | 'day' | 'night';
 }
 export type SettingsTab = 'farmer' | 'game' | 'display' | 'help';
 export type ClimateTab = 'overview' | 'land' | 'areas' | 'emissions' | 'water' | 'tank' | 'credits' | 'shocks' | 'activity';
 /** My Progress (the achievements page): the journey of certification levels, the modules, today, badges, certificates */
 export type AchTab = 'journey' | 'modules' | 'today' | 'badges' | 'certificates';
 export type PartnersTab = 'offers' | 'placements' | 'join' | 'shortlist';
-export type AnimalsTab = 'today' | 'health' | 'water' | 'coop' | 'herd';
+export type AnimalsTab = 'today' | 'health' | 'water' | 'coop' | 'shed' | 'herd';
 export type SecurityTab = 'protect' | 'risk' | 'reports';
-export const DEFAULT_SETTINGS: Settings = { art: 'anime', graphics: 'auto', reduceMotion: false, voice: false, sound: true, upgradeNotes: true, country: '' };
+export type WalletTab = 'history' | 'climate' | 'summary';
+export type PowerTab = 'build' | 'today' | 'impact' | 'history';
+export const DEFAULT_SETTINGS: Settings = { art: 'anime', graphics: 'auto', reduceMotion: false, voice: false, sound: true, upgradeNotes: true, country: '', night: 'auto' };
 
 /** Stage index: 0–5 = the farming step being worked on, 6 = harvested and selling, 7 = season sold. */
 export const SELLING = 6;
@@ -285,6 +306,18 @@ export interface GameState {
   life?: Partial<LifeState>;
   /** theft: the measures in place, what was taken, the night reports (src/security) */
   security?: Partial<SecurityState>;
+  /** every payment in and out of the farmer's money (src/wallet; missing in older saves) */
+  wallet?: Partial<WalletState>;
+  /** the power system (src/power) */
+  power?: Partial<PowerState>;
+  /** the farm's own tractor: training, condition, diesel (src/tractor/hub.ts) */
+  hub?: Partial<HubState>;
+  /** the store of produce and the market stall (src/produce) */
+  produce?: Partial<ProduceState>;
+  /** Farm 7 and Farm 8, the new farms (src/garden) */
+  garden?: Partial<GardenState>;
+  /** the seed, fertilizer and sprayer last chosen at the shed: new farms start with them */
+  prefs?: Partial<Record<PlotKind, string>>;
   // season
   season: number;
   day: number;
@@ -570,6 +603,26 @@ export type Action =
   /** theft (src/security): buy a measure; switch a nightly one (the watchman) on or off */
   | { type: 'securityBuy'; id: MeasureId }
   | { type: 'securityHire'; id: MeasureId; on: boolean }
+  /** the cow shed (from day 3) */
+  | { type: 'shedBuild'; id: ShedId }
+  /** the power system: a part put in (score: how its mini-game went), a load switched, diesel bought */
+  | { type: 'powerInstall'; id: PowerStepId; score: number; loads?: LoadId[] }
+  | { type: 'powerLoad'; id: LoadId; on: boolean }
+  | { type: 'powerFuel'; litres: number }
+  /** the tractor screen: a section's mini-game done (score 0 to 1) */
+  | { type: 'tractorHub'; section: HubSection; score: number; id?: string; litres?: number; label?: string }
+  /** the market stall: kg of each produce to sell */
+  | { type: 'produceSell'; items: Partial<Record<ProduceId, number>> }
+  /** the new farms: plant (score: the planting mini-game), water, harvest */
+  | { type: 'gardenPlant'; farm: number; crop: GardenCropId; score: number }
+  | { type: 'gardenWater'; farm: number }
+  | { type: 'gardenHarvest'; farm: number; score: number }
+  /** at the shed: a seed, fertilizer or sprayer chosen for every farm that can still take it, then picked up */
+  | { type: 'shedChoose'; kind: PlotKind; id: string }
+
+/** A morning's news waits for the screen on top to close (it is shown on the farm): opening or closing a screen keeps it. */
+export const MORNING_KINDS: Success['kind'][] = ['night', 'day2', 'morning'];
+const morning = (x: Success | null) => (x && MORNING_KINDS.includes(x.kind) ? x : null);
 
 let toastId = 0;
 let successId = 0;
@@ -595,7 +648,7 @@ export function reducer(s: GameState, a: Action): GameState {
   if (next === s) return s;
   const kind = soundOf(s, next, a);
   // an action that finished something counts today as a day played (the streak)
-  const tracked = trackEvidence(s, trackAchievements(s, trackLife(s, trackWater(s, trackClimate(s, next, a), a), a), a, kind !== null), a);
+  const tracked = trackWallet(s, trackSystems(s, trackEvidence(s, trackAchievements(s, trackLife(s, trackWater(s, trackClimate(s, next, a), a), a), a, kind !== null), a), a), a);
   return kind ? { ...tracked, sfx: { id: ++sfxId, kind } } : tracked;
 }
 
@@ -603,7 +656,7 @@ let sfxId = 0;
 /** Flows: finishing one of these ends a whole piece of play. */
 const FLOWS = new Set<Action['type']>(['achClaimAll', 'completeSale', 'trialHarvest', 'bizRun', 'bizHireOut', 'bizContract', 'bizGraduate', 'tractorDone']);
 /** Actions: finishing one of these is one thing done. Some only count when they earned something (their message). */
-const ACTIONS = new Set<Action['type']>(['achClaim', 'achDaily', 'levelClaim', 'partnerSave', 'buy', 'sell', 'bookTraining', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo', 'tidyClear', 'animalCare', 'animalPrevent', 'coopBuild', 'herdBuy', 'securityBuy']);
+const ACTIONS = new Set<Action['type']>(['achClaim', 'achDaily', 'levelClaim', 'partnerSave', 'buy', 'sell', 'bookTraining', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo', 'tidyClear', 'animalCare', 'animalPrevent', 'coopBuild', 'shedBuild', 'herdBuy', 'securityBuy', 'powerInstall', 'powerFuel', 'tractorHub', 'produceSell', 'gardenPlant', 'gardenWater', 'gardenHarvest', 'shedChoose']);
 const EARNED = new Set<Action['type']>(['roundResult', 'trialCheck', 'fieldMark']);
 const FS_ORDER: FsPhase[] = ['create', 'story', 'walk1', 'update', 'review1', 'walkRetry', 'retry', 'walk2', 'review2', 'done'];
 
@@ -634,14 +687,14 @@ function play(s: GameState, a: Action): GameState {
       return settleDays(s, s);
     case 'open':
       // another section of the same screen (a Settings tab, a Shop tab) keeps where Back goes
-      return { ...s, success: null, modal: a.modal, fromMenu: s.modal?.kind === a.modal.kind ? s.fromMenu : s.modal?.kind === 'menu' && a.modal.kind !== 'menu', plotSelected: false };
+      return { ...s, success: morning(s.success), modal: a.modal, fromMenu: s.modal?.kind === a.modal.kind ? s.fromMenu : s.modal?.kind === 'menu' && a.modal.kind !== 'menu', plotSelected: false };
     case 'close':
       // a screen opened from the main menu goes back to the menu
-      return s.fromMenu && s.modal && s.modal.kind !== 'menu' ? { ...s, success: null, modal: { kind: 'menu' }, fromMenu: false } : { ...s, success: null, modal: null, fromMenu: false };
+      return s.fromMenu && s.modal && s.modal.kind !== 'menu' ? { ...s, success: morning(s.success), modal: { kind: 'menu' }, fromMenu: false } : { ...s, success: morning(s.success), modal: null, fromMenu: false };
     case 'ride':
       return { ...s, success: null, modal: null, fromMenu: false, plotSelected: false, roundsOpen: false, roundsTrial: false, roundsView: null, roundsDemo: null, trialsOpen: false, bizOpen: false, worldDemo: null, navSeq: s.navSeq + 1, rideReq: s.rideReq + 1, toast: s.view === 'world' ? s.toast : toast('The tractor is on the 3D farm: switch the farm view in Settings') };
     case 'home':
-      return { ...s, success: null, modal: null, fromMenu: false, plotSelected: false, roundsOpen: false, roundsTrial: false, roundsView: null, roundsDemo: null, trialsOpen: false, bizOpen: false, worldDemo: null, navSeq: s.navSeq + 1 };
+      return { ...s, success: morning(s.success), modal: null, fromMenu: false, plotSelected: false, roundsOpen: false, roundsTrial: false, roundsView: null, roundsDemo: null, trialsOpen: false, bizOpen: false, worldDemo: null, navSeq: s.navSeq + 1 };
     case 'selectPlot':
       return { ...s, plotSelected: a.on };
     case 'onboarded':
@@ -920,7 +973,9 @@ function play(s: GameState, a: Action): GameState {
     case 'trialNew': {
       if (s.trial && s.trial.phase !== 'done') return s;
       const guided = s.trialHistory.length === 0;
-      const trial = newTrial(s.trialHistory.length + 1, guided, s.recipe ?? COMMON_PLAN);
+      const made = newTrial(s.trialHistory.length + 1, guided, s.recipe ?? COMMON_PLAN);
+      // the seed, fertilizer and sprayer last chosen at the shed go on every farm
+      const trial = s.prefs ? { ...made, plots: made.plots?.map(rows => rows.map(r => ({ ...r, ...s.prefs }) as typeof r)) } : made;
       if (!guided) return { ...s, trial };
       // the first planting period starts at once, with no plan to make: maize on Farm 1 (to clear, then plant) and
       // sukuma wiki on Farm 2 (cleared, ready to plant)
@@ -1377,6 +1432,115 @@ function play(s: GameState, a: Action): GameState {
       const r = buildCoop(s, a.id);
       return 'error' in r ? { ...s, toast: toast(r.error) } : { ...r.state, ...gainXp(s, 0.1), points: s.points + 50, toast: toast(`${r.text} · +50 points`) };
     }
+    case 'shedBuild': {
+      const r = buildShed(s, a.id);
+      return 'error' in r ? { ...s, toast: toast(r.error) } : { ...r.state, ...gainXp(s, 0.1), points: s.points + 60, toast: toast(`${r.text} · +60 points`) };
+    }
+    case 'powerInstall': {
+      const block = stepBlock(s, a.id, s.coins);
+      if (block) return { ...s, toast: toast(block) };
+      const st = stepOf(a.id);
+      const p = powerOf(s.power);
+      const day = lifeOf(s.life).day;
+      const score = Math.max(0, Math.min(1, a.score));
+      const parts = { ...p.parts, [a.id]: { day, score } };
+      const fuel = a.id === 'fuel' ? Math.round(POWER.firstFill * (0.85 + 0.15 * score)) : p.fuel;
+      const on = a.id === 'switchOn';
+      const loads = on ? (a.loads ?? loadsAvailable(s)) : p.loads;
+      const pts = on ? POWER.switchOnPoints : POWER.points;
+      return {
+        ...s,
+        coins: s.coins - st.price,
+        points: s.points + pts,
+        power: { ...p, parts, fuel, loads, day: on ? day : p.day },
+        ...gainXp(s, 0.08),
+        toast: toast(on ? `The power is on: ${loads.length} things powered · +${pts} points` : `${st.name} in · +${pts} points`),
+      };
+    }
+    case 'powerLoad': {
+      const p = powerOf(s.power);
+      if (!p.parts.switchOn) return { ...s, toast: toast('Switch the system on first (day 7)') };
+      if (!loadsAvailable(s).includes(a.id)) return s;
+      const loads = a.on ? [...new Set([...p.loads, a.id])] : p.loads.filter(x => x !== a.id);
+      return { ...s, power: { ...p, loads }, toast: toast(`${POWER.loads[a.id].name} ${a.on ? 'switched on' : 'switched off'}`) };
+    }
+    case 'powerFuel': {
+      const p = powerOf(s.power);
+      if (!p.parts.fuel) return { ...s, toast: toast('Put in the diesel tank first (day 6)') };
+      const litres = Math.max(0, Math.min(a.litres, POWER.tankL - p.fuel));
+      if (litres <= 0) return { ...s, toast: toast('The diesel tank is full') };
+      const cost = Math.round(litres * POWER.dieselPrice);
+      if (s.coins < cost) return { ...s, toast: toast(`You need ${money(cost)} for ${litres} L of diesel`) };
+      return { ...s, coins: s.coins - cost, power: { ...p, fuel: p.fuel + litres }, toast: toast(`${litres} L of diesel in the tank · ${money(cost)}`) };
+    }
+    case 'tractorHub':
+      return hubAction(s, a);
+    case 'produceSell': {
+      const day = lifeOf(s.life).day;
+      const r = sellProduce(s.produce, a.items, day, achClock.today(), coldRoom(s));
+      if ('error' in r) return { ...s, toast: toast(r.error) };
+      return { ...s, coins: s.coins + r.earned, produce: r.p, ...gainXp(s, 0.03), toast: toast(`Sold ${r.kg} kg at the stall · +${money(r.earned)}`) };
+    }
+    case 'gardenPlant': {
+      const g = gardenOf(s.garden);
+      const day = lifeOf(s.life).day;
+      const f = g.farms[a.farm];
+      if (!f) return s;
+      if (day < GARDEN.openDay) return { ...s, toast: toast(`The new farms open on day ${GARDEN.openDay}`) };
+      if (f.crop) return { ...s, toast: toast(`${GARDEN_NAMES[a.farm]} already grows ${gardenCrop(f.crop).name.toLowerCase()}`) };
+      const c = gardenCrop(a.crop);
+      if (s.coins < c.cost) return { ...s, toast: toast(`You need ${money(c.cost)} to plant ${c.name.toLowerCase()}`) };
+      const farms = g.farms.map((x, i) => (i === a.farm ? { crop: a.crop, planted: day, watered: day, ready: day + c.grow, health: 100, score: Math.max(0, Math.min(1, a.score)), harvests: 0 } : x));
+      return { ...s, coins: s.coins - c.cost, points: s.points + GARDEN.plantPoints, garden: { ...g, farms }, ...gainXp(s, 0.06), toast: toast(`${GARDEN_NAMES[a.farm]} planted with ${c.name.toLowerCase()} · ready on day ${day + c.grow} · +${GARDEN.plantPoints} points`) };
+    }
+    case 'gardenWater': {
+      const g = gardenOf(s.garden);
+      const day = lifeOf(s.life).day;
+      const f = g.farms[a.farm];
+      if (!f?.crop) return s;
+      if (f.watered >= day) return { ...s, toast: toast(`${GARDEN_NAMES[a.farm]} is watered for today`) };
+      const need = gardenCrop(f.crop).water;
+      const t = tankOf(s.tank);
+      if (t.level < need) return { ...s, toast: toast(`The tank has ${Math.round(t.level)} L: ${GARDEN_NAMES[a.farm]} needs ${need} L. Buy water (Climate › Water)`) };
+      const farms = g.farms.map((x, i) => (i === a.farm ? { ...x, watered: day, health: Math.min(100, x.health + 5) } : x));
+      return { ...s, garden: { ...g, farms }, tank: { ...t, level: t.level - need }, toast: toast(`${GARDEN_NAMES[a.farm]} watered: ${need} L from the tank`) };
+    }
+    case 'gardenHarvest': {
+      const g = gardenOf(s.garden);
+      const day = lifeOf(s.life).day;
+      const f = g.farms[a.farm];
+      if (!f?.crop) return s;
+      if (day < f.ready) return { ...s, toast: toast(`Not ready yet: ${GARDEN_NAMES[a.farm]} is ready on day ${f.ready}`) };
+      const c = gardenCrop(f.crop);
+      const kg = harvestKg(f, a.score);
+      const farm = c.regrow ? { ...f, ready: day + c.regrow, harvests: f.harvests + 1 } : { ...f, crop: null, harvests: f.harvests + 1 };
+      const farms = g.farms.map((x, i) => (i === a.farm ? farm : x));
+      return {
+        ...s,
+        garden: { ...g, farms, kg: g.kg + kg },
+        produce: stock(s.produce, { [c.produce]: kg }),
+        points: s.points + GARDEN.harvestPoints,
+        ...gainXp(s, 0.05),
+        toast: toast(`${kg} kg of ${c.name.toLowerCase()} into the store · sell it at the market stall · +${GARDEN.harvestPoints} points`),
+      };
+    }
+    case 'shedChoose': {
+      const t = s.trial;
+      let next: GameState = { ...s, prefs: { ...(s.prefs ?? {}), [a.kind]: a.id } };
+      const set: number[] = [];
+      if (t && t.phase !== 'done')
+        t.plans.forEach((_, farm) => {
+          if (plotsOf(next.trial!, farm)[0][a.kind] === a.id) return set.push(farm);
+          const after = play({ ...next, toast: null }, { type: 'plotSet', farm, kind: a.kind, plot: 0, value: a.id });
+          if (after.trial !== next.trial) {
+            next = { ...after, toast: null };
+            set.push(farm);
+          }
+        });
+      const item = a.kind === 'seed' ? 'seeds' : a.kind === 'fert' ? 'fertilizer' : 'sprayer';
+      const name = OPTIONS[a.kind].find(o => o.id === a.id)?.name ?? a.id;
+      return { ...next, field: { ...next.field, carry: item }, toast: toast(`${name}${set.length ? ` for ${set.map(farmName).join(', ')}` : ': kept for your next planting'} · picked up`) };
+    }
     case 'securityBuy': {
       const m = measureOf(a.id);
       const sec = securityOf(s.security);
@@ -1493,6 +1657,59 @@ function play(s: GameState, a: Action): GameState {
         toast: toast(`Day ${d.streak} reward: +${money(r.coins)} · +${r.points} points`),
       };
     }
+  }
+}
+
+/** The tractor screen's sections (src/tractor/hub.ts): each mini-game done changes the tractor or the driver. */
+function hubAction(s: GameState, a: Extract<Action, { type: 'tractorHub' }>): GameState {
+  const h = hubOf(s.hub);
+  const day = lifeOf(s.life).day;
+  const score = Math.max(0, Math.min(1, a.score));
+  const done = { ...h.done, [a.section]: (h.done[a.section] ?? 0) + 1 };
+  const log = (text: string) => [{ day, text }, ...h.log].slice(0, 20);
+  const pts = Math.round((HUB.points[a.section as keyof typeof HUB.points] ?? 0) * score);
+  switch (a.section) {
+    case 'train': {
+      const xp = h.xp + Math.round(30 * score);
+      const up = hubLevel(xp) > hubLevel(h.xp);
+      return { ...s, points: s.points + pts, hub: { ...h, xp, done, log: log(`Practice drive: ${Math.round(score * 100)}%`) }, ...gainXp(s, 0.04), toast: toast(up ? `Driver level ${hubLevel(xp)}: the tractor drives ${Math.round(hubLevel(xp) * HUB.speedPerLevel * 100)}% faster · +${pts} points` : `Practice drive done · +${Math.round(30 * score)} experience · +${pts} points`) };
+    }
+    case 'learn': {
+      const l = a.id ? lessonOf(a.id) : undefined;
+      if (!l) return s;
+      const pass = score >= 0.6;
+      const first = pass && !h.lessons.includes(l.id);
+      return { ...s, points: s.points + (first ? pts : 0), hub: { ...h, xp: h.xp + (first ? 20 : 0), lessons: pass ? [...new Set([...h.lessons, l.id])] : h.lessons, done, log: log(`${l.title}: ${Math.round(score * 100)}%`) }, toast: toast(pass ? `${l.title}: passed${first ? ` · +${pts} points` : ''}` : `${l.title}: ${Math.round(score * 100)}%. Try again to pass`) };
+    }
+    case 'safety':
+      return { ...s, points: s.points + (h.safetyDay === day ? 0 : pts), hub: { ...h, safetyDay: day, done, log: log('Safety check before starting') }, toast: toast(`Safety check done${h.safetyDay === day ? '' : ` · +${pts} points`}`) };
+    case 'service': {
+      const cost = Math.round(HUB.serviceCost * (1 - repairCut(s)));
+      if (s.coins < cost) return { ...s, toast: toast(`Oil, grease and filters cost ${money(cost)}`) };
+      const condition = Math.min(100, Math.round(h.condition + 10 + 25 * score));
+      return { ...s, coins: s.coins - cost, points: s.points + pts, hub: { ...h, condition, done, log: log(`Serviced: condition ${condition}%`) }, toast: toast(`Serviced · condition ${condition}% · ${money(cost)}`) };
+    }
+    case 'repair': {
+      const cost = Math.round(HUB.repairCost * (1 - repairCut(s)));
+      if (s.coins < cost) return { ...s, toast: toast(`The parts cost ${money(cost)}`) };
+      const condition = Math.max(h.condition, Math.round(60 + 40 * score));
+      return { ...s, coins: s.coins - cost, points: s.points + pts, hub: { ...h, condition, done, log: log(`Repaired: condition ${condition}%`) }, toast: toast(`Repaired · condition ${condition}% · ${money(cost)}${repairCut(s) ? ' (workshop power: cheaper)' : ''}`) };
+    }
+    case 'refuel': {
+      const want = Math.max(0, Math.min(a.litres ?? HUB.tankL, HUB.tankL - h.fuel));
+      if (want <= 0) return { ...s, toast: toast('The tractor’s tank is full') };
+      // spilt diesel is lost: a steady pour keeps it all
+      const got = Math.round(want * (0.8 + 0.2 * score) * 10) / 10;
+      const p = powerOf(s.power);
+      if (p.parts.fuel && p.fuel >= want) {
+        return { ...s, points: s.points + pts, power: { ...p, fuel: Math.round((p.fuel - want) * 10) / 10 }, hub: { ...h, fuel: Math.round((h.fuel + got) * 10) / 10, done, log: log(`Refuelled ${got} L from the farm tank`) }, toast: toast(`${got} L from the farm’s diesel tank${got < want ? ` (${Math.round((want - got) * 10) / 10} L spilt)` : ''}`) };
+      }
+      const cost = Math.round(want * HUB.pumpPrice);
+      if (s.coins < cost) return { ...s, toast: toast(`${want} L at the pump costs ${money(cost)}`) };
+      return { ...s, coins: s.coins - cost, points: s.points + pts, hub: { ...h, fuel: Math.round((h.fuel + got) * 10) / 10, done, log: log(`Refuelled ${got} L at the pump`) }, toast: toast(`${got} L of diesel from the pump · ${money(cost)}`) };
+    }
+    default:
+      return { ...s, hub: { ...h, done } };
   }
 }
 

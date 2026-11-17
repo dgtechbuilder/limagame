@@ -176,3 +176,29 @@ export async function readStory(page: Page) {
 }
 
 export type { Win };
+
+/** Play a timing mini-game (src/minigames): press each time the needle is in the green zone, then finish. */
+export async function playTiming(page: Page, finish: string) {
+  await page.getByRole('button', { name: 'Start', exact: true }).click();
+  await page.evaluate(
+    () =>
+      new Promise<void>(done => {
+        const tick = () => {
+          const btn = document.querySelector<HTMLButtonElement>('.mg-timing .mg-big');
+          if (!btn) return done();
+          const zone = document.querySelector<HTMLElement>('.mg-zone')!;
+          const a = parseFloat(zone.style.left);
+          const b = a + parseFloat(zone.style.width);
+          const v = parseFloat(document.querySelector<HTMLElement>('.mg-needle')!.style.left);
+          if (v > a + 3 && v < b - 3 && !btn.dataset.wait) {
+            btn.click();
+            btn.dataset.wait = '1';
+            window.setTimeout(() => delete btn.dataset.wait, 250);
+          }
+          requestAnimationFrame(tick);
+        };
+        tick();
+      }),
+  );
+  await page.getByRole('button', { name: finish, exact: true }).click();
+}

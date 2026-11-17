@@ -37,6 +37,7 @@ import {
   type TaskIcon,
   type TreatJob,
   type SprayFor,
+  gardenSign,
 } from './field';
 import { BILLBOARDS, FarmWorld, PLACES, STAGE_H, STAGE_W, TRACTOR_BOARD, type Fx } from './engine';
 import { slotBrand, type SlotId } from '../partners/data';
@@ -58,8 +59,13 @@ import type { RiskItem } from '../risk/model';
 import { achClock } from '../achievements/track';
 import { TIDY, TIDY_TOTAL, tidyCount, tidyLeft, tidyStreak, type TidyItem } from '../tidy/model';
 import { AnimalsButton, SecurityButton } from '../livestock/HudButtons';
-import { careOpen, lifeOf } from '../livestock/model';
+import { careOpen, coopOpen, lifeOf, shedOpen } from '../livestock/model';
 import { tankOf } from '../water/model';
+import { LIFE } from '../livestock/config';
+import { lightsLit, nextStep, powerOf, powerOn } from '../power/model';
+import { cannotDrive, hubOf, speedOf, type HubSection } from '../tractor/hub';
+import { GARDEN, GARDEN_NAMES, cropOf as gardenCropOf, gardenOf, stageOf, statusOf } from '../garden/model';
+import { ShedOptions } from '../plots/ShedOptions';
 
 // from Wakala Agent: the screens after a right call, at the shed and at the Hire spot, loaded when first opened
 const Prescribe = lazy(() => import('../care/Prescribe').then(m => ({ default: m.Prescribe })));
@@ -67,6 +73,7 @@ const Spray = lazy(() => import('../care/Spray').then(m => ({ default: m.Spray }
 const Tractor = lazy(() => import('../tractor/Tractor').then(m => ({ default: m.Tractor })));
 const PlotScreen = lazy(() => import('../plots/PlotBoard').then(m => ({ default: m.PlotScreen })));
 const TractorPick = lazy(() => import('../plots/TractorPick').then(m => ({ default: m.TractorPick })));
+const TractorHub = lazy(() => import('../tractor/TractorHub').then(m => ({ default: m.TractorHub })));
 
 /** Design review (?review=1): the farm world opens straight into one of these (GameState.worldDemo). */
 export type WorldDemo = 'check' | 'prescribe' | 'spray' | 'tractor' | 'tractor-summary' | 'rig' | 'board';
@@ -74,7 +81,9 @@ export type WorldDemo = 'check' | 'prescribe' | 'spray' | 'tractor' | 'tractor-s
 type Care = { kind: 'fix'; farm: number; day: number } | { kind: 'spray'; jobs: { farm: number; hazard: SprayFor }[] } | { kind: 'tractor'; farm: number; demo?: 'summary' }
   // the inputs board at a shed (then the item is picked up), and the tractor's type and tool
   | { kind: 'board'; farm: number; kinds: PlotKind[]; then: 'seeds' | 'fertilizer' | 'sprayer' }
-  | { kind: 'rig' };
+  | { kind: 'rig' }
+  /** at a shed spot: every seed, fertilizer or sprayer to choose from */
+  | { kind: 'options'; of: PlotKind };
 
 /** The tractor-hire farm whose before-planting drive is still to do, or -1. */
 function farmToDrive(st: GameState) {
@@ -118,7 +127,9 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
   const [care, setCare] = useState<Care | null>(null);
   /** the tractor type and tool on the tractor now */
   const [rig, setRig] = useState<Rig | null>(null);
-  const [anchors, setAnchors] = useState<Anchors>({ farmer: { x: 437, y: 160 }, sign: null, riding: false, nearTractor: false, plot: null, tidy: null });
+  const [anchors, setAnchors] = useState<Anchors>({ farmer: { x: 437, y: 160 }, sign: null, riding: false, nearTractor: false, plot: null, tidy: null, place: null, garden: null });
+  /** the tractor screen (src/tractor/TractorHub.tsx), open at a section */
+  const [hub, setHub] = useState<HubSection | null>(null);
   /** clearing or planting one plot: started at, and how long it takes (ms) */
   const [working, setWorking] = useState<(PlotHere & { start: number; ms: number }) | null>(null);
   /** clearing one of the day's bushes or rocks: which, started at, and how long it takes (ms) */
@@ -213,7 +224,10 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     const tick = window.setInterval(() => {
       const f = w.farmerScreen();
       const sg = eng.current && atSignRef.current >= 0 ? signOf(atSignRef.current) : null;
-      const next = { farmer: f, sign: sg ? w.project(sg.x, 2.5, sg.z) : null, riding: w.isRiding(), nearTractor: w.nearTractor(), plot: w.plotJobHere(), bill: billboardNear(w), tidy: w.tidyHere() };
+      const gi = w.gardenHere();
+      const gs = gi >= 0 ? gardenSign(gi) : null;
+      const gp = gs ? w.project(gs.x, 2.5, gs.z) : null;
+      const next = { farmer: f, sign: sg ? w.project(sg.x, 2.5, sg.z) : null, riding: w.isRiding(), nearTractor: w.nearTractor(), plot: w.plotJobHere(), bill: billboardNear(w), tidy: w.tidyHere(), place: w.placeHere(), garden: gp && gi >= 0 ? { i: gi, x: gp.x, y: gp.y } : null };
       // the HUD follows the farmer: re-render only when something on it would move or change
       setAnchors(a => (sameAnchors(a, next) ? a : next));
     }, 120);
@@ -228,7 +242,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
   const atSignRef = useRef(-1);
   atSignRef.current = atSign;
 
-  const overlay = paused || !!checking || !!night || !!care;
+  const overlay = paused || !!checking || !!night || !!care || !!hub;
 
   // the first planting period starts as soon as the farm opens: Farm 1's maize to clear, Farm 2's sukuma wiki to plant
   useEffect(() => {
@@ -343,9 +357,37 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
   // the herd and the coop on the 3D farm follow the game: a stolen hen is gone, a built coop stands
   const herd = tankOf(s.tank).herd;
   const coop = lifeOf(s.life).coop;
+  const shed = lifeOf(s.life).shed ?? null;
   useEffect(() => {
-    eng.current?.setLife({ cows: herd.cows, hens: herd.hens, coop });
-  }, [herd.cows, herd.hens, coop]);
+    eng.current?.setLife({ cows: herd.cows, hens: herd.hens, coop, shed });
+  }, [herd.cows, herd.hens, coop, shed]);
+
+  // the power yard as built, and the lights lit (src/power)
+  const pw = powerOf(s.power);
+  const partsKey = Object.keys(pw.parts).sort().join();
+  const lit = lightsLit(s);
+  useEffect(() => {
+    eng.current?.setPower({ parts: partsKey ? partsKey.split(',') : [], lit });
+  }, [partsKey, lit]);
+  // night mode: the phone's clock (7 pm to 6 am), or always day, or always night (Settings › Display)
+  const hour = new Date(now).getHours();
+  const nightMode = s.settings.night === 'night' || ((s.settings.night ?? 'auto') === 'auto' && (hour >= 19 || hour < 6));
+  useEffect(() => {
+    eng.current?.setNight(nightMode);
+  }, [nightMode]);
+  // Farms 7 and 8 (src/garden)
+  const farmDay = lifeOf(s.life).day;
+  const garden = gardenOf(s.garden);
+  const gardenKey = garden.farms.map(f => `${f.crop}:${stageOf(f, farmDay)}`).join('|');
+  useEffect(() => {
+    eng.current?.setGarden(garden.farms.map(f => ({ crop: f.crop, stage: stageOf(f, farmDay), open: farmDay >= GARDEN.openDay })));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gardenKey, farmDay]);
+  // the tractor drives as fast as its driver and its condition allow
+  const tractor = hubOf(s.hub);
+  useEffect(() => {
+    if (eng.current) eng.current.tractorSpeed = speedOf(tractor);
+  }, [tractor.xp, tractor.condition]);
 
   function targetOf(tk: Task, w: FarmWorld) {
     const target = tk.target;
@@ -361,6 +403,11 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     const w = eng.current;
     if (!w) return;
     if (w.isBusy()) return say('The tractor is busy ploughing');
+    const why = cannotDrive(hubOf(sRef.current.hub));
+    if (why) {
+      say(why);
+      return setHub(why.includes('repair') ? 'repair' : 'refuel');
+    }
     if (sRef.current.trial?.phase === 'growing') return setCare({ kind: 'rig' });
     ride(null);
   }
@@ -379,7 +426,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     } else say('On the tractor');
   }
 
-  /** The Tractor button: hop on, get off, or walk to the tractor first. */
+  /** The Tractor button: get off, or open the tractor screen (train, learn, service, repair, refuel, hire, drive). */
   const toggleRide = () => {
     const w = eng.current;
     if (!w) return;
@@ -387,6 +434,14 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       w.dismount();
       return say('Off the tractor: small jobs are done on foot');
     }
+    const h = hubOf(sRef.current.hub);
+    setHub(h.condition <= 0 ? 'repair' : h.fuel <= 0 ? 'refuel' : 'drive');
+  };
+  /** Drive (from the tractor screen): walk to the tractor and hop on. */
+  const driveTractor = () => {
+    const w = eng.current;
+    if (!w) return;
+    setHub(null);
     if (w.nearTractor()) return mountTractor();
     rideIntent.current = true;
     w.walkTo(TRACTOR_BOARD.x, TRACTOR_BOARD.z);
@@ -459,29 +514,17 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     const d = fieldDay(tr, dayNumber());
     if (p === 'mission') return dispatch({ type: 'trials', open: true });
     // the cow pen and the chicken coop: the animals' page (a coop still to build opens on it)
+    if (p === 'power') return dispatch({ type: 'open', modal: { kind: 'power', tab: powerOn(st) ? 'today' : 'build' } });
     if (p === 'pen' || p === 'coop') {
       const l = lifeOf(st.life);
-      if (!careOpen(st)) return say(`The animals are in your care from day 2: sleep at the farmhouse first`);
-      return dispatch({ type: 'open', modal: { kind: 'animals', tab: p === 'coop' && !l.coop ? 'coop' : 'today' } });
+      // the coop is upgraded from day 1, the cow shed from day 3; the daily care starts on day 2
+      if (p === 'coop' && coopOpen(st) && (!l.coop || !careOpen(st))) return dispatch({ type: 'open', modal: { kind: 'animals', tab: 'coop' } });
+      if (p === 'pen' && shedOpen(st) && !l.shed) return dispatch({ type: 'open', modal: { kind: 'animals', tab: 'shed' } });
+      if (!careOpen(st)) return say(`The cows are in your care from day ${LIFE.startDay}: sleep at the farmhouse first`);
+      return dispatch({ type: 'open', modal: { kind: 'animals', tab: 'today' } });
     }
-    if (p === 'hire') {
-      // a tractor-hire farm is driven by the player first (from Wakala Agent); oxen plough by themselves
-      const drive = farmToDrive(st);
-      if (drive >= 0) {
-        track('tractor_open', { farm: drive, stage: 'prep' });
-        return setCare({ kind: 'tractor', farm: drive });
-      }
-      dispatch({ type: 'fieldHire' });
-      return say('The ploughing has begun');
-    }
-    if (p === 'market') {
-      if (!tr || tr.phase !== 'growing') return say('Nothing to sell yet: grow a cycle first');
-      if (d <= CHECK_DAYS) return say(`Still growing: harvest after day ${CHECK_DAYS}`);
-      if (!allHarvested(st.field, tr)) return say('Harvest every farm first');
-      dispatch({ type: 'trialHarvest' });
-      window.setTimeout(() => dispatch({ type: 'trials', open: true }), 1400);
-      return;
-    }
+    if (p === 'hire') return setHub(hireInfo(st).ready ? 'hire' : 'train');
+    if (p === 'market') return onMarket();
     if (p === 'house') {
       const tk = nextTask(st.field, tr, dayNumber(), st.coins);
       if (tk.icon !== 'sleep') return say(tr?.phase === 'growing' ? `Not yet: ${tk.title.toLowerCase()} first` : 'Home sweet home');
@@ -492,6 +535,41 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       }, 1100);
       window.setTimeout(() => setNight(null), 2600);
     }
+  }
+
+  /** What Hire would do now (the tractor screen's Hire section). */
+  function hireInfo(st: GameState): { ready: boolean; text: string } {
+    const tr = st.trial;
+    if (!tr || tr.phase !== 'growing') return { ready: false, text: 'Nothing to hire now: plan your farms first (Mission).' };
+    const f = st.field.cycle === tr.cycle ? st.field : { ...st.field, marks: {} };
+    const farms = tr.plans.map((_, i) => i).filter(i => machinePrep(tr.plans[i]) && setupLeft(f, tr, i) === 'prep');
+    if (!farms.length) return { ready: false, text: 'No farm needs ploughing now. A farm whose plan hires oxen or a tractor is ploughed from here.' };
+    const drive = farmToDrive(st);
+    return { ready: true, text: drive >= 0 ? `${farmName(drive)} hires the tractor: you drive it first, then it ploughs the farm.` : `${farms.map(farmName).join(', ')}: the ${tr.plans[farms[0]].land === 'ox' ? 'oxen plough' : 'tractor ploughs'} by itself while you work elsewhere.` };
+  }
+
+  /** Hire (from the tractor screen): the drive for a tractor-hire farm, or the oxen and the tractor plough by themselves. */
+  function startHire() {
+    const st = sRef.current;
+    setHub(null);
+    // a tractor-hire farm is driven by the player first (from Wakala Agent); oxen plough by themselves
+    const drive = farmToDrive(st);
+    if (drive >= 0) {
+      track('tractor_open', { farm: drive, stage: 'prep' });
+      return setCare({ kind: 'tractor', farm: drive });
+    }
+    dispatch({ type: 'fieldHire' });
+    say('The ploughing has begun');
+  }
+
+  /** The Sell stall: the six farms' harvest when it is all in, otherwise the market stall (25 kg of the store a day). */
+  function onMarket() {
+    const st = sRef.current;
+    const tr = st.trial;
+    const d = fieldDay(tr, dayNumber());
+    if (!tr || tr.phase !== 'growing' || d <= CHECK_DAYS || !allHarvested(st.field, tr)) return dispatch({ type: 'open', modal: { kind: 'market' } });
+    dispatch({ type: 'trialHarvest' });
+    window.setTimeout(() => dispatch({ type: 'trials', open: true }), 1400);
   }
 
   function openCheck(farm: number) {
@@ -635,6 +713,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         />
       );
     }
+    if (c.kind === 'options') return <ShedOptions s={s} of={c.of} dispatch={dispatch} onClose={() => setCare(null)} />;
     if (c.kind === 'rig')
       return (
         <TractorPick
@@ -738,8 +817,44 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     [t, showCheck, signRec, signFarm, day],
   );
 
+  // today's build: the next power part, the coop (day 1), the cow shed (day 3), the new farms (day 4)
+  const build = useMemo(() => {
+    if (s.fs.phase !== 'done') return null;
+    const step = nextStep(s);
+    if (step && farmDay >= step.day) return { icon: step.icon, title: step.id === 'switchOn' ? 'Switch on the power' : `Put in the ${step.name.toLowerCase()}`, go: { kind: 'power', tab: 'build' } as const, power: true };
+    const l = lifeOf(s.life);
+    if (coopOpen(s) && !l.coop) return { icon: '🐔', title: 'Upgrade the chicken coop', go: { kind: 'animals', tab: 'coop' } as const };
+    if (shedOpen(s) && !l.shed) return { icon: '🐄', title: 'Upgrade the cow shed', go: { kind: 'animals', tab: 'shed' } as const };
+    const empty = farmDay >= GARDEN.openDay ? garden.farms.findIndex(f => !f.crop) : -1;
+    if (empty >= 0) return { icon: '🌱', title: `Plant ${GARDEN_NAMES[empty]}`, go: { kind: 'garden', farm: empty } as const };
+    return null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s.power, s.life, s.garden, s.fs.phase, farmDay]);
+  const shedKind: PlotKind | null = anchors.place === 'shed-seeds' ? 'seed' : anchors.place === 'shed-fertilizer' ? 'fert' : anchors.place === 'shed-sprayer' ? 'sprayer' : null;
+  const powerHasLights = !!pw.parts.lights;
+  // the button at a new farm's sign: what that farm needs now
+  const gardenBtn = (() => {
+    const gi = anchors.garden?.i;
+    if (gi === undefined || gi < 0) return null;
+    const f = garden.farms[gi];
+    const name = GARDEN_NAMES[gi];
+    const open = () => dispatch({ type: 'open', modal: { kind: 'garden', farm: gi } });
+    switch (statusOf(f, farmDay)) {
+      case 'locked':
+        return { label: `${name} opens on day ${GARDEN.openDay}`, disabled: true, run: open };
+      case 'empty':
+        return { label: `Plant ${name}`, disabled: false, run: open };
+      case 'thirsty':
+        return { label: `Water ${name}`, disabled: false, run: () => dispatch({ type: 'gardenWater', farm: gi }) };
+      case 'ready':
+        return { label: `Harvest ${gardenCropOf(f.crop!).name.toLowerCase()}`, disabled: false, run: open };
+      default:
+        return { label: `${name}: ${gardenCropOf(f.crop!).name.toLowerCase()} · ready day ${f.ready}`, disabled: false, run: open };
+    }
+  })();
+
   return (
-    <div className="abs world" style={{ inset: 0 }}>
+    <div className={`abs world${nightMode ? ' is-night' : ''}`} style={{ inset: 0 }}>
       <canvas ref={canvas} className="world-canvas" width={STAGE_W} height={STAGE_H} />
       <div ref={pad} className="world-pad" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} />
 
@@ -782,6 +897,20 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         <BizIcon />
         <span>BUSINESS</span>
       </button>
+      <button type="button" className={`hud-round hud-power${powerOn(s) ? ' is-on' : ''}`} onClick={() => dispatch({ type: 'open', modal: { kind: 'power', tab: powerOn(s) ? 'today' : 'build' } })} aria-label={powerOn(s) ? 'Power: the system is on' : 'Power: build the solar power system'}>
+        <PowerIcon />
+        <span>POWER</span>
+        {!powerOn(s) && build?.power && <i className="hud-badge" aria-hidden="true">!</i>}
+      </button>
+      {build && !anchors.riding && (
+        <button type="button" className="hud-build" onClick={() => dispatch({ type: 'open', modal: build.go })} aria-label={`Today: ${build.title}`}>
+          <i aria-hidden="true">{build.icon}</i>
+          <span>
+            {build.title}
+            <small>Day {farmDay} · tap to start</small>
+          </span>
+        </button>
+      )}
       {anchors.riding && t?.phase === 'growing' && (
         <button type="button" className="hud-rig" onClick={() => setCare({ kind: 'rig' })} aria-label="Change the tractor or tool">
           Change tool
@@ -792,7 +921,11 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       <div className="hud-pills">
         <span className="hud-pill" title={`Money (${currency().name})`}>
           <img src={img.cash} alt="" width={26} height={26} />
-          <b>{moneyShort(s.coins)}</b>
+          <b>
+            <button type="button" className="hud-wallet" onClick={() => dispatch({ type: 'open', modal: { kind: 'wallet', tab: 'history' } })} aria-label={`Wallet: ${money(s.coins)}. Every payment in and out`}>
+              {moneyShort(s.coins)}
+            </button>
+          </b>
           <button type="button" aria-label="Shop" onClick={() => dispatch({ type: 'open', modal: { kind: 'shop', tab: 'food' } })}>
             +
           </button>
@@ -928,6 +1061,27 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         </button>
       )}
 
+      {!working && !tidying && !anchors.plot && !anchors.riding && shedKind && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
+        <button
+          type="button"
+          className="hud-plot is-options"
+          style={{ left: Math.min(STAGE_W - 90, Math.max(90, anchors.farmer.x)), top: Math.min(STAGE_H - 60, anchors.farmer.y + 70) }}
+          onClick={() => setCare({ kind: 'options', of: shedKind })}
+          aria-label={`${SHED_WORD[shedKind]}: choose from every option`}
+        >
+          <TaskGlyph icon={shedKind === 'seed' ? 'seeds' : shedKind === 'fert' ? 'fertilizer' : 'spray'} />
+          <span>
+            <b>{SHED_WORD[shedKind]} ▾</b>
+            <i>Choose an option</i>
+          </span>
+        </button>
+      )}
+      {gardenBtn && anchors.garden && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
+        <button type="button" className="hud-check" style={{ left: anchors.garden.x, top: anchors.garden.y }} disabled={gardenBtn.disabled} onClick={gardenBtn.run}>
+          {gardenBtn.label}
+        </button>
+      )}
+
       {anchors.bill && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
         <BillboardTag bill={anchors.bill} dispatch={dispatch} />
       )}
@@ -947,6 +1101,20 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         <button type="button" className="hud-check" style={{ left: anchors.sign.x, top: anchors.sign.y }} disabled={wait > 0} onClick={() => openCheck(signFarm)}>
           {wait > 0 ? `Look again in ${wait}s` : `Check ${farmName(signFarm)}`}
         </button>
+      )}
+
+      {nightMode && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
+        <span className="hud-moon" aria-label={`Night${lit ? ': the farm lights are on' : ''}`}>
+          🌙 Night{lit ? ' · lights on' : powerHasLights ? ' · lights off' : ''}
+        </span>
+      )}
+
+      {hub && (
+        <div className="abs world-check" style={{ inset: 0 }}>
+          <Suspense fallback={null}>
+            <TractorHub s={s} dispatch={dispatch} section={hub} onSection={setHub} hire={hireInfo(s)} onHire={startHire} onDrive={driveTractor} onClose={() => setHub(null)} />
+          </Suspense>
+        </div>
       )}
 
       {night && (
@@ -1009,6 +1177,10 @@ type Anchors = {
   bill?: { slot: SlotId; x: number; y: number } | null;
   /** one of the day's bushes or rocks the farmer stands by */
   tidy?: TidyItem | null;
+  /** the place the farmer stands in (a shed spot shows its options button) */
+  place?: Place | null;
+  /** a new farm's sign the farmer stands at, where it shows on the stage */
+  garden?: { i: number; x: number; y: number } | null;
 };
 const samePlot = (a: PlotHere | null, b: PlotHere | null) => a === b || (!!a && !!b && a.farm === b.farm && a.row === b.row && a.job === b.job);
 const near = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.abs(a.x - b.x) < 1 && Math.abs(a.y - b.y) < 1;
@@ -1016,6 +1188,7 @@ function sameAnchors(a: Anchors, b: Anchors) {
   if (a.riding !== b.riding || a.nearTractor !== b.nearTractor || !near(a.farmer, b.farmer) || !samePlot(a.plot, b.plot)) return false;
   if (a.bill?.slot !== b.bill?.slot || (a.bill && b.bill && !near(a.bill, b.bill))) return false;
   if (a.tidy?.id !== b.tidy?.id) return false;
+  if (a.place !== b.place || a.garden?.i !== b.garden?.i || (a.garden && b.garden && !near(a.garden, b.garden))) return false;
   if (!a.sign || !b.sign) return a.sign === b.sign;
   return a.sign.visible === b.sign.visible && near(a.sign, b.sign);
 }
@@ -1068,6 +1241,16 @@ function PlotTimer({ at, start, ms, verb, what }: { at: { x: number; y: number }
 }
 
 /* ---------------- icons ---------------- */
+
+const SHED_WORD: Record<PlotKind, string> = { seed: 'Seeds', fert: 'Fertilizer', sprayer: 'Sprayer' };
+
+function PowerIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width={26} height={26} aria-hidden="true">
+      <path d="M13.5 2L5 13.5h5.5L9 22l9.5-12.5H13z" fill="#fff" stroke="#8a5a10" strokeWidth={1} strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 /** The daily tidy-up's pieces: a scruffy bush, a rock. */
 function TidyGlyph({ kind }: { kind: 'bush' | 'rock' }) {

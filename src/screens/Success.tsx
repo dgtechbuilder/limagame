@@ -4,7 +4,7 @@ import { Coin, Img, Stars, fmt } from '../components/ui';
 import { PROCESSES, SHOP_TABS, STORAGE_OPTIONS } from '../data';
 import { money } from '../money';
 import { courseOf, dayText } from '../training/data';
-import type { Action, GameState, Success } from '../state';
+import { MORNING_KINDS, type Action, type GameState, type Success } from '../state';
 
 /* The dialog after something worked (state.ts Success): a sale (Sell Food in the shop, or the season's harvest),
    a training booked, a storage upgrade. It sits above every screen and closes onto the one underneath. */
@@ -14,6 +14,8 @@ type Props = { s: GameState; dispatch: Dispatch<Action> };
 export function SuccessLayer({ s, dispatch }: Props) {
   const x = s.success;
   if (!x) return null;
+  // a morning's news waits until the player is back on the farm: it never covers a page they are reading
+  if (MORNING_KINDS.includes(x.kind) && (s.modal || s.roundsOpen || s.trialsOpen || s.bizOpen)) return null;
   const done = () => dispatch({ type: 'dismissSuccess' });
   switch (x.kind) {
     case 'sale':
@@ -26,6 +28,8 @@ export function SuccessLayer({ s, dispatch }: Props) {
       return <NightNews x={x} s={s} dispatch={dispatch} done={done} />;
     case 'day2':
       return <DayTwo x={x} s={s} dispatch={dispatch} done={done} />;
+    case 'morning':
+      return <Morning x={x} s={s} dispatch={dispatch} done={done} />;
   }
 }
 
@@ -225,5 +229,27 @@ function DayTwo({ s, dispatch, done }: Each<'day2'>) {
     >
       <p className="success-note">Walk to the pen or the coop, or tap ANIMALS. SECURITY shows what keeps thieves away.</p>
     </SuccessCard>
+  );
+}
+
+/** A morning with something new: today's power part, the cow shed (day 3), the new farms (day 4). */
+function Morning({ x, s, dispatch, done }: Each<'morning'>) {
+  const name = s.farmer?.name ?? 'farmer';
+  const first = x.lines[0];
+  return (
+    <SuccessCard
+      kicker={`Good morning · day ${x.day}`}
+      title={x.lines.length > 1 ? `New today, ${name}` : first.title}
+      lead={x.lines.length > 1 ? undefined : first.text}
+      badge={<span style={{ fontSize: 26 }}>{first.icon}</span>}
+      rows={x.lines.length > 1 ? x.lines.map(l => [`${l.icon} ${l.title}`, l.text] as [string, string]) : []}
+      actions={[
+        { label: 'Later', plain: true, onClick: done },
+        ...x.lines.slice(0, 2).map(l => ({ label: l.title, onClick: () => dispatch({ type: 'open', modal: l.go }) })),
+      ]}
+      onClose={done}
+      label={`Day ${x.day}: ${x.lines.map(l => l.title).join(', ')}`}
+      width={460}
+    />
   );
 }
