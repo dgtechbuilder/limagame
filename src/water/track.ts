@@ -1,6 +1,7 @@
 /* Water through the day, as climate tracking does: each action first settles any calendar day (or farm day, on the
    fast clock) that has ended, then counts what the action did to the water. */
 
+import { addEntry } from '../wallet/model';
 import type { Action, GameState } from '../state';
 import { toast } from '../state';
 import { payClock } from '../climate/track';
@@ -35,6 +36,7 @@ export function settleWater(s: GameState, today = payClock.today(), farmDay?: nu
   if (next.trial && next.trial.phase === 'growing') next = { ...next, trial: { ...next.trial, delivered: deliveredShare(tank, next.trial.cycle) } };
   const coins = Math.round(credits * CREDIT_TYPES.water.rate);
   if (credits > 0) next = { ...next, coins: next.coins + coins, ledger: earn(next.ledger, 'water', credits, coins, farmDay ? `Farm day ${farmDay}` : `${days} day${days > 1 ? 's' : ''} to ${today}`, today) };
+  if (credits > 0) next = addEntry(next, 'water', `Water credits · ${farmDay ? `farm day ${farmDay}` : today}`, coins, next.coins, { credits: Math.round(credits * 100) / 100 });
   if (short > 0) next = { ...next, toast: toast(`The tank ran dry: ${Math.round(short).toLocaleString('en-US')} L short for the house and the animals. Buy water in Water.`) };
   return next;
 }

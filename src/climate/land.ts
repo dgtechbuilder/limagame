@@ -8,7 +8,7 @@
      · bare: cleared or ploughed, not planted yet; bare soil dries and washes away, and loses its carbon to the air;
      · idle: not worked this cycle, or harvested; nothing new is counted or paid, and it grows no food.
    - Farm Moja: the 1-acre season farm, farmed, bare or idle the same way, from its season's tasks.
-   - The mini forest: 10 acres of idle land left to grow as forest, top right of the farm above the pond. Young trees
+   - The mini forest: 10 acres of idle land left to grow as forest, bottom right of the farm below the pond. Young trees
      store far more carbon than any crop.
    - The grazing pen: grass, grazed by the cows.
    - The animals: 2 cows (methane from digestion, and their manure) and 4 hens; the water they drink.

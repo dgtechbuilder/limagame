@@ -7,7 +7,8 @@ import type { Biz } from '../business/model';
 import { CHECK_DAYS, type Trial } from '../trials/model';
 import { tankOf, type TankState } from '../water/model';
 import { LIFE } from '../livestock/config';
-import { coopOption } from '../livestock/config';
+import { coopOption, shedOption } from '../livestock/config';
+import { lightsLit } from '../power/model';
 import { lifeOf, type LifeEvent, type LifeState } from '../livestock/model';
 import { roll, rollInt } from '../livestock/rand';
 import { LATE_HARVEST, MAX_CUT, MEASURES, STORE_THEFT, TAKES, TARGETS, measureOf, type MeasureId, type Target } from './config';
@@ -64,7 +65,9 @@ const toolOf = (id: string) => EQUIPMENT.find(e => e.id === id)!;
 /** The measures working tonight (a nightly one only when switched on). */
 export function activeMeasures(s: SecurityHost): MeasureId[] {
   const sec = securityOf(s.security);
-  return MEASURES.filter(m => (m.kind === 'once' ? sec.owned.includes(m.id) : sec.hired.includes(m.id))).map(m => m.id);
+  // the power system's farm lights do what a security light does (src/power)
+  const lit = lightsLit(s as Parameters<typeof lightsLit>[0]);
+  return MEASURES.filter(m => (m.kind === 'once' ? sec.owned.includes(m.id) || (m.id === 'light' && lit) : sec.hired.includes(m.id))).map(m => m.id);
 }
 export const hasMeasure = (s: SecurityHost, id: MeasureId) => activeMeasures(s).includes(id);
 
@@ -119,7 +122,8 @@ export function exposure(s: SecurityHost, cycleDay: CycleDay): Exposure[] {
   const henWhy = coop ? (shut ? [`in the ${coop.name.toLowerCase()}, door shut`] : ['the coop door is open']) : ['no coop: they roost in the trees'];
   row('hens', herd.hens > 0 ? `${herd.hens} hens` : null, coop ? 1 : 1.8, henWhy, shut ? coop!.theft : 0);
   row('predators', herd.hens > 0 ? `${herd.hens} hens` : null, coop ? 1 : 1.5, henWhy, shut ? coop!.predators : 0);
-  row('cows', herd.cows > 0 ? `${herd.cows} cow${herd.cows === 1 ? '' : 's'}` : null, 1, []);
+  const shed = shedOption(life.shed);
+  row('cows', herd.cows > 0 ? `${herd.cows} cow${herd.cows === 1 ? '' : 's'}` : null, 1, shed ? [`in the ${shed.name.toLowerCase()}`] : [], shed?.theft ?? 0);
   const tools = toolsIn(s);
   row('tools', tools.length ? `${tools.length} tool${tools.length === 1 ? '' : 's'} in the shed` : null, 1, []);
   const stored = s.stage === 6 && !!s.harvested;

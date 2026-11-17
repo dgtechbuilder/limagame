@@ -10,6 +10,9 @@ export const img = {
   bg: asset('bg-farm.webp'),
   /** the same Figma farm map at 2× (1748 × 804), for phone screens */
   bg2x: asset('bg-farm@2x.webp'),
+  /** the first session's backdrop: a picture of the 3D farm itself, taken from above (FarmWorld.setOverview), 1× and 2× */
+  bgWorld: asset('bg-world.webp'),
+  bgWorld2x: asset('bg-world@2x.webp'),
   avatar: asset('avatar.png'),
   star: asset('star.png'),
   coin: asset('coin.png'),

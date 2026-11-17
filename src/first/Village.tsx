@@ -3,53 +3,52 @@ import { FarmMap } from '../components/FarmMap';
 import { FarmerFigure } from './art';
 import type { Look } from './data';
 
-/* The first session is played on the farmer's own farm: the map from Figma (the same painting as the
-   farm screen). This layer only adds what moves or guides: the farmer, a dotted trail, the goal arrow,
-   labels and the mist over the crops that open after the first check. The farmer walks along fixed routes
-   traced over the painted path and grass, so a tap anywhere moves them to the nearest point ahead. */
+/* The first session is played on the farmer's own farm: a picture of the 3D farm itself, taken from above
+   (public/assets/bg-world.webp: FarmWorld.setOverview, the farm as it stands on the first day). This layer only adds
+   what moves or guides: the farmer, a dotted trail, the goal arrow, labels and the mist over the crops that open
+   after the first check. The farmer walks along fixed routes traced over the picture's paths, so a tap anywhere moves
+   them to the nearest point ahead. Every point below is a point of the 3D farm projected onto the picture. */
 
 type Pt = [number, number];
 
-/** Beds on the painted map (stage coordinates), used for taps, arrows and labels. */
+/** Beds on the picture (stage coordinates), used for taps, arrows and labels. */
 export const SPOTS = {
-  /** front maize bed: the player's shamba */
-  first: { poly: '405,250 510,194 557,222 455,272', cx: 482, cy: 232, label: [482, 166] as Pt },
-  /** back maize bed: the retry shamba */
-  lower: { poly: '328,222 440,176 470,192 360,246', cx: 400, cy: 210, label: [384, 146] as Pt },
-  /** the two greens beds on the left: the farmer's sukuma wiki */
-  sukuma: { poly: '172,275 300,226 432,290 305,346', cx: 300, cy: 280, label: [262, 216] as Pt },
-  /** tomatoes on the right: checked in the field rounds */
-  tomato: { poly: '512,276 600,230 740,282 640,334', cx: 626, cy: 280, label: [660, 222] as Pt },
+  /** the front of Farm 1, the maize: the player's shamba */
+  first: { poly: '307,170 312,137 376,137 373,170', cx: 342, cy: 153, label: [342, 96] as Pt },
+  /** the back of Farm 1: the retry shamba */
+  lower: { poly: '312,137 317,107 378,107 376,137', cx: 346, cy: 122, label: [262, 118] as Pt },
+  /** Farm 2: the farmer's sukuma wiki */
+  sukuma: { poly: '418,170 419,107 481,107 484,170', cx: 450, cy: 137, label: [450, 96] as Pt },
+  /** the tomatoes on Farm 8: checked in the field rounds */
+  tomato: { poly: '545,400 538,348 619,348 631,400', cx: 582, cy: 372, label: [582, 334] as Pt },
 };
 
-/** In from the dirt path on the left, along it to the gate, then up the grass to the front maize bed. */
+/** Out of the shed lane on the left, along the dirt to the front of Farm 1's maize. */
 const MAIN: Pt[] = [
-  [26, 292],
-  [120, 322],
-  [230, 352],
-  [330, 378],
-  [414, 388],
-  [440, 350],
-  [466, 312],
-  [474, 290],
+  [212, 190],
+  [238, 189],
+  [272, 189],
+  [306, 191],
+  [330, 182],
+  [339, 174],
 ];
-/** Round the right of the front bed, between it and the tomatoes, to the back bed. */
+/** Round the right of Farm 1, up the lane between Farms 1 and 2, to the back of the maize. */
 const TO_LOWER: Pt[] = [
-  [474, 290],
-  [506, 262],
-  [546, 240],
-  [574, 206],
-  [520, 186],
-  [474, 178],
+  [339, 174],
+  [372, 182],
+  [395, 170],
+  [397, 133],
+  [396, 101],
+  [374, 99],
+  [348, 102],
 ];
-/** Down to the path and along the front of the greens to the sukuma wiki. */
+/** Along the front of the farms to the sukuma wiki on Farm 2. */
 const TO_SUKUMA: Pt[] = [
-  [474, 290],
-  [452, 318],
-  [420, 348],
-  [330, 356],
-  [236, 334],
-  [196, 310],
+  [339, 174],
+  [372, 184],
+  [400, 189],
+  [429, 182],
+  [451, 174],
 ];
 
 export type Route = 'toFirst' | 'toLower' | 'toSukuma' | 'lowerToSukuma';
@@ -98,7 +97,7 @@ function project(pts: Pt[], cum: number[], x: number, y: number) {
 
 const pathD = (pts: Pt[]) => 'M' + pts.map(p => p.join(',')).join(' L');
 
-const SPEED = 156; // stage px per second: three times the old pace, so the first walk takes about 4 s
+const SPEED = 60; // stage px per second over the picture of the whole farm: the first walk takes about 3 s
 
 export function Village({
   look,
@@ -218,7 +217,7 @@ export function Village({
   };
 
   const { p, dir } = at(pts, cum, d);
-  const hintAt = at(pts, cum, Math.min(total, d + 90)).p;
+  const hintAt = at(pts, cum, Math.min(total, d + 50)).p;
   const goal = target ? SPOTS[target] : null;
 
   // Open ground before the farm opens: the walk to the maize beds and the beds themselves.
@@ -226,7 +225,7 @@ export function Village({
   // no blur filter). Each level is drawn for every route before the next, so overlaps never re-add mist.
   const clear = (
     <>
-      <ellipse cx={440} cy={224} rx={182} ry={96} fill="url(#hole)" />
+      <ellipse cx={344} cy={146} rx={150} ry={86} fill="url(#hole)" />
       {[
         [56, '#c8c8c8'],
         [36, '#8a8a8a'],
@@ -234,19 +233,19 @@ export function Village({
         [0, '#000'],
       ].map(([extra, c]) =>
         [
-          [MAIN, 48],
-          [TO_LOWER, 44],
+          [MAIN, 30],
+          [TO_LOWER, 28],
         ].map(([r, core]) => (
           <path key={`${extra}-${core}`} d={pathD(r as Pt[])} stroke={c as string} strokeWidth={(core as number) + (extra as number)} strokeLinecap="round" strokeLinejoin="round" fill="none" />
         )),
       )}
-      <ellipse cx={440} cy={224} rx={140} ry={70} fill="#000" />
+      <ellipse cx={344} cy={140} rx={62} ry={44} fill="#000" />
     </>
   );
 
   return (
     <div className="abs" style={{ inset: 0 }}>
-      <FarmMap />
+      <FarmMap world alt="Your farm, from above: the farmhouse, the six farms, the pond, the mini forest and Farms 7 and 8" />
       <svg
         ref={svgRef}
         className="village"
@@ -278,18 +277,19 @@ export function Village({
         <g className={`mist ${lifted ? 'is-gone' : ''}`} pointerEvents="none">
           <rect width={874} height={402} fill="#eef3ea" opacity={0.78} mask="url(#mist-mask)" />
           {[
-            [110, 90, 90],
-            [250, 300, 80],
-            [640, 300, 90],
-            [720, 120, 90],
-            [560, 70, 70],
+            [520, 140, 90],
+            [460, 260, 90],
+            [600, 360, 90],
+            [740, 300, 90],
+            [680, 80, 80],
+            [160, 330, 80],
           ].map(([cx, cy, r]) => (
             <ellipse key={cx} cx={cx} cy={cy} rx={r} ry={r * 0.42} fill="#fff" opacity={0.45} />
           ))}
           {[
-            [262, 282],
-            [626, 284],
-            [640, 120],
+            [450, 140],
+            [582, 372],
+            [557, 140],
           ].map(([x, y]) => (
             <g key={x} transform={`translate(${x},${y})`}>
               <rect x={-13} y={-8} width={26} height={19} rx={4} fill="#8a6a40" />
@@ -338,11 +338,11 @@ export function Village({
         )}
 
         {route && (
-          <g transform={`translate(${p[0]},${p[1]}) scale(0.6)`} pointerEvents="none">
+          <g transform={`translate(${p[0]},${p[1]}) scale(0.34)`} pointerEvents="none">
             <FarmerFigure look={look} pose={moving ? 'walk' : 'stand'} facing={dir as 1 | -1} />
           </g>
         )}
-        {route === 'toFirst' && d === 0 && <MapLabel x={p[0] + 30} y={p[1] - 56} text={name} strong />}
+        {route === 'toFirst' && d === 0 && <MapLabel x={p[0] + 4} y={p[1] - 42} text={name} strong />}
       </svg>
     </div>
   );

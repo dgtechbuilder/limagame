@@ -2,7 +2,7 @@ import type { ShopTab, StepId } from './data';
 import { STORY } from './first/data';
 import { CHECK_DAYS, currentDay } from './trials/model';
 import { dayNumber } from './rounds/farms';
-import type { AchTab, Action, AnimalsTab, ClimateTab, FsPhase, GameState, Modal, PartnersTab, SecurityTab, SettingsTab } from './state';
+import type { AchTab, Action, AnimalsTab, ClimateTab, FsPhase, GameState, Modal, PartnersTab, PowerTab, SecurityTab, SettingsTab, WalletTab } from './state';
 import { BRANDS, type BrandId } from './partners/data';
 
 /* Web addresses: every screen has its own address after the # (…/limagame/#/settings/display), so a player can
@@ -20,7 +20,9 @@ const SETTINGS: Record<SettingsTab, string> = { farmer: 'my-farmer', game: 'game
 const CLIMATE: Record<ClimateTab, string> = { overview: 'overview', land: 'land-and-pay', areas: 'farm-areas', emissions: 'emissions', water: 'water-and-soil', tank: 'water-tank', credits: 'credits', shocks: 'shocks', activity: 'activity' };
 const ACH: Record<AchTab, string> = { journey: 'journey', modules: 'modules', today: 'today', badges: 'badges', certificates: 'certificates' };
 const PARTNERS: Record<PartnersTab, string> = { offers: 'offers', placements: 'placements', join: 'partner-with-us', shortlist: 'shortlist' };
-const ANIMALS: Record<AnimalsTab, string> = { today: 'today', health: 'health', water: 'water', coop: 'coop', herd: 'herd' };
+const ANIMALS: Record<AnimalsTab, string> = { today: 'today', health: 'health', water: 'water', coop: 'coop', shed: 'cow-shed', herd: 'herd' };
+const WALLET: Record<WalletTab, string> = { history: 'history', climate: 'climate-payments', summary: 'summary' };
+const POWER_TABS: Record<PowerTab, string> = { build: 'build', today: 'today', impact: 'impact', history: 'history' };
 const SECURITY: Record<SecurityTab, string> = { protect: 'protect', risk: 'risks', reports: 'night-reports' };
 const BRAND_WORD = Object.fromEntries(BRANDS.map(b => [b.id, b.id])) as Record<BrandId, string>;
 const SHOP: Record<ShopTab, string> = { food: 'food', fertilizer: 'fertilizer', tank: 'water-tanks', equipment: 'equipment' };
@@ -38,6 +40,7 @@ const SIMPLE = {
   outcome: 'results',
   rewards: 'rewards',
   training: 'training',
+  market: 'market',
 } as const satisfies Partial<Record<Modal['kind'], string>>;
 
 /** First-session steps, by address. The story is /story/1 to /story/3. */
@@ -81,6 +84,12 @@ function modalPath(s: GameState, m: Modal): string {
       return `/animals/${ANIMALS[m.tab ?? 'today']}`;
     case 'security':
       return `/security/${SECURITY[m.tab ?? 'protect']}`;
+    case 'wallet':
+      return `/wallet/${WALLET[m.tab ?? 'history']}`;
+    case 'power':
+      return `/power/${POWER_TABS[m.tab ?? 'build']}`;
+    case 'garden':
+      return `/new-farms/${m.farm + 7}`;
     default:
       return `/${SIMPLE[m.kind]}`;
   }
@@ -150,6 +159,19 @@ function modalFor(s: GameState, parts: string[]): Modal | null | 'bad' {
   if (first === 'security') {
     const t = tab(SECURITY);
     return t === 'bad' || parts.length > 2 ? 'bad' : { kind: 'security', tab: t ?? 'protect' };
+  }
+  if (first === 'wallet') {
+    const t = tab(WALLET);
+    return t === 'bad' || parts.length > 2 ? 'bad' : { kind: 'wallet', tab: t ?? 'history' };
+  }
+  if (first === 'power') {
+    const t = tab(POWER_TABS);
+    return t === 'bad' || parts.length > 2 ? 'bad' : { kind: 'power', tab: t ?? 'build' };
+  }
+  if (first === 'new-farms') {
+    if (parts.length > 2) return 'bad';
+    const n = second === undefined ? 7 : Number(second);
+    return n === 7 || n === 8 ? { kind: 'garden', farm: n - 7 } : 'bad';
   }
   if (first === 'loan-calculator') {
     if (second === undefined) return { kind: 'loan', view: 'calc' };

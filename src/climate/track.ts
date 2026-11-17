@@ -4,6 +4,8 @@
 
 import { pumpCo2, type Source } from './model';
 import { earn } from '../credits/ledger';
+import { addEntry } from '../wallet/model';
+import { powerOn } from '../power/model';
 import { TREATMENTS, treatmentOf, type Treatment } from '../care/treatments';
 import { ROWS_PER_FARM } from '../strategy/data';
 import { chosen, hasStrategies, strategiesOf } from '../strategy/model';
@@ -36,7 +38,7 @@ import {
 } from './model';
 
 /** Solar power, once its reward is redeemed, runs the pumps, the cold store and the mill. */
-export const hasSolar = (s: GameState) => s.redeemed.includes('solar');
+export const hasSolar = (s: GameState) => s.redeemed.includes('solar') || powerOn(s);
 
 /** The clock the daily payment counts in: the player's own calendar day (the same clock as the daily streak). */
 export const payClock = { today: () => achClock.today() };
@@ -98,6 +100,8 @@ export function settleDays(land: GameState, s: GameState, today = payClock.today
     areas: totals,
   };
   let next: GameState = { ...s, climate: { ...c1, pay: pay1 }, coins: s.coins + coins, ledger: coins > 0 ? earn(s.ledger, 'co2', credits, coins, when, today) : s.ledger };
+  // into the farmer's wallet, with its own words (src/wallet)
+  if (coins > 0) next = addEntry(next, 'climate', `Climate payment · ${when}`, coins, next.coins, { credits: Math.round(credits * 100) / 100 });
   if (levelUp) next = { ...next, points: next.points + levelUp.points, toast: toast(`Climate level up: ${levelUp.name} · +${levelUp.points} points`) };
   if (coins > 0)
     next = {

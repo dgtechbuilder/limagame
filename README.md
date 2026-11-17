@@ -49,6 +49,15 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [Theft, and keeping the farm safe](#theft-and-keeping-the-farm-safe)
 - [The evidence layer](#the-evidence-layer)
 - [Climate tracking](#climate-tracking)
+- [The wallet](#the-wallet)
+- [The power system](#the-power-system)
+- [Night mode](#night-mode)
+- [The tractor screen](#the-tractor-screen)
+- [The coop and the cow shed](#the-coop-and-the-cow-shed)
+- [The shed's options](#the-sheds-options)
+- [The market stall](#the-market-stall)
+- [Farms 7 and 8](#farms-7-and-8)
+- [Mini-games](#mini-games)
 - [Achievements, the daily streak and certificates](#achievements-the-daily-streak-and-certificates)
 - [My Progress: certification levels and learning credits](#my-progress-certification-levels-and-learning-credits)
 - [Partners: billboards, branded products and offers](#partners-billboards-branded-products-and-offers)
@@ -76,7 +85,12 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 | **Every week** | **Six farms**: a different plan on each farm, one day of checks each real day (or all now), then the harvests compared. The plan that worked becomes their recipe for the next cycle. |
 | **Any time** | Plays seasons of maize on Farm Moja: six farming steps, harvest timing, storage, processing, selling, results, rewards. |
 | **Any time** | Opens **Climate** to see what their farming did to the climate, the water and the soil, and the climate credits it earned. |
-| **From day 2** | Looks after the **cows and hens** every day (feed, water, milk, eggs, cleaning), **builds the chicken coop**, treats their diseases by their signs, and **keeps the farm safe from thieves** at night. |
+| **From day 2** | Looks after the **cows and hens** every day (feed, water, milk, eggs, cleaning), treats their diseases by their signs, and **keeps the farm safe from thieves** at night. |
+| **Days 1 to 7** | **Builds a solar power system**, one part a day, each with its own mini-game: panels, inverter, battery, lights, generator, diesel, then switches it on. It powers the pump, the milk cooler, the lights, the house and the workshop. |
+| **Day 1 · day 3** | **Upgrades the chicken coop** (day 1) and **the cow shed** (day 3), nail by nail. |
+| **From day 4** | Plants **Farms 7 and 8**: spinach, tomatoes, French beans, onions, watermelon or a fruit orchard. |
+| **Every day** | Sells up to **25 kg** of the store at the **market stall**; every payment in and out is kept in the **Wallet**. |
+| **Any time** | Taps **TRACTOR** to train, learn, check, service, repair, refuel, hire or drive the tractor (each a mini-game). |
 
 A wrong call is part of learning: the clue they missed is circled, and they try again on a second maize bed.
 
@@ -153,6 +167,13 @@ src/
                            Cast.tsx (anime or original picture), style.ts (style and read-aloud contexts)
   achievements/            badges, the daily streak and certificates: model.ts (every rule), track.ts
   finance/loan.ts          the loan calculator (no coins change hands)
+  wallet/                  every payment in and out: model.ts (trackWallet, addEntry), Wallet.tsx (the page)
+  power/                   the solar power system: config.ts (every number), model.ts (a day of power), Power.tsx
+  produce/                 the store and the market stall (25 kg a day): model.ts, Market.tsx
+  garden/                  Farms 7 and 8 (spinach, orchard…): model.ts, Garden.tsx
+  systems/track.ts         the newer systems through the days: power, gutters, drip, wilting, tractor wear, morning news
+  minigames/MiniGame.tsx   the mini-games: timing, hold-to-fill, tap the spots, wires, order, quiz, aim, steer, balance
+  components/Page.tsx      a page with sections down the left (Wallet, Power, Market, New farms, Tractor)
   training/data.ts         farmer training courses and bookings
   farmSize.ts              how big the six farms are (4 acres, 20 plots) and FARM_SCALE
   fit.ts                   the 874 × 402 stage and how it fits the screen
@@ -185,7 +206,8 @@ src/
   evidence/                the decision log, programme tags, "tried it on your own farm?": model.ts, Ask.tsx
   tidy/model.ts            the daily tidy-up: today's bushes and rocks, where they turn up, what they pay, the tidy streak
   risk/                    money at risk: config.ts (every number to tune), model.ts (the list, from the save), RiskHud.tsx (the button)
-  tractor/                 from Wakala Agent: the tractor drive before planting: data.ts, sim.ts (no DOM), Tractor.tsx
+  tractor/                 from Wakala Agent: the tractor drive before planting: data.ts, sim.ts (no DOM), Tractor.tsx;
+                           the tractor screen: hub.ts (training, condition, diesel), TractorHub.tsx
   business/                the tractor business (see below): model.ts every rule and number, drive.ts the ten-second
                            drive, Business.tsx and DriveGame.tsx the screens, Cast.tsx and cast/ the brand characters
   climate/                 climate tracking: model.ts (every factor, the ledger, rating, levels), track.ts (which
@@ -262,7 +284,7 @@ A new player never sees the farm screen first. Everything happens on their own f
 
    The top Back button goes from the story to creating the farmer, and from the walk back to the story. Events:
    `story_page`, `story_signed`, `story_sow`, `story_step`, `story_sum`, `story_done`, `story_skipped`.
-3. **Walk to the maize** — on the Figma map: in along the dirt path, up the grass to the front maize bed.
+3. **Walk to the maize** — on the picture of the 3D farm (see [The first session on the 3D farm](#the-first-session-on-the-3d-farm)): out along the dirt lane to the front of Farm 1's maize.
    The first tap or drag moves the farmer; a pulsing ring shows where to tap. The farmer walks quickly (156 stage
    px a second, three times the first version's pace): about 4 seconds.
    - **The farm update** (on arriving, before the first check): *week 7 of the season*. The farm has been running for
@@ -321,7 +343,7 @@ nitrogen deficiency.
 | `data.ts` | Reviews, farmer looks, name suggestions, the four calls |
 | `art.tsx` | Crops, soil, close-ups, field and farmer, drawn from the data |
 | `Review.tsx` | The one review system: Look → Spot → Judge → Result |
-| `Village.tsx` | Tap-to-walk over the Figma map along fixed routes; mist, arrows and labels. Bed outlines and routes are in `SPOTS`, `MAIN`, `TO_LOWER`, `TO_SUKUMA`. |
+| `Village.tsx` | Tap-to-walk over the picture of the 3D farm along fixed routes; mist, arrows and labels. Bed outlines and routes are in `SPOTS`, `MAIN`, `TO_LOWER`, `TO_SUKUMA`. |
 | `Create.tsx`, `FirstSession.tsx` | Farmer creation and the order of moments |
 | `Story.tsx` | The story so far: three pages, Previous / Next, Skip story, read aloud |
 | `track.ts` | Event log (below) |
@@ -427,7 +449,7 @@ WASD. The **task card** at the top says what to do next; tap it and the farmer w
 
 ![The farm world](docs/farm-world.webp)
 
-- **The mini forest**: 10 acres of idle land left to grow as forest, top right of the farm above the pond, with a
+- **The mini forest**: 10 acres of idle land left to grow as forest, bottom right of the farm below the pond, with a
   *Mini forest · 10 acres* sign (`FOREST` in `src/world/engine.ts`). It is planted like a tree farm (`forest` in
   `src/world/models.ts`): short, round-crowned trees in straight rows with a few tall, skinny trees among them, and
   grass tufts and small bushes at the foot of each trunk. Only the trunks block the farmer, so the lanes between the
@@ -440,7 +462,7 @@ WASD. The **task card** at the top says what to do next; tap it and the farmer w
   was. The task card counts the rows left (*4 of 4 rows left*) and walks the farmer to the next one. The other jobs are done by walking over the plots with the tool
   or load they need:
   - **land prep** by hand is the Clear button (the plan says how: hoe, sickle or mulch); **tractor hire** and
-    **oxen** are hired at the **Hire** spot by the shed, and plough the farms themselves while the farmer works elsewhere;
+    **oxen** are hired from the tractor screen (**Train** spot by the shed, or the TRACTOR button: *Hire*), and plough the farms themselves while the farmer works elsewhere;
   - **planting** is the Plant button (no seed sack to fetch); **fertilizer at planting** with the bag from the shed;
   - **each day's check**: walk to a farm's sign (a **!** badge) to read it, with the same real photos and calls as the
     field rounds. A right call turns into work by hand: **cut the weeds**, **water** (fill the can at the pond),
@@ -455,7 +477,7 @@ WASD. The **task card** at the top says what to do next; tap it and the farmer w
   the plots under it as it drives (a column of five plots a pass): see [Plots and inputs](#plots-and-inputs). It drives
   a little faster than walking. A farm whose 20 plots are all done from the seat pays **+30 bonus points** once per
   farm and job (`TRACTOR_BONUS.perJob`). The hired tractor (a *Tractor hire* plan) ploughs a whole farm in one pass.
-- **Places answer when the farmer walks to them** (a shed, the pond, the Hire spot, the market, the house, the
+- **Places answer when the farmer walks to them** (a shed, the pond, the Train spot, the power yard, the market, the house, the
   Mission board), or stops in them: a walk to somewhere else that only passes through picks nothing up and opens
   nothing. A tap on the task card at a place the farmer already stands in opens it again.
 - **Sleep** at the farmhouse starts the next day (on the fast clock); **Plan** by the house, or **Mission** on the
@@ -474,7 +496,7 @@ game can use it.
 A full guided cycle (clear → plant → fertilize → six days of checks, including a right call becoming weeding and
 scaring off birds → harvest → sell) has been played end to end with no errors. **Not yet human-tested**: watering,
 spraying, digging drains, chasing the goat, hiring the tractor or oxen, a full six-farm cycle, and the daily clock
-(one day per real day). The first session (the village walk) is still the 2D Figma map, not the 3D world.
+(one day per real day). The first session's walk is played on a picture of this 3D farm, taken from above.
 
 ### Scheduled care
 
@@ -624,7 +646,7 @@ the logic and data were ported, not its HTML.
 - **Mama Achieng**, the farmer's mother, says what she has noticed when the farmer reaches a sign, and about each of
   the five pictures. Her lines sit beside the captions, never instead of them. From cycle 2 she is sure of the wrong
   thing on about one check in four (the same check always shows the same line): her guess, never advice.
-- **The tractor drive.** On a farm whose plan says *Tractor hire*, the Hire spot opens the drive before planting:
+- **The tractor drive.** On a farm whose plan says *Tractor hire*, the tractor screen's *Hire* opens the drive before planting:
   a brief, then the player picks the tractor (compact, standard, large) and the implement (eight, nothing
   pre-picked), ticks the ready check and drives against the clock around rocks and trunks: tap and hold to steer,
   arrow keys or WASD, slow or fast, or autopilot (at most 2 stars). The summary scores the job, efficiency, climate
@@ -1215,7 +1237,7 @@ Climate levels (Seedling, Grower, Steward, Champion, Climate hero) pay 100 to 50
 | --- | --- | --- |
 | **Six farms** | 4 acres each (24), 20 plots of 0.2 acre | each plot is *farmed* (a crop in the ground: stores 1 kg CO₂ an acre; +1.5 with mulch, +1 with beans between the rows, +1 with manure, +0.3 with an ox plough; −0.3 with tractor tillage, −1 with slash and burn; at least 0.2), *bare* (cleared or ploughed, not planted: loses 2 kg CO₂ an acre, source *Bare soil*, and soil points; the loss takes credits back) or *idle* (not worked this cycle, or harvested: nothing counted or paid, no food) |
 | **Farm Moja** | 1 acre | the same, from its season's tasks: bare once cleared or tilled, farmed once seeded (manure and beans store more), idle after the harvest |
-| **Mini forest** | 10 acres | idle land left to grow as forest, top right of the farm above the pond: stores 11 kg CO₂ an acre (about 10 t a hectare a year) |
+| **Mini forest** | 10 acres | idle land left to grow as forest, bottom right of the farm below the pond: stores 11 kg CO₂ an acre (about 10 t a hectare a year) |
 | **Grazing pen** | 2 acres | grazed grass: stores 0.5 kg CO₂ an acre |
 | **Cows and hens** | 2 cows, 4 hens | methane from the cows' digestion (4.6 kg CO₂e a cow, IPCC 2006) and their manure (0.6), the hens' manure; 50 L of water a cow, 0.3 L a hen (source *Cows and hens*) |
 | **Pond** | 0.5 acre | the water the animals and the house draw from it, and its health (0–100): the season's fertilizer and spray runoff muddies it |
@@ -1248,6 +1270,132 @@ Moja stays one acre.
 All factors are in one table in `src/climate/model.ts` (`FACTORS` and the plan, task and market tables), like the six
 farms' numbers: illustrative estimates for learning until an agronomist reviews them; the N₂O share cites the IPCC
 2006 guidelines. `tests/climate.spec.ts` plays the tracking and the page.
+
+## The wallet
+
+Every change to the farmer's money is kept in the **Wallet** (`src/wallet/model.ts`): tap the money on the farm's
+HUD, the main menu, or *Climate › Land & pay › Every payment, in your wallet*. Address `#/wallet/history`.
+
+- **History**: every payment in and out, newest first, with the farm day and the balance after it; chips filter by kind
+  (climate, water, harvests, market stall, animals, power, tractor, farm work, shop, business, rewards, security).
+- **Climate payments**: every climate payment ever paid, with the credits it paid for and the wallet after it, a bar
+  chart of the latest, and the totals. The daily payment (see [Climate tracking](#climate-tracking)) is written here by
+  `settleDays` itself (`addEntry`), so it keeps its own words; the water credits too.
+- **Summary**: money in and out by kind, all time (never trimmed; the history keeps the last 400 entries).
+
+Any other change of money is written by `trackWallet` after each action, labelled by what the player did, so nothing
+is missed and nothing counted twice: the wallet's entries always add up to the change in money.
+
+**Fixed with it**: at midnight the *Good morning* dialogs (day 2, a night's news) used to open on top of whatever page
+was up, the Climate page included, and block it. A morning's news now waits until the player is back on the farm
+(`MORNING_KINDS` in `src/state.ts`; opening or closing a page keeps it).
+
+## The power system
+
+Over the **first 7 farm days** the farmer builds a solar power system in the **power yard**, top right of the farm
+above the pond (where the mini forest was; the forest is now bottom right). One part a day, each with its own
+mini-game; a part can go in on its day or any day after, in order (`src/power/config.ts` `POWER_STEPS`):
+
+| Day | Part | Mini-game |
+| --- | --- | --- |
+| 1 | Solar panels (3 kW) | tilt the frame to face the sun (a slider and a power meter) |
+| 2 | Inverter | connect each cable to its terminal |
+| 3 | Battery bank (10 kWh) | the connections in the safe order |
+| 4 | Farm lights (poles along the paths, the pen, the coop) | put a light on every dark spot before the time runs out |
+| 5 | Generator (5 kVA) | pull-start it when the needle is in the green |
+| 6 | Diesel tank (200 L, filled with 120 L) | hold to pour, let go at the line |
+| 7 | Switch on | switch on what it powers without overloading it |
+
+A part put in well (its score) works better. **POWER** on the HUD (left), the main menu, or the yard's gate opens the
+page (`#/power/build`): *Build*, *Today* (sun, need, battery, diesel; switch each load on or off; buy diesel),
+*Impact*, *History*. Each morning of days 1–7 says what goes in today, and a chip on the HUD (bottom left) takes the
+player there.
+
+**Once it is on**, every farm day it runs (`runDay` in `src/power/model.ts`): the panels make power by the season's sun,
+the battery carries it into the night, the generator burns diesel for what is short. What it powers reaches the rest
+of the game:
+
+- **Water**: the solar pump lifts up to 600 L a day from the pond into the tank, and drips Farms 7 and 8 with 60% of the
+  water (they need no watering by hand).
+- **Climate**: clean power counts as credits (0.7 kg CO₂ avoided a kWh), paid with the day's climate payment; the
+  generator's diesel counts as emissions. Pumping and cooking count as solar (`hasSolar`).
+- **Profit**: chilled milk sells for 20% more (the milk cooler), lit coops lay 10% more eggs, the cold room keeps
+  fresh produce from wilting and adds 10% at the stall; the savings on bills are on the page.
+- **Tractor**: the workshop cuts servicing and repairs by 30%; the diesel tank refuels the tractor without a trip to town.
+- **Security**: lit farm lights count as the *solar security light*.
+
+## Night mode
+
+**Settings › Display › Night mode**: *Auto* (night on the farm from 7 pm to 6 am by the phone's clock), *Day* or
+*Night*. At night the sky goes dark blue, the moon lights the farm, the farmer carries a lantern, the farmhouse windows
+glow, and once the power system's lights are lit the poles light the paths (`setNight`, `setPower` in the engine).
+A chip at the bottom says *Night · lights on* or *off*.
+
+## The tractor screen
+
+The **Hire** spot is now the **Train** spot. Walking to it, or tapping **TRACTOR** on the HUD, opens the tractor screen
+(`src/tractor/TractorHub.tsx`, numbers in `hub.ts`), with a mini-game in each section:
+
+| Section | Mini-game | Does |
+| --- | --- | --- |
+| Train | steer round the cones down the practice lane | experience: each driver level (60, 150, 300) drives 5% faster |
+| Learn | three lessons of questions (parts, safety, soil) | points; the why after each answer |
+| Safety check | the walk-round in the right order | points |
+| Service | tap each service point in order | condition +10 to +35 (KSh 1,500; 30% less with workshop power) |
+| Repair | fix the three faults, leave the parts that are fine | condition back to 60–100% (KSh 6,000; 30% less with power) |
+| Refuel | hold to pour without spilling | diesel from the farm's tank, or the pump in town |
+| Hire | — | the oxen or the tractor plough the farms whose plan hires them (as the Hire spot did) |
+| Drive | — | walk to the tractor and hop on (the type and tool as before) |
+
+The tractor wears as it works (0.15 a plot driven, more on a drive or a business day) and burns diesel; under 30% it
+drives 20% slower, at 0% or with an empty tank it will not start (the screen opens on Repair or Refuel).
+
+## The coop and the cow shed
+
+The **chicken coop** is upgraded from **day 1** (a simple coop, then the raised coop with mesh) and the **cow shed**
+from **day 3** (a roofed shed, then a zero-grazing unit), both by the player, with a hammer mini-game
+(*Animals › Coop* and *Animals › Cow shed*, or walking to the coop or the pen). The cow shed adds milk (+10% / +25%),
+cuts cow diseases and cow theft, and its gutters catch rain into the tank every day (`SHEDS` in
+`src/livestock/config.ts`). Both stand on the 3D farm once built.
+
+## The shed's options
+
+Standing on the **Seeds**, **Fertilizer** or **Sprayer** spot, a button shows under the farmer: *Seeds ▾ Choose an
+option*. It lists every option (what it is, what it is best for, its cost); the one chosen goes on every farm that can
+still take it (not yet sown, spread or sprayed), is kept for the next planting (`prefs`), and is picked up
+(`shedChoose` in `src/state.ts`).
+
+## The market stall
+
+Some of every harvest goes into the **store**: 3% of each six-farm harvest (maize, sukuma wiki), and everything Farms 7
+and 8 grow. The **Sell** stall (when the six farms' harvest is not waiting to be sold) opens the market stall
+(`#/market`): up to **25 kg a day** in all, at a price a kg for each crop. Fresh produce wilts 4% a night in a store
+without the power system's cold room. `src/produce/model.ts`.
+
+## Farms 7 and 8
+
+Two new farms, 4 × 3 tiles, at the bottom of the farm either side of the market path, open **after day 3** (from farm
+day 4: `GARDEN.openDay`). At a farm's sign a button says what it needs: *Plant*, *Water*, *Harvest*. Crops
+(`src/garden/model.ts`): **spinach** (cut every 2 days), **tomatoes**, **French beans**, **onions**, **watermelon** and a
+**fruit orchard** (avocado and mango: fruit every 3 days, and the trees store carbon). Planting is a mini-game (tap
+every planting hole), and so is the harvest (pick the ripe ones, leave the green ones). An unwatered day costs 15% of
+the crop's health, unless the solar drip is on. The harvest goes into the store for the market stall.
+
+## Mini-games
+
+`src/minigames/MiniGame.tsx`: one frame (what to do, the game, then stars and a score from 0 to 1), nine games:
+**timing** (press in the green), **hold** (hold to fill, let go at the line), **tap** (tap the right spots before the
+time runs out, in order or not, decoys cost points), **wires**, **order**, **quiz**, **aim**, **steer** and
+**balance**. Every game is played with taps or a held press (keyboard too).
+
+## The first session on the 3D farm
+
+The first session (creating the farmer, the story, the walk to the maize, the checks) is played on a **picture of the
+3D farm itself**, taken from above on the first day (`public/assets/bg-world.webp` and `@2x`; `FarmWorld.setOverview`
+frames it). The walk routes, the beds, the mist and the labels are points of the 3D farm projected onto the picture
+(`src/first/Village.tsx`): the maize is Farm 1, the sukuma wiki Farm 2, the tomatoes Farm 8. To take the picture
+again, run the game with `?dev`, set up the first day and call `__limaWorld.setOverview({ x: -1, z: 1, h: 31, back: 19,
+capture: true })`.
 
 ## Achievements, the daily streak and certificates
 

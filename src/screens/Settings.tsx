@@ -307,6 +307,18 @@ function DisplayTab({ s, dispatch, set }: Props & { set: (p: Partial<Settings>) 
           ]}
         />
       </Row>
+      <Row title="Night mode" body={{ auto: 'Night falls on the farm from 7 pm to 6 am, by your phone’s clock.', day: 'Always day on the farm.', night: 'Always night: the farm’s lights (Power) light the way.' }[st.night ?? 'auto']}>
+        <Seg
+          label="Night mode"
+          value={st.night ?? 'auto'}
+          onChange={night => set({ night })}
+          options={[
+            { id: 'auto', label: 'Auto' },
+            { id: 'day', label: 'Day' },
+            { id: 'night', label: 'Night' },
+          ]}
+        />
+      </Row>
       <Row title="Reduce motion" body="Stops the bobbing, pulsing and pop-in animations.">
         <Seg
           label="Reduce motion"

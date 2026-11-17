@@ -972,7 +972,7 @@ button.card:active { transform: scale(0.98); }
 .hud-task-text i { font-style: normal; font-size: 10.5px; font-weight: 600; opacity: 0.75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* bottom left: day and load */
-.hud-status { position: absolute; left: 30px; bottom: 14px; z-index: 5; display: flex; gap: 6px; pointer-events: none; }
+.hud-status { position: absolute; left: 80px; bottom: 14px; z-index: 5; display: flex; gap: 6px; pointer-events: none; }
 .hud-status span {
   padding: 4px 10px; border-radius: 100px; background: rgba(40, 30, 20, 0.58); color: #fff; font-size: 11px; font-weight: 800;
 }
@@ -2680,3 +2680,151 @@ button.card:active { transform: scale(0.98); }
 .night-list { margin: 4px 0 2px; padding-left: 16px; width: 100%; text-align: left; font-size: 10px; line-height: 1.45; }
 .night-list li.is-theft, .night-list li.is-predator, .night-list li.is-death { color: #9a3b26; }
 .night-list li.is-recovered { color: #2e6b35; }
+
+/* ================================================================== */
+/* Mini-games (src/minigames): one frame, many short games             */
+/* ================================================================== */
+.mg { position: absolute; inset: 0; z-index: 90; display: grid; place-items: center; color: var(--ink); }
+.mg-card {
+  position: relative; width: 470px; max-height: 372px; padding: 10px 16px 14px; border-radius: 16px;
+  background: var(--cream); box-shadow: 0 0 0 4px #eea660, 0 0 0 7px #a8612f, 0 10px 24px rgba(0, 0, 0, 0.35);
+  display: flex; flex-direction: column; animation: pop 0.2s ease both;
+}
+.mg-head { display: flex; align-items: baseline; gap: 8px; padding-right: 30px; }
+.mg-head small { font-size: var(--text-label); font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--green-text); }
+.mg-head b { font-size: var(--text-subhead); }
+.mg-x { position: absolute; right: 8px; top: 6px; width: 28px; height: 28px; border-radius: 100px; background: var(--brown-10); font-size: 18px; font-weight: 700; color: var(--ink); }
+.mg-intro { padding: 18px 4px 6px; text-align: center; }
+.mg-intro p { margin: 0 0 16px; font-size: var(--text-body); line-height: 1.45; }
+.mg-go { height: 36px; padding: 0 22px; font-size: 13px; letter-spacing: 0.4px; display: inline-grid; }
+.mg-big { height: 40px; padding: 0 22px; font-size: 14px; letter-spacing: 0.4px; margin: 8px auto 0; display: grid; user-select: none; touch-action: none; }
+.mg-big.is-held { filter: brightness(0.92); transform: translateY(1px); }
+.mg-plain { height: 36px; padding: 0 16px; border-radius: 10px; background: var(--brown-10); font-weight: 700; color: var(--ink); }
+.mg-play { padding-top: 6px; overflow: hidden; }
+.mg-progress { margin: 0 0 6px; font-size: var(--text-caption); font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.mg-progress span { display: inline-flex; gap: 3px; }
+.mg-progress i { width: 9px; height: 9px; border-radius: 100px; background: var(--brown-20); }
+.mg-progress i.is-done { background: var(--green); }
+.mg-time { margin-left: auto; padding: 1px 8px; border-radius: 100px; background: var(--brown-10); }
+.mg-msg { margin: 6px 0 0; font-size: var(--text-caption); text-align: center; font-weight: 600; color: var(--ink-2); }
+.mg-note { margin: 4px 0 0; font-size: 9.5px; color: var(--ink-3); }
+.mg-gauge { position: relative; height: 34px; margin: 22px 8px 10px; border-radius: 10px; background: #f0dcc0; box-shadow: inset 0 0 0 2px var(--brown-20); }
+.mg-gauge.is-hit { box-shadow: inset 0 0 0 3px var(--green); }
+.mg-gauge.is-miss { box-shadow: inset 0 0 0 3px var(--bad); }
+.mg-zone { position: absolute; top: 3px; bottom: 3px; border-radius: 7px; background: #7ccf5a; }
+.mg-needle { position: absolute; top: -8px; bottom: -8px; width: 5px; margin-left: -2px; border-radius: 3px; background: var(--ink); }
+.mg-hold { display: flex; flex-direction: column; align-items: center; }
+.mg-tank { position: relative; width: 110px; height: 160px; border-radius: 12px 12px 16px 16px; background: #eef4f6; box-shadow: inset 0 0 0 3px #8aa1ad; overflow: hidden; }
+.mg-band { position: absolute; left: 0; right: 0; background: rgba(46, 155, 20, 0.25); border-top: 2px dashed var(--green); border-bottom: 2px dashed var(--green); z-index: 1; }
+.mg-liquid { position: absolute; left: 0; right: 0; bottom: 0; opacity: 0.85; }
+.mg-scene { display: block; width: 100%; max-width: 380px; height: auto; margin: 0 auto; border-radius: 10px; }
+.mg-scene.is-short { max-width: 340px; }
+.mg-tap .mg-scene { width: auto; height: 236px; }
+.mg-steer .mg-scene { width: auto; height: 200px; }
+.mg-aim .mg-scene { width: auto; height: 130px; }
+.mg-scene.is-lane { max-width: 200px; }
+.mg-spot { fill: rgba(255, 220, 90, 0.35); stroke: #ffd451; stroke-width: 2.5; animation: mgPulse 1.2s ease-in-out infinite; }
+.mg-spot.is-hidden { fill: rgba(255, 255, 255, 0.25); stroke: rgba(255, 255, 255, 0.8); }
+.mg-spot.is-done { fill: rgba(80, 200, 80, 0.6); stroke: #fff; animation: none; }
+@keyframes mgPulse { 50% { stroke-width: 5; } }
+.mg-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.mg-cols > div { display: flex; flex-direction: column; gap: 6px; }
+.mg-wire { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border-radius: 10px; background: #fff8ea; border: 2px solid var(--brown-20); font-weight: 600; font-size: 12px; color: var(--ink); }
+.mg-wire i { width: 22px; height: 8px; border-radius: 4px; background: var(--c); }
+.mg-wire.is-term { justify-content: flex-end; }
+.mg-wire.is-on { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold-soft); }
+.mg-wire.is-done { opacity: 0.55; border-color: var(--green); }
+.mg-wire:disabled { cursor: default; }
+.mg-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.mg-card-btn { position: relative; min-height: 38px; padding: 6px 10px 6px 30px; border-radius: 10px; background: #fff8ea; border: 2px solid var(--brown-20); text-align: left; font-size: 11.5px; font-weight: 600; color: var(--ink); }
+.mg-card-btn b { position: absolute; left: 8px; top: 50%; translate: 0 -50%; width: 18px; height: 18px; border-radius: 100px; background: var(--green); color: #fff; font-size: 10px; display: grid; place-items: center; }
+.mg-card-btn.is-done { border-color: var(--green); background: #eef8e6; }
+.mg-card-btn.is-wrong { border-color: var(--bad); animation: mgShake 0.3s; }
+@keyframes mgShake { 25% { translate: -4px 0; } 75% { translate: 4px 0; } }
+.mg-q { margin: 2px 0 8px; font-size: 13px; font-weight: 700; }
+.mg-options { display: flex; flex-direction: column; gap: 6px; }
+.mg-opt { min-height: 34px; padding: 6px 12px; border-radius: 10px; background: #fff8ea; border: 2px solid var(--brown-20); text-align: left; font-weight: 600; font-size: 12px; color: var(--ink); }
+.mg-opt.is-right { border-color: var(--green); background: #eef8e6; }
+.mg-opt.is-wrong { border-color: var(--bad); background: #fcefe8; }
+.mg-why { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.mg-why p { flex: 1; margin: 0; font-size: 11px; line-height: 1.4; }
+.mg-slider { display: flex; align-items: center; gap: 10px; margin: 8px 0; font-size: 12px; font-weight: 600; }
+.mg-slider input { flex: 1; accent-color: var(--gold); }
+.mg-meter { position: relative; height: 24px; border-radius: 8px; background: var(--brown-10); overflow: hidden; }
+.mg-meter span { position: absolute; left: 0; top: 0; bottom: 0; background: #7ccf5a; transition: width 0.15s; }
+.mg-meter.is-over span { background: #e2694f; }
+.mg-meter b { position: relative; display: block; text-align: center; line-height: 24px; font-size: 11px; }
+.mg-loads { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 8px 0 0; }
+.mg-load { padding: 6px 8px; border-radius: 10px; background: #fff8ea; border: 2px solid var(--brown-20); text-align: left; color: var(--ink); }
+.mg-load b { display: block; font-size: 11.5px; }
+.mg-load small { font-size: 9.5px; color: var(--ink-3); }
+.mg-load.is-on { border-color: var(--green); background: #eef8e6; }
+.mg-actions { display: flex; justify-content: center; gap: 10px; margin-top: 8px; }
+.mg-actions .mg-big { margin: 0; }
+.mg-result { text-align: center; padding: 12px 0 4px; }
+.mg-stars { margin: 0; font-size: 34px; letter-spacing: 6px; color: #e3d3b8; }
+.mg-stars .is-on { color: #f5b301; text-shadow: 0 2px 0 #b07d00; }
+.mg-score { margin: 4px 0 10px; font-size: 13px; }
+.mg-score b { font-size: 18px; }
+
+/* ================================================================== */
+/* Pages with sections: Wallet, Power, Market, the new farms, tractor   */
+/* ================================================================== */
+.pg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.pg-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px; }
+.pg-card { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; border-radius: 12px; background: #fff8ea; border: 1.5px solid var(--brown-20); text-align: left; color: var(--ink); min-width: 0; }
+.pg-card.is-done { border-color: rgba(46, 139, 71, 0.55); background: #f1f8e8; }
+.pg-card.is-due { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold-soft); }
+.pg-card.is-locked { opacity: 0.6; }
+.pg-card-head { display: flex; align-items: center; gap: 6px; }
+.pg-card-head i { font-style: normal; font-size: 18px; }
+.pg-card-head b { font-size: 12px; line-height: 1.2; }
+.pg-card-head small { margin-left: auto; font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 100px; background: var(--brown-10); white-space: nowrap; }
+.pg-card p { margin: 0; font-size: 10px; line-height: 1.35; color: var(--ink-2); }
+.pg-card .gold-btn { height: 28px; margin-top: auto; padding: 0 10px; font-size: 11px; letter-spacing: 0.3px; }
+.pg-status { font-size: 10px; font-weight: 700; color: var(--good); }
+.pg-status.is-bad { color: var(--bad); }
+.pg-h { margin: 10px 0 6px; font-size: 13px; font-weight: 700; }
+.pg-h:first-child { margin-top: 0; }
+.pg-lead { margin: 0 0 8px; font-size: 11px; line-height: 1.45; color: var(--ink-2); }
+.pg-table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+.pg-table th, .pg-table td { padding: 4px 6px; border-top: 1px solid var(--brown-10); text-align: left; }
+.pg-table th { font-size: 9px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--ink-3); border-top: 0; }
+.pg-table td.is-num, .pg-table th.is-num { text-align: right; white-space: nowrap; }
+.pg-in { color: var(--good); font-weight: 700; }
+.pg-out { color: var(--bad); font-weight: 700; }
+.pg-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.pg-chip { height: 24px; padding: 0 10px; border-radius: 100px; background: var(--brown-05); border: 1px solid var(--brown-20); font-size: 10px; font-weight: 600; color: var(--ink); }
+.pg-chip.is-on { background: var(--gold); border-color: var(--gold-edge); color: var(--ink-on-gold); }
+.pg-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--brown-10); }
+.pg-row:first-child { border-top: 0; }
+.pg-row > i { font-style: normal; font-size: 20px; width: 26px; text-align: center; }
+.pg-row-text { flex: 1; min-width: 0; }
+.pg-row-text b { display: block; font-size: 12px; }
+.pg-row-text small { display: block; font-size: 10px; color: var(--ink-2); }
+.pg-step { display: inline-flex; align-items: center; gap: 4px; }
+.pg-step button { width: 26px; height: 26px; border-radius: 8px; background: var(--brown-10); font-weight: 800; color: var(--ink); }
+.pg-step b { min-width: 42px; text-align: center; font-size: 12px; }
+.pg-bars { display: flex; align-items: flex-end; gap: 3px; height: 70px; padding: 4px 0; border-bottom: 1px solid var(--brown-20); }
+.pg-bars span { flex: 1; min-width: 4px; background: #6aa336; border-radius: 3px 3px 0 0; }
+.pg-toggle { height: 26px; padding: 0 12px; border-radius: 100px; font-size: 10.5px; font-weight: 700; background: var(--brown-10); color: var(--ink); }
+.pg-toggle.is-on { background: #7ccf5a; color: #173d12; }
+
+/* the money pill opens the wallet */
+.hud-pill .hud-wallet { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+/* the day's build chip, bottom left above the status line */
+.hud-build {
+  position: absolute; left: 80px; bottom: 44px; z-index: 6; max-width: 260px;
+  display: flex; align-items: center; gap: 6px; padding: 4px 12px 4px 6px; border-radius: 100px;
+  background: rgba(255, 248, 234, 0.95); border: 2px solid var(--gold); color: var(--ink);
+  font-size: 10.5px; font-weight: 700; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25); text-align: left;
+}
+.hud-build i { font-style: normal; font-size: 16px; }
+.hud-build small { display: block; font-size: 9px; font-weight: 600; color: var(--ink-2); }
+.hud-moon { position: absolute; left: 50%; bottom: 8px; translate: -50% 0; z-index: 5; padding: 2px 10px; border-radius: 100px; background: rgba(12, 22, 44, 0.75); color: #dfe8ff; font-size: 10px; font-weight: 700; pointer-events: none; }
+.world.is-night .hud-status span, .world.is-night .hud-tidy { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25); }
+.hud-power { left: 14px; top: 322px; }
+.hud-power > svg { background: radial-gradient(circle at 50% 35%, #ffe27a, #e0a312); }
+.hud-power.is-on > svg { background: radial-gradient(circle at 50% 35%, #a6f07a, #3f9a1c); }
+/* a pop-up award waits behind the farm world's own screens and the mini-games */
+.stage:has(.world-check) .award-pop, .stage:has(.mg) .award-pop { display: none; }

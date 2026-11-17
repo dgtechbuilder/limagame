@@ -14,8 +14,10 @@ import {
   ISSUES,
   LIFE,
   NO_COOP,
+  SHEDS,
   careOf,
   coopOption,
+  shedOption,
   issueOf,
   preventOf,
   type CareId,
@@ -23,6 +25,7 @@ import {
   type Group,
   type IssueId,
   type PreventId,
+  type ShedId,
 } from './config';
 
 export interface ActiveIssue {
@@ -52,6 +55,8 @@ export interface LifeState {
   /** each job, and the farm day it was last done */
   done: Partial<Record<CareId, number>>;
   coop: CoopId | null;
+  /** the cow shed (from day 3), or null: the cows sleep in the open pen */
+  shed?: ShedId | null;
   issues: ActiveIssue[];
   /** each prevention, and the last farm day it still covers */
   prevent: Partial<Record<PreventId, number>>;
@@ -71,6 +76,7 @@ export const newLife = (): LifeState => ({
   health: { cows: LIFE.health.start, hens: LIFE.health.start },
   done: {},
   coop: null,
+  shed: null,
   issues: [],
   prevent: {},
   today: { milk: 0, eggs: 0, earned: 0, spent: 0 },
@@ -146,7 +152,8 @@ export function milkToday(s: LifeHost): number {
   const n = countOf(s, 'cows');
   const fed = l.done.cowFeed === l.day ? 1 : 0.6;
   const watered = l.done.cowWater === l.day ? 1 : 0.5;
-  return Math.round(n * LIFE.milk.perCow * (l.health.cows / 100) * fed * watered * issuesOutput(l, 'cows') * 10) / 10;
+  const shed = 1 + (shedOption(l.shed)?.milk ?? 0);
+  return Math.round(n * LIFE.milk.perCow * (l.health.cows / 100) * fed * watered * shed * issuesOutput(l, 'cows') * 10) / 10;
 }
 /** Eggs the hens lay today, as cared for so far. */
 export function eggsToday(s: LifeHost): number {
@@ -260,13 +267,35 @@ export function doPrevent<S extends LifeHost>(s: S, id: PreventId): Patch<S> {
 
 export function buildCoop<S extends LifeHost>(s: S, id: CoopId): Patch<S> {
   const l = lifeOf(s.life);
-  if (!careOpen(s)) return { error: `The coop is built from day ${LIFE.startDay}` };
+  if (l.day < LIFE.coopDay) return { error: `The coop is built from day ${LIFE.coopDay}` };
   const price = coopPrice(l.coop, id);
   const o = coopOption(id)!;
   if (price === null) return { error: `You have a ${coopOption(l.coop)!.name.toLowerCase()} already` };
   if (s.coins < price) return { error: `You need ${price} for the ${o.name.toLowerCase()}` };
   const life = { ...l, coop: id, done: { ...l.done, coopClean: l.day }, totals: { ...l.totals, spent: l.totals.spent + price }, log: [{ day: l.day, text: `Built: ${o.name.toLowerCase()}` }, ...l.log].slice(0, 20) };
   return { state: { ...s, coins: s.coins - price, life }, text: `${o.name} built: room for ${o.room} hens` };
+}
+
+/** The price of this cow shed now: an upgrade pays the difference. */
+export function shedPrice(current: ShedId | null | undefined, to: ShedId): number | null {
+  const want = shedOption(to)!;
+  const have = shedOption(current);
+  if (have && have.price >= want.price) return null;
+  return want.price - (have ? Math.round(have.price * 0.6) : 0);
+}
+export const SHED_ORDER = SHEDS.map(c => c.id);
+export const shedOpen = (s: Pick<LifeHost, 'life'>) => lifeOf(s.life).day >= LIFE.shedDay;
+export const coopOpen = (s: Pick<LifeHost, 'life'>) => lifeOf(s.life).day >= LIFE.coopDay;
+
+export function buildShed<S extends LifeHost>(s: S, id: ShedId): Patch<S> {
+  const l = lifeOf(s.life);
+  if (!shedOpen(s)) return { error: `The cow shed is upgraded from day ${LIFE.shedDay}` };
+  const price = shedPrice(l.shed, id);
+  const o = shedOption(id)!;
+  if (price === null) return { error: `You have a ${shedOption(l.shed)!.name.toLowerCase()} already` };
+  if (s.coins < price) return { error: `You need ${price} for the ${o.name.toLowerCase()}` };
+  const life = { ...l, shed: id, done: { ...l.done, pen: l.day }, totals: { ...l.totals, spent: l.totals.spent + price }, log: [{ day: l.day, text: `Built: ${o.name.toLowerCase()}` }, ...l.log].slice(0, 20) };
+  return { state: { ...s, coins: s.coins - price, life }, text: `${o.name} built: more milk, fewer diseases` };
 }
 
 /* ---------------- a night ---------------- */
@@ -279,6 +308,7 @@ const issueWeight = (s: LifeHost, l: LifeState, id: IssueId) => {
   if ((id === 'cocci' || id === 'mastitis' || id === 'mites') && dirty(s, i.group)) w *= 2.2;
   if (id === 'eggEating' && crowded(s)) w *= 2;
   if (id === 'cocci') w *= 1 - (coopOption(l.coop)?.disease ?? 0);
+  if (i.group === 'cows' && id !== 'leak') w *= 1 - (shedOption(l.shed)?.disease ?? 0);
   return w;
 };
 

@@ -10,8 +10,12 @@
 export type Group = 'cows' | 'hens';
 
 export const LIFE = {
-  /** the farm day the animals come into the player's care, and the coop can be built */
+  /** the farm day the animals come into the player's care */
   startDay: 2,
+  /** the farm day the chicken coop can be upgraded (the first day: the hens need a roof from the start) */
+  coopDay: 1,
+  /** the farm day the cow shed can be upgraded */
+  shedDay: 3,
   /** at most this many nights are counted after time away */
   catchUpNights: 3,
   /** a healthy cow's milk a day, and its price a litre (KSh 50) */
@@ -100,6 +104,31 @@ export const COOPS: CoopOption[] = [
 export const coopOption = (id: CoopId | null | undefined) => COOPS.find(c => c.id === id) ?? null;
 /** Hens with no coop roost in the trees: some of their eggs are laid in the bush and lost. */
 export const NO_COOP = { room: 10, eggs: -0.3 };
+
+/* ---------------- the cow shed ---------------- */
+
+export type ShedId = 'roofed' | 'zero';
+
+export interface ShedOption {
+  id: ShedId;
+  name: string;
+  does: string;
+  price: number;
+  /** more milk: shade, a dry floor and feed in reach */
+  milk: number;
+  /** a share off the cows' disease risk (a dry, clean floor) */
+  disease: number;
+  /** a share off the risk of a cow being stolen (a locked shed at night) */
+  theft: number;
+  /** litres of rain the shed's gutters catch into the tank a day (normal season) */
+  gutter: number;
+}
+
+export const SHEDS: ShedOption[] = [
+  { id: 'roofed', name: 'Roofed cow shed', does: 'Timber posts, an iron-sheet roof, a feed trough and a raised sleeping area.', price: 6000, milk: 0.1, disease: 0.2, theft: 0.2, gutter: 80 },
+  { id: 'zero', name: 'Zero-grazing unit', does: 'A concrete floor that drains, feed and water troughs, a locked gate and gutters into the tank.', price: 15000, milk: 0.25, disease: 0.45, theft: 0.5, gutter: 220 },
+];
+export const shedOption = (id: ShedId | null | undefined) => SHEDS.find(c => c.id === id) ?? null;
 
 /* ---------------- prevention ---------------- */
 
