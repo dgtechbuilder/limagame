@@ -1,3 +1,4 @@
+import { cleanTag, evidenceExport, evidenceOf, evidenceSummary } from '../evidence/model';
 import { useEffect, useState, type Dispatch, type ReactNode } from 'react';
 import { NavBar } from '../components/Nav';
 import { CloseX } from '../components/Success';
@@ -71,7 +72,7 @@ export function SettingsPage({ s, dispatch, tab: startTab }: Props) {
   return (
     <div className="abs settings-page" style={{ inset: 0 }} role="dialog" aria-modal="true" aria-label="Settings">
       <div className="scrim" onClick={close} />
-      <div className="fs-panel set-panel" style={{ left: 18, top: 40, width: 838, height: 348 }}>
+      <div className="fs-panel set-panel" style={{ left: 24, top: 46, width: 826, height: 334 }}>
         <nav className="set-tabs" aria-label="Settings sections">
           <p className="set-heading">Settings</p>
           {TABS.map(t => (
@@ -93,7 +94,7 @@ export function SettingsPage({ s, dispatch, tab: startTab }: Props) {
           {tab === 'help' && <HelpTab s={s} dispatch={dispatch} />}
         </section>
       </div>
-      <NavBar horizontal onBack={close} hideHome={s.fs.phase !== 'done'} style={{ right: 44, top: 6 }} />
+      <NavBar horizontal onBack={close} hideHome={s.fs.phase !== 'done'} style={{ right: 62, top: 8 }} />
       <CloseX className="page-x" onClick={close} />
       <p className="set-title-bar">
         <span aria-hidden="true">⚙</span> Settings · <b>{TABS.find(t => t.id === tab)!.label}</b>
@@ -111,7 +112,7 @@ function FarmerTab({ s, dispatch }: Props) {
     return (
       <div className="set-empty">
         <p className="set-title">No farmer yet</p>
-        <p className="set-body">Name your farmer and pick a look on the first screen. You can change both here afterwards.</p>
+        <p className="set-body">Change your farmer’s name and look.</p>
       </div>
     );
   const look = LOOKS[f.look] ?? LOOKS[0];
@@ -167,7 +168,7 @@ function FarmerTab({ s, dispatch }: Props) {
           ))}
         </div>
         <p className="set-body" style={{ marginTop: 10 }}>
-          Your farmer looks the same on the farm, in the field rounds and on the HUD.
+          Your farmer’s look, everywhere in the game.
         </p>
       </form>
     </div>
@@ -198,7 +199,7 @@ function GameTab({ s, dispatch, set }: Props & { set: (p: Partial<Settings>) => 
           ))}
         </select>
       </Row>
-      <Row title="Character style" body="How your farmer, the guide, the shopkeeper and the animals are drawn.">
+      <Row title="Character style" body="How the characters are drawn.">
         <Seg
           label="Character style"
           value={st.art}
@@ -209,7 +210,7 @@ function GameTab({ s, dispatch, set }: Props & { set: (p: Partial<Settings>) => 
           ]}
         />
       </Row>
-      <Row title="Farm view" body={s.view === 'world' ? 'The walkable 3D farm, with the tractor and the six farms.' : 'The classic painted farm: Farm Moja seasons and the field rounds.'}>
+      <Row title="Farm view" body={s.view === 'world' ? 'The walkable 3D farm with the tractor.' : 'The classic painted farm.'}>
         <Seg
           label="Farm view"
           value={s.view}
@@ -220,7 +221,7 @@ function GameTab({ s, dispatch, set }: Props & { set: (p: Partial<Settings>) => 
           ]}
         />
       </Row>
-      <Row title="Read aloud" body={voiceOk ? "The guide's lines and the game's messages are spoken by your phone's voice." : 'This browser has no voice to read with.'}>
+      <Row title="Read aloud" body={voiceOk ? "Your phone reads the guide’s lines aloud." : 'This browser has no voice to read with.'}>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           <Seg
             label="Read aloud"
@@ -239,7 +240,7 @@ function GameTab({ s, dispatch, set }: Props & { set: (p: Partial<Settings>) => 
           </button>
         </div>
       </Row>
-      <Row title="Sound effects" body="A happy ping when you finish an action, and a fanfare when you finish a whole flow.">
+      <Row title="Sound effects" body="A ping for each action, a fanfare for each flow.">
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           <Seg
             label="Sound effects"
@@ -262,7 +263,7 @@ function GameTab({ s, dispatch, set }: Props & { set: (p: Partial<Settings>) => 
           </button>
         </div>
       </Row>
-      <Row title="Upgrade messages" body="A dialog after you upgrade, such as moving the harvest to better storage, saying what it changes.">
+      <Row title="Upgrade messages" body="A dialog after an upgrade, saying what it changes.">
         <Seg
           label="Upgrade messages"
           value={st.upgradeNotes === false ? 'off' : 'on'}
@@ -289,9 +290,9 @@ function DisplayTab({ s, dispatch, set }: Props & { set: (p: Partial<Settings>) 
   }, []);
   const fullScreen = () => {
     const p = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.();
-    Promise.resolve(p).catch(() => dispatch({ type: 'toast', text: 'Full screen is not available here. Add the game to your home screen instead.' }));
+    Promise.resolve(p).catch(() => dispatch({ type: 'toast', text: 'Not available here. Add the game to your home screen.' }));
   };
-  const gfx = { auto: 'Shadows and a picture sized to your phone, made lighter by itself if it slows down.', high: 'Always shadows and the sharpest picture. Uses more battery.', low: 'No shadows, a softer picture. Smoothest on older phones and saves battery.' };
+  const gfx = { auto: 'Shadows and a sharp picture; lightens itself if slow.', high: 'Always shadows and the sharpest picture. Uses more battery.', low: 'No shadows. Smoothest on older phones; saves battery.' };
   return (
     <div className="set-rows">
       <Row title="Graphics" body={gfx[st.graphics]}>
@@ -317,7 +318,7 @@ function DisplayTab({ s, dispatch, set }: Props & { set: (p: Partial<Settings>) 
           ]}
         />
       </Row>
-      <Row title="Full screen" body="Fills the whole screen. On phones, adding TemoLima to your home screen fits best.">
+      <Row title="Full screen" body="Fills the whole screen.">
         <Seg
           label="Full screen"
           value={full ? 'on' : 'off'}
@@ -352,10 +353,10 @@ function HelpTab({ s, dispatch }: Props) {
           Open
         </GoldButton>
       </Row>
-      <Row title="Page addresses" body="Every page has its own address after the # in the address bar. Change it to go to another page, e.g. #/farm, #/shop/food or #/climate/emissions.">
+      <Row title="Page addresses" body="Each page has an address after the #, e.g. #/farm or #/climate/emissions.">
         <code className="set-address">#/settings/help</code>
       </Row>
-      <Row title="Design review" body="A sandbox with a menu of every screen. Your game is not changed.">
+      <Row title="Design review" body="A sandbox of every screen. Your game is untouched.">
         <GoldButton
           font={10}
           height={28}
@@ -367,7 +368,15 @@ function HelpTab({ s, dispatch }: Props) {
           Open
         </GoldButton>
       </Row>
-      <Row title="Reset progress" body={confirmReset ? 'This erases your farmer, seasons, money and points on this device. Your settings stay.' : 'Start again with a new farmer.'}>
+      <Row title="Programme" body="A programme or cohort code, if you have one. It is saved with your play.">
+        <ProgrammeTags s={s} dispatch={dispatch} />
+      </Row>
+      <Row title="My evidence" body={evidenceLine(s)}>
+        <GoldButton font={10} height={28} style={{ width: 120 }} onClick={() => downloadEvidence(s)}>
+          Download
+        </GoldButton>
+      </Row>
+      <Row title="Reset progress" body={confirmReset ? 'Erases your farmer, seasons, money and points here. Settings stay.' : 'Start again with a new farmer.'}>
         <div style={{ display: 'flex', gap: 6 }}>
           {confirmReset && (
             <button type="button" className="set-link" onClick={() => setConfirmReset(false)}>
@@ -390,4 +399,48 @@ function HelpTab({ s, dispatch }: Props) {
       </Row>
     </div>
   );
+}
+
+/** The programme / cohort tags: type a code, tap × to remove one. */
+function ProgrammeTags({ s, dispatch }: Props) {
+  const [text, setText] = useState('');
+  const tags = evidenceOf(s.evidence).tags;
+  const add = () => {
+    if (!cleanTag(text)) return;
+    dispatch({ type: 'evidenceTag', tag: text, on: true });
+    setText('');
+  };
+  return (
+    <div className="set-tags">
+      {tags.map(t => (
+        <i key={t}>
+          {t}
+          <button type="button" aria-label={`Remove ${t}`} onClick={() => dispatch({ type: 'evidenceTag', tag: t, on: false })}>
+            ×
+          </button>
+        </i>
+      ))}
+      <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === 'Enter' && add()} placeholder="Code" aria-label="Programme code" maxLength={32} />
+      <button type="button" className="set-link" onClick={add}>
+        Add
+      </button>
+    </div>
+  );
+}
+
+function evidenceLine(s: GameState) {
+  const x = evidenceSummary(s);
+  return `${x.decisions} decisions kept on this device: ${x.checks} checks (${x.checksPerDay} a day), ${x.treatments} treatments (${x.climateSmartTreatments} climate-smart)${x.medianMinutesToFix !== null ? `, ${x.medianMinutesToFix} min from seeing a risk to fixing it` : ''}. Download them as a file.`;
+}
+
+function downloadEvidence(s: GameState) {
+  const blob = new Blob([JSON.stringify(evidenceExport(s), null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `lima-evidence-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

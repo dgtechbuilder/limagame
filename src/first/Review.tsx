@@ -239,7 +239,7 @@ export function Review({
     line = allSeen ? t('Now find the rows that look wrong, {name}.') : seen.length === 0 ? t(shamba.intro ?? (full ? 'Look at each part of your shamba, {name}. Tap the glowing one.' : 'Same as before, {name}: look at every part first.')) : full ? 'Good. Tap the next glowing picture.' : `${PARTS.length - seen.length} more to look at.`;
     if (allSeen) action = { label: 'Spot the problem', onClick: () => setStep('spot') };
   } else if (step === 'spot') {
-    line = found ? 'You found it!' : misses === 0 ? t('Tap the rows that look wrong, {name}.') : full ? (misses >= 2 ? 'Those rows are fine. Look where the leaves are pale and torn.' : 'Those rows are fine. Compare the leaves.') : misses >= 3 ? 'Compare the back rows with the front.' : 'Those look fine. Look again.';
+    line = found ? 'You found it!' : misses === 0 ? t('Tap the rows that look wrong, {name}.') : full ? (misses >= 2 ? 'Those rows are fine. Look where leaves are pale and torn.' : 'Those rows are fine. Compare the leaves.') : misses >= 3 ? 'Compare the back rows with the front.' : 'Those look fine. Look again.';
   } else if (step === 'judge') {
     line = t("What's wrong in those rows, {name}?");
   } else if (step === 'right') {
@@ -302,7 +302,7 @@ export function Review({
         ))}
       </ol>
 
-      <div className="fs-panel" style={{ left: 24, top: 78, width: 826, height: 246 }}>
+      <div className="fs-panel" style={{ left: 30, top: 78, width: 814, height: 246 }}>
         {step === 'look' && (
           <div className="part-row">
             {PARTS.map(p => (

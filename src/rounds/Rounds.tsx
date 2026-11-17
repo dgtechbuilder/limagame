@@ -280,9 +280,9 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
   if (phase === 'ready') {
     line = trial
       ? next
-        ? t(`Day ${tDay} of ${CHECK_DAYS} on your ${rounds.length} farms, {name}. Check every farm today.`)
+        ? t(`Day ${tDay} of ${CHECK_DAYS} on your ${rounds.length} farms, {name}. Check them all today.`)
         : t(`Every farm is checked for day ${tDay}, {name}.`)
-      : t('Every bed on your farm needs a check today, {name}. Each keeps its crop for three weeks.');
+      : t('Every bed needs a check today, {name}.');
     action = next ? { label: next.n === 1 ? 'Start round 1' : `Check ${next.short}`, onClick: goNext } : { label: 'See the day', onClick: () => setPhase('summary') };
   } else if (phase === 'walking' && visit) {
     line = visit.second ? t(`Back to ${visit.round.title}, {name}.`) : t(`Round ${visit.round.n} of ${rounds.length}: off to ${visit.round.title}.`);
@@ -349,7 +349,7 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
         <FarmerPortrait look={look} size={34} />
         <span>{name}</span>
       </div>
-      <NavBar horizontal onBack={() => dispatch({ type: 'rounds', open: false })} backLabel={trial ? 'Six farms' : 'Back'} style={{ right: 6, top: 4 }} />
+      <NavBar horizontal onBack={() => dispatch({ type: 'rounds', open: false })} backLabel={trial ? 'Six farms' : 'Back'} style={{ right: 28, top: 8 }} />
 
       <p className="rr-cycle">
         {trial

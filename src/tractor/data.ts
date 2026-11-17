@@ -25,7 +25,7 @@ const FARMBIZ = { name: 'FarmBiz Africa: tractor services and farmer earnings', 
 /** Copied from Wakala Agent's README (4 Nov 2026). */
 export const MONEY = {
   diesel: { value: 228, unit: 'KSh a litre', what: 'Diesel, Nairobi pump price cap', source: EPRA },
-  wage: { value: 400, unit: 'KSh a person-day', what: 'Hand labour (KSh 3,000 to 5,000 a day, shown at 10 times; the game uses 4,000)', source: FARMBIZ },
+  wage: { value: 400, unit: 'KSh a person-day', what: 'Hand labour ({money:300} to {money:500} a day, shown at 10 times; the game uses {money:400})', source: FARMBIZ },
   ploughHire: { value: 3000, unit: 'KSh an acre', what: 'Tractor ploughing hire', source: BEYOND },
   harrowHire: { value: 1500, unit: 'KSh an acre', what: 'Tractor harrowing hire', source: BEYOND },
   ridgeHire: { value: 2000, unit: 'KSh an acre', what: 'Tractor ridging hire', estimate: true },
@@ -107,9 +107,9 @@ export interface TractorKind {
 
 /** Wakala */
 export const TRACTORS: TractorKind[] = [
-  { id: 'compact', name: 'Compact', hp: 35, slow: 65, fast: 100, w: 3.4, fuel: 0.7, hire: 0.8, soil: 0, size: 0.85, meters: { Speed: 2, Turning: 5, 'Fuel use': 1, 'Hire cost': 1 }, note: 'Light and cheap to run. Slow, and it struggles with heavy implements.' },
+  { id: 'compact', name: 'Compact', hp: 35, slow: 65, fast: 100, w: 3.4, fuel: 0.7, hire: 0.8, soil: 0, size: 0.85, meters: { Speed: 2, Turning: 5, 'Fuel use': 1, 'Hire cost': 1 }, note: 'Light and cheap to run, but slow with heavy implements.' },
   { id: 'standard', name: 'Standard', hp: 60, slow: 80, fast: 135, w: 3, fuel: 1, hire: 1, soil: 5, size: 1, meters: { Speed: 3, Turning: 3, 'Fuel use': 3, 'Hire cost': 3 }, note: 'A good all-rounder for a small farm.' },
-  { id: 'large', name: 'Large', hp: 100, slow: 95, fast: 160, w: 2.3, fuel: 1.5, hire: 1.35, soil: 15, size: 1.2, meters: { Speed: 5, Turning: 1, 'Fuel use': 5, 'Hire cost': 5 }, note: 'Fast and strong, but it turns wide, burns more fuel and packs the soil down.' },
+  { id: 'large', name: 'Large', hp: 100, slow: 95, fast: 160, w: 2.3, fuel: 1.5, hire: 1.35, soil: 15, size: 1.2, meters: { Speed: 5, Turning: 1, 'Fuel use': 5, 'Hire cost': 5 }, note: 'Fast and strong, but turns wide, burns fuel and packs the soil.' },
 ];
 
 export type ImplId = 'plough' | 'harrow' | 'ridger' | 'planter' | 'drill' | 'spreader' | 'sprayer' | 'maizeH' | 'beanH';
@@ -202,7 +202,7 @@ export const LAYOUTS: FarmLayout[] = [
       { rect: [262, 186, 48, 12], k: 'trunk' },
       { rect: [140, 248, 40, 11], k: 'trunk' },
     ],
-    prep: { tool: 'plough', task: 'turn over the whole field', ask: 'This ground is hard and full of old stalks. It needs ploughing before the rains.', lesson: "Plough across the slope, so rain can't wash the soil away." },
+    prep: { tool: 'plough', task: 'turn over the whole field', ask: 'Hard ground full of old stalks. Plough it before the rains.', lesson: "Plough across the slope, so rain can't wash the soil away." },
   },
   {
     field: [[170, 110, 290, 210]],
@@ -220,8 +220,8 @@ export const LAYOUTS: FarmLayout[] = [
       tool: 'ridger',
       strips: [200, 245, 290, 335, 380, 425],
       task: 'dig furrows from the channel down the field',
-      ask: 'Water from the channel never reaches this dry farm. It needs furrows from the channel down the field.',
-      lesson: 'Water only flows downhill: each furrow must start at the channel and run down the field.',
+      ask: 'Channel water never reaches this dry farm. It needs furrows down the field.',
+      lesson: 'Water flows downhill: start each furrow at the channel.',
     },
   },
   {
@@ -232,7 +232,7 @@ export const LAYOUTS: FarmLayout[] = [
       { x: 420, y: 122, r: 10, k: 'rock' },
       { rect: [180, 230, 44, 12], k: 'trunk' },
     ],
-    prep: { tool: 'harrow', task: 'break the clods into a fine seedbed', ask: 'This farm was ploughed, but it is full of big clods. The seed needs fine soil.', lesson: 'A fine, level seedbed lets every seed come up at the same time.' },
+    prep: { tool: 'harrow', task: 'break the clods into a fine seedbed', ask: 'Ploughed, but full of big clods. Seed needs fine soil.', lesson: 'A fine, level seedbed lets every seed come up together.' },
   },
   {
     field: [[100, 95, 370, 220]],
@@ -244,7 +244,7 @@ export const LAYOUTS: FarmLayout[] = [
       { x: 250, y: 170, r: 10, k: 'rock' },
       { rect: [360, 250, 44, 12], k: 'trunk' },
     ],
-    prep: { tool: 'plough', task: 'turn over the whole field', ask: 'This farm grew maize last year. Turn the old stalks in before planting.', lesson: 'Ploughing in old stalks feeds the soil and breaks the pest cycle.' },
+    prep: { tool: 'plough', task: 'turn over the whole field', ask: 'Last year’s maize stalks: turn them in before planting.', lesson: 'Ploughed-in stalks feed the soil and break the pest cycle.' },
   },
   {
     field: [[90, 80, 380, 215]],
@@ -255,7 +255,7 @@ export const LAYOUTS: FarmLayout[] = [
       { x: 410, y: 118, r: 9, k: 'rock' },
       { rect: [250, 100, 12, 44], k: 'trunk' },
     ],
-    prep: { tool: 'plough', task: 'turn over the whole field', ask: 'Grass and weeds have taken this ground since last season. It needs turning over.', lesson: 'Ploughing buries the weeds and their seeds before planting.' },
+    prep: { tool: 'plough', task: 'turn over the whole field', ask: 'Grass and weeds have taken over. Turn the ground.', lesson: 'Ploughing buries the weeds and their seeds before planting.' },
   },
   {
     field: [[110, 75, 350, 220]],
@@ -266,7 +266,7 @@ export const LAYOUTS: FarmLayout[] = [
       { x: 360, y: 140, r: 9, k: 'rock' },
       { rect: [280, 240, 46, 12], k: 'trunk' },
     ],
-    prep: { tool: 'harrow', task: 'break the clods into a fine seedbed', ask: 'This slope was ploughed, but the clods are big.', lesson: 'Harrow across the slope too, so rain soaks in instead of running off.' },
+    prep: { tool: 'harrow', task: 'break the clods into a fine seedbed', ask: 'This slope was ploughed, but the clods are big.', lesson: 'Harrow across the slope so rain soaks in.' },
   },
 ];
 

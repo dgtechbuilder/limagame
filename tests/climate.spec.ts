@@ -121,8 +121,9 @@ test('credits past a climate level pay points once', async ({ page }) => {
   const base = (await state(page)).climate;
   await jump(page, { view: 'classic', points: 0, climate: { ...base, credits: 9.5 } });
   await act(page, { type: 'task', step: 'landprep', id: 'lp-manure', price: 40, name: 'Organic Manure' });
+  // the state is read once the game has drawn the action
+  await expect.poll(async () => (await state(page)).climate.level).toBe(1);
   const s = await state(page);
-  expect(s.climate.level).toBe(1);
   expect(s.points).toBe(100);
   expect(s.toast.text).toContain('Grower');
 });

@@ -12,21 +12,21 @@ import type { TrialHazard } from '../trials/model';
 export const SPEAKER = { name: 'Mama Achieng', who: "the farmer's mother" };
 
 export const SAY: Record<TrialHazard, string> = {
-  healthy: 'Things look good to me. Can you check anyway?', // Wakala
-  drought: 'Some of these plants look thirsty. The rain has been thin.', // Wakala
-  flood: 'Water has been standing between these rows since the storm.',
+  healthy: 'Looks good to me. Check anyway?', // Wakala
+  drought: 'These plants look thirsty. Little rain lately.', // Wakala
+  flood: 'Water has stood here since the storm.',
   nitrogen: 'Part of this maize looks pale to me.', // Wakala
-  armyworm: 'Something is eating holes in this maize. I found droppings this morning.', // Wakala
-  aphids: 'The sukuma leaves are curling, and they feel sticky under my hand.',
-  disease: 'Some leaves here have spots I have not seen before.',
+  armyworm: 'Something is eating this maize. I found droppings.', // Wakala
+  aphids: 'The sukuma leaves are curling and sticky.',
+  disease: 'These leaves have strange spots.',
   weeds: 'Something is growing between the rows.', // Wakala
-  livestock: 'The gate was open this morning. Something got in.',
-  wildlife: 'The birds are very loud over this farm today.',
-  hail: 'That storm last night was hard on everything.',
+  livestock: 'The gate was open. Something got in.',
+  wildlife: 'The birds are loud here today.',
+  hail: 'Last night’s storm was hard.',
   plantEarly: 'Some holes here have no plant coming up.',
   plantLate: 'This maize looks small for its age.',
   harvestEarly: 'These husks are still green.',
-  harvestLate: 'These cobs have been standing dry a long time.',
+  harvestLate: 'These cobs have stood dry a long time.',
 };
 
 export const REMARK: Partial<Record<TrialHazard, Partial<Record<RoundPart, string>>>> = {
@@ -53,14 +53,14 @@ export const REMARK: Partial<Record<TrialHazard, Partial<Record<RoundPart, strin
   },
   nitrogen: {
     crop: 'One part is shorter than the rest.', // Wakala
-    pests: 'The yellow starts at the tip and runs down the middle.', // Wakala
+    pests: 'The yellow runs from the tip down the middle.', // Wakala
     soil: 'The soil is damp enough.',
     water: 'We water the same as always.', // Wakala
-    farm: 'This ground has carried maize every season without a break.', // Wakala
+    farm: 'Maize every season, no break.', // Wakala
   },
   armyworm: {
     crop: 'Some plants look torn at the top.', // Wakala
-    pests: 'Look at the holes. I found droppings deep in the plant.', // Wakala
+    pests: 'Holes, and droppings deep in the plant.', // Wakala
     soil: 'The soil seems fine to me.', // Wakala
     water: 'The plants have had enough water.',
     farm: 'It started in one corner of the farm.', // Wakala
@@ -104,14 +104,14 @@ export const REMARK: Partial<Record<TrialHazard, Partial<Record<RoundPart, strin
 
 /** What she is sure of when she is wrong. */
 export const WRONG_GUESS: Record<TrialHazard, string> = {
-  healthy: 'I am sure pests are hiding in there somewhere.',
+  healthy: 'Pests are hiding in there, I am sure.',
   drought: 'I think pests are back. The leaves are curling.',
   flood: 'I think this maize just needs fertilizer.',
-  nitrogen: 'I think pests are back. Some leaves have a yellow stripe.', // Wakala
-  armyworm: 'I think they just need more water. They look tired to me.', // Wakala
-  aphids: 'I think they just need more water. The leaves are curling.',
-  disease: 'I think the sun has burnt those leaves, that is all.',
-  weeds: 'Those pretty flowers can stay. The maize will be fine.',
+  nitrogen: 'Pests are back: see the yellow stripe.', // Wakala
+  armyworm: 'They just need water. They look tired.', // Wakala
+  aphids: 'They just need water. The leaves curl.',
+  disease: 'The sun burnt those leaves, that is all.',
+  weeds: 'Those flowers can stay. The maize is fine.',
   livestock: 'I think the storm broke those plants.',
   wildlife: 'I think the cobs are just drying out.',
   hail: 'I think something has been eating the leaves.',

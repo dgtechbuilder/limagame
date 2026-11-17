@@ -28,17 +28,17 @@ import { FORECASTS, WATER_TOO_MUCH } from '../trials/model';
 export type Source = 'fuel' | 'fertilizer' | 'manure' | 'chemicals' | 'water' | 'seed' | 'storage' | 'transport' | 'soil' | 'livestock' | 'cooking';
 
 export const SOURCES: { id: Source; label: string; fix: string }[] = [
-  { id: 'fertilizer', label: 'Fertilizer', fix: 'Use manure or beans for part of the nitrogen, and never a double dose.' },
-  { id: 'fuel', label: 'Diesel', fix: 'Plough with oxen or mulch instead, choose the compact tractor and drive clean rows.' },
+  { id: 'fertilizer', label: 'Fertilizer', fix: 'Use manure or beans for some nitrogen; never double-dose.' },
+  { id: 'fuel', label: 'Diesel', fix: 'Use oxen or mulch, the compact tractor, and clean rows.' },
   { id: 'chemicals', label: 'Chemicals', fix: 'Check and treat instead of spraying every week.' },
-  { id: 'water', label: 'Water pumping', fix: 'Water only what the rain does not give, mulch to keep it in, or pump with solar.' },
-  { id: 'storage', label: 'Storage & milling', fix: 'Dry grain in the sun; cold storage and milling use power (solar cuts it).' },
+  { id: 'water', label: 'Water pumping', fix: 'Water only what rain misses, mulch, or pump with solar.' },
+  { id: 'storage', label: 'Storage & milling', fix: 'Sun-dry grain; solar cuts storage and milling power.' },
   { id: 'transport', label: 'Transport', fix: 'Sell more bags in one trip, through the cooperative.' },
-  { id: 'seed', label: 'Seed', fix: 'Certified seed costs a little carbon but grows more food per kg.' },
-  { id: 'manure', label: 'Manure', fix: 'Manure gives off a little gas, but stores much more carbon in the soil.' },
-  { id: 'soil', label: 'Bare soil', fix: 'Plant soon after clearing, or mulch: cleared ground left bare loses its carbon to the air.' },
-  { id: 'livestock', label: 'Cows and hens', fix: 'Good forage, and the manure spread on the farms or put in a biogas digester, cut the methane.' },
-  { id: 'cooking', label: 'Cooking', fix: 'An efficient stove, or biogas from the cows’ manure, burns less wood.' },
+  { id: 'seed', label: 'Seed', fix: 'Certified seed grows more food per kg of carbon.' },
+  { id: 'manure', label: 'Manure', fix: 'Manure stores far more carbon than it gives off.' },
+  { id: 'soil', label: 'Bare soil', fix: 'Plant soon after clearing, or mulch: bare ground loses carbon.' },
+  { id: 'livestock', label: 'Cows and hens', fix: 'Good forage and spreading or digesting manure cut methane.' },
+  { id: 'cooking', label: 'Cooking', fix: 'An efficient stove or biogas burns less wood.' },
 ];
 
 export interface Footprint {

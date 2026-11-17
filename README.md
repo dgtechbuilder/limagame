@@ -7,8 +7,8 @@ rural farm — played on a landscape phone. It is **one farm, the player's own**
 player learns to read their crops with their own eyes, then checks every bed on the farm often, so the farm keeps
 growing healthy, nutritious food. Its core is **the six farms**: the same maize grown to six different plans side
 by side, so a year or more of trial and error happens in a few weeks of play. Seasons of maize turn every choice
-(doing the work, when to harvest, how to store, whether to process) into what they earn. Points unlock real
-partner discounts.
+(doing the work, when to harvest, how to store, whether to process) into what they earn. Every job also records what it
+does to the climate, the water and the soil, on its own Climate page. Points unlock real partner discounts.
 
 The game is built in React + TypeScript from the Figma file **"29 Oct Farm Management App"**
 (`dvRxEJtTy8rGBPIVmCLb4E`, section *Farm game*). The Figma farm map is the ground of the whole game.
@@ -40,6 +40,10 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [Sound effects](#sound-effects)
 - [Money on screen](#money-on-screen)
 - [Settings](#settings)
+- [Money at risk](#money-at-risk)
+- [Climate-smart farming: row strategies and treatment choices](#climate-smart-farming-row-strategies-and-treatment-choices)
+- [Water as a real resource](#water-as-a-real-resource)
+- [The evidence layer](#the-evidence-layer)
 - [Climate tracking](#climate-tracking)
 - [Achievements, the daily streak and certificates](#achievements-the-daily-streak-and-certificates)
 - [My Progress: certification levels and learning credits](#my-progress-certification-levels-and-learning-credits)
@@ -65,6 +69,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 | **Then** | **The first planting period** (about 10 minutes): maize on Farm 1, which they clear plot by plot, and sukuma wiki on Farm 2, which they plant plot by plot; then they check both every day for six days and harvest. |
 | **Every week** | **Six farms**: a different plan on each farm, one day of checks each real day (or all now), then the harvests compared. The plan that worked becomes their recipe for the next cycle. |
 | **Any time** | Plays seasons of maize on Farm Moja: six farming steps, harvest timing, storage, processing, selling, results, rewards. |
+| **Any time** | Opens **Climate** to see what their farming did to the climate, the water and the soil, and the climate credits it earned. |
 
 A wrong call is part of learning: the clue they missed is circled, and they try again on a second maize bed.
 
@@ -98,8 +103,9 @@ own collector.
 ```
 src/
   main.tsx                 entry point
-  App.tsx                  scales the 874 × 402 stage to the screen; routes first session / farm / modals; review menu
+  App.tsx                  scales the 874 × 402 stage to the screen; routes first session / farm / modals
   state.ts                 game state, season rules and saving (useReducer + localStorage)
+  route.ts                 page addresses: pathOf (the address of the page on show), routeTo (an address to the page)
   data.ts                  farm copy, prices, tasks, rewards, storage and processing options
   assets.ts                image paths (art exported from Figma into public/assets)
   styles.css               design tokens (colours, gold button, panels) and component styles
@@ -123,10 +129,15 @@ src/
   art/                     retro anime characters: anime.tsx (SVG kit: farmer, guide, shopkeeper, Ojuok),
                            Cast.tsx (anime or original picture), style.ts (style and read-aloud contexts)
   speech.ts                Read aloud: the phone's own voice (speechSynthesis)
+  strategy/                climate-smart rows: data.ts (every dimension and option), model.ts, StrategyBoard.tsx
+  water/                   the tank, the animals, the shared catchment, crop cover: config.ts, model.ts, track.ts, WaterPanel.tsx
+  credits/ledger.ts        every kind of credit (CO₂, water) earned and paid
+  evidence/                the decision log, programme tags, "tried it on your own farm?": model.ts, Ask.tsx
+  risk/                    money at risk: config.ts (every number to tune), model.ts (the list, from the save), RiskHud.tsx (the button)
   climate/                 climate tracking: model.ts (every factor, the ledger, rating, levels), track.ts (which
                            actions record what, and the end-of-day payment), land.ts (land farmed, bare or idle,
                            and what a credit pays), Tag.tsx (climate tags on choices), sample.ts (design review)
-  first/                   the first session (see below)
+  first/                   the first session, including the story so far (see below)
   world/                   the farm world (see below): field.ts the work by hand, engine.ts the 3D farm, World.tsx the HUD
   trials/                  the six farms (see below): model.ts holds every number; Trials.tsx the screens (loaded when opened)
   care/                    from Wakala Agent: the fix after a right call, the safety kit and product, follow-ups (data.ts),
@@ -134,14 +145,16 @@ src/
   plots/                   plots and inputs: data.ts (20 plots a farm; seeds, fertilizers, sprayers, tractor types and
                            tools, with what each does and costs); PlotBoard.tsx (a farm's seed, fertilizer and sprayer); TractorPick.tsx
   tractor/                 from Wakala Agent: the tractor drive before planting: data.ts, sim.ts (no DOM), Tractor.tsx
-  dev/hook.ts              ?dev in dev builds only: state and jump-to-state helpers for the play-tests
-tests/                     Playwright play-tests (npm test)
   rounds/                  field rounds: checks of every bed on the farm, back to back (see below); loaded only when opened
     trial.ts               a six-farm check: what a farm shows today, from its own plan
     photos/                real photos from Wikimedia Commons by situation, credits.json + CREDITS.md (see photos/README.md)
+  review/Review.tsx        design review's menu and sample screens (a separate chunk, loaded only in review mode)
+  dev/hook.ts              ?dev in dev builds only: state and jump-to-state helpers for the play-tests
+tests/                     Playwright play-tests (npm test)
 public/
   assets/                  130 images exported from Figma, incl. bg-farm.webp and bg-farm@2x.webp
   manifest.webmanifest     installable web app (landscape, full screen) + icons
+  sw.js                    service worker: keeps the published game on the phone for repeat visits
 design-refs/               PNG renders of the 22 Figma frames, for side-by-side checks
 docs/                      screenshots used in this README
 ```
@@ -154,6 +167,10 @@ phones see a "rotate your phone" prompt. The fit (`fitScale()` in `src/fit.ts`) 
 small margin (3–4%, at most 48px) on larger screens. It is re-taken on resize, rotation, the visual viewport and a
 ResizeObserver, and re-checked for 700 ms after each, because iOS browsers report a rotation before the new size is
 readable (the stage otherwise kept its portrait size, small in the middle of a landscape screen).
+
+The stage is drawn as a phone, with rounded corners (a 50px radius). Nothing a player reads or taps sits in those
+corners: the nav row and Close sit 28px in from the right and 8px down, the side-tab pages' panel is 24px in, and the
+HUD pills, the stake banner and the guide line clear the curve. `tests/frame.spec.ts` checks every screen.
 
 | Figma group | Frames | Code |
 | --- | --- | --- |
@@ -260,6 +277,7 @@ nitrogen deficiency.
 | `Review.tsx` | The one review system: Look → Spot → Judge → Result |
 | `Village.tsx` | Tap-to-walk over the Figma map along fixed routes; mist, arrows and labels. Bed outlines and routes are in `SPOTS`, `MAIN`, `TO_LOWER`, `TO_SUKUMA`. |
 | `Create.tsx`, `FirstSession.tsx` | Farmer creation and the order of moments |
+| `Story.tsx` | The story so far: three pages, Previous / Next, Skip story, read aloud |
 | `track.ts` | Event log (below) |
 
 ## The season
@@ -364,8 +382,10 @@ WASD. The **task card** at the top says what to do next; tap it and the farmer w
 ![The farm world](docs/farm-world.webp)
 
 - **The mini forest**: 10 acres of idle land left to grow as forest, top right of the farm above the pond, with a
-  *Mini forest · 10 acres* sign (`FOREST` in `src/world/engine.ts`). The farmer walks round its trees. It is the
-  farm's biggest carbon store (Climate → Farm areas).
+  *Mini forest · 10 acres* sign (`FOREST` in `src/world/engine.ts`). It is planted like a tree farm (`forest` in
+  `src/world/models.ts`): short, round-crowned trees in straight rows with a few tall, skinny trees among them, and
+  grass tufts and small bushes at the foot of each trunk. Only the trunks block the farmer, so the lanes between the
+  rows can be run straight through. It is the farm's biggest carbon store (Climate → Farm areas).
 - **The six farms** are **4 acres** each, with **20 plots** of a fifth of an acre (4 × 5 tiles, Plot 1 at the back left), Farms 1–3 at the back and 4–6 in
   front, each with a sign. The plots make **4 rows of 5** (each row runs from the back of the farm to the front).
   **Clearing and planting are done a row at a time**: the farmer stands anywhere in a row, a **Clear Row 1** or
@@ -562,11 +582,29 @@ harvest tractor stages, the boom-sprayer, delivery and route jobs, gems, hub map
 Wakala's photos were not added yet (Wikimedia could not be reached from the build session).
 
 **Tests.** `npm test` runs the Playwright play-tests in `tests/` against the dev server (run
-`npx playwright install chromium` once): a world check with a wrong then right fix and the work by hand, a
-follow-up done and one missed, a spray job with the kit and product, a tractor drive on autopilot, the first session
-read right and wrong, saving and *Reset progress*, the tractor's type and tool on its own plot, the plot board at the
-seed shed and in the plan, the results by plot, and a tour on a 740 × 340 touch screen that saves screenshots to
-`test-results/tour/`. They run on every pull request (`.github/workflows/tests.yml`).
+`npx playwright install chromium` once):
+
+| File | What it plays |
+| --- | --- |
+| `first-session.spec.ts` | the story so far, the first session read right and wrong, saving and *Reset progress* |
+| `plots.spec.ts` | the first planting period (Clear and Plant with the real 3-second timer, walking off, the order) and the inputs board in the plan |
+| `care.spec.ts` | a world check with a wrong then right fix and the work by hand, a follow-up done and one missed, a spray job with the kit and product |
+| `tractor*.spec.ts` | a tractor drive on autopilot or by steering, its rewards, the tractor's type and tool and a farm's plots from the seat, the hired tractor |
+| `routes.spec.ts` | typed page addresses, Back and Forward, reload, and the blocked cases |
+| `climate.spec.ts`, `climate-pay.spec.ts` | the CLIMATE button, tracking from tasks, plans and sales, climate levels; land, carbon by practice and the end-of-day credit payment |
+| `phases.spec.ts` | row strategies (from the data file, paid when set, into the climate ledger) and diagnose-then-treat costs |
+| `risk.spec.ts` | money at risk: the total, a fix dropping it, escalation, the cost at harvest |
+| `money.spec.ts` | the sale and storage, shop items in a season's costs, equipment, tractor-drive pay, unpaid treatments, a county day |
+| `country.spec.ts` | the country step and its currency, and the stage filling a phone either way up |
+| `business.spec.ts` | the tractor business: each day's village and roads, the shortest route, a day's jobs, Narok's calendar, Campbell |
+| `achievements.spec.ts`, `progress.spec.ts` | streaks, badges, today's reward, certificates; credits, levels, partners and their addresses |
+| `success.spec.ts` | the Sale, Storage and Booking Success dialogs, training bookings and the loan calculator |
+| `frame.spec.ts`, `fixes.spec.ts` | every screen inside the stage's rounded frame; fixed bugs (the guide in the menu, a walk past a shed) |
+| `nav.spec.ts`, `settings.spec.ts` | Back, Menu and Farm on every screen; every Settings section |
+| `perf.spec.ts` | the start and the 3D farm on a 740 × 340 phone screen, with the numbers printed |
+| `tour.spec.ts` | a tour on a 740 × 340 touch screen that saves screenshots to `test-results/tour/` |
+
+They run on every pull request (`.github/workflows/tests.yml`).
 
 ## The tractor business
 
@@ -728,11 +766,13 @@ Every screen has at least two or three ways to move, and one of them is always t
 | Shop, Farming Steps, Rewards, Sale, Storage… | one step (to the menu if it was opened from there) | ☰ | ⌂ |
 | Mission (six farms), Field rounds, a farm check, Choose the fix, the safety kit | one step | ☰ | ⌂ |
 | Settings | close (to the menu if it was opened from there) | ☰ | ⌂ (not in the first session) |
+| Climate | close (to the menu if it was opened from there); another tab keeps where Back goes | ☰ | ⌂ |
 | The tractor drive | the previous step | ☰ (the clock waits while it is open) | ⌂ |
 | First session | one step where that is safe | ☰ | Settings instead (the farm is not open yet) |
 
 The **main menu** (`src/screens/MainMenu.tsx`, the **MENU** button on the farm) lists My farm, Mission, Field rounds,
-Tractor, Tractor business, Shop, Achievements, Climate, Rewards, Training, Loan calculator, Farming steps and
+Tractor, Tractor business, Shop, My Progress (achievements), Climate, Rewards, Partners & offers, Training, Loan
+calculator, Farming steps and Settings. In the first session it lists only Back to the game, How the farm works and
 Settings. The list scrolls, with a gold
 **scroll wheel** beside it (▲ and ▼ buttons and a thumb to drag, since phones hide scroll bars); the mouse wheel and
 a swipe scroll it too. A screen opened from the menu goes back to the menu on *Back*;
@@ -859,11 +899,137 @@ four sections. Every control works at once and is saved on the device; *Reset pr
 | --- | --- |
 | **My farmer** | rename the farmer; change the look (the farm, the rounds and the HUD all follow) |
 | **Game** | *Character style*: Retro anime or Original · *Farm view*: 3D farm or Classic · *Read aloud*: speaks the guide's lines and the game's messages with the phone's voice (a Kenyan English voice when the phone has one), with a Test button · *Sound effects*: on or off, with a button to hear each one · *Upgrade messages*: the dialog after a storage upgrade, on or off |
-| **Display** | *Graphics*: Auto (drops shadows by itself on slow phones), High, Low (no shadows, 1× resolution) · *Reduce motion*: ends every animation and transition at once · *Full screen* |
-| **Help & data** | How the farm works · Design review · Reset progress (asks twice) |
+| **Display** | *Graphics*: Auto (shadows and a picture sized to the phone, lighter by itself if it slows down; see [Performance](#performance-on-low-cost-phones)), High (always shadows, the sharpest picture), Low (no shadows, 1× resolution) · *Reduce motion*: ends every animation and transition at once · *Full screen* |
+| **Help & data** | How the farm works · Page addresses (what the address after the `#` does, with this page's) · Design review · Reset progress (asks twice) |
 
-The settings live in `GameState.settings` (`src/state.ts`). The 3D farm is rebuilt when the character style or the
+The settings live in `GameState.settings` (`src/state.ts`); each section has its own address (`#/settings/display`).
+The 3D farm is rebuilt when the character style or the
 graphics change. `tests/settings.spec.ts` plays every section.
+
+## Money at risk
+
+The farm's first button, top centre beside the task card: **the money every unresolved problem on the six farms
+would cost if it is left**, added up and written short in the player's currency (*KSh 50k at risk*, *KSh 1.2M at
+risk*). It makes the daily loop's stakes visible at a glance and gives a reason to open the game every day.
+
+![The at-risk list: each farm, what is at risk and when it grows, never the cause](docs/at-risk-list.webp)
+
+- **What it counts.** Every farm that is planted and shows a problem with a cost (pests, water, plant food, weeds,
+  animals, hail…) that has not been dealt with: read right, and the fix done by hand (hail: read right). A problem's
+  **stated cost** is what the six-farm model takes off that farm's harvest if it is never dealt with
+  (`DAMAGE[…].missed` × what the farm's harvest is worth as it grows), the same number the check shows: *Will cost you
+  about KSh 10,730 if it is left alone*.
+- **It grows if left.** On the day a problem shows, half its stated cost is at risk; each day it is left adds a
+  quarter, up to the whole stated cost. **A problem left unresolved stays on its farm the next day** (until it is
+  dealt with or the harvest), so a player can still catch it late; one never dealt with costs, at harvest, what was at
+  risk by then. A problem the plan cannot treat (pests on a farm with no pest control) does not carry over, and once
+  read right it leaves the list as lost, not saved. All of it is in `src/risk/config.ts` (`startShare`,
+  `escalatePerDay`, `carryOver`).
+- **Tap it** for the list, biggest first: the farm and its plots, what is at risk now, and what it will be in a day
+  (or *Full cost*). The list never says what the problem is, only where the player is with it (*Not checked yet*,
+  *Read wrong: look again*, *Read right: choose the fix*, *Read right: the work is left*). **Tap a farm** to go straight
+  to its sign and into its check (or the fix, or the work left).
+- **Live.** Dealing with a problem takes it off at once: the button pops, a *KSh 9.6k saved* chip floats off it and a
+  *Caught in time* card follows (after any check or fix screen has closed). With nothing at risk the button turns calm
+  green, *All clear* (*Harvest time* once the checks are over). It first appears with the first problem of the first
+  planting period, and stays from then on.
+- **While you were away.** The button as last seen is saved; a player coming back on a later day to more at risk sees
+  what grew (*KSh 3.5k at risk when you left, KSh 11k now*) and can open the list from there.
+- **Forecast shocks** (drought, flood, hail by the season's forecast, less what crop cover pays; cover is the Kinga
+  Cover offer for now) can be added to the total: off (`RISK.includeShocks`) until confirmed.
+- **Evidence** (for the evidence layer to come): every tap on the button and on a farm in its list is counted, and
+  every problem dealt with is kept with when it was first on the button in front of the player and when it was fixed
+  (`GameState.risk`, the last 100). Events: `risk_open`, `risk_row`, `risk_fixed` (with `msFromSeen`).
+- **Not yet:** a push or SMS reminder (*KSh 50k at risk on Farm 2*) is out of scope until confirmed.
+
+`src/risk/model.ts` works the list out from the save (no screens; `riskOf`), `src/risk/RiskHud.tsx` is the button, the
+list and the two cards, and `tests/risk.spec.ts` plays the acceptance checks: three problems add up, a fix drops the
+total by exactly its amount, a day left raises each by the escalation (up to its stated cost), a carried problem
+stays on its farm, the list never names a cause and a tap opens that farm's check.
+
+## Climate-smart farming: row strategies and treatment choices
+
+Partners asked the game to teach climate-smart practices through real trade-offs. Two general systems do it.
+
+**Row strategies.** Each farm's 20 plots make 4 rows of 5, and **each row runs its own strategy**: one option on every
+dimension, grouped as *fertilizer* (as the plan, organic compost, DAP, Rutuba Gold NPK, micro-dosing), *tilling*
+(minimum tillage, deep ploughing), *sowing* (seed, spacing, seedbed: zai pits, tied ridges), *planting* (timing,
+mulching), *planning* (crop, rotation, season) and *farming habits* (check frequency, watering time, fertilizer
+timing). Every option has a cost, labour (person-days, 24 family days a farm, the rest hired), a payoff (the return
+over the co-investment of cash and labour, which can differ by the season's forecast), and climate effects (emissions,
+carbon stored, water, soil health, pollution, and how much of each problem's damage the row takes). Mission ›
+*Rows* (plan) or *Row strategies* (growing) opens the board; a sown farm's rows are locked. After harvest, Mission ›
+*By row* puts the four rows of each farm side by side (bags, profit, return, labour, CO₂, carbon, water) and TemoLima AI
+names the row that paid best and what it did differently. A row left "as the farm plan" changes nothing, so a farm
+whose rows are untouched grows exactly as before. The strategies are paid with the plan (or at once, while growing),
+and their emissions, carbon, water and soil go into the climate ledger at harvest, so they move the climate rating,
+the credits and soil health. **The whole table is `src/strategy/data.ts`**: a new dimension or option is one more entry,
+no code. Returns are placeholders (organic about 20%, DAP about 15% over the co-investment) to be replaced with verified
+values.
+
+**Diagnose, then choose how to treat.** After the right fix is picked, *How will you do it?* offers the ways to do it,
+each with its cost, labour and payoff: armyworm with pesticide, **a pinch of ash in each funnel** or neem; aphids with
+insecticide, soapy water or neem; a drought with a watering can, a drip line from the tank, or one deep watering and
+mulch; hunger with CAN, manure and compost, or urea; weeds by hand, with a herbicide, or weeded then mulched; and so on.
+A way's `effect` is the share of the avoidable damage it stops (the standard way is 1, as before), so a gentler way
+saves a little less: the money-at-risk cheer and the harvest both use it. Each way has its own climate effects.
+**The table is `src/care/treatments.ts`.**
+
+## Water as a real resource
+
+- **The tank** is on the farm's HUD (**WATER**, under Shop, its level as water in a barrel; orange and pulsing when low)
+  and in **Climate › Water**. 10,000 L to start, plus every tank bought in the Shop. Each day (the player's midnight, or
+  a night slept on the fast clock): **rain** off 120 m² of roofs in (by the season's forecast), the **house** (100 L),
+  the **animals** and the **rows** (a can a row a day by hand, plus their watering habits and mulches) out. **Piped
+  water** (5,000 L) and a **bowser** (10,000 L, dearer a litre) can be bought.
+- **Cows or hens.** The herd can be changed (0–6 cows, 0–60 hens): a cow drinks 50 L a day and gives off methane, a hen
+  a cup. The herd also sets the animals' emissions in Climate › Farm areas.
+- **Shocks have consequences.** With the tank under 20%, a drought on a farm puts 1.5 times as much at risk, and a
+  drought can't be watered by hand until there is water in the tank (the farm world's work waits; on the Mission
+  screen it stays untreated).
+- **Crop cover** (Climate › Water) is bought for a cycle and pays back 70% of what drought, flood and hail took at
+  harvest. **Its price is set by the farm's water practices**: a tank at least half full, rows that keep water in the
+  soil (mulch, zai pits, tied ridges, morning watering, drought-tolerant seed, minimum tillage), and a fair share of the
+  dam each take some off, up to 40%. A dry season loads it.
+- **Credits of every kind.** The credit ledger (`src/credits/ledger.ts`) now holds more than CO₂: **water credits**, one
+  for every 100 L a day under the farm's 700 L baseline (and two more on a rationed day drawn fairly), are paid with the
+  day like CO₂ credits. *Climate › Credits* shows both kinds and every payment.
+- **Climate › Water & soil** now shows real data: the tank now, today's use by what uses it, the last 7 days, water
+  credits and the irrigation drawn.
+- **The shared catchment** (Phase 4): the six farms' irrigation comes from a small dam shared with four neighbours,
+  rationed when it runs low; the player chooses to take what the plans need or a fair share, and the share of the
+  plans' irrigation that was delivered sets the harvest's watering. Design: [`docs/shared-water.md`](docs/shared-water.md).
+
+Every number is in `src/water/config.ts` (placeholders until confirmed).
+
+## The evidence layer
+
+To show that playing changes behaviour (`src/evidence/model.ts`):
+
+- **Every meaningful decision is logged with a timestamp** in the saved game (the last 600): each check (with hours since
+  that farm's last check: check frequency), each fix and way of treating (with the plots it covered), inputs, plans and
+  row strategies, watering time, water bought and used each day, the herd, the dam policy, crop cover, money-at-risk
+  taps and fixes (with the time from first seeing a risk to fixing it), harvests and tractor-business days. Each is also
+  an event (`decision_…`), sent to `VITE_EVENTS_URL` when one is set.
+- **Cohort / programme tags**: Settings › Help & data › *Programme* (type a code), or a link with `?cohort=CODE` (or
+  `?programme=CODE`). Tags go on every event and in the export.
+- **"Have you tried this on your own farm?"**: after a climate-smart practice (a pinch of ash, mulch, zai pits, a fair
+  share of the dam, fixing a problem the day it showed…), at most once a day and once per practice (again after a week
+  for *not yet*), a card asks; *Yes, I have*, *Not yet, but I will*, *No* or *I don't farm (yet)* are kept.
+- **Settings › Help & data › My evidence** sums it up (checks a day, climate-smart treatments, minutes from risk to fix)
+  and downloads everything as JSON.
+
+## Tractor business: farmers, urgency and a trend
+
+- **Each farmer has an urgency, a willingness to pay and a payment reliability** (`TRAITS` in
+  `src/business/model.ts`), shown on every booking (*Urgent*, *Pays 110%*, *Often late or unpaid*). The hire collected is
+  the hire times what they pay and how reliably; urgent work done today pays 10% more and 10 points. The day's result
+  shows what was not collected, and a **day value** (route efficiency, money collected, urgent work served): the
+  shortest route is not always the best one.
+- **The farm drives urgency.** While the player's own six farms are in their planting window, land preparation and
+  planting bookings are more urgent; rain forecast makes them more so, a dry season makes the harvest and transport
+  urgent (`farmSignal`, `urgencyOf`).
+- **My trend**: a chart of the trainee's efficiency score and day value, day by day.
 
 ## Climate tracking
 
@@ -1026,8 +1192,14 @@ each. To sign a partner, add or edit its brand and put its id on the slots it bo
   Tangi Tanks, PesaShamba, Kinga Cover, JuaPower Solar, Ujuzi Agri Academy) is made up for the game
   (`sample: true`) and stands in until a real partner signs; no real company is named or implied.
 - **The Partners page** (Main menu → *Partners & offers*; every billboard, sign and "with <brand>" line opens it at
-  that brand): *Offers* lists each brand's offer, to save to Messages (and a *Visit* link for brands with a web
+  that brand, with its offer open): *Offers* lists each brand's offer (and a *Visit* link for brands with a web
   address); *Placements* lists every slot, its brand or *Available*, and how often it was seen and tapped.
+- **Getting an offer.** *Get offer* opens a sheet with what the offer gives and where it is used; *Get this offer*
+  takes it and shows the player's code (`offerCode()`: the brand's first letters and four from the farmer's name,
+  so it needs nothing more in the save), which also goes into Messages. The sheet's button, and *Use it* on the card
+  afterwards, go to where the offer is used (`offer.use.to`, a game address: the Shop's fertilizer or tank section,
+  the Rewards hub, the Loan calculator, Climate › Shocks, My Progress or the Tractor business). Offers do not change
+  prices in the game yet.
 - **Engagement** (views and taps per slot) is counted on the device only, apart from the saved game
   (`src/partners/track.ts`): nothing is sent anywhere, and Reset progress does not clear it.
 
@@ -1049,7 +1221,8 @@ download:
 ## Design review mode
 
 Open **`?review=1`** (or *Settings → Design review*) for a sandbox with a menu of every screen filled with
-sample data: each first-session moment, every Figma frame, and the added screens. Deep-link with
+sample data: each first-session moment (including *1b · The story so far*), every Figma frame, and the added screens
+(Settings, the farm world, Wakala's moments, plots and inputs, the six farms, field rounds and every Climate tab). Deep-link with
 `?screen=<name>`, for example `?screen=Storage` or `?screen=3 · First review`. Review mode never touches the
 player's saved game or events.
 
@@ -1059,9 +1232,10 @@ player's saved game or events.
   coins, points, seasons. *Settings → Reset progress* erases it and starts again with a new farmer. Saves from
   before the first session existed keep their coins and play the first session once.
 - **Events**: one per first-session moment, so drop-off can be measured — `create_shown`, `farmer_created`,
-  `walk_start`, `first_move`, `shamba_reached`, `review_start`, `part_viewed`, `spot_found`, `call`,
-  `review_failed`, `review_passed`, `farm_opened`, `session_close`, and the farm-world events from Wakala Agent
-  (see [From Wakala Agent](#from-wakala-agent)). Each has a
+  `story_page`, `story_done`, `story_skipped`, `walk_start`, `first_move`, `shamba_reached`, `review_start`, `part_viewed`, `spot_found`, `call`,
+  `review_failed`, `review_passed`, `farm_opened`, `session_close`; the field-round events (`round_start`,
+  `round_part_viewed`, `round_call`); `tractor_ride` (getting on the tractor, with its type and tool); and the
+  farm-world events from Wakala Agent (see [From Wakala Agent](#from-wakala-agent)). Each has a
   timestamp and time since the first event. They are kept on the device (`lima-events`, last 300) and, only
   if `VITE_EVENTS_URL` is set at build time, sent with `navigator.sendBeacon`.
 - **No personal data is sent.** Events never include the farmer's name. There are no accounts, cookies or
@@ -1120,10 +1294,13 @@ player's saved game or events.
   stand in for a whole season) and the rotation. Round points are illustrative.
 - **TemoLima AI** is a rule-based stand-in that reads the season's numbers; it does not call an AI service.
 - **Rewards** are saved in the game but nothing is sent to a partner; there is no redemption backend.
-- **Missed checks** cost harvest on the six farms (see `DAMAGE` in `src/trials/model.ts`). In the everyday field
+- **Missed checks** cost harvest on the six farms (see `DAMAGE` in `src/trials/model.ts`); a problem left unresolved
+  now stays on its farm until it is dealt with, and costs at harvest what was at risk by then (`src/risk/config.ts`). In the everyday field
   rounds they still only show as a bed to look at again.
 - **The six-farm model** (yields, problem odds, damage, prices) is illustrative and needs agronomist review before any
-  pilot. Only maize is planned in it so far; beans, sukuma wiki and tomatoes would each need their own table.
+  pilot. Only maize is planned in it so far; beans, sukuma wiki and tomatoes would each need their own table. In the first
+  planting period, **sukuma wiki borrows maize's yield and price** (bags, at maize prices) until an agronomist sets its own.
+- **The story so far** uses illustrative numbers (KSh 38,000 spent, 14,500 earned) for a failed first season.
 - **No two plans the same** is enforced; *one change per farm* is suggested, not enforced.
 - **The 3D farm world** needs human play-testing on watering, spraying, drains, the goat, tractor/oxen hire, a
   full six-farm cycle and the daily (one-day-per-real-day) clock — only a two-farm guided cycle has been run so far.

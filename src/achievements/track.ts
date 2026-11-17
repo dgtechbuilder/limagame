@@ -137,7 +137,7 @@ export function trackAchievements(prev: GameState, s: GameState, a: Action, play
   const n = won.length;
   const top = levels[levels.length - 1];
   const award = top
-    ? { title: `Certified: Level ${top.n} · ${top.name}`, line: 'A new certificate and a reward to claim in My Progress' }
+    ? { title: `Certified: Level ${top.n} · ${top.name}`, line: 'Claim your reward in My Progress' }
     : certs.length > 0
       ? { title: `Certificate: ${certs[0].title}`, line: n ? `and ${n} badge${n === 1 ? '' : 's'} won · see them in My Progress` : 'Yours to keep in My Progress' }
       : n > 0
@@ -145,7 +145,7 @@ export function trackAchievements(prev: GameState, s: GameState, a: Action, play
         : newDay && ach.streak.count > 1
           ? { title: `Day ${ach.streak.count} in a row 🔥`, line: 'Today’s reward is waiting in My Progress' }
           : newDay
-            ? { title: 'Welcome back 🔥', line: 'A new streak starts today: claim your reward in My Progress' }
+            ? { title: 'Welcome back 🔥', line: 'New streak: claim your reward in My Progress' }
             : null;
   return { ...s, ach, ...(award ? { award: { id: ++awardId, ...award } } : {}) };
 }

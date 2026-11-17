@@ -1,3 +1,6 @@
+import { StrategyBoard } from '../strategy/StrategyBoard';
+import { chosen, rowLesson, strategiesOf } from '../strategy/model';
+import { doneMask } from '../world/field';
 import { useState, type Dispatch, type ReactNode } from 'react';
 import { NavBar } from '../components/Nav';
 import { CloseX } from '../components/Success';
@@ -81,7 +84,7 @@ export function Trials({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
     body = <PlanBoard s={s} tr={tr} dispatch={dispatch} t={t} />;
   } else if (tr.phase === 'growing') {
     title = `Cycle ${tr.cycle} · growing`;
-    body = <Growing tr={tr} dispatch={dispatch} t={t} inWorld={s.view === 'world'} />;
+    body = <Growing s={s} tr={tr} dispatch={dispatch} t={t} inWorld={s.view === 'world'} />;
   } else {
     title = `Cycle ${tr.cycle} · results`;
     body = <Compare s={s} tr={tr} dispatch={dispatch} t={t} />;
@@ -97,7 +100,7 @@ export function Trials({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
         </span>
       </div>
       {tr && <span className="rr-roundtag">{cropsLine(tr)} · {FORECASTS[tr.forecast].label.split(':')[0]}</span>}
-      <NavBar horizontal onBack={close} style={{ right: 6, top: 4 }} />
+      <NavBar horizontal onBack={close} style={{ right: 28, top: 8 }} />
       {body}
     </div>
   );
@@ -116,16 +119,16 @@ function Intro({ s, dispatch, t }: Props & { s: GameState }) {
         <p className="tr-card-title">{first ? t('Your first planting, {name}') : t('Plan your six farms, {name}')}</p>
         {first ? (
           <>
-            <p>Two farms of 20 plots each: maize on Farm 1, sukuma wiki on Farm 2.</p>
+            <p>Two farms: maize on Farm 1, sukuma wiki on Farm 2.</p>
             <ol>
-              <li>Farm 1 is not ready yet: clear each plot, then plant the maize.</li>
-              <li>Farm 2 is already cleared: plant the sukuma wiki on each plot.</li>
-              <li>Check both farms every day for six days, treat what you find, then harvest.</li>
+              <li>Farm 1: clear each plot, then plant maize.</li>
+              <li>Farm 2 is cleared: plant sukuma wiki.</li>
+              <li>Check both daily for six days, then harvest.</li>
             </ol>
-            <p className="tr-card-small">About 10 minutes. Your money pays for the seed and inputs; the harvest is sold for you.</p>
+            <p className="tr-card-small">About 10 minutes. You pay for inputs; the harvest is sold for you.</p>
           </>
         ) : (
-          <p>Give each of your six farms a different plan, grow them side by side, and compare the harvests.</p>
+          <p>Give each farm a different plan and compare the harvests.</p>
         )}
         <GoldButton font={12} height={36} style={{ width: 220, marginTop: 8 }} onClick={() => dispatch({ type: 'trialNew' })}>
           {first ? 'Start planting' : 'Plan my six farms'}
@@ -141,6 +144,7 @@ function PlanBoard({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) 
   const [pick, setPick] = useState<{ farm: number; key: StepKey } | null>(null);
   const [planting, setPlanting] = useState(false);
   const [board, setBoard] = useState<number | null>(null);
+  const [rowsFor, setRowsFor] = useState<number | null>(null);
   const k = tr.plans.length;
   const total = trialCost(tr);
   const problem = planProblem(tr, s.coins);
@@ -153,12 +157,12 @@ function PlanBoard({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) 
   if (tr.guided) {
     line =
       changed.length === 0
-        ? t('Farm 1 grows maize a common way, {name}. Change one thing on Farm 2: tap any of its boxes.')
+        ? t('Change one thing on Farm 2, {name}: tap any of its boxes.')
         : changed.length === 1
-          ? t(`Farm 2 now differs in one thing: ${stepOf(changed[0]).label.toLowerCase()}. Plant both farms and see what it does.`)
-          : t(`Farm 2 differs in ${changed.length} things, {name}. With only one change you will know what made the difference.`);
+          ? t(`Farm 2 now differs in one thing: ${stepOf(changed[0]).label.toLowerCase()}. Plant both to see what it does.`)
+          : t(`Farm 2 differs in ${changed.length} things, {name}. Change just one to know what made the difference.`);
   } else {
-    line = problem ?? t('Each farm tests something, {name}. Change one thing per farm against Farm 1 to see what each choice does.');
+    line = problem ?? t('Change one thing per farm against Farm 1, {name}.');
   }
 
   const inWorld = s.view === 'world';
@@ -225,6 +229,16 @@ function PlanBoard({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) 
               </button>
             ))}
           </Row>
+          <Row label="Rows">
+            {tr.plans.map((_, i) => {
+              const n = strategiesOf(tr, i).filter(st => chosen(st).length).length;
+              return (
+                <button type="button" key={i} className={`tr-cell tr-rows-cell${n ? ' is-diff' : ''}`} onClick={() => setRowsFor(i)} aria-label={`${farmName(i)}: row strategies. Tap to choose each row's way of farming`}>
+                  {n ? `${n} of 4 rows changed` : 'Row strategies'}
+                </button>
+              );
+            })}
+          </Row>
         </div>
         <div className="tr-foot">
           <span>
@@ -253,21 +267,22 @@ function PlanBoard({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) 
       )}
 
       {pick && <Picker s={s} tr={tr} farm={pick.farm} stepKey={pick.key} dispatch={dispatch} onClose={() => setPick(null)} />}
+      {rowsFor !== null && <StrategyBoard tr={tr} farm={rowsFor} locked={() => false} dispatch={dispatch} onClose={() => setRowsFor(null)} />}
 
       {planting && (
         <div className="abs ending" style={{ inset: 0 }} onClick={() => setPlanting(false)}>
           <div className="tr-card" onClick={e => e.stopPropagation()}>
             <CloseX onClick={() => setPlanting(false)} />
             <p className="tr-card-title">How should the days pass?</p>
-            <p>Each cycle has six days of checks before the harvest.</p>
+            <p>Six days of checks, then harvest.</p>
             <div className="tr-choice">
               <button type="button" onClick={() => sow('daily')}>
                 <b>One day each real day</b>
-                <span>Check your farms once a day, like a real farm. Harvest in about a week.</span>
+                <span>Check once a day. Harvest in about a week.</span>
               </button>
               <button type="button" onClick={() => sow('fast')}>
                 <b>Play the six days now</b>
-                <span>A new day starts as soon as every farm is checked.</span>
+                <span>A new day starts once every farm is checked.</span>
               </button>
             </div>
           </div>
@@ -327,7 +342,9 @@ function Picker({ s, tr, farm, stepKey, dispatch, onClose }: { s: GameState; tr:
 
 /* ---------------- growing ---------------- */
 
-function Growing({ tr, dispatch, t, inWorld }: Props & { tr: Trial; inWorld: boolean }) {
+function Growing({ s, tr, dispatch, t, inWorld }: Props & { s: GameState; tr: Trial; inWorld: boolean }) {
+  const [rowsFor, setRowsFor] = useState<number | null>(null);
+  const sown = (farm: number) => s.field.cycle === tr.cycle && doneMask(s.field, tr.cycle, farm, 'sow') > 0;
   const day = currentDay(tr, dayNumber());
   const ready = day > CHECK_DAYS;
   const k = tr.plans.length;
@@ -336,7 +353,7 @@ function Growing({ tr, dispatch, t, inWorld }: Props & { tr: Trial; inWorld: boo
   let line: string;
   let action: { label: string; onClick: () => void } | undefined;
   if (ready) {
-    line = t('Harvest time, {name}! Pick every farm and see which grew the most.');
+    line = t('Harvest time, {name}! See which farm grew the most.');
     action = inWorld
       ? { label: 'Go and harvest', onClick: () => dispatch({ type: 'trials', open: false }) }
       : { label: 'Harvest all farms', onClick: () => dispatch({ type: 'trialHarvest' }) };
@@ -418,7 +435,7 @@ function Growing({ tr, dispatch, t, inWorld }: Props & { tr: Trial; inWorld: boo
           })}
         </div>
         <div className="tr-foot">
-          <span>{tr.clock === 'daily' ? 'One day each real day. Come back tomorrow for the next check.' : 'A new day starts once every farm is checked.'}</span>
+          <span>{tr.clock === 'daily' ? 'One day each real day. Come back tomorrow.' : 'A new day starts once every farm is checked.'}</span>
           {!ready && tr.clock === 'daily' && (
             <button type="button" className="tr-link" onClick={() => dispatch({ type: 'trialClock', clock: 'fast' })}>
               Play the rest now
@@ -429,9 +446,13 @@ function Growing({ tr, dispatch, t, inWorld }: Props & { tr: Trial; inWorld: boo
               One day each real day instead
             </button>
           )}
+          <button type="button" className="tr-link" onClick={() => setRowsFor(0)}>
+            Row strategies
+          </button>
         </div>
       </div>
       <GuideLine text={line} action={action} />
+      {rowsFor !== null && <StrategyBoard tr={tr} farm={rowsFor} locked={sown} dispatch={dispatch} onClose={() => setRowsFor(null)} />}
     </>
   );
 }
@@ -443,6 +464,8 @@ function Compare({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) {
   const why = explain(tr, results);
   const [keep, setKeep] = useState(why.best);
   const [byPlot, setByPlot] = useState(false);
+  const [byRow, setByRow] = useState(false);
+  const hasRows = results.some(r => r.rows);
   const lessons = plotLessons(tr);
   const k = tr.plans.length;
   const maxBags = Math.max(6, ...results.map(r => r.bags));
@@ -453,7 +476,9 @@ function Compare({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) {
   return (
     <>
       <div className="fs-panel tr-panel tr-compare">
-        {byPlot ? (
+        {byRow ? (
+          <RowResults tr={tr} />
+        ) : byPlot ? (
           <PlotResults tr={tr} />
         ) : (
         <div className="tr-grid" style={{ gridTemplateColumns: `86px repeat(${k}, minmax(0, 1fr))` }}>
@@ -498,15 +523,26 @@ function Compare({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) {
         )}
         <aside className="tr-why">
           <div className="tr-tabs" role="tablist" aria-label="Results">
-            <button type="button" role="tab" aria-selected={!byPlot} className={!byPlot ? 'is-on' : ''} onClick={() => setByPlot(false)}>
+            <button type="button" role="tab" aria-selected={!byPlot && !byRow} className={!byPlot && !byRow ? 'is-on' : ''} onClick={() => (setByPlot(false), setByRow(false))}>
               By farm
             </button>
-            <button type="button" role="tab" aria-selected={byPlot} className={byPlot ? 'is-on' : ''} onClick={() => setByPlot(true)}>
+            <button type="button" role="tab" aria-selected={byPlot} className={byPlot ? 'is-on' : ''} onClick={() => (setByPlot(true), setByRow(false))}>
               By input
             </button>
+            {hasRows && (
+              <button type="button" role="tab" aria-selected={byRow} className={byRow ? 'is-on' : ''} onClick={() => (setByRow(true), setByPlot(false))}>
+                By row
+              </button>
+            )}
           </div>
           <p className="tr-why-title">TemoLima AI</p>
-          {byPlot ? (
+          {byRow ? (
+            <div className="tr-lessons">
+              {results.map((r, i) => (r.rows ? rowLesson(r.rows, farmName(i)) : null)).filter(Boolean).map(l => (
+                <p key={l!}>{l}</p>
+              ))}
+            </div>
+          ) : byPlot ? (
             <div className="tr-lessons">
               {lessons.map(l => (
                 <p key={l.topic}>
@@ -525,8 +561,8 @@ function Compare({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) {
       <GuideLine
         text={t(
           tr.guided
-            ? `Both farms are harvested and sold for ${money(income)}, {name}. Next: six farms, each testing a different change.`
-            : `Cycle ${tr.cycle} is harvested and sold for ${money(income)}, {name}. Keep the plan that worked and test more changes.`,
+            ? `Both farms sold for ${money(income)}, {name}. Next: six farms, six changes.`
+            : `Cycle ${tr.cycle} sold for ${money(income)}, {name}. Keep what worked; test more.`,
         )}
         action={{ label: 'Plan the next cycle', onClick: () => dispatch({ type: 'trialNew' }) }}
       />
@@ -538,6 +574,44 @@ const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
 
 /** The crops of a cycle, for its tag: "Maize" or "Maize & sukuma wiki". */
 const cropsLine = (tr: Trial) => cap([...new Set(tr.plans.map((_, i) => CROP_WORDS[cropOf(tr, i)].name))].join(' & '));
+
+/** Each farm's four rows side by side: what each row's strategy grew and earned, its return and its climate. */
+function RowResults({ tr }: { tr: Trial }) {
+  const results = tr.results ?? [];
+  return (
+    <div className="tr-rowres" aria-label="Harvest by row">
+      <div className="tr-rowres-farm">
+        <div className="tr-head tr-corner">By row</div>
+        {[1, 2, 3, 4].map(r => (
+          <div key={r} className="tr-head">
+            <b>Row {r}</b>
+          </div>
+        ))}
+      </div>
+      {results.map((res, i) =>
+        res.rows ? (
+          <div key={i} className="tr-rowres-farm">
+            <b>{farmName(i)}</b>
+            {res.rows.map(row => {
+              const best = res.rows!.every(x => x.profit <= row.profit);
+              return (
+                <div key={row.row} className={`tr-rowres-cell${best ? ' is-best' : ''}`} title={row.options.join(', ') || 'As the farm plan'}>
+                  <b>{row.bags} bags</b> · {money(row.profit)}
+                  <small>{row.ret === null ? 'As the plan' : `Return ${row.ret >= 0 ? '+' : '−'}${Math.round(Math.abs(row.ret) * 100)}%`} · {row.labour.toFixed(1)} days</small>
+                  <small>{row.options.join(', ') || 'As the farm plan'}</small>
+                  <small>
+                    {Math.round(row.co2)} kg CO₂ · stores {Math.round(row.stored)} · {row.water > 0 ? '+' : ''}
+                    {Math.round(row.water)} L
+                  </small>
+                </div>
+              );
+            })}
+          </div>
+        ) : null,
+      )}
+    </div>
+  );
+}
 
 /** Every farm's harvest beside its inputs: what each seed, fertilizer, sprayer and machine grew under the same weather. */
 function PlotResults({ tr }: { tr: Trial }) {

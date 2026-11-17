@@ -1,7 +1,18 @@
+import { farmSignal } from './business/signal';
+import { evidenceReduce, trackEvidence, type EvidenceAction, type EvidenceState } from './evidence/model';
+import { WATER, type DrawPolicy } from './water/config';
+import { capacityOf, coverQuote, tankOf } from './water/model';
+import { treatmentOf } from './care/treatments';
+import type { TankState } from './water/model';
+import type { Ledger } from './credits/ledger';
+import { trackWater } from './water/track';
+import { ROWS_PER_FARM } from './strategy/data';
+import { riskReduce, type RiskAction, type RiskState } from './risk/model';
 import { useEffect, useReducer, useRef } from 'react';
 import { FARMS, ROUND_POINTS, dayNumber } from './rounds/farms';
 import {
   CHECK_DAYS,
+  farmCost,
   COMMON_PLAN,
   DAMAGE,
   PRICE_BY_QUALITY,
@@ -25,7 +36,7 @@ import {
   type TrialSummary,
 } from './trials/model';
 import { FOLLOW_UP } from './care/data';
-import { FULL, carryNeeded, emptyField, followUpLeft, plotLocked, treatCost, treatLeft, type Carry, type Field } from './world/field';
+import { FULL, carryNeeded, doneMask, emptyField, followUpLeft, plotLocked, treatCostFor, treatLeft, type Carry, type Field } from './world/field';
 import { TRACTOR_BONUS, type ImplId } from './tractor/data';
 import { rewardFor } from './tractor/sim';
 import { TRACTOR_PLOT, plotCost, setPlotInput, toolName, type PlotJob, type PlotKind, type TractorId } from './plots/data';
@@ -34,7 +45,7 @@ import { settleDays, trackClimate } from './climate/track';
 import { achClock, trackAchievements } from './achievements/track';
 import { achOf, achOfSave, initialAch, streakReward, type AchState } from './achievements/model';
 import { levelOf } from './progress/model';
-import { brandOf, type BrandId } from './partners/data';
+import { brandOf, offerCode, type BrandId } from './partners/data';
 import { routeTo } from './route';
 import { DEFAULT_LOAN, type LoanAsk } from './finance/loan';
 import { bookingRef, courseDate, courseOf, dayText, type TrainingBooking } from './training/data';
@@ -126,7 +137,7 @@ export interface Settings {
   country: string;
 }
 export type SettingsTab = 'farmer' | 'game' | 'display' | 'help';
-export type ClimateTab = 'overview' | 'land' | 'areas' | 'emissions' | 'water' | 'shocks' | 'activity';
+export type ClimateTab = 'overview' | 'land' | 'areas' | 'emissions' | 'water' | 'tank' | 'credits' | 'shocks' | 'activity';
 /** My Progress (the achievements page): the journey of certification levels, the modules, today, badges, certificates */
 export type AchTab = 'journey' | 'modules' | 'today' | 'badges' | 'certificates';
 export type PartnersTab = 'offers' | 'placements';
@@ -241,6 +252,14 @@ export interface GameState {
   trainings?: TrainingBooking[];
   /** partner offers the player saved (src/partners/data.ts; missing in older saves) */
   offers?: BrandId[];
+  /** money at risk: the button as last seen, and every problem dealt with (src/risk/model.ts; missing in older saves) */
+  risk?: RiskState;
+  /** water: the tank, the animals, the shared catchment, crop cover (src/water; missing in older saves) */
+  tank?: Partial<TankState>;
+  /** every kind of credit earned and paid (src/credits/ledger.ts; missing in older saves) */
+  ledger?: Ledger;
+  /** the evidence layer: decisions, cohort tags, "tried it on your farm?" answers (src/evidence; missing in older saves) */
+  evidence?: Partial<EvidenceState>;
   collectedDay: Record<string, string>; // milk/eggs → date last collected
   // season
   season: number;
@@ -494,10 +513,21 @@ export type Action =
   | { type: 'achDaily' }
   /** My Progress: claim a certification level's reward */
   | { type: 'levelClaim'; id: string }
-  /** partners: save a brand's offer (it is kept in Messages) */
+  /** partners: get a brand's offer (its code is kept in Messages) */
   | { type: 'partnerSave'; id: BrandId }
   /** go to a web address (src/route.ts): the screen it names, if the player may go there now */
-  | { type: 'route'; path: string };
+  | { type: 'route'; path: string }
+  | RiskAction
+  | EvidenceAction
+  /** how a treatment is done (care/treatments.ts) */
+  | { type: 'treatChoose'; farm: number; day: number; id: string }
+  /** water (src/water): buy piped water or a bowser; change the herd; how the farm draws on the shared dam; crop cover */
+  | { type: 'waterBuy'; kind: 'piped' | 'transported' }
+  | { type: 'herdSet'; cows: number; hens: number }
+  | { type: 'drawPolicy'; policy: DrawPolicy }
+  | { type: 'coverBuy' }
+  /** a row's strategy (src/strategy): one option on one dimension; row -1 sets every row of the farm */
+  | { type: 'strategySet'; farm: number; row: number; dim: string; option: string }
 
 let toastId = 0;
 let successId = 0;
@@ -521,7 +551,7 @@ export function reducer(s: GameState, a: Action): GameState {
   if (next === s) return s;
   const kind = soundOf(s, next, a);
   // an action that finished something counts today as a day played (the streak)
-  const tracked = trackAchievements(s, trackClimate(s, next, a), a, kind !== null);
+  const tracked = trackEvidence(s, trackAchievements(s, trackWater(s, trackClimate(s, next, a), a), a, kind !== null), a);
   return kind ? { ...tracked, sfx: { id: ++sfxId, kind } } : tracked;
 }
 
@@ -853,7 +883,7 @@ function play(s: GameState, a: Action): GameState {
         coins: s.coins - cost,
         trial: { ...trial, phase: 'growing', clock: 'fast', planted: dayNumber(), day: 1 },
         field: emptyField(trial.cycle),
-        toast: toast(`Your first planting: maize on Farm 1, sukuma wiki on Farm 2 · −${money(cost)} for seed and fertilizer`),
+        toast: toast(`Your first planting: maize on Farm 1, sukuma wiki on Farm 2 · −${money(cost)}`),
       };
     }
     case 'trialPlan': {
@@ -892,7 +922,8 @@ function play(s: GameState, a: Action): GameState {
       const p = t.plans[a.farm];
       const fix = a.right && canTreat(h, p) ? DAMAGE[h].treat : 0;
       // in the farm world the treatment is done by hand afterwards (fieldMark), and paid for then
-      const paid = !a.physical && fix > 0 && s.coins >= fix;
+      const dry = h === 'drought' && tankOf(s.tank).level < WATER.droughtTreat;
+      const paid = !a.physical && fix > 0 && s.coins >= fix && !dry;
       const earned = a.right ? (a.tries === 1 ? ROUND_POINTS.first : ROUND_POINTS.second) : 0;
       const treatments = t.treatments.map((n, i) => (i === a.farm && paid ? n + fix : n));
       return {
@@ -902,7 +933,7 @@ function play(s: GameState, a: Action): GameState {
         trial: { ...t, checks: { ...t.checks, [key]: { right: a.right, tries: a.tries, treated: paid } }, treatments },
         ...gainXp(s, a.right ? 0.06 : 0.01),
         toast: earned
-          ? toast(`Read right · +${earned} points${paid ? ` · treated for ${money(fix)}` : !a.physical && fix > 0 ? ` · not treated: it costs ${money(fix)} and you have ${money(s.coins)}` : ''}`)
+          ? toast(`Read right · +${earned} points${paid ? ` · treated for ${money(fix)}` : dry && !a.physical ? ' · not watered: the tank is too low (buy water in Water)' : !a.physical && fix > 0 ? ` · not treated: it costs ${money(fix)} and you have ${money(s.coins)}` : ''}`)
           : s.toast,
       };
     }
@@ -995,7 +1026,12 @@ function play(s: GameState, a: Action): GameState {
         const day = Number(a.job.slice(1));
         const pending = treatLeft(f, t, a.farm, day);
         if (pending && (after & pending.need) === pending.need) {
-          const cost = treatCost(pending.hazard);
+          const cost = treatCostFor(t, a.farm, day, pending.hazard);
+          // a drought watered by hand needs the water in the tank (src/water)
+          if (pending.hazard === 'drought') {
+            const need = treatmentOf('drought', t.checks[checkKey(a.farm, day)]?.treatment)?.water ?? WATER.droughtTreat;
+            if (tankOf(s1.tank).level < need) return { ...s1, toast: toast(`The tank has ${fmt(Math.round(tankOf(s1.tank).level))} L: watering ${farmName(a.farm)} needs ${fmt(need)} L. Buy water in Water first.`) };
+          }
           // not enough coins: the last of the work waits (marking it done would leave the treatment unpaid and undone for good)
           if (s1.coins < cost) return { ...s1, toast: toast(`You need ${money(cost)} to treat ${farmName(a.farm)}`) };
           const ck = checkKey(a.farm, day);
@@ -1017,7 +1053,7 @@ function play(s: GameState, a: Action): GameState {
             coins: s1.coins - cost,
             trial,
             ...gainXp(s1, 0.03),
-            toast: toast(`${farmName(a.farm)} treated · −${money(cost)} · most of the damage stopped${due ? ` · come back on day ${due}` : ''}`),
+            toast: toast(`${farmName(a.farm)} treated · −${money(cost)} · damage stopped${due ? ` · come back on day ${due}` : ''}`),
           };
         }
       }
@@ -1031,7 +1067,7 @@ function play(s: GameState, a: Action): GameState {
           return { ...s1, field, trial, ...gainXp(s1, 0.03), toast: toast(`${farmName(a.farm)}: follow-up done · the problem stays away`) };
         }
       }
-      if (bonus) return { ...s1, field, points: s1.points + bonus, ...gainXp(s1, 0.02), toast: toast(`Tractor bonus · +${bonus} points · all 20 plots of ${farmName(a.farm)} done from the seat${fuel ? ` · −${money(fuel)} of fuel` : ''}`) };
+      if (bonus) return { ...s1, field, points: s1.points + bonus, ...gainXp(s1, 0.02), toast: toast(`Tractor bonus · +${bonus} points · ${farmName(a.farm)} done by tractor${fuel ? ` · −${money(fuel)} of fuel` : ''}`) };
       if (fuel && a.rig) return { ...s1, field, toast: toast(`${farmName(a.farm)}: the ${a.rig.tractor} tractor's ${toolName(a.rig.tool).toLowerCase()} at work · −${money(fuel)} of fuel`) };
       return { ...s1, field };
     }
@@ -1125,7 +1161,7 @@ function play(s: GameState, a: Action): GameState {
     case 'bizRun': {
       const b = bizOf(s.biz);
       const requests = requestsFor(b);
-      const plan = planDay(b, requests, a.bookings, a.route, a.drives ?? {});
+      const plan = planDay(b, requests, a.bookings, a.route, a.drives ?? {}, farmSignal(s));
       if (plan.problem) return { ...s, toast: toast(plan.problem) };
       const { biz, result } = runDay(b, plan, activitiesDone(requests, a.bookings, plan));
       const helped = result.farmers + result.partnerFarmers;
@@ -1228,11 +1264,80 @@ function play(s: GameState, a: Action): GameState {
         toast: toast(`Level ${l.n} · ${l.name}: +${money(l.coins)} · +${fmt(l.points)} points`),
       };
     }
+    case 'waterBuy': {
+      const tank = tankOf(s.tank);
+      const cap = capacityOf(s);
+      const room = Math.max(0, cap - tank.level);
+      if (room < 1) return { ...s, toast: toast('The tank is full') };
+      const o = a.kind === 'piped' ? WATER.piped : WATER.transported;
+      const litres = Math.min(room, o.litres);
+      const price = a.kind === 'piped' ? Math.round((litres / 1000) * WATER.piped.per1000) : WATER.transported.price;
+      if (s.coins < price) return { ...s, toast: toast(`You need ${money(price)} for that water`) };
+      return {
+        ...s,
+        coins: s.coins - price,
+        tank: { ...tank, level: tank.level + litres, bought: { ...tank.bought, [a.kind]: tank.bought[a.kind] + litres } },
+        toast: toast(`${fmt(litres)} L ${a.kind === 'piped' ? 'of piped water' : 'delivered by bowser'} · −${money(price)}`),
+      };
+    }
+    case 'herdSet': {
+      const tank = tankOf(s.tank);
+      const cows = Math.max(0, Math.min(WATER.herd.maxCows, Math.round(a.cows)));
+      const hens = Math.max(0, Math.min(WATER.herd.maxHens, Math.round(a.hens)));
+      if (cows === tank.herd.cows && hens === tank.herd.hens) return s;
+      return { ...s, tank: { ...tank, herd: { cows, hens } } };
+    }
+    case 'drawPolicy': {
+      const tank = tankOf(s.tank);
+      return tank.policy === a.policy ? s : { ...s, tank: { ...tank, policy: a.policy } };
+    }
+    case 'coverBuy': {
+      const t = s.trial;
+      const tank = tankOf(s.tank);
+      if (!t || t.phase === 'done') return { ...s, toast: toast('Crop cover is bought for a cycle: plan one first') };
+      if (tank.cover?.cycle === t.cycle) return { ...s, toast: toast('This cycle is already covered') };
+      const q = coverQuote(s);
+      if (s.coins < q.premium) return { ...s, toast: toast(`You need ${money(q.premium)} for crop cover`) };
+      return { ...s, coins: s.coins - q.premium, tank: { ...tank, cover: { cycle: t.cycle, premium: q.premium } }, toast: toast(`Crop cover for cycle ${t.cycle} · −${money(q.premium)}`) };
+    }
+    case 'treatChoose': {
+      const t = s.trial;
+      if (!t || t.phase !== 'growing') return s;
+      const ck = checkKey(a.farm, a.day);
+      const rec = t.checks[ck];
+      if (!rec?.right || rec.treated || rec.treatment === a.id) return s;
+      return { ...s, trial: { ...t, checks: { ...t.checks, [ck]: { ...rec, treatment: a.id } } } };
+    }
+    case 'strategySet': {
+      const t = s.trial;
+      if (!t || t.phase === 'done' || a.farm >= t.plans.length) return s;
+      const f = s.field.cycle === t.cycle ? s.field : emptyField(t.cycle);
+      // a row already sown keeps its strategy
+      if (t.phase === 'growing' && doneMask(f, t.cycle, a.farm, 'sow')) return { ...s, toast: toast(`${farmName(a.farm)} is already sown: its rows keep their strategies`) };
+      const rows = Array.from({ length: ROWS_PER_FARM }, (_, r) => ({ ...(t.strategies?.[a.farm]?.[r] ?? {}) }));
+      rows.forEach((st, r) => {
+        if (a.row === -1 || a.row === r) st[a.dim] = a.option;
+      });
+      const strategies = t.plans.map((_, i) => (i === a.farm ? rows : (t.strategies?.[i] ?? Array.from({ length: ROWS_PER_FARM }, () => ({})))));
+      const next: Trial = { ...t, strategies };
+      // once the farms are paid for, a change is paid (or refunded) at once
+      const delta = t.phase === 'growing' ? farmCost(next, a.farm) - farmCost(t, a.farm) : 0;
+      if (delta > s.coins) return { ...s, toast: toast(`That costs ${money(delta)} more and you have ${money(s.coins)}`) };
+      return { ...s, coins: s.coins - delta, trial: next };
+    }
+    case 'evidenceAnswer':
+    case 'evidenceTag':
+      return { ...s, evidence: evidenceReduce(s.evidence, a) };
+    case 'riskSnap':
+    case 'riskFixed':
+    case 'riskTap':
+      return { ...s, risk: riskReduce(s.risk, a) };
     case 'partnerSave': {
       const b = brandOf(a.id);
       const saved = s.offers ?? [];
       if (!b || saved.includes(a.id)) return s;
-      return { ...s, offers: [...saved, a.id], note: `Saved offer from ${b.name}: ${b.offer.title}. ${b.offer.line}.`, toast: toast(`Offer saved: ${b.offer.title} · it is in Messages`) };
+      const code = offerCode(b.id, s.farmer?.name);
+      return { ...s, offers: [...saved, a.id], note: `Offer from ${b.name}: ${b.offer.title}, code ${code}. ${b.offer.line}.`, toast: toast(`Offer from ${b.name}: code ${code} · it is in Messages`) };
     }
     case 'achDaily': {
       const ach = achOfSave(s.ach);
@@ -1283,7 +1388,7 @@ function loadSaved(): GameState {
     if (!raw) return initialState;
     const saved = JSON.parse(raw);
     // Saves from before the farm had one owner may carry a reminder about neighbours.
-    if (typeof saved.note === 'string' && /Achieng|neighbour/i.test(saved.note)) saved.note = 'Check every bed on your farm often: open Rounds on the farm.';
+    if (typeof saved.note === 'string' && /Achieng|neighbour/i.test(saved.note)) saved.note = 'Check every bed often: open Rounds.';
     return { ...initialState, ...saved, fromMenu: false, navSeq: 0, rideReq: 0, modal: null, plotSelected: false, toast: null, success: null, sfx: null, award: null, ach: achOfSave(saved.ach), roundsOpen: false, roundsView: null, roundsDemo: null, worldDemo: null, trialsOpen: false, bizOpen: false, roundsTrial: false, rounds: { ...initialState.rounds, ...(saved.rounds ?? {}) }, settings: { ...DEFAULT_SETTINGS, ...(saved.settings ?? {}) }, climate: { ...initialClimate, ...(saved.climate ?? {}) } };
   } catch {
     return initialState;

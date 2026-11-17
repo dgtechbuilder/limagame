@@ -46,7 +46,7 @@ export function Spray({ jobs, name, onDone, onLeave }: { jobs: { farm: number; h
   let line = `Safety first, ${name}. Put on the safety kit.`;
   if (!kitOn && kit.length) line = KIT_LESSON;
   if (ask) line = said && !said.right ? `${said.lesson} Pick again.` : `${said?.right ? `Right: ${said.lesson} ` : ''}Which product goes in the sprayer for ${farmsOf(ask.hazard)} (${HAZARD_WORDS[ask.hazard]})?`;
-  if (ready) line = `${said?.right ? `Right: ${said.lesson} ` : ''}Kit on, sprayer filled. Take it to the farm and spray every row.`;
+  if (ready) line = `${said?.right ? `Right: ${said.lesson} ` : ''}Kit on, sprayer filled. Spray every row.`;
 
   return (
     <div className="abs fs-screen review care-screen" style={{ inset: 0 }}>
@@ -58,13 +58,13 @@ export function Spray({ jobs, name, onDone, onLeave }: { jobs: { farm: number; h
         </span>
       </div>
       <span className="rr-roundtag">The shed · sprayer</span>
-      <NavBar horizontal onBack={onLeave} style={{ right: 6, top: 4 }} />
+      <NavBar horizontal onBack={onLeave} style={{ right: 28, top: 8 }} />
       <ol className="review-steps" aria-label="Spray steps">
         <li className={kitOn ? 'is-done' : 'is-now'}>Safety kit</li>
         <li className={ready ? 'is-done' : kitOn ? 'is-now' : ''}>Product</li>
       </ol>
 
-      <div className="fs-panel" style={{ left: 24, top: 78, width: 826, height: 246 }}>
+      <div className="fs-panel" style={{ left: 30, top: 78, width: 814, height: 246 }}>
         <div className="kit-art" aria-hidden="true">
           <KitArt on={kit} />
         </div>

@@ -1020,11 +1020,11 @@ export class FarmWorld {
     const carry = v.field.carry;
     const setup = setupLeft(f, t, farm);
     if (setup === 'prep') {
-      if (machinePrep(plan)) return { hint: `${plan.land === 'tractor' ? 'Hire the tractor' : 'Hire the oxen'} at the Hire spot to plough Farm ${farm + 1}` };
+      if (machinePrep(plan)) return { hint: `${plan.land === 'tractor' ? 'Hire the tractor' : 'Hire the oxen'} to plough Farm ${farm + 1}` };
       return { job: 'prep', need: FULL, fx: plan.land === 'slash' ? 'clear' : plan.land === 'mulch' ? 'mulch' : 'dig' };
     }
     if (setup === 'sow') return { job: 'sow', need: FULL, fx: 'seed' };
-    if (setup === 'setupFeed') return carry === 'fertilizer' ? { job: 'setupFeed', need: needOf('setupFeed', t, farm), fx: 'fert' } : { hint: 'Get fertilizer from the shed: this farm gets it at planting' };
+    if (setup === 'setupFeed') return carry === 'fertilizer' ? { job: 'setupFeed', need: needOf('setupFeed', t, farm), fx: 'fert' } : { hint: 'Get fertilizer from the shed' };
     if (day > CHECK_DAYS) return { job: 'harvest', need: FULL, fx: 'harvest' };
     const tr = careLeft(f, t, farm, day);
     if (!tr) return null;
@@ -1604,7 +1604,7 @@ export class FarmWorld {
       const now = performance.now();
       if (now - this.lastHint > 5000) {
         this.lastHint = now;
-        this.ev.hint(`Check Farm ${farm + 1} at its sign first: read what is wrong, then deal with it`);
+        this.ev.hint(`Check Farm ${farm + 1} at its sign first`);
       }
     }
   }
@@ -1622,10 +1622,10 @@ export class FarmWorld {
     const v = this.view;
     const t = v?.trial;
     if (!t || t.phase !== 'growing') return atSpot ? this.ev.hint('Nothing to hire now: plan your farms first') : undefined;
-    if (this.riding) return atSpot ? this.ev.hint('Get off the tractor first: the hire tractor is the one you are sitting on') : undefined;
+    if (this.riding) return atSpot ? this.ev.hint('Get off the tractor first') : undefined;
     const f = this.liveField();
     const { ready, toDrive, any } = this.hireFarms(t, f);
-    if (!any) return atSpot ? this.ev.hint('No farm needs ploughing now. Tractor or oxen hire is a land-prep choice in the plan') : undefined;
+    if (!any) return atSpot ? this.ev.hint('No farm needs ploughing now') : undefined;
     // at the Hire spot, a tractor farm not yet driven opens the drive (World.tsx); the hire starts after it
     if (atSpot && toDrive.length) return this.ev.place('hire');
     const farms = ready;

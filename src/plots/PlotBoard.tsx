@@ -126,7 +126,7 @@ export function PlotBoard({
             );
           })}
         </ul>
-        {growing && kind !== 'sprayer' && <p className="pb-note">Changing a seed or fertilizer now pays (or refunds) the difference. You have {money(coins)}.</p>}
+        {growing && kind !== 'sprayer' && <p className="pb-note">Changes now pay or refund the difference. You have {money(coins)}.</p>}
       </div>
     </div>
   );
@@ -190,7 +190,7 @@ export function PlotScreen({
         </span>
       </div>
       <span className="rr-roundtag">{tag}</span>
-      <NavBar horizontal onBack={onLeave} style={{ right: 6, top: 4 }} />
+      <NavBar horizontal onBack={onLeave} style={{ right: 28, top: 8 }} />
       <div className="fs-panel pb-panel">
         <PlotBoard tr={tr} farm={farm} kinds={kinds} field={field} coins={coins} dispatch={dispatch} onFarm={setFarm} />
       </div>

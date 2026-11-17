@@ -124,7 +124,7 @@ test('the farm update on arriving at the maize, and what each problem puts at st
   await page.locator('.nav-btn[aria-label="Back"]').click();
   await expect.poll(async () => (await state(page)).fs.phase).toBe('walk1');
   await walkToBed(page);
-  await expect(page.locator('.stake')).toHaveText(`!This problem will cost you about ${money(10000)} of harvest if it is left alone.`);
+  await expect(page.locator('.stake')).toHaveText(`!Left alone, this costs about ${money(10000)} of harvest.`);
   await review(page, 'first', true);
   await expect(page.locator('.stake.is-saved')).toContainText(`about ${money(10000)} of harvest saved`, { timeout: 10_000 });
   expect(await eventNames(page)).toContain('farm_update_shown');

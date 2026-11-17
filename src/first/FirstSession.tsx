@@ -138,7 +138,7 @@ export function FirstSession({ s, dispatch }: { s: GameState; dispatch: Dispatch
         shamba={sh}
         name={name}
         look={look}
-        ending={{ line: 'You can read your crops now, {name}, so check every one of them often.', button: 'Check the next crop' }}
+        ending={{ line: 'You can read your crops now, {name}. Check them often.', button: 'Check the next crop' }}
         onPassed={() => track('review_passed', { shamba: sh.id, first: true })}
         onFailed={() => go('walkRetry')}
         onEnd={() => go('walk2', { at: sh.id === 'lower' ? 'lower' : 'first', opened: false })}
@@ -155,8 +155,8 @@ export function FirstSession({ s, dispatch }: { s: GameState; dispatch: Dispatch
         look={look}
         ending={
           s.view === 'world'
-            ? { line: 'Now your own farm, {name}: clear Farm 1 for maize, then plant sukuma wiki on Farm 2, one plot at a time.', button: 'Go to my farm' }
-            : { line: 'Your tomatoes need a check too, {name}: healthy crops mean good food for your family.', button: 'Check all my crops' }
+            ? { line: 'Now your farm, {name}: clear Farm 1 for maize, then plant sukuma wiki on Farm 2.', button: 'Go to my farm' }
+            : { line: 'Your tomatoes need a check too, {name}.', button: 'Check all my crops' }
         }
         onPassed={() => track('review_passed', { shamba: 'sukuma' })}
         onFailed={() => undefined}
@@ -164,10 +164,10 @@ export function FirstSession({ s, dispatch }: { s: GameState; dispatch: Dispatch
           track('session_close');
           if (s.view === 'world') {
             // into the walkable farm: its task card says what to do first
-            go('done', { note: 'Clear Farm 1 for maize, then plant sukuma wiki on Farm 2: tap the task card at the top of the farm.' });
+            go('done', { note: 'Clear Farm 1 for maize, then plant sukuma wiki on Farm 2: tap the task card.' });
             return;
           }
-          go('done', { note: 'Check every bed on your farm often: open Rounds on the farm.' });
+          go('done', { note: 'Check every bed often: open Rounds.' });
           // straight into the field rounds: every bed on the farm, checked one after another
           dispatch({ type: 'rounds', open: true });
         }}

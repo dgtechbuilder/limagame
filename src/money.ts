@@ -128,5 +128,20 @@ export function moneyShort(n: number): string {
   return `${toLocal(n) < 0 ? '−' : ''}${current.symbol}${sep(current)}${num}${unit}`;
 }
 
+/** Text written once, in data, with money in it: each "{money:N}" (N a stored amount) is shown with money(N) when
+    the text is drawn, so it is in the player's currency whenever they pick it. (Text built with money() when a module
+    loads would stay in US dollars, the currency before a country is picked.) */
+export const withMoney = (text: string) => text.replace(/\{money:(-?\d+(?:\.\d+)?)\}/g, (_, n: string) => money(Number(n)));
+
 /** The same as money(): kept for screens that once showed shillings. */
 export const kshText = money;
+
+/** A money amount kept as short as it goes, for the at-risk button: "KSh 50k", "KSh 1.2M", "$388"; below a thousand
+    as money() shows it. */
+export function moneyCompact(n: number): string {
+  const v = Math.abs(toLocal(n));
+  if (v < 1000) return `${toLocal(n) <= -0.5 ? '−' : ''}${current.symbol}${sep(current)}${Math.round(v)}`;
+  const [d, unit] = v >= 1e9 ? [v / 1e9, 'B'] : v >= 1e6 ? [v / 1e6, 'M'] : [v / 1e3, 'k'];
+  const num = d >= 10 ? Math.round(d).toString() : (Math.round(d * 10) / 10).toString();
+  return `${toLocal(n) < 0 ? '−' : ''}${current.symbol}${sep(current)}${num}${unit}`;
+}
