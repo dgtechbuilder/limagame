@@ -2,7 +2,8 @@ import type { ShopTab, StepId } from './data';
 import { STORY } from './first/data';
 import { CHECK_DAYS, currentDay } from './trials/model';
 import { dayNumber } from './rounds/farms';
-import type { Action, ClimateTab, FsPhase, GameState, Modal, SettingsTab } from './state';
+import type { AchTab, Action, ClimateTab, FsPhase, GameState, Modal, PartnersTab, SettingsTab } from './state';
+import { BRANDS, type BrandId } from './partners/data';
 
 /* Web addresses: every screen has its own address after the # (…/limagame/#/settings/display), so a player can
    type one to go there, reload without losing their place, and use the browser's Back and Forward.
@@ -16,7 +17,10 @@ const STORY_PAGES = STORY.length;
 
 // friendly words in the address ↔ the ids in the code
 const SETTINGS: Record<SettingsTab, string> = { farmer: 'my-farmer', game: 'game', display: 'display', help: 'help' };
-const CLIMATE: Record<ClimateTab, string> = { overview: 'overview', emissions: 'emissions', water: 'water-and-soil', shocks: 'shocks', activity: 'activity' };
+const CLIMATE: Record<ClimateTab, string> = { overview: 'overview', land: 'land-and-pay', areas: 'farm-areas', emissions: 'emissions', water: 'water-and-soil', tank: 'water-tank', credits: 'credits', shocks: 'shocks', activity: 'activity' };
+const ACH: Record<AchTab, string> = { journey: 'journey', modules: 'modules', today: 'today', badges: 'badges', certificates: 'certificates' };
+const PARTNERS: Record<PartnersTab, string> = { offers: 'offers', placements: 'placements' };
+const BRAND_WORD = Object.fromEntries(BRANDS.map(b => [b.id, b.id])) as Record<BrandId, string>;
 const SHOP: Record<ShopTab, string> = { food: 'food', fertilizer: 'fertilizer', tank: 'water-tanks', equipment: 'equipment' };
 const STEPS: Record<StepId, string> = { landprep: 'land-prep', planting: 'planting', fertilizer: 'fertilizer', pesticides: 'pesticides', water: 'water', harvest: 'harvest' };
 /** Screens with no sections, by address. */
@@ -31,6 +35,7 @@ const SIMPLE = {
   info: 'farm-info',
   outcome: 'results',
   rewards: 'rewards',
+  training: 'training',
 } as const satisfies Partial<Record<Modal['kind'], string>>;
 
 /** First-session steps, by address. The story is /story/1 to /story/3. */
@@ -60,10 +65,16 @@ function modalPath(s: GameState, m: Modal): string {
       return `/settings/${SETTINGS[settingsTab(s, m.tab)]}`;
     case 'climate':
       return `/climate/${CLIMATE[m.tab ?? 'overview']}`;
+    case 'achievements':
+      return `/progress/${ACH[m.tab ?? 'journey']}`;
+    case 'partners':
+      return `/partners/${PARTNERS[m.tab ?? 'offers']}${m.tab !== 'placements' && m.brand ? `/${BRAND_WORD[m.brand]}` : ''}`;
     case 'shop':
       return `/shop/${SHOP[m.tab]}`;
     case 'steps':
       return `/steps/${STEPS[m.step]}`;
+    case 'loan':
+      return m.view === 'quote' ? '/loan-calculator/quote' : '/loan-calculator';
     default:
       return `/${SIMPLE[m.kind]}`;
   }
@@ -91,7 +102,7 @@ export function cleanPath(raw: string): string {
 }
 
 const say = (text: string): Action[] => [{ type: 'toast', text }];
-const NOT_FOUND = 'There is no page at that address, so you stayed where you were.';
+const NOT_FOUND = 'There is no page at that address.';
 
 /** A screen that opens on top, from its address; null when the address is not one. */
 function modalFor(s: GameState, parts: string[]): Modal | null | 'bad' {
@@ -105,6 +116,19 @@ function modalFor(s: GameState, parts: string[]): Modal | null | 'bad' {
     const t = tab(CLIMATE);
     return t === 'bad' ? 'bad' : { kind: 'climate', tab: t ?? 'overview' };
   }
+  // My Progress; its old address (/achievements/…) still opens it
+  if (first === 'progress' || first === 'achievements') {
+    if (parts.length > 2) return 'bad';
+    const t = tab(ACH);
+    return t === 'bad' ? 'bad' : { kind: 'achievements', tab: t ?? 'journey' };
+  }
+  if (first === 'partners') {
+    const t = tab(PARTNERS);
+    if (t === 'bad' || parts.length > 3) return 'bad';
+    if (parts[2] === undefined) return { kind: 'partners', tab: t ?? 'offers' };
+    const brand = t === 'offers' ? key(BRAND_WORD, parts[2]) : undefined;
+    return brand ? { kind: 'partners', tab: 'offers', brand } : 'bad';
+  }
   if (first === 'shop') {
     const t = tab(SHOP);
     return t === 'bad' ? 'bad' : { kind: 'shop', tab: t ?? 'food' };
@@ -112,6 +136,10 @@ function modalFor(s: GameState, parts: string[]): Modal | null | 'bad' {
   if (first === 'steps') {
     const t = tab(STEPS);
     return t === 'bad' ? 'bad' : { kind: 'steps', step: t ?? 'landprep' };
+  }
+  if (first === 'loan-calculator') {
+    if (second === undefined) return { kind: 'loan', view: 'calc' };
+    return second === 'quote' ? { kind: 'loan', view: 'quote' } : 'bad';
   }
   const simple = key(SIMPLE, first);
   if (!simple) return null;
@@ -130,7 +158,7 @@ export function routeTo(s: GameState, raw: string): Action[] {
   /* ---------- the first session ---------- */
   if (phase !== 'done') {
     // the menu and Settings are open during the first session, as their buttons are
-    if (modal) return modal.kind === 'menu' || modal.kind === 'settings' ? [{ type: 'open', modal }] : say('Finish checking your first crops to open the rest of the farm.');
+    if (modal) return modal.kind === 'menu' || modal.kind === 'settings' ? [{ type: 'open', modal }] : say('Finish checking your first crops to open the farm.');
     const close: Action[] = s.modal ? [{ type: 'close' }, { type: 'close' }] : [];
     const step = (to: FsPhase, page?: number): Action[] => [...close, { type: 'fs', phase: to, page }];
     // the step the player is on (e.g. Back from the menu to it)
@@ -140,15 +168,15 @@ export function routeTo(s: GameState, raw: string): Action[] {
     if (parts[0] === 'story') {
       const n = parts.length === 1 ? 1 : Number(parts[1]);
       if (parts.length > 2 || !Number.isInteger(n) || n < 1 || n > STORY_PAGES) return say(NOT_FOUND);
-      if (!s.farmer) return say('Name your farmer first, then the story begins.');
-      return early ? step('story', n - 1) : say('You have read the story already: your farm is waiting.');
+      if (!s.farmer) return say('Name your farmer first.');
+      return early ? step('story', n - 1) : say('Story read: your farm is waiting.');
     }
     const to = key(FIRST, parts.join('/'));
-    if (to === 'create') return early ? step('create') : say('Your farmer is ready: carry on with your crops.');
-    if (to === 'walk1') return s.farmer && early ? step('walk1') : say('Read your story first, then walk to your maize.');
+    if (to === 'create') return early ? step('create') : say('Your farmer is ready: carry on.');
+    if (to === 'walk1') return s.farmer && early ? step('walk1') : say('Read your story first.');
     // the farm update comes on arriving at the maize: it can be read again from the first check
-    if (to === 'update') return phase === 'review1' ? step('update') : say('Walk to your maize first: the farm update is waiting there.');
-    if (to || ['farm', 'rounds', 'mission', 'tractor-business'].includes(parts[0])) return say('Finish checking your first crops to open the rest of the farm.');
+    if (to === 'update') return phase === 'review1' ? step('update') : say('Walk to your maize first.');
+    if (to || ['farm', 'rounds', 'mission', 'tractor-business'].includes(parts[0])) return say('Finish checking your first crops to open the farm.');
     return say(NOT_FOUND);
   }
 
@@ -156,9 +184,9 @@ export function routeTo(s: GameState, raw: string): Action[] {
   if (modal) return [{ type: 'open', modal }];
   if (path === '/farm') return [{ type: 'home' }];
   if (path === '/rounds') return [{ type: 'home' }, { type: 'rounds', open: true, trial: false }];
-  if (path === '/rounds/six-farms') return sixFarmsDue(s) ? [{ type: 'home' }, { type: 'rounds', open: true, trial: true }] : say('Your six farms have no checks today: plant them from Mission first.');
+  if (path === '/rounds/six-farms') return sixFarmsDue(s) ? [{ type: 'home' }, { type: 'rounds', open: true, trial: true }] : say('Your farms have no checks today: plant them from Mission.');
   if (path === '/mission') return [{ type: 'home' }, { type: 'trials', open: true }];
   if (path === '/tractor-business') return [{ type: 'home' }, { type: 'biz', open: true }];
-  if (parts[0] === 'story' || key(FIRST, parts.join('/'))) return say('You have finished your first crop checks: welcome back to your farm.');
+  if (parts[0] === 'story' || key(FIRST, parts.join('/'))) return say('You finished your first crop checks.');
   return say(NOT_FOUND);
 }

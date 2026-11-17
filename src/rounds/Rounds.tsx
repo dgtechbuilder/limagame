@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch } from 'react';
 import { NavBar } from '../components/Nav';
+import { CloseX } from '../components/Success';
 import { FarmMap } from '../components/FarmMap';
 import { GoldButton } from '../components/ui';
 import type { Action, GameState, RoundsView } from '../state';
@@ -202,7 +203,8 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
   const onResult = (right: boolean) => {
     if (!visit) return;
     const r = visit.round;
-    const looks = (results[r.id]?.looks ?? 0) + 1;
+    // the six farms keep their checks: a look after the rounds were closed and opened again carries on counting
+    const looks = (results[r.id]?.looks ?? (trial ? doneToday[r.id]?.tries : undefined) ?? 0) + 1;
     const paid = right && !doneToday[r.id]?.right ? (looks === 1 ? ROUND_POINTS.first : ROUND_POINTS.second) : 0;
     setResults(prev => ({ ...prev, [r.id]: { right: right || !!prev[r.id]?.right, looks } }));
     setCheckedAt(prev => ({ ...prev, [r.id]: Date.now() }));
@@ -267,6 +269,7 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
         onResult={onResult}
         onContinue={onContinue}
         onLeave={() => dispatch({ type: 'rounds', open: false })}
+        progress={{ done: rightCount, total: rounds.length, unit }}
       />
     );
   }
@@ -277,9 +280,9 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
   if (phase === 'ready') {
     line = trial
       ? next
-        ? t(`Day ${tDay} of ${CHECK_DAYS} on your ${rounds.length} farms, {name}. Check every farm today.`)
+        ? t(`Day ${tDay} of ${CHECK_DAYS} on your ${rounds.length} farms, {name}. Check them all today.`)
         : t(`Every farm is checked for day ${tDay}, {name}.`)
-      : t('Every bed on your farm needs a check today, {name}. Each keeps its crop for three weeks.');
+      : t('Every bed needs a check today, {name}.');
     action = next ? { label: next.n === 1 ? 'Start round 1' : `Check ${next.short}`, onClick: goNext } : { label: 'See the day', onClick: () => setPhase('summary') };
   } else if (phase === 'walking' && visit) {
     line = visit.second ? t(`Back to ${visit.round.title}, {name}.`) : t(`Round ${visit.round.n} of ${rounds.length}: off to ${visit.round.title}.`);
@@ -346,7 +349,7 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
         <FarmerPortrait look={look} size={34} />
         <span>{name}</span>
       </div>
-      <NavBar horizontal onBack={() => dispatch({ type: 'rounds', open: false })} backLabel={trial ? 'Six farms' : 'Back'} style={{ right: 6, top: 4 }} />
+      <NavBar horizontal onBack={() => dispatch({ type: 'rounds', open: false })} backLabel={trial ? 'Six farms' : 'Back'} style={{ right: 28, top: 8 }} />
 
       <p className="rr-cycle">
         {trial
@@ -374,6 +377,7 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
       {phase === 'summary' && (
         <div className="abs ending" style={{ inset: 0 }}>
           <div className="rr-summary">
+            <CloseX onClick={() => dispatch({ type: 'rounds', open: false })} />
             <p className="rr-summary-title">
               {rightCount === rounds.length
                 ? t(trial ? `You read every farm on day ${tDay}, {name}!` : 'You read every bed on your farm, {name}!')

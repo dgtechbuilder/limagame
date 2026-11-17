@@ -5,6 +5,7 @@
    problem costs when it is caught or missed) is in the tables below, so an agronomist can review and tune them
    without touching any code. The numbers are illustrative until that review is done. */
 
+import { FARM_SCALE } from '../farmSize';
 import {
   FERTS,
   MISFIT_COST,
@@ -34,6 +35,10 @@ import {
 } from '../plots/data';
 import type { ImplId } from '../tractor/data';
 import { money } from '../money';
+import { RISK, riskShare } from '../risk/config';
+import { treatmentOf } from '../care/treatments';
+import type { RowStrategy } from '../strategy/data';
+import { hasStrategies, rowResults, strategyCost, type RowResult } from '../strategy/model';
 
 /* ---------------- the plan ---------------- */
 
@@ -71,7 +76,8 @@ export interface PlanStep {
   options: PlanOption[];
 }
 
-const o = (id: string, label: string, does: string, cost: number, factor: number): PlanOption => ({ id, label, does, cost, factor });
+/** A plan option; its cost is given for the base farm size and paid for the farm's real size (src/farmSize.ts). */
+const o = (id: string, label: string, does: string, cost: number, factor: number): PlanOption => ({ id, label, does, cost: Math.round(cost * FARM_SCALE), factor });
 
 /** Coins per L/m² per week of watering, for one farm over the whole cycle. */
 export const WATER_COST_PER_L = 4;
@@ -82,11 +88,11 @@ export const PLAN_STEPS: PlanStep[] = [
     key: 'land',
     label: 'Land prep',
     options: [
-      o('slash', 'Slash and clear', 'Cut the bush and weeds down and clear them away. No digging.', 40, 0.85),
+      o('slash', 'Slash and clear', 'Cut and clear the bush and weeds. No digging.', 40, 0.85),
       o('hoe', 'Hand hoe', 'Dig the whole farm with a hoe.', 80, 0.95),
       o('ox', 'Ox plough', 'Hire oxen to plough the farm.', 120, 1),
-      o('tractor', 'Tractor hire', 'Hire a tractor to plough and harrow. Fastest, and the deepest tillage.', 180, 1.03),
-      o('mulch', 'Mulch, no dig', 'Dig only the planting holes and cover the ground with dry grass.', 110, 1),
+      o('tractor', 'Tractor hire', 'Plough and harrow by tractor. Fastest and deepest.', 180, 1.03),
+      o('mulch', 'Mulch, no dig', 'Dig only planting holes; cover the ground with dry grass.', 110, 1),
     ],
   },
   {
@@ -99,8 +105,8 @@ export const PLAN_STEPS: PlanStep[] = [
     key: 'date',
     label: 'Planting date',
     options: [
-      o('early', 'Before the rains', 'Plant two weeks before the rains are due, to be first.', 0, 0.8),
-      o('rains', 'With the rains', 'Plant once the first good rain has soaked the soil.', 0, 1),
+      o('early', 'Before the rains', 'Plant two weeks before the rains.', 0, 0.8),
+      o('rains', 'With the rains', 'Plant after the first soaking rain.', 0, 1),
       o('late', '3 weeks late', 'Plant three weeks after the rains start.', 0, 0.78),
     ],
   },
@@ -115,22 +121,22 @@ export const PLAN_STEPS: PlanStep[] = [
     label: 'Pest control',
     options: [
       o('none', 'None', 'Leave the crop to itself.', 0, 1),
-      o('scout', 'Check and treat', 'Check the crop and treat a pest or disease when you find one.', 30, 1),
-      o('spray', 'Spray every week', 'Spray insecticide every week, whether or not there are pests.', 300, 1),
+      o('scout', 'Check and treat', 'Treat pests or disease when you find them.', 30, 1),
+      o('spray', 'Spray every week', 'Spray insecticide weekly, pests or not.', 300, 1),
     ],
   },
   {
     key: 'water',
     label: 'Water',
-    options: WATER_LEVELS.map(l => o(String(l), l === 0 ? 'Rain only' : `${l} L a week`, l === 0 ? 'No watering: the crop gets the rain only.' : `Water ${l} L per m² every week, on top of the rain.`, l * WATER_COST_PER_L, 1)),
+    options: WATER_LEVELS.map(l => o(String(l), l === 0 ? 'Rain only' : `${l} L a week`, l === 0 ? 'No watering: the crop gets the rain only.' : `${l} L per m² a week, plus rain.`, l * WATER_COST_PER_L, 1)),
   },
   {
     key: 'harvest',
     label: 'Harvest',
     options: [
       o('early', 'Early', 'Pick the cobs while the husks are still green.', 0, 0.82),
-      o('ready', 'When ready', 'Pick when the husks are dry and the grain is hard.', 0, 1),
-      o('late', '2 weeks late', 'Leave the dry cobs standing two more weeks before picking.', 0, 0.88),
+      o('ready', 'When ready', 'Pick when husks are dry and grain is hard.', 0, 1),
+      o('late', '2 weeks late', 'Leave dry cobs standing two more weeks.', 0, 0.88),
     ],
   },
 ];
@@ -165,8 +171,9 @@ export const plotsOf = (t: Pick<Trial, 'plots' | 'plans'>, farm: number): PlotRe
 /** Seed and fertilizer for a farm. */
 export const plotsCost = (rows: PlotRecord[]) => rows.reduce((n, r) => n + plotCost('seed', r.seed) + plotCost('fert', r.fert), 0);
 /** Everything a farm costs to plant: its farm-wide steps and its plots' seed and fertilizer. */
-export const farmCost = (t: Pick<Trial, 'plots' | 'plans'>, farm: number) => planCost(t.plans[farm]) + plotsCost(plotsOf(t, farm));
-export const trialCost = (t: Pick<Trial, 'plots' | 'plans'>) => t.plans.reduce((n, _, i) => n + farmCost(t, i), 0);
+export const farmCost = (t: Pick<Trial, 'plots' | 'plans'> & Partial<Pick<Trial, 'strategies' | 'forecast'>>, farm: number) =>
+  planCost(t.plans[farm]) + plotsCost(plotsOf(t, farm)) + (t.strategies?.[farm] ? strategyCost({ plans: t.plans, forecast: t.forecast ?? 'normal', strategies: t.strategies }, farm) : 0);
+export const trialCost = (t: Pick<Trial, 'plots' | 'plans'> & Partial<Pick<Trial, 'strategies' | 'forecast'>>) => t.plans.reduce((n, _, i) => n + farmCost(t, i), 0);
 
 /* ---------------- the season's rain ---------------- */
 
@@ -245,7 +252,7 @@ export function weightsFor(p: Plan, f: Forecast, day: number): Partial<Record<Tr
 
 /** What a problem costs. `missed`: share of the yield lost when it is not caught that day. `caught`: lost when it is
     read right and treated. `treat`: coins the treatment costs. Weather can't be treated, only recovered from. */
-export const DAMAGE: Record<TrialHazard, { missed: number; caught: number; treat: number; fix: string }> = {
+const DAMAGE_BASE: Record<TrialHazard, { missed: number; caught: number; treat: number; fix: string }> = {
   healthy: { missed: 0, caught: 0, treat: 0, fix: '' },
   drought: { missed: 0.13, caught: 0.04, treat: 40, fix: 'Emergency watering' },
   flood: { missed: 0.1, caught: 0.04, treat: 30, fix: 'A drain dug' },
@@ -263,6 +270,10 @@ export const DAMAGE: Record<TrialHazard, { missed: number; caught: number; treat
   harvestEarly: { missed: 0, caught: 0, treat: 0, fix: '' },
   harvestLate: { missed: 0, caught: 0, treat: 0, fix: '' },
 };
+/** Treatments are paid for the whole farm: their base cost times the farm's size (src/farmSize.ts). */
+export const DAMAGE: Record<TrialHazard, { missed: number; caught: number; treat: number; fix: string }> = Object.fromEntries(
+  Object.entries(DAMAGE_BASE).map(([h, d]) => [h, { ...d, treat: Math.round(d.treat * FARM_SCALE) }]),
+) as typeof DAMAGE_BASE;
 
 /** Pests and disease are only treated on a farm whose plan includes pest control. */
 export const PEST_HAZARDS: TrialHazard[] = ['armyworm', 'aphids', 'disease'];
@@ -300,6 +311,8 @@ export interface CheckRecord {
   fix?: string;
   /** farm world: how many wrong fixes were picked before the right one */
   wrongFixes?: number;
+  /** how the fix is done (care/treatments.ts); missing: the standard way */
+  treatment?: string;
 }
 
 /** Care that has to be done again a day or two after a treatment (care/data.ts FOLLOW_UP). */
@@ -359,6 +372,8 @@ export interface FarmResult {
   care?: { job: RoutineJob; done: boolean; loss: number }[];
   /** what the plots' own inputs did to the farm's yield, together (1 = as planned) */
   plotFactor?: number;
+  /** the farm's four rows side by side, when their strategies differ from the plan */
+  rows?: RowResult[];
 }
 
 export interface Trial {
@@ -396,6 +411,10 @@ export interface Trial {
       plots/data.ts ROUTINE), as `${farm}:${job}`. Missing: this cycle has no scheduled care (the guided first cycle,
       farms planted from the six farms screen, and saves from before it). */
   routine?: string[];
+  /** the share of the plans' irrigation the shared catchment delivered so far (src/water; missing: all of it) */
+  delivered?: number;
+  /** each farm's four rows of plots: the strategy each row runs (src/strategy; missing: as the farm plan) */
+  strategies?: RowStrategy[][];
 }
 
 /** The crops a farm can grow in this model. Sukuma wiki uses maize's numbers for yield and price until an agronomist
@@ -424,8 +443,9 @@ export interface TrialSummary {
   profit: number[];
 }
 
-export const POTENTIAL_BAGS = 6; // 90 kg bags of maize from one farm (a sixth of an acre) when everything goes right
-export const BEANS_BAGS = 0.8;
+/** 90 kg bags of maize from one farm when everything goes right: 6 from a sixth of an acre, so 144 from 4 acres (36 an acre). */
+export const POTENTIAL_BAGS = 6 * FARM_SCALE;
+export const BEANS_BAGS = 0.8 * FARM_SCALE;
 export const BEANS_PRICE = 350;
 export const PRICE_BY_QUALITY = [0, 220, 260, 300, 340, 360];
 export const farmName = (i: number) => `Farm ${i + 1}`;
@@ -458,10 +478,41 @@ export function returnedProblem(t: Pick<Trial, 'followUps'>, farm: number, day: 
 }
 
 /** What a farm shows on a day of the cycle: what its plan and luck drew (baseHazard), unless follow-up care was
-    missed the day before, which brings that problem back. */
-export function hazardFor(t: Pick<Trial, 'cycle' | 'forecast' | 'plans' | 'guided' | 'followUps' | 'crops'>, farm: number, day: number): TrialHazard {
-  const back = returnedProblem(t, farm, day);
-  return back ? back.hazard : baseHazard(t, farm, day);
+    missed the day before, which brings that problem back, or a problem was left unresolved the day before, which
+    stays on the farm (src/risk/config.ts: RISK.carryOver). */
+export function hazardFor(t: Pick<Trial, 'cycle' | 'forecast' | 'plans' | 'guided' | 'followUps' | 'crops'> & Partial<Pick<Trial, 'checks'>>, farm: number, day: number): TrialHazard {
+  return shownOn(t, farm, day).hazard;
+}
+
+/** A problem on a farm: what it is, and the day it first showed (earlier than today when it was carried over). */
+export interface Episode {
+  hazard: TrialHazard;
+  start: number;
+}
+
+/** A problem left unresolved stays on the farm the next day if it is one the farm can deal with: treatable on its
+    plan, or hail (dealt with by reading it right). Timing problems and pests on a farm with no pest control do not. */
+export const carriesOver = (h: TrialHazard, p: Plan) => DAMAGE[h].missed > 0 && (canTreat(h, p) || h === 'hail');
+
+/** The problem shown on a farm on a day was dealt with that day: read right, and the fix done by hand (or, for what
+    can't be treated, read right). */
+export function resolvedOn(t: Partial<Pick<Trial, 'checks'>> & Pick<Trial, 'plans'>, farm: number, day: number, h: TrialHazard): boolean {
+  const rec = t.checks?.[checkKey(farm, day)];
+  return !!rec?.right && (rec.treated || !canTreat(h, t.plans[farm]));
+}
+
+/** The problem a farm shows on a day, and the day it first showed. */
+export function shownOn(t: Pick<Trial, 'cycle' | 'forecast' | 'plans' | 'guided' | 'followUps' | 'crops'> & Partial<Pick<Trial, 'checks'>>, farm: number, day: number): Episode {
+  let ep: Episode | null = null;
+  for (let d = Math.min(1, day); d <= day; d++) {
+    const back = returnedProblem(t, farm, d);
+    const prev: Episode | null = ep;
+    // left unresolved yesterday: it is still there today
+    const stays = !!prev && RISK.carryOver && !!t.checks && d > 1 && carriesOver(prev.hazard, t.plans[farm]) && !resolvedOn(t, farm, d - 1, prev.hazard);
+    if (back) ep = { hazard: back.hazard, start: d };
+    else if (!stays) ep = { hazard: baseHazard(t, farm, d), start: d };
+  }
+  return ep ?? { hazard: baseHazard(t, farm, day), start: day };
 }
 
 /** What a farm shows on a day of the cycle. The plan's timing shows on fixed days; the rest is drawn from its odds. */
@@ -489,12 +540,37 @@ function planHazard(t: Pick<Trial, 'cycle' | 'forecast' | 'plans' | 'guided'>, f
 }
 
 /** The day's problems on a farm and how well each was caught (what the farm loses
-    differs with its seed, fertilizer and sprayer: plotLoss). */
+    differs with its seed, fertilizer and sprayer: plotLoss). A problem carried over from one day to the next
+    (RISK.carryOver) counts once, on the day it first showed: caught if it was dealt with on any of its days; if never
+    dealt with, it costs the share of its stated cost at risk by the harvest (src/risk/config.ts: riskShare). */
 function farmProblems(t: Trial, farm: number, lastDay: number) {
   const p = t.plans[farm];
   const problemOn = (day: number) => (WAKALA_YIELD_EFFECTS && MISSED_FOLLOW_UP_RETURNS ? hazardFor(t, farm, day) : baseHazard(t, farm, day));
-  const out: { hazard: TrialHazard; day: number; caught: boolean; treated: boolean }[] = [];
+  const out: { hazard: TrialHazard; day: number; caught: boolean; treated: boolean; scale: number; effect: number }[] = [];
+  // how well the chosen way of treating worked (care/treatments.ts): 1 for the standard way
+  const effectOn = (d: number, h: TrialHazard) => treatmentOf(h, t.checks[checkKey(farm, d)]?.treatment)?.effect ?? 1;
   for (let day = 1; day <= lastDay; day++) {
+    const ep = RISK.carryOver ? shownOn(t, farm, day) : null;
+    // a carried day is the same problem as the day before: counted on its first day
+    if (ep && ep.start < day) continue;
+    const carried = ep && carriesOver(ep.hazard, p) && lastDay > day && shownOn(t, farm, day + 1).start === day;
+    if (ep && carried) {
+      // the problem stayed on the farm: caught if it was dealt with on any of its days
+      let end = day;
+      while (end + 1 <= lastDay && shownOn(t, farm, end + 1).start === day) end++;
+      let caught = false;
+      let treated = false;
+      let effect = 1;
+      for (let d = day; d <= end; d++) {
+        if (resolvedOn(t, farm, d, ep.hazard)) {
+          caught = true;
+          treated = !!t.checks[checkKey(farm, d)]?.treated;
+          effect = effectOn(d, ep.hazard);
+        }
+      }
+      out.push({ hazard: ep.hazard, day, caught, treated, scale: caught ? 1 : riskShare(lastDay + 1 - day), effect: treated ? effect : 1 });
+      continue;
+    }
     const h = problemOn(day);
     if (!DAMAGE[h].missed) continue;
     const rec = t.checks[checkKey(farm, day)];
@@ -503,7 +579,9 @@ function farmProblems(t: Trial, farm: number, lastDay: number) {
     const caught = shown
       ? !!rec?.right && (rec.treated || !canTreat(shown.hazard, p))
       : !!rec?.right && (rec.treated || !canTreat(h, p)) && (h === 'hail' || canTreat(h, p));
-    out.push({ hazard: h, day, caught, treated: !!rec?.treated });
+    // a problem never dealt with costs what is at risk by the harvest (all of it, once it has been left long enough)
+    const scale = !caught && RISK.carryOver && carriesOver(h, p) ? riskShare(lastDay + 1 - day) : 1;
+    out.push({ hazard: h, day, caught, treated: !!rec?.treated, scale, effect: rec?.treated ? effectOn(day, h) : 1 });
   }
   return out;
 }
@@ -537,14 +615,16 @@ export function borerLoss(t: Pick<Trial, 'routine' | 'plots' | 'plans' | 'crops'
 
 /** What one problem costs one plot: the farm's loss, changed by the plot's seed, fertilizer and sprayer. `untopped`:
     the fertilizer's top-dress was missed, so the plot is as hungry as without it. */
-export function plotLoss(h: TrialHazard, caught: boolean, treated: boolean, r: PlotRecord, untopped = false): number {
+export function plotLoss(h: TrialHazard, caught: boolean, treated: boolean, r: PlotRecord, scale = 1, effect = 1, untopped = false): number {
   const d = DAMAGE[h];
-  let loss = caught ? d.caught : d.missed;
+  let loss = caught ? d.caught : d.missed * scale;
+  // a gentler way of treating stops a little less of the damage (care/treatments.ts)
+  if (caught && treated && effect < 1) loss = d.caught + (d.missed - d.caught) * (1 - effect);
   // a pest or disease treated by spraying: each plot is saved as well as its sprayer covers it
   if ((h === 'armyworm' || h === 'aphids' || h === 'disease') && caught && treated && r.sprayer) {
     // a sprayer covers aphids as it covers armyworm: both are sprayed on the leaves
     const cover = sprayerOf(r.sprayer).cover[h === 'aphids' ? 'armyworm' : h];
-    loss = d.caught + (d.missed - d.caught) * (1 - cover);
+    loss = d.caught + (d.missed - d.caught) * (1 - cover * effect);
   }
   const seed = seedOf(r.seed);
   if (h === 'drought') loss *= seed.drought;
@@ -572,7 +652,9 @@ const round1 = (x: number) => Math.round(x * 10) / 10;
     it counts as missed (by default, every job due by lastDay). */
 function farmContext(t: Trial, farm: number, lastDay: number, careDay = lastDay + 1) {
   const p = t.plans[farm];
-  const factors = Object.fromEntries(PLAN_STEPS.map(s => [s.key, stepFactor(s.key, p, t.forecast)])) as Record<StepKey, number>;
+  // the catchment may not deliver all the irrigation the plan wants (src/water: the shared dam runs low)
+  const watered = (t.delivered !== undefined && t.delivered < 1 ? { ...p, water: p.water * t.delivered } : p) as Plan;
+  const factors = Object.fromEntries(PLAN_STEPS.map(s => [s.key, stepFactor(s.key, s.key === 'water' ? watered : p, t.forecast)])) as Record<StepKey, number>;
   // proposed effects from Wakala Agent, off until the agronomist's review (see WAKALA_YIELD_EFFECTS)
   const drive = t.tractor?.[farm];
   if (WAKALA_YIELD_EFFECTS && p.land === 'tractor' && drive) factors.land *= TRACTOR_Q_FACTOR.base + TRACTOR_Q_FACTOR.span * drive.Q;
@@ -592,7 +674,7 @@ function growPlot(t: Trial, farm: number, r: PlotRecord, ctx: ReturnType<typeof 
   const untopped = !!fert.withoutTop && routineMissed(t, farm, 'topdress', day);
   const care = routineMissed(t, farm, 'weeding', day) ? 1 - WEEDS_MISSED : 1;
   const own = { land, seed: seed.factor[t.forecast], fert: untopped ? fert.withoutTop!.factor : fert.factor, tools: toolsFactor(r, farm), care };
-  const keep = ctx.found.reduce((n, q) => n * (1 - plotLoss(q.hazard, q.caught, q.treated, r, untopped)), 1) * (1 - borerLoss(t, farm, r, day));
+  const keep = ctx.found.reduce((n, q) => n * (1 - plotLoss(q.hazard, q.caught, q.treated, r, q.scale, q.effect, untopped)), 1) * (1 - borerLoss(t, farm, r, day));
   const bags = POTENTIAL_BAGS * PLOT_SHARE * ctx.farmShare * own.land * own.seed * own.fert * own.tools * own.care * keep;
   return { bags, keep, own, seed, untopped };
 }
@@ -638,9 +720,15 @@ export function harvestFarm(t: Trial, farm: number, lastDay = CHECK_DAYS): FarmR
   const costs = farmCost(t, farm) + (t.treatments[farm] ?? 0) + (t.fuel?.[farm] ?? 0);
   const untopped = routineMissed(t, farm, 'topdress', lastDay + 1);
   const problems = found
-    .map(q => ({ hazard: q.hazard, day: q.day, caught: q.caught, loss: plots.reduce((n, x) => n + plotLoss(q.hazard, q.caught, q.treated, x.inputs, untopped), 0) / plots.length }))
+    .map(q => ({ hazard: q.hazard, day: q.day, caught: q.caught, loss: plots.reduce((n, x) => n + plotLoss(q.hazard, q.caught, q.treated, x.inputs, q.scale, q.effect, untopped), 0) / plots.length }))
     .sort((a, b) => b.loss - a.loss);
-  return { bags, beans, quality, income, costs, profit: income - costs, factors: out, lost, problems, plots, plotFactor, ...(t.routine ? { care: careOf(t, farm, rows[0], lastDay + 1) } : {}) };
+  const result: FarmResult = { bags, beans, quality, income, costs, profit: income - costs, factors: out, lost, problems, plots, plotFactor, ...(t.routine ? { care: careOf(t, farm, rows[0], lastDay + 1) } : {}) };
+  // the four rows of plots, each with its own strategy: the farm's harvest is theirs added up
+  if (!hasStrategies(t, farm)) return result;
+  const byRow = rowResults(t, farm, result, strategyCost(t, farm));
+  const rowBags = round1(byRow.reduce((n, r) => n + r.bags, 0));
+  const rowIncome = byRow.reduce((n, r) => n + r.income, 0);
+  return { ...result, bags: rowBags, income: rowIncome, profit: rowIncome - costs, rows: byRow };
 }
 
 /** The scheduled care a farm was due by `day`: done or missed, and what each miss cost its harvest. */
@@ -705,7 +793,7 @@ export function plotLessons(t: Trial): PlotLesson[] {
       .sort((x, y) => y.change - x.change);
     const pc = (x: number) => (Math.abs(x) < 0.005 ? '±0%' : `${x > 0 ? '+' : '−'}${Math.round(Math.abs(x) * 100)}%`);
     if (tp.topic === 'Sprayer' && options.every(o => Math.abs(o.change) < 0.005)) {
-      out.push({ topic: tp.topic, line: 'Sprayers made no difference this cycle: no farm needed spraying.', options: [] });
+      out.push({ topic: tp.topic, line: 'Sprayers made no difference: no farm needed spraying.', options: [] });
       continue;
     }
     const body = options.map(o => `${o.name} ${o.k === tp.ref ? '(the yardstick)' : pc(o.change)}`).join(', ');
@@ -759,7 +847,7 @@ export function explain(t: Trial, results: FarmResult[]): { best: number; worst:
     return { best, worst, lines };
   }
   if (gap < 0.05) {
-    lines.push(`${farmName(best)} and ${farmName(worst)} grew the same: what you changed made no difference to the harvest this time.`);
+    lines.push(`${farmName(best)} and ${farmName(worst)} grew the same: your change made no difference.`);
     return { best, worst, lines };
   }
   lines.push(`${farmName(best)} grew ${B.bags} bags of ${cropB}; ${farmName(worst)} grew ${W.bags}. That is ${bagsText(gap)} more.`);
@@ -780,7 +868,7 @@ export function explain(t: Trial, results: FarmResult[]): { best: number; worst:
     .slice(0, 2);
   for (const x of top) {
     if (x.what === 'plots') {
-      lines.push(`Inputs: the seed, fertilizer and machines on ${farmName(best)} gave ${bagsText(x.bags)} more than ${farmName(worst)}'s.`);
+      lines.push(`Inputs on ${farmName(best)} gave ${bagsText(x.bags)} more than ${farmName(worst)}'s.`);
     } else if (x.what === 'problems') {
       const worstProblems = [...new Set(W.problems.filter(q => q.loss >= 0.05).map(q => HAZARD_WORDS[q.hazard]))].slice(0, 2);
       lines.push(
@@ -802,7 +890,7 @@ export function explain(t: Trial, results: FarmResult[]): { best: number; worst:
   // the farm that grew most is not always the one that made most
   const rich = results.map((_, i) => i).sort((a, b) => results[b].profit - results[a].profit)[0];
   if (rich !== best) {
-    lines.push(`But ${farmName(rich)} made the most money: ${money(results[rich].profit)} coins against ${money(B.profit)}, because it cost less to grow.`);
+    lines.push(`But ${farmName(rich)} made the most: ${money(results[rich].profit)} vs ${money(B.profit)}, as it cost less.`);
   }
   return { best, worst, lines };
 }
@@ -813,11 +901,11 @@ export function causeOf(h: TrialHazard, p: Plan, f: Forecast, rows?: PlotRecord[
   // the farm's inputs, on all its plots
   const r = rows?.[0];
   if (r && h === 'nitrogen') {
-    if (r.fert === 'none' || r.fert === 'manure') return 'This farm got no fertilizer or only manure, so the plants are hungry.';
-    if (r.fert === 'basalTop' || r.fert === 'double') return 'The plants are short of food this week, but the CAN top-dress keeps the loss small.';
+    if (r.fert === 'none' || r.fert === 'manure') return 'No fertilizer or only manure: the plants are hungry.';
+    if (r.fert === 'basalTop' || r.fert === 'double') return 'Short of food, but the CAN top-dress keeps the loss small.';
     return 'The plants are short of food this week.';
   }
-  if (r && h === 'drought' && r.seed === 'dt') return `${causeOf(h, p, f)} Its drought-tolerant seed copes better than most.`;
+  if (r && h === 'drought' && r.seed === 'dt') return `${causeOf(h, p, f)} Its drought-tolerant seed copes better.`;
   if (r && h === 'disease' && p.pest !== 'none' && (r.seed === 'dense' || r.seed === 'saved')) return 'Close spacing or saved seed catch rust worst.';
   const total = waterTotal(p, f);
   switch (h) {
@@ -826,19 +914,19 @@ export function causeOf(h: TrialHazard, p: Plan, f: Forecast, rows?: PlotRecord[
         ? `This farm gets ${p.water ? `${p.water} L/m² of water a week plus about ${FORECASTS[f].rain} of rain` : `only the rain, about ${FORECASTS[f].rain} L/m² a week`}. Maize needs about ${WATER_NEED}.`
         : 'A dry spell came even with the watering.';
     case 'flood':
-      return total > WATER_TOO_MUCH ? `This farm gets about ${total} L/m² of water a week with the rain: more than maize can use.` : 'Heavy rain came this week.';
+      return total > WATER_TOO_MUCH ? `About ${total} L/m² a week with rain: more than maize can use.` : 'Heavy rain came this week.';
     case 'nitrogen':
       return p.fert === 'none'
         ? 'This farm got no fertilizer.'
         : p.fert === 'manure'
           ? 'Manure alone does not feed maize all season.'
           : p.fert === 'basal'
-            ? 'Planting fertilizer runs out mid-season. Maize needs a top-dress at knee height.'
+            ? 'Planting fertilizer runs out; maize needs a knee-high top-dress.'
             : p.seed === 'dense'
-              ? 'Planted close, the plants share the food between too many.'
+              ? 'Planted close, too many plants share the food.'
               : 'The plants are short of food this week.';
     case 'weeds':
-      return p.land === 'slash' ? 'Slashing leaves weed roots in the ground, and they grow back.' : p.land === 'mulch' ? 'A few weeds came through the mulch.' : 'Weeds grow back after the first rains.';
+      return p.land === 'slash' ? 'Slashing leaves weed roots, so they grow back.' : p.land === 'mulch' ? 'A few weeds came through the mulch.' : 'Weeds grow back after the first rains.';
     case 'armyworm':
     case 'aphids':
     case 'disease':
@@ -846,13 +934,13 @@ export function causeOf(h: TrialHazard, p: Plan, f: Forecast, rows?: PlotRecord[
     case 'wildlife':
       return p.harvest === 'late' ? 'Dry cobs left standing feed the birds.' : '';
     case 'plantEarly':
-      return 'This farm was planted before the rains: that was its plan.';
+      return 'Planted before the rains, as planned.';
     case 'plantLate':
-      return 'This farm was planted three weeks after the rains began: that was its plan.';
+      return 'Planted three weeks late, as planned.';
     case 'harvestEarly':
-      return 'This farm was picked while the husks were green: that was its plan.';
+      return 'Picked while husks were green, as planned.';
     case 'harvestLate':
-      return 'This farm was left two weeks past ready: that was its plan.';
+      return 'Left two weeks past ready, as planned.';
     default:
       return '';
   }
@@ -892,7 +980,7 @@ export function planProblem(t: Pick<Trial, 'plans' | 'plots'>, coins: number): s
     if (twin >= 0) return `${farmName(i)} has the same plan and plots as ${farmName(twin)}. Change at least one thing.`;
   }
   const cost = trialCost(t);
-  if (cost > coins) return `These plans cost ${money(cost)} coins and you have ${money(coins)}.`;
+  if (cost > coins) return `These plans cost ${money(cost)} and you have ${money(coins)}.`;
   return null;
 }
 

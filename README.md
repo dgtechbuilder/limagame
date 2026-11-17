@@ -39,7 +39,14 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [Sound effects](#sound-effects)
 - [Money on screen](#money-on-screen)
 - [Settings](#settings)
+- [Money at risk](#money-at-risk)
+- [Climate-smart farming: row strategies and treatment choices](#climate-smart-farming-row-strategies-and-treatment-choices)
+- [Water as a real resource](#water-as-a-real-resource)
+- [The evidence layer](#the-evidence-layer)
 - [Climate tracking](#climate-tracking)
+- [Achievements, the daily streak and certificates](#achievements-the-daily-streak-and-certificates)
+- [My Progress: certification levels and learning credits](#my-progress-certification-levels-and-learning-credits)
+- [Partners: billboards, branded products and offers](#partners-billboards-branded-products-and-offers)
 - [Character art: retro anime](#character-art-retro-anime)
 - [Design review mode](#design-review-mode)
 - [Saving, events and privacy](#saving-events-and-privacy)
@@ -129,8 +136,18 @@ src/
     Meta.tsx               How the farm works
     Settings.tsx           the Settings page: My farmer, Game, Display, Help & data
     Climate.tsx            the Climate page: Overview, Emissions, Water & soil, Climate shocks, Activity
+    Achievements.tsx       My Progress: Journey, Modules, Today, Badges, Certificates
+    Partners.tsx           the Partners page: Offers, Placements
+  progress/model.ts        My Progress: modules, learning credits, certification levels (no screens)
+  partners/                partner brands and every slot they can buy (data.ts), engagement counts (track.ts),
+                           sponsor lines, ribbons and the classic farm's sign (ui.tsx)
   art/                     retro anime characters: anime.tsx (SVG kit: farmer, guide, shopkeeper, Ojuok),
                            Cast.tsx (anime or original picture), style.ts (style and read-aloud contexts)
+  achievements/            badges, the daily streak and certificates: model.ts (every rule), track.ts
+  finance/loan.ts          the loan calculator (no coins change hands)
+  training/data.ts         farmer training courses and bookings
+  farmSize.ts              how big the six farms are (4 acres, 20 plots) and FARM_SCALE
+  fit.ts                   the 874 × 402 stage and how it fits the screen
   first/                   the first session (see below): Story.tsx the story so far, Update.tsx the farm update,
                            Village.tsx, Create.tsx, Review.tsx; data.ts its words, track.ts the events
   rounds/                  field rounds (see below), loaded only when opened:
@@ -149,11 +166,17 @@ src/
   plots/                   plots and inputs: data.ts (20 plots a farm; seeds, fertilizers, sprayers, tractor types and
                            tools, scheduled care, with what each does and costs); PlotBoard.tsx (a farm's seed,
                            fertilizer and sprayer); TractorPick.tsx (the tractor's type and tool)
+  strategy/                climate-smart rows: data.ts (every dimension and option), model.ts, StrategyBoard.tsx
+  water/                   the tank, the animals, the shared catchment, crop cover: config.ts, model.ts, track.ts, WaterPanel.tsx
+  credits/ledger.ts        every kind of credit (CO₂, water) earned and paid
+  evidence/                the decision log, programme tags, "tried it on your own farm?": model.ts, Ask.tsx
+  risk/                    money at risk: config.ts (every number to tune), model.ts (the list, from the save), RiskHud.tsx (the button)
   tractor/                 from Wakala Agent: the tractor drive before planting: data.ts, sim.ts (no DOM), Tractor.tsx
   business/                the tractor business (see below): model.ts every rule and number, drive.ts the ten-second
                            drive, Business.tsx and DriveGame.tsx the screens, Cast.tsx and cast/ the brand characters
   climate/                 climate tracking: model.ts (every factor, the ledger, rating, levels), track.ts (which
-                           actions record what), Tag.tsx (climate tags on choices), sample.ts (design review)
+                           actions record what, and the end-of-day payment), land.ts (land farmed, bare or idle,
+                           and what a credit pays), Tag.tsx (climate tags on choices), sample.ts (design review)
   review/Review.tsx        design review (?review=1): sample states for every screen, loaded only in review
   dev/hook.ts              ?dev in dev builds only: state and jump-to-state helpers for the play-tests
 tests/                     Playwright play-tests (npm test, see Tests); helpers.ts the shared set-up
@@ -172,7 +195,14 @@ CNAME                      the custom domain (see Deploy)
 
 The design is a landscape phone game on an **874 × 402** frame. The app draws everything on a fixed
 874 × 402 stage and scales it to fit the screen, so positions match the Figma frames exactly. Portrait
-phones see a "rotate your phone" prompt.
+phones see a "rotate your phone" prompt. The fit (`fitScale()` in `src/fit.ts`) uses the whole screen on phones and a
+small margin (3–4%, at most 48px) on larger screens. It is re-taken on resize, rotation, the visual viewport and a
+ResizeObserver, and re-checked for 700 ms after each, because iOS browsers report a rotation before the new size is
+readable (the stage otherwise kept its portrait size, small in the middle of a landscape screen).
+
+The stage is drawn as a phone, with rounded corners (a 50px radius). Nothing a player reads or taps sits in those
+corners: the nav row and Close sit 28px in from the right and 8px down, the side-tab pages' panel is 24px in, and the
+HUD pills, the stake banner and the guide line clear the curve. `tests/frame.spec.ts` checks every screen.
 
 | Figma group | Frames | Code |
 | --- | --- | --- |
@@ -287,18 +317,22 @@ One season of maize on *Farm Moja* (the maize beds on the map):
 
 1. **Farming Steps** run in order: Land prep → Planting → Fertilizer → Pesticides → Water → Harvest. Only the
    current step is open; later ones are locked and finished ones are read-only. Each task costs coins (free
-   if the input was bought in the Shop) and shows a one-line farming tip. *Finish* moves the calendar on by
+   if the input was bought in the Shop, though its shop price still counts in the season's costs) and shows a
+   one-line farming tip. *Finish* moves the calendar on by
    that step's days; *Skip* is allowed but scores zero for that step.
 2. **Crop health** is the average score of the growing steps (tasks done ÷ recommended). It sets expected bags
    and quality, shown in Info and Harvest timing.
 3. **Harvest timing**: harvest now, wait 2 days (best), or wait a week (lower quality).
-4. **Sale → Storage → Value addition → Select process**: prices are editable; storage trades cost per bag
-   against bags lost; processing raises the price. *Confirm and sell* pays out coins and points.
+4. **Sale → Storage → Value addition → Select process**: prices are editable; the harvest sells where it pays
+   more a bag, at the gate or at market after transport and storage; the grade sets the price (a lower grade
+   fetches less, as on the six farms: `PRICE_BY_QUALITY`); storage costs every bag put in store, against bags
+   lost; processing raises the price. *Confirm and sell* pays out coins and points.
 5. **Season results** compare seasons, name the three steps that cost the most, and *Lima AI* explains the
    result from the player's own numbers. *Start season N+1* keeps coins, points and history.
 
 Points: +100 × score for each finished step, +5 per bag sold. Rewards cost 800 or 1,500 points. Play time
-counts while the game is on screen. Milk and eggs can be collected once a day. The farm always shows
+counts while the game is on screen. Milk and eggs can be collected once a day. Equipment is bought once; fertilizer
+and tanks can be bought again. The farm always shows
 **Now : &lt;task&gt;** and a bubble on the field for the current task.
 
 Balance numbers live in `src/data.ts` (`STEP_META`, `HARVEST_EFFECT`, `STORAGE_OPTIONS`, `PROCESSES`,
@@ -378,7 +412,12 @@ WASD. The **task card** at the top says what to do next; tap it and the farmer w
 
 ![The farm world](docs/farm-world.webp)
 
-- **The six farms** each have **20 plots** (4 × 5 tiles, Plot 1 at the back left), Farms 1–3 at the back and 4–6 in
+- **The mini forest**: 10 acres of idle land left to grow as forest, top right of the farm above the pond, with a
+  *Mini forest · 10 acres* sign (`FOREST` in `src/world/engine.ts`). It is planted like a tree farm (`forest` in
+  `src/world/models.ts`): short, round-crowned trees in straight rows with a few tall, skinny trees among them, and
+  grass tufts and small bushes at the foot of each trunk. Only the trunks block the farmer, so the lanes between the
+  rows can be run straight through. It is the farm's biggest carbon store (Climate → Farm areas).
+- **The six farms** are **4 acres** each, with **20 plots** of a fifth of an acre (4 × 5 tiles, Plot 1 at the back left), Farms 1–3 at the back and 4–6 in
   front, each with a sign. The plots make **4 rows of 5** (each row runs from the back of the farm to the front).
   **Clearing and planting are done a row at a time**: the farmer stands anywhere in a row, a **Clear Row 1** or
   **Plant Row 1** button shows under them, and pressing it starts a **3-second timer** (a stopwatch over the farmer,
@@ -401,6 +440,9 @@ WASD. The **task card** at the top says what to do next; tap it and the farmer w
   the plots under it as it drives (a column of five plots a pass): see [Plots and inputs](#plots-and-inputs). It drives
   a little faster than walking. A farm whose 20 plots are all done from the seat pays **+30 bonus points** once per
   farm and job (`TRACTOR_BONUS.perJob`). The hired tractor (a *Tractor hire* plan) ploughs a whole farm in one pass.
+- **Places answer when the farmer walks to them** (a shed, the pond, the Hire spot, the market, the house, the
+  Mission board), or stops in them: a walk to somewhere else that only passes through picks nothing up and opens
+  nothing. A tap on the task card at a place the farmer already stands in opens it again.
 - **Sleep** at the farmhouse starts the next day (on the fast clock); **Plan** by the house, or **Mission** on the
   HUD, opens the plans, progress and results.
 - The HUD: the farmer and their level (top left), settings, coins and points (top right; **+** opens the shop and
@@ -568,17 +610,20 @@ with *Tractor hire* or *Check and treat*, and the moments come up as you play.
 
 Lines ported from Wakala are marked `// Wakala` in the data; the rest are new, in the same style.
 
-**Money.** Lima's coins stay the only money. Shillings appear only in the tractor summary, to compare, and its
+**Money.** Lima's money (shown in the player's currency) stays the only money. Real-world costs appear only in the tractor summary, to compare, and its
 *Sources* button lists each figure with its source: diesel KSh 228 a litre (EPRA's Nairobi cap for 15 October to
 14 November 2026, via [Techish](https://tech-ish.com/2026/10/14/petrol-rises-to-kes-226-96-in-nairobi-and-kerosene-jumps-kes-28-49/)),
 tractor ploughing KSh 3,000 and harrowing KSh 1,500 an acre ([Beyond Forest](https://www.beyondforest.org/post/ploughing-cost-per-acre-in-kenya-2026-guide-virgin-vs-uncultivated-land-explained)),
 hand ploughing 24 person-days an acre at KSh 400 a day ([FarmBiz Africa](https://farmbizafrica.com/tractors-services-increase-farmer-earnings-lower-production-costs/)).
 **Estimates**, labelled as such in the game: ridging, planting, spraying and harvesting hire; hand-work days for
-everything but ploughing; diesel per acre for each implement; 2.68 kg of CO₂ a litre. One farm is a sixth of an acre.
+everything but ploughing; diesel per acre for each implement; 2.68 kg of CO₂ a litre. One farm is 4 acres. The
+summary shows these costs in the player's currency, from the shilling sources at KSh 129 to the US dollar.
 
 **Rewards.** A drive pays 1.5 coins per score point and 50 points per star above the farm's best this cycle, as in
-Wakala. *Try again* is allowed until the player is done with the drive, so a good drive can be replayed for coins;
-`TRACTOR_REWARD.retryPays = 'improvement'` would pay a retry only for the score above the best (an open decision).
+Wakala. *Try again* is allowed until the player is done with the drive, but a retry pays coins only for the score
+above the farm's best (`TRACTOR_REWARD.retryPays = 'improvement'`), so a drive can't be replayed for coins. The
+reducer works the pay out from the score and the best on file. Only the first clean drive on a farm each cycle earns
+a climate credit.
 
 **Yield.** Until the agronomist's review (Gate A), how well the tractor ploughed and whether follow-ups were done are
 shown and saved but change no bags: `WAKALA_YIELD_EFFECTS = false`. With it on, a tractor-hire farm's land-prep
@@ -698,7 +743,8 @@ so simulated peers stand in (the brief's "liquidity backstop"), and the data sha
 
 **Partners** (Kimani Tractor Hire, the Narok Farmers' Co-op, Rafiki Fuel, the County Roads Office, the Hello Tractor
 app), **Fleet** (ridger, fertilizer spreader, maize planter, tractor harvester, the hub's large tractor, the combine)
-and **levels** by farmers helped are as before.
+and **levels** by farmers helped are as before. A day hired out to the county is booked like any other day's hire:
+the hub keeps its share while the tractor is the hub's, and an owned tractor pays its PAYG instalment from it.
 
 **Hello Tractor's voice (§6).** The business screens use the brand's palette (Sunset Blaze `#FF461E`, Hibiscus
 `#F8285F`, Plum `#2F1C54`, Sage `#93C393`, Summer Breeze `#93C2C6`, Charcoal `#161616`) and type (Merriweather for
@@ -763,11 +809,44 @@ Every screen has at least two or three ways to move, and one of them is always t
 | First session | one step where that is safe | ☰ | Settings instead (the farm is not open yet) |
 
 The **main menu** (`src/screens/MainMenu.tsx`, the **MENU** button on the farm) lists My farm, Mission, Field rounds,
-Tractor, Tractor business, Shop, Climate, Rewards, Farming steps and Settings. The list scrolls, with a gold
+Tractor, Tractor business, Shop, Achievements, Climate, Rewards, Training, Loan calculator, Farming steps and
+Settings. The list scrolls, with a gold
 **scroll wheel** beside it (▲ and ▼ buttons and a thumb to drag, since phones hide scroll bars); the mouse wheel and
 a swipe scroll it too. A screen opened from the menu goes back to the menu on *Back*;
 *Farm* closes everything. The shared buttons are `NavBar` in `src/components/Nav.tsx`; `ModalShell` adds them to every
 modal. `tests/nav.spec.ts` plays them.
+
+**Every dialog has a ✕ in its top-right corner** to leave it: the framed modals (`ModalShell`), the full pages
+(Settings, Climate, Achievements: beside Back · Menu · Farm), and the cards on top of a screen (the six farms' choices,
+the rounds' summary, the tractor business's welcome, graduation and day result, the story's pop-ups, a zoomed
+picture). The shared button is `CloseX` in `src/components/Success.tsx`.
+
+### Success dialogs
+
+Things that matter end in a dialog the player reads and closes, not a message that fades at the top
+(`SuccessCard` in `src/components/Success.tsx`, the screens in `src/screens/Success.tsx`, `GameState.success`):
+
+| After | The dialog |
+| --- | --- |
+| Selling food in the Shop | **Sale complete**: bags sold, what they earned, the price, bags left, coins now; *Sell another* adds to it |
+| Selling the season's harvest | **Harvest sold**: bags, where they sold, what they earned, losses and costs, points; closes onto the season results |
+| Booking a training course | **Booking confirmed**: when, where, the trainer, what to bring and a seat reference; a reminder goes into Messages |
+| Moving the harvest to better storage | **Storage upgraded** (optional): spoilage before and after, bags saved, the extra cost; *Don't show this after an upgrade*, or Settings → Game → *Upgrade messages* |
+| A right call on a farm check | **Farm visit complete**: what was found and what to do next, the points, first or second look, and the day's visits so far |
+
+### Loan calculator and training
+
+*Loan calculator* (Menu): what the loan is for (each purpose has its rate), how much, and over how many months, with
+the monthly repayment as it changes. **Get my quote** opens the **Loan Quote Result**: the monthly repayment, the
+interest, a 1.5% processing fee and the total to pay back; whether the farm can carry it against what it earns a month
+(the last seasons' sales, or this season's expected harvest): *Comfortable* (under 30%), *Tight* (up to 50%) or
+*Risky*, with the most that stays comfortable; and the loan and interest month by month. The *Phone Loan Discount*
+voucher from Rewards takes 10% off the rate. It is a calculator only: no coins change hands
+(`src/finance/loan.ts`, `src/screens/Loan.tsx`).
+
+*Training* (Menu): four short courses, each with a date, place, trainer, seats and price (two are free). *Book a
+seat* pays for it, keeps the booking with the save and opens the Booking Success dialog (`src/training/data.ts`,
+`src/screens/Training.tsx`). `tests/success.spec.ts` plays all of this.
 
 ## Page addresses
 
@@ -788,11 +867,14 @@ reload without losing their place, bookmark a page, and use the browser's **Back
 | `#/mission` | Mission: the six farms |
 | `#/tractor-business` | The tractor business |
 | `#/settings/my-farmer` · `game` · `display` · `help` | Settings, by section |
-| `#/climate/overview` · `emissions` · `water-and-soil` · `shocks` · `activity` | Climate, by section |
+| `#/climate/overview` · `land-and-pay` · `farm-areas` · `emissions` · `water-and-soil` · `shocks` · `activity` | Climate, by section |
 | `#/shop/food` · `fertilizer` · `water-tanks` · `equipment` | Shop, by tab |
 | `#/steps/land-prep` · `planting` · `fertilizer` · `pesticides` · `water` · `harvest` | Farming steps |
 | `#/harvest-timing` · `#/sale` · `#/storage` · `#/value-addition` · `#/process` | The season after harvest |
 | `#/farm-info` · `#/results` · `#/rewards` · `#/welcome` | Farm info, season results, rewards, how the farm works |
+| `#/loan-calculator` · `#/loan-calculator/quote` · `#/training` | The loan calculator and its quote, farmer training |
+| `#/progress/journey` · `modules` · `today` · `badges` · `certificates` | My Progress, by section (`#/achievements/…` still works) |
+| `#/partners/offers` · `#/partners/offers/<brand>` · `#/partners/placements` | Partners: offers (one brand's in view), placements |
 
 **The player's session decides where an address can go.** The game's saved state stays the one source of
 truth: the address always names the page on show, and a typed address goes through the same rules as a tap.
@@ -829,10 +911,21 @@ Settings → Game → *Sound effects* turns them off.
 
 ## Money on screen
 
-Every money value is shown at **10 times** its stored amount: coins, prices, costs, profits and shillings all gain a
-0 (`money()` and `kshText()` in `src/money.ts`). The game's own maths, its unlocks and old saves are unchanged, so
-everything compares exactly as before; only what the player reads is scaled. Points, litres, km, acres and days are
-not money and are not scaled. Typed prices (Sale of produce) are read back at the same scale.
+All money is shown in the **player's own currency** (`money()` in `src/money.ts`): balances, prices, costs,
+profits, rewards, loans, training, the tractor summary's real-world costs and the climate payments. The currency
+comes from the country picked on the second onboarding step ("Where do you farm?", after naming the farmer), and
+can be changed in **Settings › Game › Country and money**. The country is kept with the settings, so it survives
+Reset progress. Kenya, Uganda, Tanzania, Rwanda, Ethiopia, Nigeria, Ghana, South Africa, Zambia, Malawi and the
+United States are offered; "Somewhere else" (and any save made before the step existed) shows US dollars. The step
+pre-picks a country from the device's time zone, then its language (e.g. `en-KE`).
+
+The game's own maths keeps its stored amounts, so every comparison, unlock and old save works as before: a stored
+amount stands for 10 Kenyan shillings (the prices were set in shillings), worth US dollars at KSh 129 to the dollar
+(`KSH_PER_USD`), and each currency has a fixed game rate to the dollar (`COUNTRIES`). Kenya therefore sees the
+game's own shilling prices (a new game starts with KSh 300,000; $2,326 in dollars). Currencies with cents (dollar,
+cedi, rand, kwacha) show them under 100 ($3.10); the rest show whole units. The small HUD meters use a short form
+(`moneyShort()`: KSh 300k, USh 8.5M). Typed prices (Sale of produce) are typed in the player's currency. Where this
+README says *coins*, it means this money. Points, litres, km, acres and days are not money.
 
 ## Settings
 
@@ -842,12 +935,137 @@ four sections. Every control works at once and is saved on the device; *Reset pr
 | Section | Controls |
 | --- | --- |
 | **My farmer** | rename the farmer; change the look (the farm, the rounds and the HUD all follow) |
-| **Game** | *Character style*: Retro anime or Original · *Farm view*: 3D farm or Classic · *Read aloud*: speaks the guide's lines and the game's messages with the phone's voice (a Kenyan English voice when the phone has one), with a Test button · *Sound effects*: on or off, with a button to hear each one |
+| **Game** | *Character style*: Retro anime or Original · *Farm view*: 3D farm or Classic · *Read aloud*: speaks the guide's lines and the game's messages with the phone's voice (a Kenyan English voice when the phone has one), with a Test button · *Sound effects*: on or off, with a button to hear each one · *Upgrade messages*: the dialog after a storage upgrade, on or off |
 | **Display** | *Graphics*: Auto (drops shadows by itself on slow phones), High, Low (no shadows, 1× resolution) · *Reduce motion*: ends every animation and transition at once · *Full screen* |
 | **Help & data** | How the farm works · Design review · Reset progress (asks twice) |
 
 The settings live in `GameState.settings` (`src/state.ts`). The 3D farm is rebuilt when the character style or the
 graphics change. `tests/settings.spec.ts` plays every section.
+
+## Money at risk
+
+The farm's first button, top centre beside the task card: **the money every unresolved problem on the six farms
+would cost if it is left**, added up and written short in the player's currency (*KSh 50k at risk*, *KSh 1.2M at
+risk*). It makes the daily loop's stakes visible at a glance and gives a reason to open the game every day.
+
+![The at-risk list: each farm, what is at risk and when it grows, never the cause](docs/at-risk-list.webp)
+
+- **What it counts.** Every farm that is planted and shows a problem with a cost (pests, water, plant food, weeds,
+  animals, hail…) that has not been dealt with: read right, and the fix done by hand (hail: read right). A problem's
+  **stated cost** is what the six-farm model takes off that farm's harvest if it is never dealt with
+  (`DAMAGE[…].missed` × what the farm's harvest is worth as it grows), the same number the check shows: *Will cost you
+  about KSh 10,730 if it is left alone*.
+- **It grows if left.** On the day a problem shows, half its stated cost is at risk; each day it is left adds a
+  quarter, up to the whole stated cost. **A problem left unresolved stays on its farm the next day** (until it is
+  dealt with or the harvest), so a player can still catch it late; one never dealt with costs, at harvest, what was at
+  risk by then. A problem the plan cannot treat (pests on a farm with no pest control) does not carry over, and once
+  read right it leaves the list as lost, not saved. All of it is in `src/risk/config.ts` (`startShare`,
+  `escalatePerDay`, `carryOver`).
+- **Tap it** for the list, biggest first: the farm and its plots, what is at risk now, and what it will be in a day
+  (or *Full cost*). The list never says what the problem is, only where the player is with it (*Not checked yet*,
+  *Read wrong: look again*, *Read right: choose the fix*, *Read right: the work is left*). **Tap a farm** to go straight
+  to its sign and into its check (or the fix, or the work left).
+- **Live.** Dealing with a problem takes it off at once: the button pops, a *KSh 9.6k saved* chip floats off it and a
+  *Caught in time* card follows (after any check or fix screen has closed). With nothing at risk the button turns calm
+  green, *All clear* (*Harvest time* once the checks are over). It first appears with the first problem of the first
+  planting period, and stays from then on.
+- **While you were away.** The button as last seen is saved; a player coming back on a later day to more at risk sees
+  what grew (*KSh 3.5k at risk when you left, KSh 11k now*) and can open the list from there.
+- **Forecast shocks** (drought, flood, hail by the season's forecast, less what crop cover pays; cover is the Kinga
+  Cover offer for now) can be added to the total: off (`RISK.includeShocks`) until confirmed.
+- **Evidence** (for the evidence layer to come): every tap on the button and on a farm in its list is counted, and
+  every problem dealt with is kept with when it was first on the button in front of the player and when it was fixed
+  (`GameState.risk`, the last 100). Events: `risk_open`, `risk_row`, `risk_fixed` (with `msFromSeen`).
+- **Not yet:** a push or SMS reminder (*KSh 50k at risk on Farm 2*) is out of scope until confirmed.
+
+`src/risk/model.ts` works the list out from the save (no screens; `riskOf`), `src/risk/RiskHud.tsx` is the button, the
+list and the two cards, and `tests/risk.spec.ts` plays the acceptance checks: three problems add up, a fix drops the
+total by exactly its amount, a day left raises each by the escalation (up to its stated cost), a carried problem
+stays on its farm, the list never names a cause and a tap opens that farm's check.
+
+## Climate-smart farming: row strategies and treatment choices
+
+Partners asked the game to teach climate-smart practices through real trade-offs. Two general systems do it.
+
+**Row strategies.** Each farm's 20 plots make 4 rows of 5, and **each row runs its own strategy**: one option on every
+dimension, grouped as *fertilizer* (as the plan, organic compost, DAP, Rutuba Gold NPK, micro-dosing), *tilling*
+(minimum tillage, deep ploughing), *sowing* (seed, spacing, seedbed: zai pits, tied ridges), *planting* (timing,
+mulching), *planning* (crop, rotation, season) and *farming habits* (check frequency, watering time, fertilizer
+timing). Every option has a cost, labour (person-days, 24 family days a farm, the rest hired), a payoff (the return
+over the co-investment of cash and labour, which can differ by the season's forecast), and climate effects (emissions,
+carbon stored, water, soil health, pollution, and how much of each problem's damage the row takes). Mission ›
+*Rows* (plan) or *Row strategies* (growing) opens the board; a sown farm's rows are locked. After harvest, Mission ›
+*By row* puts the four rows of each farm side by side (bags, profit, return, labour, CO₂, carbon, water) and Lima AI
+names the row that paid best and what it did differently. A row left "as the farm plan" changes nothing, so a farm
+whose rows are untouched grows exactly as before. The strategies are paid with the plan (or at once, while growing),
+and their emissions, carbon, water and soil go into the climate ledger at harvest, so they move the climate rating,
+the credits and soil health. **The whole table is `src/strategy/data.ts`**: a new dimension or option is one more entry,
+no code. Returns are placeholders (organic about 20%, DAP about 15% over the co-investment) to be replaced with verified
+values.
+
+**Diagnose, then choose how to treat.** After the right fix is picked, *How will you do it?* offers the ways to do it,
+each with its cost, labour and payoff: armyworm with pesticide, **a pinch of ash in each funnel** or neem; aphids with
+insecticide, soapy water or neem; a drought with a watering can, a drip line from the tank, or one deep watering and
+mulch; hunger with CAN, manure and compost, or urea; weeds by hand, with a herbicide, or weeded then mulched; and so on.
+A way's `effect` is the share of the avoidable damage it stops (the standard way is 1, as before), so a gentler way
+saves a little less: the money-at-risk cheer and the harvest both use it. Each way has its own climate effects.
+**The table is `src/care/treatments.ts`.**
+
+## Water as a real resource
+
+- **The tank** is on the farm's HUD (**WATER**, under Shop, its level as water in a barrel; orange and pulsing when low)
+  and in **Climate › Water**. 10,000 L to start, plus every tank bought in the Shop. Each day (the player's midnight, or
+  a night slept on the fast clock): **rain** off 120 m² of roofs in (by the season's forecast), the **house** (100 L),
+  the **animals** and the **rows** (a can a row a day by hand, plus their watering habits and mulches) out. **Piped
+  water** (5,000 L) and a **bowser** (10,000 L, dearer a litre) can be bought.
+- **Cows or hens.** The herd can be changed (0–6 cows, 0–60 hens): a cow drinks 50 L a day and gives off methane, a hen
+  a cup. The herd also sets the animals' emissions in Climate › Farm areas.
+- **Shocks have consequences.** With the tank under 20%, a drought on a farm puts 1.5 times as much at risk, and a
+  drought can't be watered by hand until there is water in the tank (the farm world's work waits; on the Mission
+  screen it stays untreated).
+- **Crop cover** (Climate › Water) is bought for a cycle and pays back 70% of what drought, flood and hail took at
+  harvest. **Its price is set by the farm's water practices**: a tank at least half full, rows that keep water in the
+  soil (mulch, zai pits, tied ridges, morning watering, drought-tolerant seed, minimum tillage), and a fair share of the
+  dam each take some off, up to 40%. A dry season loads it.
+- **Credits of every kind.** The credit ledger (`src/credits/ledger.ts`) now holds more than CO₂: **water credits**, one
+  for every 100 L a day under the farm's 700 L baseline (and two more on a rationed day drawn fairly), are paid with the
+  day like CO₂ credits. *Climate › Credits* shows both kinds and every payment.
+- **Climate › Water & soil** now shows real data: the tank now, today's use by what uses it, the last 7 days, water
+  credits and the irrigation drawn.
+- **The shared catchment** (Phase 4): the six farms' irrigation comes from a small dam shared with four neighbours,
+  rationed when it runs low; the player chooses to take what the plans need or a fair share, and the share of the
+  plans' irrigation that was delivered sets the harvest's watering. Design: [`docs/shared-water.md`](docs/shared-water.md).
+
+Every number is in `src/water/config.ts` (placeholders until confirmed).
+
+## The evidence layer
+
+To show that playing changes behaviour (`src/evidence/model.ts`):
+
+- **Every meaningful decision is logged with a timestamp** in the saved game (the last 600): each check (with hours since
+  that farm's last check: check frequency), each fix and way of treating (with the plots it covered), inputs, plans and
+  row strategies, watering time, water bought and used each day, the herd, the dam policy, crop cover, money-at-risk
+  taps and fixes (with the time from first seeing a risk to fixing it), harvests and tractor-business days. Each is also
+  an event (`decision_…`), sent to `VITE_EVENTS_URL` when one is set.
+- **Cohort / programme tags**: Settings › Help & data › *Programme* (type a code), or a link with `?cohort=CODE` (or
+  `?programme=CODE`). Tags go on every event and in the export.
+- **"Have you tried this on your own farm?"**: after a climate-smart practice (a pinch of ash, mulch, zai pits, a fair
+  share of the dam, fixing a problem the day it showed…), at most once a day and once per practice (again after a week
+  for *not yet*), a card asks; *Yes, I have*, *Not yet, but I will*, *No* or *I don't farm (yet)* are kept.
+- **Settings › Help & data › My evidence** sums it up (checks a day, climate-smart treatments, minutes from risk to fix)
+  and downloads everything as JSON.
+
+## Tractor business: farmers, urgency and a trend
+
+- **Each farmer has an urgency, a willingness to pay and a payment reliability** (`TRAITS` in
+  `src/business/model.ts`), shown on every booking (*Urgent*, *Pays 110%*, *Often late or unpaid*). The hire collected is
+  the hire times what they pay and how reliably; urgent work done today pays 10% more and 10 points. The day's result
+  shows what was not collected, and a **day value** (route efficiency, money collected, urgent work served): the
+  shortest route is not always the best one.
+- **The farm drives urgency.** While the player's own six farms are in their planting window, land preparation and
+  planting bookings are more urgent; rain forecast makes them more so, a dry season makes the harvest and transport
+  urgent (`farmSignal`, `urgencyOf`).
+- **My trend**: a chart of the trainee's efficiency score and day value, day by day.
 
 ## Climate tracking
 
@@ -873,8 +1091,8 @@ work from the seat in the farm world (by the share of tiles driven); each tracto
 treatments, follow-ups and wrong fixes; a contractor's diesel for tractor-hire farms nobody ploughed; harvests (food grown
 and lost); and the trip to market (storage, milling, transport). A harvest closes a season in the history.
 
-**The page** has five sections: *Overview* (a climate rating A–E, the climate level and credits, eight key figures and
-the biggest source with what to change), *Emissions* (by source and by season), *Water & soil*, *Climate shocks* and
+**The page** has seven sections: *Overview* (a climate rating A–E, the climate level and credits, eight key figures and
+the biggest source with what to change), *Land & pay* and *Farm areas* (below), *Emissions* (by source and by season), *Water & soil*, *Climate shocks* and
 *Activity* (every recorded job, newest first).
 
 **In the game**: the climate effect shows beside each choice: on the six farms' plan options, the Farm Moja task
@@ -882,9 +1100,144 @@ cards, and the storage and processing cards. The HUD button carries the climate 
 Climate levels (Seedling, Grower, Steward, Champion, Climate hero) pay 100 to 500 points once each. Redeeming the
 *solar power discount* in Rewards switches pumping, cold storage and milling to solar.
 
+### Every area of the farm, and the daily climate payment
+
+`src/climate/land.ts` evaluates every area of the farm each day:
+
+| Area | Size | A day |
+| --- | --- | --- |
+| **Six farms** | 4 acres each (24), 20 plots of 0.2 acre | each plot is *farmed* (a crop in the ground: stores 1 kg CO₂ an acre; +1.5 with mulch, +1 with beans between the rows, +1 with manure, +0.3 with an ox plough; −0.3 with tractor tillage, −1 with slash and burn; at least 0.2), *bare* (cleared or ploughed, not planted: loses 2 kg CO₂ an acre, source *Bare soil*, and soil points; the loss takes credits back) or *idle* (not worked this cycle, or harvested: nothing counted or paid, no food) |
+| **Farm Moja** | 1 acre | the same, from its season's tasks: bare once cleared or tilled, farmed once seeded (manure and beans store more), idle after the harvest |
+| **Mini forest** | 10 acres | idle land left to grow as forest, top right of the farm above the pond: stores 11 kg CO₂ an acre (about 10 t a hectare a year) |
+| **Grazing pen** | 2 acres | grazed grass: stores 0.5 kg CO₂ an acre |
+| **Cows and hens** | 2 cows, 4 hens | methane from the cows' digestion (4.6 kg CO₂e a cow, IPCC 2006) and their manure (0.6), the hens' manure; 50 L of water a cow, 0.3 L a hen (source *Cows and hens*) |
+| **Pond** | 0.5 acre | the water the animals and the house draw from it, and its health (0–100): the season's fertilizer and spray runoff muddies it |
+| **Homestead** | 0.5 acre | cooking on firewood, 3 kg CO₂e (source *Cooking*; less with solar), and 100 L of water for the house |
+
+**Daily payments.** When a day ends (the player's own midnight, the same clock as the daily streak, or a night
+slept on the fast clock of the first cycle), every area's day is recorded in Activity (*Farm areas*), and every credit
+earned since the last payment, from the areas and from the work (manure, mulch, beans, hand weeding, checking before
+spraying, clean tractor drives), is paid into the farmer's money with a pop-up. A credit (10 kg CO₂) pays **$0.25**
+($25 a tonne, a nature-based carbon price), with a premium for the climate level reached: ×1.1 Grower, ×1.2 Steward,
+×1.35 Champion, ×1.5 Climate hero. The forest alone earns about 11 credits a day. Emissions from the animals and the
+kitchen are counted in the footprint, not taken off the pay; bare soil's loss is. Up to 7 days away are counted. The
+game checks the clock on opening, on coming back to it, and every minute (`climateTick`). Payments start once the
+farm is open; credits earned before this update are not paid again.
+
+**Climate → Land & pay** (`#/climate/land-and-pay`) shows the six farms' plots coloured farmed, bare or idle, the
+carbon a day, the credits earned today and what they will pay tonight, the rate, everything paid, and the latest
+payments. **Climate → Farm areas** (`#/climate/farm-areas`) evaluates every area: what it is doing today, its CO₂ a
+day and all time, the water it draws, and a line on how it is doing and what would help. The Overview shows the money
+paid in all. `tests/climate-pay.spec.ts` plays it through the reducer; `tests/climate.spec.ts` pays a day at midnight
+in the browser.
+
+**The six farms are 4 acres each** (`src/farmSize.ts`). Their numbers were first set for a sixth of an acre;
+`FARM_SCALE` (24) sizes them: a farm's potential harvest is 144 bags (36 an acre), and seed, fertilizer, plan
+options, treatments, wrong fixes and tractor fuel cost 24 times as much, so every rule keeps its proportions. The
+tractor drive works a 4-acre farm (`FARM_ACRES` in `src/tractor/data.ts`), and the six farms' climate effects
+(inputs, water, diesel, pollution, credits) are for 4 acres; soil health, a state of the soil, is not scaled. Farm
+Moja stays one acre.
+
 All factors are in one table in `src/climate/model.ts` (`FACTORS` and the plan, task and market tables), like the six
 farms' numbers: illustrative estimates for learning until an agronomist reviews them; the N₂O share cites the IPCC
 2006 guidelines. `tests/climate.spec.ts` plays the tracking and the page.
+
+## Achievements, the daily streak and certificates
+
+A reason to come back every day, and something won in every part of the game. Everything is in
+`src/achievements/model.ts` (the badges, what they pay, the streak's rewards, which certificates are given);
+`src/achievements/track.ts` watches each action, as climate tracking does; the page is `src/screens/Achievements.tsx`.
+
+- **The daily streak.** A day counts once the player finishes something on it (any action that plays a happy
+  sound). Days in a row build the streak; a whole day missed starts it again. The day turns at the player's own
+  midnight. Each day played has a reward to claim: 200 coins and 10 points on day 1, growing to 1,400 coins and
+  70 points from day 7 on (`STREAK_REWARD`).
+- **Badges** (59), by part of the game: *Every day*, *Farm Moja*, *Six farms*, *Field rounds*, *Tractor*,
+  *Tractor business*, *Climate*. Ten **day-one badges** are easy firsts, one or two in each part (finish the first
+  crop checks, do a farming task, buy in the Shop, collect the milk or eggs, read a bed right, plant the farms, read
+  a daily check right, finish a tractor drive, run a business day, earn a climate credit). The rest come in
+  bronze, silver and gold (a 3-, 7- and 30-day streak; 10, 50 and 150 farming tasks; 3, 10 and 30 drives…), plus
+  *Tractor owner*. Badges pay 25 (day one), 50, 100 or 250 points, and 150 for a special one.
+- **Rewards wait to be claimed** on the Achievements page (*Claim*, or *Claim all*): an action never changes coins
+  or points by itself, so every other rule in the game adds up as before.
+- **Certificates**, kept on the page with the farmer's name and the date: one for every 7 days played (with what
+  was done that week), one for each streak of 3, 7, 14, 30, 60 and 100 days, and a bronze, silver or gold
+  certificate for a part of the game whose every badge of that tier is won.
+- **On screen:** the badges, the streak and the certificates are part of **My Progress** (next section), opened
+  from the PROGRESS button. A pop-up announces each badge, certificate, level and new day. *Today* has the streak,
+  the last seven days, today's reward and the day-one goals; *Badges* filters by part of the game, closest to done
+  first; *Certificates* keeps every certificate.
+- Counting starts with the first action after this update; badges that read what the save already holds
+  (seasons sold, cycles harvested, farmers helped, level, climate credits) are won at once. Badges open once the
+  first crop checks are done.
+
+## My Progress: certification levels and learning credits
+
+The first days and weeks of play laid out as a learning journey, behind the **PROGRESS** button on the farm
+(3D farm: under Climate; classic farm: under the farm's name). The button shows the certification level in a ring
+that fills toward the next level, the streak, and a red dot while a reward waits. Everything a designer might tune
+is in `src/progress/model.ts`; the page is `src/screens/Achievements.tsx`.
+
+- **Modules** (8), one for each part of the game plus *Courses*: Farm Moja, Field rounds, Six farms, Tractor,
+  Tractor business, Climate, Every day, Courses. Every badge won pays **learning credits** into its module
+  (day-one 1, bronze 2, silver 4, gold 8, special 4), and each farmer course booked in Training pays 5 into Courses
+  (up to four). A module is *Not started*, *Started*, *Practising* (25% of its credits), *Proficient* (50%) or
+  *Mastered* (100%). Adding a module is one more entry in `MODULES`.
+- **Certification levels** (6), each opening on a day of play so they arrive over the first weeks, not at once:
+
+  | Level | Opens | Credits | Modules |
+  | --- | --- | --- | --- |
+  | 1 · Farm Starter | Day 1 | 3 | 2 started |
+  | 2 · Farm Apprentice | Day 2 | 10 | 4 started |
+  | 3 · Smart Farmer | Day 4 | 22 | 6 started |
+  | 4 · Certified Smart Farmer | Week 1 (day 7) | 40 | 3 practising |
+  | 5 · Advanced Smart Farmer | Week 2 (day 14) | 75 | 3 proficient |
+  | 6 · Master Farmer | Week 4 (day 28) | 130 | 6 proficient |
+
+  "Day" is days played (the streak's count of days with something done), so a level waits for its day however
+  many credits are earned early, and levels come in order. Reaching one gives a **certificate** (kept with the
+  others, co-signed by the certification partner) and a reward to claim: KSh 1,000 and 50 points at Level 1, up to
+  KSh 15,000 and 750 points at Level 6 (shown in the player's own currency). Rewards wait to be claimed, as badges' do.
+- **The page:** *Journey* (the level now, credits, days played, modules started; the six levels on a path, each
+  reached, next or locked until its day; what the next level still needs), *Modules* (each module's stage and
+  credits; tap one to go and play it), then *Today*, *Badges* and *Certificates*. Main menu → *My Progress*.
+
+## Partners: billboards, branded products and offers
+
+Places across the game a partner brand can appear, and a page for the offers. The whole set-up is one table:
+`src/partners/data.ts` lists the **brands** and the **slots** (every place a brand can appear) with the brand on
+each. To sign a partner, add or edit its brand and put its id on the slots it bought; no screen changes.
+
+| Slot | Where | Brand now |
+| --- | --- | --- |
+| Billboards (2) | 3D farm, in the yard either side of the farmhouse path; walk up to one and a *See offer* tag appears | Rutuba Gold, Kinga Cover |
+| Tractor livery | 3D farm: the partner's name on the bonnet and both sides of the tractor | Hello Tractor |
+| Market stall awning | 3D farm | *Available* |
+| Roadside sign | Classic farm: each partner in turn, every 6 seconds (or one brand, if it buys the slot) | All partners |
+| Branded fertilizer | Shop › Buy Fertilizer: *Rutuba Gold NPK*, 10% under the plain NPK; it does the NPK task's job | Rutuba Gold |
+| Branded tank | Shop › Buy Tank: a 5,000 L tank | Tangi Tanks |
+| Branded tool | Shop › Buy Equipment | *Available* |
+| Voucher sponsors | Rewards & Discounts Hub: "with <brand>" on each voucher | Rutuba Gold, Shina Seeds, Hello Tractor, JuaPower Solar, PesaShamba |
+| Loan quotes | Loan calculator and quote | PesaShamba |
+| Courses | Training | Ujuzi Agri Academy |
+| Certification | My Progress: the journey, the modules and every certificate | Ujuzi Agri Academy |
+| Crop cover | Climate › Shocks | Kinga Cover |
+| Progress sponsor | The PROGRESS button | Ujuzi Agri Academy |
+
+- **Sample brands.** Hello Tractor is the game's tractor partner. Every other brand (Rutuba Gold, Shina Seeds,
+  Tangi Tanks, PesaShamba, Kinga Cover, JuaPower Solar, Ujuzi Agri Academy) is made up for the game
+  (`sample: true`) and stands in until a real partner signs; no real company is named or implied.
+- **The Partners page** (Main menu → *Partners & offers*; every billboard, sign and "with <brand>" line opens it at
+  that brand, with its offer open): *Offers* lists each brand's offer (and a *Visit* link for brands with a web
+  address); *Placements* lists every slot, its brand or *Available*, and how often it was seen and tapped.
+- **Getting an offer.** *Get offer* opens a sheet with what the offer gives and where it is used; *Get this offer*
+  takes it and shows the player's code (`offerCode()`: the brand's first letters and four from the farmer's name,
+  so it needs nothing more in the save), which also goes into Messages. The sheet's button, and *Use it* on the card
+  afterwards, go to where the offer is used (`offer.use.to`, a game address: the Shop's fertilizer or tank section,
+  the Rewards hub, the Loan calculator, Climate › Shocks, My Progress or the Tractor business). Offers do not change
+  prices in the game yet.
+- **Engagement** (views and taps per slot) is counted on the device only, apart from the saved game
+  (`src/partners/track.ts`): nothing is sent anywhere, and Reset progress does not clear it.
 
 ## Character art: retro anime
 
@@ -968,7 +1321,7 @@ player's saved game or events.
 ## Tests
 
 `npm test` runs the Playwright play-tests in `tests/` against the dev server, one at a time, on an 874 × 402 screen
-(about 11 minutes; the 3D farm uses software WebGL, so no GPU is needed). Run `npx playwright install chromium`
+(the 3D farm uses software WebGL, so no GPU is needed). Run `npx playwright install chromium`
 once. To use a Chromium already on the machine instead: `LIMA_CHROMIUM=/path/to/chromium npm test`; to test a
 running build: `LIMA_URL=http://…/ npm test`. The dev server's `?dev` hook (`src/dev/hook.ts`) lets a test jump to
 a moment (`__lima.scenario('spray')`, from `src/trials/samples.ts`) and walk the farmer (`__limaWorld.walkTo`).
@@ -987,6 +1340,11 @@ Some tests use no browser: they call the game's rules directly.
 | `settings.spec.ts` | the Settings page |
 | `tour.spec.ts` | the Wakala moments on a 740 × 340 touch screen, with screenshots in `test-results/tour/` |
 | `perf.spec.ts` | start-up, the farm world's frame cost and draw calls, and the tractor business on a slow phone |
+| `fixes.spec.ts` | the guide in the menu, and a walk that only passes a shed |
+| `money.spec.ts`, `country.spec.ts`, `climate-pay.spec.ts` | sales, storage, drives and treatments paid once; money in the country's currency; 4-acre farms, land and climate credits paid each day |
+| `phases.spec.ts`, `risk.spec.ts` | climate-smart row strategies and treatment choices; money at risk and the evidence log |
+| `achievements.spec.ts`, `progress.spec.ts`, `success.spec.ts` | badges, the streak and certificates; My Progress and partners; the success dialogs, training and the loan quote |
+| `frame.spec.ts` | every screen keeps its boxes and buttons inside the rounded frame |
 
 They run on every pull request (`.github/workflows/tests.yml`), with one retry on CI; the report and screenshots are
 kept with the run for 14 days.
@@ -1001,7 +1359,8 @@ kept with the run for 14 days.
   stand in for a whole season) and the rotation. Round points are illustrative.
 - **Lima AI** is a rule-based stand-in that reads the season's numbers; it does not call an AI service.
 - **Rewards** are saved in the game but nothing is sent to a partner; there is no redemption backend.
-- **Missed checks** cost harvest on the six farms (see `DAMAGE` in `src/trials/model.ts`). In the everyday field
+- **Missed checks** cost harvest on the six farms (see `DAMAGE` in `src/trials/model.ts`); a problem left unresolved
+  now stays on its farm until it is dealt with, and costs at harvest what was at risk by then (`src/risk/config.ts`). In the everyday field
   rounds they still only show as a bed to look at again.
 - **The six-farm model** (yields, problem odds, damage, prices) is illustrative and needs agronomist review before any
   pilot. Only maize is planned in it so far; beans, sukuma wiki and tomatoes would each need their own table.
@@ -1021,8 +1380,8 @@ kept with the run for 14 days.
 - The faint 5% pattern texture on the cream panels in Figma is omitted.
 - **From Wakala Agent**, waiting on a decision: the fix lessons, products, follow-up days and Mama Achieng's lines
   need the agronomist's review; the proposed yield effects stay off until Gate A; only the before-planting tractor
-  stage is played; every retried drive pays coins in full, as planned, which a player could farm
-  (`retryPays: 'improvement'` closes that); wrong fixes count in the farm's costs at harvest; fuel for the drive is
+  stage is played; a retried drive pays only for beating the farm's best; wrong fixes count in the farm's costs at
+  harvest; fuel for the drive is
   free (the plan's hire price covers it); Wakala's photos are still to add.
 
 ---

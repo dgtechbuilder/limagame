@@ -85,7 +85,7 @@ export function Stars({ value, size = 10, max = 5 }: { value: number; size?: num
 }
 
 export function Coin({ size = 14 }: { size?: number }) {
-  return <img src={img.coin} alt="" width={size} height={size} style={{ width: size, height: size }} />;
+  return <img src={img.cash} alt="" width={size} height={size} style={{ width: size, height: size }} />;
 }
 
 export function Partner({ top }: { top: number }) {

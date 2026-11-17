@@ -21,7 +21,7 @@ export function FarmUpdate({ name, onDone }: { name: string; onDone: () => void 
   const voice = useVoice();
   useEffect(() => {
     if (!voice) return;
-    speak([u.title, ...u.lines.map(fill), `At this rate the harvest brings back about ${u.atThisRate} shillings: a loss of ${loss} shillings.`].join(' '));
+    speak([u.title, ...u.lines.map(fill), `At this rate the harvest brings back about ${ksh(u.atThisRate)}: a loss of ${ksh(loss)}.`].join(' '));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [voice]);
 
@@ -60,7 +60,7 @@ export function FarmUpdate({ name, onDone }: { name: string; onDone: () => void 
         </div>
 
         <div className="story-foot">
-          <p className="update-nudge">Find each problem and you can still save most of it.</p>
+          <p className="update-nudge">Find each problem to save most of it.</p>
           <GoldButton font={13} height={40} style={{ minWidth: 190, padding: '0 18px' }} onClick={onDone} ariaLabel={u.button}>
             {u.button}
           </GoldButton>

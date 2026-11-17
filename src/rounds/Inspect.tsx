@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavBar } from '../components/Nav';
+import { CloseX } from '../components/Success';
 import { img } from '../assets';
 import { FarmMap } from '../components/FarmMap';
 import { CheckBadge } from '../components/Icons';
 import { FarmerFigure, PartArt, WaterArt } from '../first/art';
-import { say, type Call, type Look } from '../first/data';
+import { say, stakeLine, type Call, type Look } from '../first/data';
+import { money } from '../money';
 import { CallIcon, GuideLine } from '../first/Review';
 import { track } from '../first/track';
 import { CHECK_COOLDOWN_S, FARMS, ROUND_PARTS, ROUND_PART_LABELS, usesLegacyArt, type Round, type RoundPart } from './data';
@@ -46,7 +48,13 @@ export function Inspect({
   note,
   after,
   voice,
+  progress,
+  stake,
 }: {
+  /** what this farm's problem costs if it is left alone (the at-risk amount), shown while it is being read */
+  stake?: number;
+  /** the visit in the day's round: farms (or beds) read right so far, of how many, and what they are called */
+  progress?: { done: number; total: number; unit: string };
   round: Round;
   /** replaces "Round n of 6" (the six farms say "Farm 2 of 6") */
   tag?: string;
@@ -73,6 +81,8 @@ export function Inspect({
   const [seen, setSeen] = useState<RoundPart[]>(startView === 'look' ? [] : ROUND_PARTS);
   // what this call pays, fixed when the check starts (the saved result changes `points` as soon as the call is made)
   const [payout] = useState(points);
+  // what is at risk on this farm, fixed when the check starts
+  const [atStake] = useState(stake);
   const [zoom, setZoom] = useState<RoundPart | null>(null);
   const [group, setGroup] = useState<CallGroup | null>(null);
   const started = useRef(performance.now());
@@ -124,7 +134,7 @@ export function Inspect({
   } else if (step === 'judge') {
     line = group ? t('Which one, {name}?') : t('What is going on in this bed, {name}?');
   } else if (step === 'right') {
-    line = `${t(round.right)} ${round.practice}`;
+    line = t(round.right);
     action = { label: continueLabel, onClick: onContinue };
   } else {
     line = t(round.clue.text);
@@ -145,7 +155,14 @@ export function Inspect({
         {second ? ' · second look' : ''}
       </span>
       <span className="rr-roundtag rr-cropnote">{note ?? `${CROP_NAME[round.crop]} · ${STAGE_LABELS[round.stage]} · day ${round.day + 1} of ${CYCLE_DAYS}`}</span>
-      <NavBar horizontal onBack={onLeave} style={{ right: 6, top: 4 }} />
+      {/* the at-risk amount for this farm, the same number as the button on the farm (src/risk) */}
+      {!!atStake && step !== 'right' && (
+        <p className="stake is-check" role="note" title={stakeLine(atStake)}>
+          <span aria-hidden="true">!</span>
+          Will cost you about {money(atStake)} if it is left alone
+        </p>
+      )}
+      <NavBar horizontal onBack={onLeave} style={{ right: 28, top: 8 }} />
 
       <ol className="review-steps" aria-label="Check steps">
         {steps.map(([, label], i) => (
@@ -155,7 +172,7 @@ export function Inspect({
         ))}
       </ol>
 
-      <div className="fs-panel" style={{ left: 24, top: 78, width: 826, height: 246 }}>
+      <div className="fs-panel" style={{ left: 30, top: 78, width: 814, height: 246 }}>
         {step === 'look' && (
           <div className="part-row five">
             <p className="rr-progress">
@@ -228,20 +245,13 @@ export function Inspect({
             <div className="clue-art">
               <RoundPicture round={round} part={round.clue.part} flag={step === 'wrong'} credit />
               <span className="zoom-label">{ROUND_PART_LABELS[round.clue.part]}</span>
+              {step === 'right' && <span className="clue-spotted">✓ Clue spotted</span>}
             </div>
+            {step === 'right' ? (
+              <VisitWin round={round} name={t('{name}')} look={look} payout={payout} second={second} after={after?.right} progress={progress} />
+            ) : (
             <div className="wrong-note rr-result">
-              {step === 'right' ? (
-                <>
-                  <p className="wrong-title" style={{ color: '#2f9b14' }}>
-                    {name}!
-                  </p>
-                  <svg viewBox="-40 -100 80 104" width={after?.right ? 66 : 104} height={after?.right ? 86 : 136} className="cheer" aria-hidden="true">
-                    <FarmerFigure look={look} pose="cheer" />
-                  </svg>
-                  <span className="rr-points">{payout > 0 ? `+${payout} points` : 'Points already earned'}</span>
-                  {after?.right && <p className="tr-after">{after.right}</p>}
-                </>
-              ) : (
+              {(
                 <>
                   <p className="wrong-title">Not quite, {name}.</p>
                   <svg viewBox="-40 -100 80 104" width={after?.wrong ? 62 : 92} height={after?.wrong ? 80 : 120} aria-hidden="true">
@@ -255,6 +265,7 @@ export function Inspect({
                 </>
               )}
             </div>
+            )}
           </>
         )}
       </div>
@@ -262,6 +273,7 @@ export function Inspect({
       {zoom && (
         <div className="abs zoom" style={{ inset: 0 }} onClick={() => setZoom(null)} role="dialog" aria-label={ROUND_PART_LABELS[zoom]}>
           <div className="zoom-art" onClick={e => e.stopPropagation()}>
+            <CloseX onClick={() => setZoom(null)} />
             <RoundPicture round={round} part={zoom} credit />
             <span className="zoom-label">{ROUND_PART_LABELS[zoom]}</span>
           </div>
@@ -280,6 +292,68 @@ export function Inspect({
       )}
 
       <GuideLine text={line} action={action} />
+    </div>
+  );
+}
+
+/** The farm visit's success: what was found and what to do next, the points, and how the day's visits stand. */
+function VisitWin({
+  round,
+  name,
+  look,
+  payout,
+  second,
+  after,
+  progress,
+}: {
+  round: Round;
+  name: string;
+  look: Look;
+  payout: number;
+  second: boolean;
+  after?: string;
+  progress?: { done: number; total: number; unit: string };
+}) {
+  const healthy = round.correct === 'healthy';
+  return (
+    <div className="visit-win" role="status">
+      <span className="visit-ribbon">
+        <i aria-hidden="true">✓</i> Farm visit complete
+      </span>
+      <div className="visit-head">
+        <svg viewBox="-40 -100 80 104" width={54} height={70} className="cheer" aria-hidden="true">
+          <FarmerFigure look={look} pose="cheer" />
+        </svg>
+        <div>
+          <p className="visit-title">Well read, {name}!</p>
+          <p className="visit-sub">{healthy ? 'This bed is healthy, and you saw it.' : `You found the problem${second ? ' on your second look' : ' on your first look'}.`}</p>
+          <div className="visit-chips">
+            <span className={`visit-chip${payout > 0 ? ' is-points' : ''}`}>{payout > 0 ? `+${payout} points` : 'Points already earned'}</span>
+            <span className="visit-chip is-look">{second ? 'Second look' : 'First look'}</span>
+          </div>
+        </div>
+      </div>
+      <div className="visit-found">
+        <div>
+          <small>What you found</small>
+          <p>{round.what}</p>
+        </div>
+        <div>
+          <small>Do next</small>
+          <p>{round.practice}</p>
+        </div>
+      </div>
+      {after && <p className="visit-after">{after}</p>}
+      {progress && progress.total > 0 && (
+        <div className="visit-progress" aria-label={`${progress.done} of ${progress.total} ${progress.unit}s read right today`}>
+          <span className="visit-dots" aria-hidden="true">
+            {Array.from({ length: progress.total }, (_, i) => (
+              <i key={i} className={i < progress.done ? 'is-done' : ''} />
+            ))}
+          </span>
+          {progress.done} of {progress.total} {progress.unit}s read right today
+        </div>
+      )}
     </div>
   );
 }

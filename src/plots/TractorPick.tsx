@@ -59,12 +59,12 @@ export function TractorPick({ tr, field, day, rig, onGo, onLeave }: { tr: Trial;
   if (step === 'tractor') {
     line = tractor
       ? `The ${tractorName(tractor).toLowerCase()} tractor: ${TRACTOR_PLOT[tractor].teach} Next, pick the tool.`
-      : 'Pick a tractor. Work some farms by tractor and some by hand, and the harvest shows what each one did.';
+      : 'Pick a tractor. Work some farms by hand to compare at harvest.';
   } else if (!tool) {
-    line = firstDue ? `Pick the tool. Due now: ${JOB_INFO[firstDue].name.toLowerCase()} on ${farmsText(due[firstDue]!)}.` : 'Pick the tool for the job you want to do. Nothing is due on the farms right now.';
+    line = firstDue ? `Pick the tool. Due now: ${JOB_INFO[firstDue].name.toLowerCase()} on ${farmsText(due[firstDue]!)}.` : 'Pick a tool. Nothing is due right now.';
   } else {
     const j = toolJobs(tool).find(x => due[x]) ?? TOOL_JOB[tool];
-    line = due[j] ? `${toolName(tool)}: ${JOB_INFO[j].name.toLowerCase()} on ${farmsText(due[j]!)}. Drive over a farm's plots to work them.` : `${toolName(tool)} (${toolJobs(tool).map(x => JOB_INFO[x].name.toLowerCase()).join(', ')}): no farm is waiting for this job right now. You can still drive, or pick another tool.`;
+    line = due[j] ? `${toolName(tool)}: ${JOB_INFO[j].name.toLowerCase()} on ${farmsText(due[j]!)}. Drive over its plots.` : `${toolName(tool)} (${toolJobs(tool).map(x => JOB_INFO[x].name.toLowerCase()).join(', ')}): no farm needs this now. Drive anyway, or pick another tool.`;
   }
 
   return (
@@ -77,7 +77,7 @@ export function TractorPick({ tr, field, day, rig, onGo, onLeave }: { tr: Trial;
         </span>
       </div>
       <span className="rr-roundtag">Tractor · type and tool</span>
-      <NavBar horizontal onBack={onLeave} style={{ right: 6, top: 4 }} />
+      <NavBar horizontal onBack={onLeave} style={{ right: 28, top: 8 }} />
       <ol className="review-steps" aria-label="Tractor steps">
         <li className={step === 'tractor' ? 'is-now' : 'is-done'}>Tractor</li>
         <li className={step === 'tool' ? (tool ? 'is-done' : 'is-now') : ''}>Tool</li>
@@ -110,7 +110,7 @@ export function TractorPick({ tr, field, day, rig, onGo, onLeave }: { tr: Trial;
                     ))}
                   </span>
                   <span className="tp-meta">
-                    Fuel <b>{money(TRACTOR_PLOT[k.id].fuel)} coins</b> a farm · speed {Math.round(TRACTOR_PLOT[k.id].speed * 100)}%
+                    Fuel <b>{money(TRACTOR_PLOT[k.id].fuel)}</b> a farm · speed {Math.round(TRACTOR_PLOT[k.id].speed * 100)}%
                   </span>
                   <small>{works.length ? `Works ${works.slice(0, 3).join(', ')}${works.length > 3 ? '…' : ''}` : 'Not used yet this cycle'}</small>
                 </button>

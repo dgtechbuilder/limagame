@@ -1,3 +1,4 @@
+import { kshText } from '../src/money';
 import { expect, test } from '@playwright/test';
 import {
   ACRES_AN_HOUR,
@@ -44,8 +45,7 @@ import {
   yearOf,
   type Bookings,
   type Crop,
-  type ReqKey,
-} from '../src/business/model';
+  type ReqKey, URGENT, traitsOf, urgencyOf } from '../src/business/model';
 import { BAGS, DRIVE_SECS, FIELD_W, HAUL_Y, newFieldDrive, newHaulDrive, stepField, stepHaul } from '../src/business/drive';
 import { initialState, reducer } from '../src/state';
 import { boot, state, type Win } from './helpers';
@@ -135,7 +135,15 @@ test('a day: at least three farms, a route through all of them, the efficiency s
   expect(top.revenue).toBe(mine.reduce((n, x) => n + Math.round(hireOf(x.part.tool) * x.part.acres), 0));
   expect(top.commission).toBe(req.filter(k => bookings[k] === 'partner').map(partOf).reduce((n, x) => n + Math.round(hireOf(x.part.tool) * x.part.acres * PARTNER_CUT), 0));
   expect(top.hubFee).toBe(Math.round(top.revenue * HUB_SHARE)); // the hub's tractor, until the agent owns one
-  expect(top.profit).toBe(top.revenue + top.commission - top.diesel - top.wage - top.hubFee);
+  // what the farmers actually pay: the hire at their willingness to pay and reliability, more for urgent work done now
+  expect(top.collected).toBe(
+    mine.reduce((n, x) => {
+      const tr = traitsOf(x.client.id);
+      return n + Math.round(hireOf(x.part.tool) * x.part.acres * tr.pay * tr.reliability * (urgencyOf(x.client.id, x.activity, null) === 3 ? 1 + URGENT.premium : 1));
+    }, 0),
+  );
+  expect(top.shortfall).toBe(top.revenue - top.collected);
+  expect(top.profit).toBe(top.revenue - top.shortfall + top.commission - top.diesel - top.wage - top.hubFee);
   expect(top.missed).toBe(0);
   const { biz, result } = runDay(b, top);
   expect(biz.day).toBe(2);
@@ -148,7 +156,7 @@ test('a day: at least three farms, a route through all of them, the efficiency s
   // a job without its implement can't go on the player's tractor
   const ridge = CLIENTS.find(c => c.parts.some(p => p.tool === 'ridger'))!;
   const k = `${ridge.id}:${ridge.parts.find(p => p.tool === 'ridger')!.id}` as ReqKey;
-  expect(planDay(b, [k], { [k]: 'me' }, [ridge.id]).problem).toContain('no ridger');
+  expect(planDay(b, [k], { [k]: 'me' }, [ridge.id]).problem).toContain('No ridger');
   expect(planDay(b, [k], { [k]: 'partner' }, []).problem).toBeNull();
   // too much for one day
   const big = CLIENTS.flatMap(c => c.parts.filter(p => b.tools.includes(p.tool)).map(p => `${c.id}:${p.id}` as ReqKey));
@@ -322,7 +330,7 @@ test('graduation into a PAYG tractor: counted acres and fulfilment, then capacit
   expect(plan.instalment).toBe(Math.round(plan.revenue * PAYG.share));
   const big = CLIENTS.flatMap(c => c.parts.filter(p => own.tools.includes(p.prep)).map(p => `${c.id}:${p.id}` as ReqKey)).slice(0, 4);
   const over = planDay(own, big, Object.fromEntries(big.map(q => [q, 'me'])) as Bookings, big.map(k => k.split(':')[0]));
-  expect(over.problem).toMatch(/hours|acres of field work/);
+  expect(over.problem).toMatch(/hours|acres a day/);
   const after = runDay(own, plan).biz;
   expect(after.owned[0].paid).toBe(plan.instalment);
   expect(after.cash).toBe(own.cash + plan.profit - plan.instalment);
@@ -418,7 +426,7 @@ test('levels, partners and the fleet open as the business grows', () => {
   expect(levelOf(80).level).toBe(5);
   expect(partnerBlock(b, 'kimani')).toBe('Signed');
   expect(partnerBlock(b, 'coop')).toBe('Opens at level 2');
-  expect(shopBlock(b, 'ridger')).toBe('Needs KSh 250,000');
+  expect(shopBlock(b, 'ridger')).toBe(`Needs ${kshText(25000)}`);
   const grown = { ...b, helped: 8, cash: 50000 };
   expect(partnerBlock(grown, 'coop')).toBeNull();
   expect(farmsToday({ ...grown, partners: [...grown.partners, 'coop'] })).toBe(farmsToday(grown) + 2);
@@ -433,11 +441,11 @@ test('levels, partners and the fleet open as the business grows', () => {
   // not enough money: refused, with a message
   const s3 = reducer(s2, { type: 'bizBuy', item: 'planter' });
   expect(s3.biz!.tools).not.toContain('planter');
-  expect(s3.toast?.text).toBe('Maize planter: needs KSh 350,000');
-  // a day hired out to the county
+  expect(s3.toast?.text).toBe(`Maize planter: needs ${kshText(35000)}`);
+  // a day hired out to the county: the fee, less the driver and the hub's share of its own tractor
   const s4 = reducer({ ...s2, biz: { ...s2.biz!, partners: [...s2.biz!.partners, 'county'] } }, { type: 'bizHireOut' });
   expect(s4.biz!.day).toBe(s2.biz!.day + 1);
-  expect(s4.biz!.cash).toBe(s2.biz!.cash + 11000);
+  expect(s4.biz!.cash).toBe(s2.biz!.cash + 12000 - 1000 - 12000 * HUB_SHARE);
 });
 
 test('the tractor business screen: book farms, order the route, run the day', async ({ page }) => {

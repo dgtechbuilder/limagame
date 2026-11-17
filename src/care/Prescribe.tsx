@@ -8,6 +8,7 @@ import { RoundPicture } from '../rounds/Inspect';
 import { ROUND_PART_LABELS, type Round } from '../rounds/data';
 import { HAZARD_WORDS, type TrialHazard } from '../trials/model';
 import type { FixOption } from './data';
+import type { Treatment } from './treatments';
 import { money } from '../money';
 
 /* From Wakala Agent: after a right call in the farm world, pick the fix. One of three is right; a wrong one costs
@@ -26,7 +27,18 @@ export function Prescribe({
   onPick,
   onDone,
   onLeave,
+  treatments,
+  treatment,
+  baseCost = 0,
+  onTreat,
 }: {
+  /** after the right fix: the ways to do it, each with its cost, labour and payoff (care/treatments.ts) */
+  treatments?: Treatment[];
+  /** the way chosen so far (missing: the first, the standard way) */
+  treatment?: string;
+  /** the standard treatment's cost, which each way's costX multiplies */
+  baseCost?: number;
+  onTreat?: (t: Treatment) => void;
   round: Round;
   hazard: TrialHazard;
   farmName: string;
@@ -56,9 +68,9 @@ export function Prescribe({
     if (!op.right) setTried(v => [...v, op.id]);
   };
 
-  let line = `${name}, what will fix ${farmName}? A wrong fix costs ${money(cost)} coins.`;
-  if (wrongBefore > 0 && !picked) line = `Pick again, ${name}. A wrong fix costs ${money(cost)} coins.`;
-  if (picked && !picked.right) line = `${picked.lesson} −${money(cost)} coins. Pick again.`;
+  let line = `${name}, what will fix ${farmName}? A wrong fix costs ${money(cost)}.`;
+  if (wrongBefore > 0 && !picked) line = `Pick again, ${name}. A wrong fix costs ${money(cost)}.`;
+  if (picked && !picked.right) line = `${picked.lesson} −${money(cost)}. Pick again.`;
   if (right) line = `${right.lesson} Now ${then}`;
 
   return (
@@ -72,9 +84,9 @@ export function Prescribe({
       </div>
       <span className="rr-roundtag">{tag}</span>
       <span className="rr-roundtag rr-cropnote">Read right: {HAZARD_WORDS[hazard]}</span>
-      <NavBar horizontal onBack={right ? onDone : onLeave} style={{ right: 6, top: 4 }} />
+      <NavBar horizontal onBack={right ? onDone : onLeave} style={{ right: 28, top: 8 }} />
 
-      <div className="fs-panel" style={{ left: 24, top: 78, width: 826, height: 246 }}>
+      <div className="fs-panel" style={{ left: 30, top: 78, width: 814, height: 246 }}>
         <div className="clue-art">
           <RoundPicture round={round} part={round.clue.part} credit />
           <span className="zoom-label">{ROUND_PART_LABELS[round.clue.part]}</span>
@@ -97,10 +109,36 @@ export function Prescribe({
                   {wrong ? '✕' : isRight ? '✓' : ''}
                 </span>
                 <span>{op.label}</span>
-                {wrong && <small>−{money(cost)} coins</small>}
+                {wrong && <small>−{money(cost)}</small>}
               </button>
             );
           })}
+          {right && treatments && treatments.length > 1 && (
+            <div className="care-ways" role="group" aria-label="How to do it">
+              <p className="care-ask">How will you do it?</p>
+              <div className="care-ways-row">
+                {treatments.map((w, i) => {
+                  const on = (treatment ?? treatments[0].id) === w.id;
+                  return (
+                    <button
+                      type="button"
+                      key={w.id}
+                      className={`care-way${on ? ' is-on' : ''}${w.smart ? ' is-smart' : ''}`}
+                      aria-pressed={on}
+                      onClick={() => onTreat?.(w)}
+                      title={w.does}
+                    >
+                      <b>{w.label}</b>
+                      <small>
+                        {money(Math.round(baseCost * w.costX))} · {w.labour} day{w.labour === 1 ? '' : 's'} · stops {Math.round(w.effect * 100)}%
+                      </small>
+                      <i>{w.smart ? 'Climate-smart' : i === 0 ? 'Standard' : ''}</i>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

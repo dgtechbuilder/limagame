@@ -5,6 +5,7 @@
 
 import * as THREE from 'three';
 import { RIDE_SPEED, TRACTOR_EDGE, type ImplId } from '../tractor/data';
+import { slotBrand, type SlotId } from '../partners/data';
 import { JOB_INFO, ROUTINE, TRACTOR_PLOT, toolJobs, toolName, type PlotJob, type TractorId } from '../plots/data';
 import { CHECK_DAYS, CROP_WORDS, checkKey, cropOf, farmName, harvestFarm, hazardFor, plotGrowth, type Trial, type TrialHazard } from '../trials/model';
 import {
@@ -41,8 +42,13 @@ import {
   G,
   at,
   badgeTexture,
+  billboardTexture,
+  liveryTexture,
+  makeBillboard,
   board,
   bush,
+  forest,
+  forestSignTexture,
   fence,
   flowers,
   grassClump,
@@ -103,7 +109,22 @@ function phoneLike() {
 }
 /** Where the tractor waits, and a spot beside it to walk to (clear of the Hire spot, which opens the hire screen). */
 const TRACTOR_HOME = { x: -17.4, z: 6.4 };
+/** The mini forest: 10 acres of idle land, top right of the farm, above the pond (the pond is at x 18.4, z 0). */
+export const FOREST = { x0: 14.8, z0: -18.2, x1: 21.8, z1: -5.2, sign: { x: 13.6, z: -4.4 } };
 export const TRACTOR_BOARD = { x: -17.4, z: 8.6 };
+
+/** The partner billboards in the yard, either side of the farmhouse path (src/partners/data.ts sets the brand on each);
+    they face the camera. */
+export const BILLBOARDS: { slot: SlotId; x: number; z: number }[] = [
+  { slot: 'world-billboard-west', x: -7.6, z: -14.9 },
+  { slot: 'world-billboard-east', x: 12.6, z: -14.6 },
+];
+
+/** The tractor partner's name on the bonnet, if one has the slot. */
+function tractorLivery() {
+  const b = slotBrand('world-tractor');
+  return b ? { side: liveryTexture(b.name, b.color, b.accent), top: liveryTexture(b.name, b.color, b.accent, 180) } : undefined;
+}
 
 export const STAGE_W = 874;
 export const STAGE_H = 402;
@@ -217,7 +238,7 @@ export class FarmWorld {
   private goatState = { farm: -1, at: new THREE.Vector2(), to: new THREE.Vector2(), leaving: 0 };
   private birds: ReturnType<typeof makeBird>[] = [];
   private birdState = { farm: -1, leaving: 0 };
-  private tractor = makeTractor();
+  private tractor = makeTractor(tractorLivery());
   private oxen = new THREE.Group();
   private hire: { farms: number[]; path: THREE.Vector2[]; i: number; farmOf: number[]; home: THREE.Vector2 } | null = null;
   private pickups: Partial<Record<Place, THREE.Group>> = {};
@@ -437,6 +458,16 @@ export class FarmWorld {
     smooth.push(...place(shed(), at(-18.6, 0, 0, { ry: Math.PI / 2 })));
     smooth.push(...place(stall(), at(0, 0, 15.6, { ry: Math.PI })));
     smooth.push(...place(board(), at(4.4, 0, -12.4)));
+    // partner billboards (a slot with no partner has no billboard)
+    for (const bb of BILLBOARDS) {
+      const brand = slotBrand(bb.slot);
+      if (!brand) continue;
+      const g = makeBillboard(billboardTexture(brand));
+      g.position.set(bb.x, 0, bb.z);
+      g.scale.setScalar(1.3);
+      this.scene.add(g);
+      this.obstacles.push({ x: bb.x - 1.6, z: bb.z, r: 0.35 }, { x: bb.x + 1.6, z: bb.z, r: 0.35 });
+    }
     smooth.push(...place(pond(), at(18.4, 0, 0)));
     smooth.push(...place(trough(), at(-15, 0, -13.6)));
     // a little coop
@@ -459,23 +490,35 @@ export class FarmWorld {
       [-17.5, 14.8, 0.8],
       [19.5, 12.5, 1.1],
       [16.4, 15.0, 0.8],
-      [19.8, -9.5, 1],
-      [17.4, -17.8, 1.1],
       [-6.8, -19.4, 0.9],
       [13.2, -19.6, 0.9],
       [-9.5, 15.6, 0.85],
       [9.8, 15.4, 0.9],
-      [20.0, -15.0, 0.8],
       [-20.0, 9.0, 0.7],
     ];
     for (const [x, z, s] of trees) {
       flat.push(...place(tree(s, (x * 7 + z) % 2 ? 1 : 0), at(x, 0, z)));
       this.obstacles.push({ x, z, r: 0.7 * s });
     }
+    // the mini forest: 10 acres of idle land left to grow, top right of the farm above the pond (climate/land.ts)
+    const fo = forest(FOREST.x0, FOREST.z0, FOREST.x1, FOREST.z1);
+    smooth.push(...fo.floor);
+    flat.push(...fo.parts);
+    for (const t of fo.trunks) this.obstacles.push(t);
+    {
+      const post = new THREE.Mesh(G.cyl6, new THREE.MeshLambertMaterial({ color: '#8b5a2b' }));
+      post.scale.set(0.14, 1.3, 0.14);
+      post.position.set(FOREST.sign.x, 0.65, FOREST.sign.z);
+      const face = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.2), new THREE.MeshLambertMaterial({ map: forestSignTexture() }));
+      face.position.set(FOREST.sign.x, 1.55, FOREST.sign.z + 0.1);
+      face.rotation.x = -0.55;
+      post.castShadow = true;
+      this.scene.add(post, face);
+      this.obstacles.push({ x: FOREST.sign.x, z: FOREST.sign.z, r: 0.3 });
+    }
     const bushes: [number, number, number][] = [
       [-14.2, 10.6, 1],
       [14.6, 10.2, 0.8],
-      [15.2, -6.4, 0.9],
       [-3.6, -14.0, 0.7],
       [6.4, 12.2, 0.8],
       [-6.2, 12.4, 0.7],
@@ -508,7 +551,6 @@ export class FarmWorld {
       smooth.push(...place(flowers(), at(x, 0, z)));
     for (const [x, z, s] of [
       [-15.6, 9.4, 1.2],
-      [16.8, -7.2, 1],
       [-6.0, -14.8, 0.9],
     ] as const)
       flat.push(...place(rock(s), at(x, 0, z)));
@@ -979,11 +1021,11 @@ export class FarmWorld {
     const carry = v.field.carry;
     const setup = setupLeft(f, t, farm);
     if (setup === 'prep') {
-      if (machinePrep(plan)) return { hint: `${plan.land === 'tractor' ? 'Hire the tractor' : 'Hire the oxen'} at the Hire spot to plough Farm ${farm + 1}` };
+      if (machinePrep(plan)) return { hint: `${plan.land === 'tractor' ? 'Hire the tractor' : 'Hire the oxen'} to plough Farm ${farm + 1}` };
       return { job: 'prep', need: FULL, fx: plan.land === 'slash' ? 'clear' : plan.land === 'mulch' ? 'mulch' : 'dig' };
     }
     if (setup === 'sow') return { job: 'sow', need: FULL, fx: 'seed' };
-    if (setup === 'setupFeed') return carry === 'fertilizer' ? { job: 'setupFeed', need: needOf('setupFeed', t, farm), fx: 'fert' } : { hint: 'Get fertilizer from the shed: this farm gets it at planting' };
+    if (setup === 'setupFeed') return carry === 'fertilizer' ? { job: 'setupFeed', need: needOf('setupFeed', t, farm), fx: 'fert' } : { hint: 'Get fertilizer from the shed' };
     if (day > CHECK_DAYS) return { job: 'harvest', need: FULL, fx: 'harvest' };
     const tr = careLeft(f, t, farm, day);
     if (!tr) {
@@ -1285,9 +1327,13 @@ export class FarmWorld {
     if (this.keys.has('a') || this.keys.has('arrowleft')) dir.x -= 1;
     if (this.keys.has('d') || this.keys.has('arrowright')) dir.x += 1;
     if (this.joy.lengthSq() > 0.01) dir.copy(this.joy);
+    // how far the spot being walked to is: a step never goes past it (a long frame on a slow phone, or a fast
+    // farmer, used to overshoot and swing back and forth across it)
+    let reach = Infinity;
     if (!dir.lengthSq() && this.target) {
       dir.subVectors(this.target, this.pos);
-      if (dir.length() < 0.15) {
+      reach = dir.length();
+      if (reach < 0.15) {
         this.target = null;
         dir.set(0, 0);
         this.ev.arrived?.();
@@ -1298,10 +1344,18 @@ export class FarmWorld {
       const len = Math.min(1, dir.length());
       dir.normalize();
       this.heading = Math.atan2(dir.x, dir.y);
-      const next = this.pos.clone().addScaledVector(dir, speed * len * dt);
+      const step = speed * len * dt;
+      const lands = reach <= step;
+      const next = this.pos.clone().addScaledVector(dir, Math.min(reach, step));
       this.collide(next);
-      if (this.target && next.distanceTo(this.pos) < speed * dt * 0.1) this.target = null;
+      const blocked = !lands && !!this.target && next.distanceTo(this.pos) < speed * dt * 0.1;
       this.pos.copy(next);
+      if (lands && this.target) {
+        // this step ends on the spot (unless something solid stands there)
+        const there = next.distanceTo(this.target) < 0.15;
+        this.target = null;
+        if (there) this.ev.arrived?.();
+      } else if (blocked) this.target = null;
       this.walking = Math.min(1, this.walking + dt * 8);
     } else this.walking = Math.max(0, this.walking - dt * 8);
   }
@@ -1335,13 +1389,19 @@ export class FarmWorld {
     }
   }
 
+  /** The farmer already stands at a place and asks for it again (a tap on the task card that points there): the
+      place answers as if they had just walked in. */
+  revisit(place: Place) {
+    if (this.inPlace === place) this.inPlace = null;
+  }
+
   private places() {
     let now: Place | null = null;
     for (const [k, p] of Object.entries(PLACES) as [Place, (typeof PLACES)[Place]][]) {
       if (Math.hypot(this.pos.x - p.x, this.pos.y - p.z) >= p.r) continue;
-      // walking through on the way to a tapped spot elsewhere is not a visit: the sheds sit close together, and the
-      // path from one to a farm can cross the next one's door (it would swap the sprayer for fertilizer). Stopping
-      // there, or steering in with the joystick or keys, still counts.
+      // A place answers when the farmer walks to it, or stops in it: not when a walk to somewhere else only passes
+      // through. (The sheds stand in a row: the way from the sprayer shed to a farm crosses the fertilizer shed's
+      // spot, which used to swap the sprayer for a fertilizer bag.)
       if (this.target && Math.hypot(this.target.x - p.x, this.target.y - p.z) >= p.r) continue;
       now = k;
     }
@@ -1350,7 +1410,11 @@ export class FarmWorld {
       if (now) {
         const item = PICKUP_OF[now];
         if (item) {
-          if (this.view?.field.carry !== item) this.ev.carry(item);
+          // only a spot walked to (or steered into) hands over its item: crossing it on the way somewhere else keeps
+          // what is carried, so the sprayer is not swapped for fertilizer on the way to the farm
+          const p = PLACES[now];
+          const meant = !this.target || Math.hypot(this.target.x - p.x, this.target.y - p.z) < p.r;
+          if (meant && this.view?.field.carry !== item) this.ev.carry(item);
         } else if (now === 'hire') {
           if (!this.riding) this.startHire();
         }
@@ -1557,7 +1621,7 @@ export class FarmWorld {
       const now = performance.now();
       if (now - this.lastHint > 5000) {
         this.lastHint = now;
-        this.ev.hint(`Check Farm ${farm + 1} at its sign first: read what is wrong, then deal with it`);
+        this.ev.hint(`Check Farm ${farm + 1} at its sign first`);
       }
     }
   }
@@ -1575,10 +1639,10 @@ export class FarmWorld {
     const v = this.view;
     const t = v?.trial;
     if (!t || t.phase !== 'growing') return atSpot ? this.ev.hint('Nothing to hire now: plan your farms first') : undefined;
-    if (this.riding) return atSpot ? this.ev.hint('Get off the tractor first: the hire tractor is the one you are sitting on') : undefined;
+    if (this.riding) return atSpot ? this.ev.hint('Get off the tractor first') : undefined;
     const f = this.liveField();
     const { ready, toDrive, any } = this.hireFarms(t, f);
-    if (!any) return atSpot ? this.ev.hint('No farm needs ploughing now. Tractor or oxen hire is a land-prep choice in the plan') : undefined;
+    if (!any) return atSpot ? this.ev.hint('No farm needs ploughing now') : undefined;
     // at the Hire spot, a tractor farm not yet driven opens the drive (World.tsx); the hire starts after it
     if (atSpot && toDrive.length) return this.ev.place('hire');
     const farms = ready;

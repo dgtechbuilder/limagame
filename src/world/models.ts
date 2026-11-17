@@ -236,6 +236,116 @@ export function badgeTexture(text: string, bg: string) {
 }
 
 /** A sign board face: a cyan frame with a maize cob, like a crop marker. */
+/** The mini forest's sign: a wooden board. */
+export function forestSignTexture() {
+  return canvasTex(256, 128, g => {
+    g.fillStyle = '#8b5a2b';
+    g.fillRect(0, 0, 256, 128);
+    g.fillStyle = '#c9925a';
+    g.fillRect(8, 8, 240, 112);
+    g.fillStyle = '#2f6b25';
+    g.beginPath();
+    g.moveTo(40, 22);
+    g.lineTo(66, 70);
+    g.lineTo(14, 70);
+    g.closePath();
+    g.fill();
+    g.beginPath();
+    g.moveTo(40, 44);
+    g.lineTo(70, 98);
+    g.lineTo(10, 98);
+    g.closePath();
+    g.fill();
+    g.fillStyle = '#5c3a20';
+    g.fillRect(36, 98, 8, 14);
+    g.fillStyle = '#3a2410';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.font = 'bold 26px Poppins, Arial, sans-serif';
+    g.fillText('MINI FOREST', 160, 48);
+    g.font = 'bold 24px Poppins, Arial, sans-serif';
+    g.fillText('10 acres', 158, 86);
+  });
+}
+
+/** A short planted tree for the tree farm: a straight trunk and a compact round crown, about head height and a half. */
+function farmTree(scale = 1, tint = 0): Part[] {
+  const leaf = tint ? C.leafLight : C.leaf;
+  return place(
+    [
+      { geo: G.cyl6, color: '#8b5a2b', m: at(0, 0.55, 0, { sx: 0.22, sy: 1.1, sz: 0.22 }) },
+      { geo: G.ico, color: leaf, m: at(0, 1.45, 0, { s: 1.15, sy: 1.0 }) },
+      { geo: G.ico, color: C.leafLight, m: at(0.2, 1.75, 0.12, { s: 0.7 }) },
+    ],
+    at(0, 0, 0, { s: scale }),
+  );
+}
+
+/** A tall, skinny tree (like a young eucalyptus or cypress): a thin trunk and a narrow, pointed crown. */
+function tallTree(scale = 1): Part[] {
+  return place(
+    [
+      { geo: G.cyl6, color: '#7a4c24', m: at(0, 1.1, 0, { sx: 0.16, sy: 2.2, sz: 0.16 }) },
+      { geo: G.cone6, color: C.leaf, m: at(0, 2.9, 0, { sx: 0.95, sy: 2.6, sz: 0.95 }) },
+      { geo: G.cone6, color: C.leafLight, m: at(0, 3.9, 0, { sx: 0.6, sy: 1.4, sz: 0.6 }) },
+    ],
+    at(0, 0, 0, { s: scale }),
+  );
+}
+
+/** The mini forest: a planted tree farm on a darker forest floor, filling the rectangle x0..x1, z0..z1. Short trees
+    stand in straight rows with open lanes between them, so the farmer can run through; a few tall, skinny trees rise
+    out of the rows. Grass tufts and small bushes grow at the foot of the trees. Placed the same way every time (no
+    randomness). Returns the parts and where each trunk stands (the farmer walks round the trunks only). */
+export function forest(x0: number, z0: number, x1: number, z1: number): { parts: Part[]; floor: Part[]; trunks: { x: number; z: number; r: number }[] } {
+  const floor: Part[] = [
+    { geo: roundRect(x0 - 0.4, z0 - 0.4, x1 + 0.4, z1 + 0.4, 1.4), color: '#4c9a3c', m: at(0, 0.006, 0) },
+    { geo: roundRect(x0, z0, x1, z1, 1.1), color: '#3d8434', m: at(0, 0.011, 0) },
+  ];
+  const parts: Part[] = [];
+  const trunks: { x: number; z: number; r: number }[] = [];
+  const jit = (i: number, k: number) => Math.sin(i * 12.9898 + k * 78.233) * 0.5;
+  // a straight grid, centred in the rectangle: columns across x, rows down z
+  const sx = 1.7;
+  const sz = 1.85;
+  const inset = 0.9;
+  const cols = Math.floor((x1 - x0 - 2 * inset) / sx) + 1;
+  const rows = Math.floor((z1 - z0 - 2 * inset) / sz) + 1;
+  const ox = (x0 + x1) / 2 - ((cols - 1) * sx) / 2;
+  const oz = (z0 + z1) / 2 - ((rows - 1) * sz) / 2;
+  let i = 0;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      i++;
+      const tx = ox + c * sx + jit(i, 1) * 0.12;
+      const tz = oz + r * sz + jit(i, 2) * 0.12;
+      const tall = (r * 3 + c * 5) % 7 === 2;
+      if (tall) {
+        const s = 0.95 + (jit(i, 3) + 0.5) * 0.2;
+        parts.push(...place(tallTree(s), at(tx, 0, tz, { ry: jit(i, 4) * 6 })));
+        trunks.push({ x: tx, z: tz, r: 0.12 * s });
+      } else {
+        const s = 0.88 + (jit(i, 3) + 0.5) * 0.18;
+        parts.push(...place(farmTree(s, i % 3 === 0 ? 1 : 0), at(tx, 0, tz, { ry: jit(i, 4) * 6 })));
+        trunks.push({ x: tx, z: tz, r: 0.16 * s });
+      }
+      // grass round the foot of the trunk
+      const n = 3 + (i % 2);
+      for (let k = 0; k < n; k++) {
+        const a = (k / n) * Math.PI * 2 + jit(i, 6 + k) * 0.8;
+        const d = 0.36 + (jit(i, 9 + k) + 0.5) * 0.16;
+        parts.push(...place(grassClump(0.48 + (jit(i, 12 + k) + 0.5) * 0.16, k % 2 ? C.grassLight : C.leafYoung), at(tx + Math.cos(a) * d, 0, tz + Math.sin(a) * d, { ry: a })));
+      }
+      // a small bush under most trees, tucked against the trunk
+      if (i % 3 !== 1) {
+        const a = jit(i, 15) * 6;
+        parts.push(...place(bush(0.42 + (jit(i, 16) + 0.5) * 0.12), at(tx + Math.cos(a) * 0.46, 0, tz + Math.sin(a) * 0.46)));
+      }
+    }
+  }
+  return { parts, floor, trunks };
+}
+
 export function signTexture(n: number) {
   return canvasTex(128, 128, g => {
     g.fillStyle = '#3cc3dd';
@@ -259,6 +369,75 @@ export function signTexture(n: number) {
     g.textBaseline = 'middle';
     g.fillText(String(n), 92, 66);
   });
+}
+
+/** A partner's billboard face: the brand's colours, its mark, name and tagline, and a small PARTNER tag. */
+export function billboardTexture(b: { name: string; tagline: string; color: string; accent: string; mark: string }) {
+  return canvasTex(512, 256, g => {
+    g.fillStyle = b.color;
+    g.fillRect(0, 0, 512, 256);
+    g.fillStyle = b.accent;
+    g.fillRect(0, 214, 512, 42);
+    // the mark in a round badge
+    g.fillStyle = 'rgba(255,255,255,0.18)';
+    g.beginPath();
+    g.arc(92, 106, 66, 0, Math.PI * 2);
+    g.fill();
+    g.strokeStyle = b.accent;
+    g.lineWidth = 8;
+    g.stroke();
+    g.font = '72px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(b.mark, 92, 110);
+    // the name and tagline, shrunk to fit
+    g.textAlign = 'left';
+    g.fillStyle = '#ffffff';
+    let size = 54;
+    g.font = `bold ${size}px Poppins, Arial, sans-serif`;
+    while (g.measureText(b.name).width > 330 && size > 26) g.font = `bold ${(size -= 2)}px Poppins, Arial, sans-serif`;
+    g.fillText(b.name, 172, 88);
+    size = 28;
+    g.font = `600 ${size}px Poppins, Arial, sans-serif`;
+    while (g.measureText(b.tagline).width > 320 && size > 16) g.font = `600 ${(size -= 1)}px Poppins, Arial, sans-serif`;
+    g.fillStyle = 'rgba(255,255,255,0.9)';
+    g.fillText(b.tagline, 174, 146);
+    g.fillStyle = b.color;
+    g.font = 'bold 22px Poppins, Arial, sans-serif';
+    g.fillText('PARTNER · TAP FOR THE OFFER', 24, 236);
+  });
+}
+
+/** A partner's name for the side of the tractor's bonnet. */
+export function liveryTexture(name: string, color: string, accent: string, h = 80) {
+  return canvasTex(256, h, g => {
+    g.fillStyle = color;
+    g.fillRect(0, 0, 256, h);
+    g.fillStyle = accent;
+    g.fillRect(0, h - 14, 256, 14);
+    g.fillStyle = '#ffffff';
+    let size = Math.round(h * 0.42);
+    g.font = `bold ${size}px Poppins, Arial, sans-serif`;
+    while (g.measureText(name).width > 236 && size > 16) g.font = `bold ${(size -= 2)}px Poppins, Arial, sans-serif`;
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(name, 128, (h - 14) / 2 + 2);
+  });
+}
+
+/** A billboard: two posts, a frame and a face (the face's material is the partner's texture). */
+export function makeBillboard(face: THREE.Texture) {
+  const g = new THREE.Group();
+  const wood = lam('#6e4a2a');
+  for (const x of [-1.25, 1.25]) g.add(mesh(G.box, wood, at(x, 1.1, 0, { sx: 0.16, sy: 2.2, sz: 0.16 })));
+  g.add(mesh(G.box, lam('#3a2a1c'), at(0, 2.35, -0.02, { sx: 3.3, sy: 1.75, sz: 0.12 })));
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(3.1, 1.55), new THREE.MeshBasicMaterial({ map: face }));
+  plane.position.set(0, 2.35, 0.05);
+  g.add(plane);
+  g.traverse(o => {
+    if ((o as THREE.Mesh).isMesh && o !== plane) (o as THREE.Mesh).castShadow = true;
+  });
+  return g;
 }
 
 /* ---------------- scenery pieces (built at the origin) ---------------- */
@@ -787,7 +966,8 @@ export function makeBird() {
   return { root: g, wl, wr };
 }
 
-export function makeTractor() {
+/** The tractor; with a partner's livery, its name on both sides of the bonnet. */
+export function makeTractor(livery?: { side: THREE.Texture; top: THREE.Texture }) {
   const g = new THREE.Group();
   const yellow = lam('#f5c21b');
   const teal = lam('#1f9d8f');
@@ -802,6 +982,21 @@ export function makeTractor() {
     g.add(mesh(G.cyl, black, at(x, 0.35, 0.75, { sx: 0.7, sy: 0.25, sz: 0.7, rz: Math.PI / 2 })));
   }
   g.add(mesh(G.box, lam('#9aa3a8'), at(0, 0.3, -1.25, { sx: 1.4, sy: 0.25, sz: 0.4 })));
+  if (livery) {
+    const mat = new THREE.MeshBasicMaterial({ map: livery.side });
+    for (const side of [-1, 1]) {
+      const plate = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.3), mat);
+      plate.position.set(side * 0.56, 0.86, 0.58);
+      plate.rotation.y = (side * Math.PI) / 2;
+      g.add(plate);
+    }
+    // across the top of the bonnet, reading along the tractor (the farm's camera looks down on it)
+    const top = new THREE.PlaneGeometry(0.94, 0.66);
+    top.applyMatrix4(new THREE.Matrix4().makeBasis(new THREE.Vector3(0, 0, 1), new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0)));
+    const roof = new THREE.Mesh(top, new THREE.MeshBasicMaterial({ map: livery.top }));
+    roof.position.set(0, 1.056, 0.57);
+    g.add(roof);
+  }
   g.traverse(o => {
     if ((o as THREE.Mesh).isMesh) (o as THREE.Mesh).castShadow = true;
   });

@@ -2,11 +2,12 @@ import { useEffect, useRef, useState, type PointerEvent as RPointerEvent, type R
 import { img } from '../assets';
 import { FarmMap } from '../components/FarmMap';
 import { fmt } from '../components/ui';
-import { money } from '../money';
+import { KSH_PER_USD, currency, money, withMoney } from '../money';
 import { SPEAKER } from '../care/voice';
 import { track } from '../first/track';
 import { farmName } from '../trials/model';
 import { NavBar, useNav } from '../components/Nav';
+import { CloseX } from '../components/Success';
 import { FARM_ACRES, IMPL, IMPL_ORDER, MONEY, OBS_NAME, TRACTORS, TRACTOR_BONUS, TRACTOR_EDGE, TRACTOR_REWARD, type ImplId, type MoneyFigure, type TractorKind } from './data';
 import { CELL, FH, FW, GW, createJob, finishJob, pct, rewardFor, setupJob, stepJob, tankOf, type Controls, type Job, type JobResult } from './sim';
 
@@ -27,8 +28,8 @@ const STEPS: [Phase, string][] = [
 const K = 2;
 
 /** shillings on screen: 10 times the stored value (src/money.ts), rounded to the nearest 100 */
-const ksh = (n: number) => `KSh ${money(Math.abs(Math.round(n / 10) * 10))}`;
-const acresText = `a sixth of an acre`;
+const ksh = (n: number) => money(Math.abs(n));
+const acresText = `${FARM_ACRES} acres`;
 
 export interface TractorProps {
   farm: number;
@@ -301,7 +302,7 @@ export function Tractor({ farm, cycle, best, name, demo, onFinish, onClose }: Tr
           </li>
           <li>Time limit: {job.limit} seconds</li>
           <li>Field: {acresText}, with rocks and fallen trunks</li>
-          <li>You choose the tractor and the implement. The wrong one does a poor job.</li>
+          <li>The wrong tractor or implement does a poor job.</li>
           <li>
             A tractor works {TRACTOR_EDGE}× the ground of a farmer on foot, and earns +{TRACTOR_BONUS.perDrive} bonus points.
           </li>
@@ -422,9 +423,9 @@ export function Tractor({ farm, cycle, best, name, demo, onFinish, onClose }: Tr
         </div>
         <ul className="tc-info is-tips">
           <li>
-            <b>How to drive:</b> tap where to go and hold to keep steering, or use the arrow keys.
+            <b>Drive:</b> tap and hold where to go, or use the arrow keys.
           </li>
-          <li>Steer around rocks and trunks. Drive in straight rows and don't cover the same ground twice.</li>
+          <li>Avoid rocks and trunks. Drive straight rows; don't overlap.</li>
         </ul>
         <button type="button" className="tc-btn" disabled={!all} onClick={start}>
           {all ? `Start the engine · ${job.limit}s` : 'Tick both first'}
@@ -435,7 +436,7 @@ export function Tractor({ farm, cycle, best, name, demo, onFinish, onClose }: Tr
     const left = stats.left;
     side = (
       <>
-        <p className="tc-note">{auto ? `Autopilot is driving (up to ${TRACTOR_REWARD.autopilotStars} stars). Tap Autopilot to take over.` : 'Tap where to drive. Hold to keep steering.'}</p>
+        <p className="tc-note">{auto ? `Autopilot is driving (max ${TRACTOR_REWARD.autopilotStars} stars). Tap it to take over.` : 'Tap where to drive. Hold to keep steering.'}</p>
         <Stat label="Done" value={`${Math.round(stats.cov)}%`} bar={stats.cov} />
         <Stat label="Time left" value={`${Math.floor(left / 60)}:${String(Math.ceil(left) % 60).padStart(2, '0')}`} bar={(left / job.limit) * 100} low={left < job.limit * 0.2} kind="time" />
         <Stat label="Fuel" value={`${stats.fuel.toFixed(2)} L`} bar={(stats.fuel / Math.max(0.01, job.tankL)) * 100} kind="fuel" />
@@ -498,7 +499,7 @@ export function Tractor({ farm, cycle, best, name, demo, onFinish, onClose }: Tr
             <small>/100</small>
           </b>
           <span className="tc-earn">
-            <img src={img.coin} alt="" width={12} height={12} />+{money(res.coins)}
+            +{money(res.coins)}
             {res.points > 0 && (
               <>
                 <img src={img.star} alt="" width={12} height={12} />+{res.points}
@@ -519,7 +520,7 @@ export function Tractor({ farm, cycle, best, name, demo, onFinish, onClose }: Tr
         <Bar label="Climate" v={r.clim} note={`${r.usedL.toFixed(2)} L diesel · ${r.co2.toFixed(1)} kg CO₂${(tr?.soil ?? 0) >= 15 ? ' · heavy tractor' : ''}`} />
         <Bar label="Cost saving" v={r.money} note={r.saved >= 0 ? `${ksh(r.saved)} saved vs. by hand` : `${ksh(r.saved)} more than by hand`} />
         <p className="tc-ksh">
-          Real-world shillings{est ? ' (estimate)' : ''}: by hand, {Math.max(0, Math.round(r.days * 10) / 10)} person-days ({ksh(r.manual)}); by tractor, {ksh(r.tractor)}.{' '}
+          Real-world costs{est ? ' (estimate)' : ''}: by hand, {Math.max(0, Math.round(r.days * 10) / 10)} person-days ({ksh(r.manual)}); by tractor, {ksh(r.tractor)}.{' '}
           <button type="button" className="tc-link" onClick={() => setSources(true)}>
             Sources
           </button>
@@ -559,7 +560,7 @@ export function Tractor({ farm, cycle, best, name, demo, onFinish, onClose }: Tr
         onPointerCancel={() => (ctl.current.hold = false)}
       />
       {over}
-      <NavBar horizontal onBack={back} onHome={phase === 'done' ? onClose : undefined} style={{ left: 6, top: 4 }} />
+      <NavBar horizontal onBack={back} onHome={phase === 'done' ? onClose : undefined} style={{ left: 28, top: 8 }} />
       {msg && (
         <p key={msg.id} className="tc-msg" role="status">
           {msg.text}
@@ -612,14 +613,15 @@ function Bar({ label, v, note }: { label: string; v: number; note: string }) {
 function Sources({ figures, onClose }: { figures: MoneyFigure[]; onClose: () => void }) {
   const seen = new Set<MoneyFigure>();
   return (
-    <div className="tc-choose tc-sources" role="dialog" aria-label="Where the shillings come from">
-      <p className="tc-ask">Where the shillings come from</p>
+    <div className="tc-choose tc-sources" role="dialog" aria-label="Where the prices come from">
+      <CloseX onClick={onClose} />
+      <p className="tc-ask">Where the prices come from</p>
       <ul>
         {figures
           .filter(f => !seen.has(f) && seen.add(f))
           .map(f => (
             <li key={f.what}>
-              <b>{f.what}:</b> {f.unit.startsWith('KSh') ? money(f.value) : fmt(f.value)} {f.unit}.{' '}
+              <b>{withMoney(f.what)}:</b> {f.unit.startsWith('KSh') ? `${money(f.value)} ${f.unit.slice(4)}` : `${fmt(f.value)} ${f.unit}`}.{' '}
               {f.source ? (
                 <a href={f.source.url} target="_blank" rel="noreferrer">
                   {f.source.name}
@@ -630,12 +632,9 @@ function Sources({ figures, onClose }: { figures: MoneyFigure[]; onClose: () => 
             </li>
           ))}
         <li>
-          One farm is {acresText} ({FARM_ACRES.toFixed(2)} acre). Lima's coins are game money: these shillings are only to compare. Like every value in the game, they are shown at 10 times the source figures.
+          One farm is {acresText}. {currency().code === 'KES' ? 'Prices are shown in Kenyan shillings, as the sources give them.' : `Prices are shown in ${currency().name}, from Kenyan shilling sources at KSh ${KSH_PER_USD} to the US dollar.`}
         </li>
       </ul>
-      <button type="button" className="tc-btn" onClick={onClose}>
-        Close
-      </button>
     </div>
   );
 }

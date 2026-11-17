@@ -1,3 +1,5 @@
+import { trackContext } from './first/track';
+import { evidenceOf } from './evidence/model';
 import { Suspense, lazy, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { FarmScene } from './components/FarmScene';
 import { ShopModal, StepsModal } from './screens/Catalog';
@@ -15,40 +17,99 @@ const ReviewPicker = lazy(() => import('./review/Review').then(m => ({ default: 
 import { WelcomeModal } from './screens/Meta';
 import { SettingsPage } from './screens/Settings';
 import { ClimatePage } from './screens/Climate';
+import { AchievementsPage } from './screens/Achievements';
+import { PartnersPage } from './screens/Partners';
 import { ArtContext, VoiceContext } from './art/style';
 import { speak, stopSpeaking } from './speech';
 import { setSoundOn, sfx, warmSfx } from './sfx';
 import { MainMenu } from './screens/MainMenu';
+import { LoanModal } from './screens/Loan';
+import { TrainingModal } from './screens/Training';
+import { SuccessLayer } from './screens/Success';
 import { NavBar, NavContext } from './components/Nav';
 import { reviewing, useGame } from './state';
 import { pathOf } from './route';
+import { setCountry } from './money';
+import { fitScale } from './fit';
 
-const STAGE_W = 874;
-const STAGE_H = 402;
 
+
+/* The stage is fitted to the space the page really has. Phones report a rotation late: Safari and Chrome on iOS fire
+   "resize" (and "orientationchange") before the new width and height can be read, so a fit taken only then keeps the
+   portrait size and the game sits small in the middle of a landscape screen. The fit is therefore re-taken on every
+   signal a size change gives (resize, orientationchange, screen orientation, the visual viewport, a ResizeObserver on
+   the page, coming back to the tab) and checked again for a moment after each one, until the size has settled. The
+   size is the layout viewport's (the page's own box), so the on-screen keyboard and pinch zoom do not shrink it. */
+function viewSize() {
+  const de = document.documentElement;
+  return { w: de.clientWidth || window.innerWidth, h: de.clientHeight || window.innerHeight };
+}
 
 function useStageScale(roomForPicker: boolean) {
-  const [scale, setScale] = useState(1);
+  const [scale, setScale] = useState(() => {
+    const { w, h } = viewSize();
+    return fitScale(w, h, roomForPicker);
+  });
   useLayoutEffect(() => {
+    let raf = 0;
+    const timers: number[] = [];
     const fit = () => {
-      const small = window.innerWidth < 700 || window.innerHeight < 420;
-      const padX = small ? 0 : 48;
-      const padY = small ? 0 : roomForPicker ? 112 : 48;
-      setScale(Math.min((window.innerWidth - padX) / STAGE_W, (window.innerHeight - padY) / STAGE_H));
+      const { w, h } = viewSize();
+      if (w > 0 && h > 0) setScale(fitScale(w, h, roomForPicker));
     };
-    fit();
-    window.addEventListener('resize', fit);
-    return () => window.removeEventListener('resize', fit);
+    const onChange = () => {
+      fit();
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(fit);
+      // a rotation settles over a few hundred milliseconds on iOS: look again until it has
+      timers.splice(0).forEach(t => window.clearTimeout(t));
+      for (const ms of [100, 300, 700]) timers.push(window.setTimeout(fit, ms));
+    };
+    onChange();
+    window.addEventListener('resize', onChange);
+    window.addEventListener('orientationchange', onChange);
+    window.visualViewport?.addEventListener('resize', onChange);
+    screen.orientation?.addEventListener?.('change', onChange);
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(onChange) : null;
+    ro?.observe(document.documentElement);
+    // coming back to the tab after rotating the phone while it was hidden
+    const onShow = () => document.visibilityState === 'visible' && onChange();
+    document.addEventListener('visibilitychange', onShow);
+    window.addEventListener('pageshow', onChange);
+    return () => {
+      cancelAnimationFrame(raf);
+      timers.forEach(t => window.clearTimeout(t));
+      window.removeEventListener('resize', onChange);
+      window.removeEventListener('orientationchange', onChange);
+      window.visualViewport?.removeEventListener('resize', onChange);
+      screen.orientation?.removeEventListener?.('change', onChange);
+      ro?.disconnect();
+      document.removeEventListener('visibilitychange', onShow);
+      window.removeEventListener('pageshow', onChange);
+    };
   }, [roomForPicker]);
   return scale;
 }
 
 export default function App() {
   const [s, dispatch] = useGame();
+  // money is shown in the currency of the player's country (src/money.ts): set before anything below is drawn
+  setCountry(s.settings.country);
+  // every event carries the player's programme tags (src/evidence)
+  trackContext.tags = evidenceOf(s.evidence).tags;
+  // a programme link (?cohort=CODE or ?programme=CODE) tags the player once
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const code = q.get('cohort') ?? q.get('programme');
+    if (code) dispatch({ type: 'evidenceTag', tag: code, on: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const review = reviewing();
   const scale = useStageScale(review);
   const toastTimer = useRef<number | undefined>(undefined);
   const [toastVisible, setToastVisible] = useState(false);
+  const [awardVisible, setAwardVisible] = useState(false);
+  const awardTimer = useRef<number | undefined>(undefined);
 
 
   // Play-tests: ?dev in a dev build exposes the state and jump-to-state helpers as window.__lima (never in production)
@@ -108,6 +169,12 @@ export default function App() {
   useEffect(() => {
     if (s.toast && voiceOn) speak(s.toast.text);
   }, [s.toast, voiceOn]);
+  // read the dialog after something worked: what happened, in a few words
+  useEffect(() => {
+    const x = s.success;
+    if (!x || !voiceOn) return;
+    speak(x.kind === 'sale' ? `Sold ${x.qty} ${x.item}` : x.kind === 'training' ? 'Training booked' : 'Storage upgraded');
+  }, [s.success?.id, voiceOn]);
   useEffect(() => {
     if (!voiceOn) stopSpeaking();
   }, [voiceOn]);
@@ -124,6 +191,26 @@ export default function App() {
     return () => window.removeEventListener('pointerdown', warmSfx);
   }, [s.settings.sound]);
 
+  // the daily climate payment (climate/land.ts): a day that has ended is paid on opening the game, on coming back
+  // to it, and within a minute of midnight while it is open
+  useEffect(() => {
+    const tick = () => document.visibilityState !== 'hidden' && dispatch({ type: 'climateTick' });
+    tick();
+    const id = window.setInterval(tick, 60_000);
+    document.addEventListener('visibilitychange', tick);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', tick);
+    };
+  }, [dispatch]);
+
+  // a badge, a certificate or a new day of the streak: a pop-up for a few seconds
+  useEffect(() => {
+    if (!s.award) return;
+    setAwardVisible(true);
+    window.clearTimeout(awardTimer.current);
+    awardTimer.current = window.setTimeout(() => setAwardVisible(false), 4200);
+  }, [s.award]);
   useEffect(() => {
     if (!s.toast) return;
     setToastVisible(true);
@@ -153,7 +240,7 @@ export default function App() {
                 horizontal
                 hideHome
                 showSettings
-                style={{ right: 6, top: 4 }}
+                style={{ right: 28, top: 8 }}
                 onBack={
                   s.fs.phase === 'story' ? () => dispatch({ type: 'fs', phase: 'create' }) : s.fs.phase === 'walk1' ? () => dispatch({ type: 'fs', phase: 'story' }) : s.fs.phase === 'update' ? () => dispatch({ type: 'fs', phase: 'walk1' }) : s.fs.phase === 'review1' ? () => dispatch({ type: 'fs', phase: 'update' }) : undefined
                 }
@@ -191,6 +278,8 @@ export default function App() {
         {m?.kind === 'welcome' && <WelcomeModal s={s} dispatch={dispatch} />}
         {m?.kind === 'settings' && <SettingsPage s={s} dispatch={dispatch} tab={m.tab} />}
         {m?.kind === 'climate' && <ClimatePage s={s} dispatch={dispatch} tab={m.tab} />}
+        {m?.kind === 'achievements' && <AchievementsPage s={s} dispatch={dispatch} tab={m.tab} />}
+        {m?.kind === 'partners' && <PartnersPage s={s} dispatch={dispatch} tab={m.tab} brand={m.brand} />}
         {m?.kind === 'shop' && <ShopModal s={s} tab={m.tab} dispatch={dispatch} />}
         {m?.kind === 'steps' && <StepsModal s={s} step={m.step} dispatch={dispatch} />}
         {m?.kind === 'sale' && <SaleModal s={s} dispatch={dispatch} />}
@@ -201,7 +290,21 @@ export default function App() {
         {m?.kind === 'info' && <InfoModal s={s} dispatch={dispatch} />}
         {m?.kind === 'outcome' && <OutcomeModal s={s} dispatch={dispatch} />}
         {m?.kind === 'rewards' && <RewardsModal s={s} dispatch={dispatch} />}
+        {m?.kind === 'loan' && <LoanModal s={s} dispatch={dispatch} view={m.view} />}
+        {m?.kind === 'training' && <TrainingModal s={s} dispatch={dispatch} />}
 
+        {/* the dialog after something worked: above every screen */}
+        <SuccessLayer s={s} dispatch={dispatch} />
+
+        {awardVisible && s.award && !m && (
+          <div key={`award-${s.award.id}`} className="award-pop" role="status">
+            <span aria-hidden="true">{s.award.title.startsWith('Certified') ? '🎓' : '🏅'}</span>
+            <span>
+              <b>{s.award.title}</b>
+              <small>{s.award.line}</small>
+            </span>
+          </div>
+        )}
         {toastVisible && s.toast && (
           <div key={s.toast.id} className="toast" role="status">
             {s.toast.text}

@@ -49,7 +49,7 @@ export function trialRounds(t: Trial, day: number): TrialRound[] {
     const d = DAMAGE[h];
     let treated = '';
     if (h === 'hail') treated = 'Nothing to treat: hail-damaged plants often recover.';
-    else if (d.treat > 0 && canTreat(h, plan)) treated = `${d.fix} for ${money(d.treat)} coins: most of the damage is stopped.`;
+    else if (d.treat > 0 && canTreat(h, plan)) treated = `${d.fix} for ${money(d.treat)}: most of the damage is stopped.`;
     else if (d.treat > 0) treated = 'It stays untreated, so the damage goes on.';
     return {
       ...round,
@@ -58,7 +58,7 @@ export function trialRounds(t: Trial, day: number): TrialRound[] {
       trialHazard: h,
       after: {
         right: [cause, h === 'healthy' ? '' : treated].filter(Boolean).join(' '),
-        wrong: d.missed ? 'Until it is read right, this problem costs the farm part of its harvest.' : '',
+        wrong: d.missed ? 'Until read right, this costs part of the harvest.' : '',
       },
     };
   });

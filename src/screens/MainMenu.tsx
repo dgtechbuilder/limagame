@@ -4,6 +4,9 @@ import { GoldButton } from '../components/ui';
 import { fmt } from '../components/ui';
 import type { Action, GameState } from '../state';
 import { money } from '../money';
+import { achOfSave, streakNow, unclaimed } from '../achievements/model';
+import { achClock } from '../achievements/track';
+import { currentLevel } from '../progress/model';
 
 /* The main menu: one place to reach every part of the game from any screen. It opens on top of whatever the player
    is doing, so Back (or the close button) returns to it. */
@@ -13,6 +16,11 @@ type Item = { label: string; note: string; run: () => void };
 export function MainMenu({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
   const intro = s.fs.phase !== 'done';
   const open = (modal: GameState['modal']) => modal && dispatch({ type: 'open', modal });
+  const today = achClock.today();
+  const ach = achOfSave(s.ach);
+  const waiting = unclaimed(ach, today);
+  const streak = streakNow(ach, today);
+  const { level } = currentLevel(ach);
   const items: Item[] = intro
     ? [
         { label: 'Back to the game', note: 'Carry on where you were', run: () => dispatch({ type: 'close' }) },
@@ -26,8 +34,16 @@ export function MainMenu({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
         { label: 'Tractor', note: 'Pick a type and tool, work a plot', run: () => dispatch({ type: 'ride' }) },
         { label: 'Tractor business', note: 'Serve farms, plan routes, partners', run: () => dispatch({ type: 'biz', open: true }) },
         { label: 'Shop', note: 'Seeds, fertilizer, tools', run: () => open({ kind: 'shop', tab: 'food' }) },
+        {
+          label: waiting ? `My Progress (${waiting})` : 'My Progress',
+          note: `${level ? `Level ${level.n} · ${level.name}` : 'Certification levels'}${streak ? ` · ${streak}-day streak` : ', badges, credits'}`,
+          run: () => open({ kind: 'achievements' }),
+        },
         { label: 'Climate', note: 'Emissions, water, soil, credits', run: () => open({ kind: 'climate' }) },
         { label: 'Rewards', note: 'Points for real discounts', run: () => open({ kind: 'rewards' }) },
+        { label: 'Partners & offers', note: 'Offers from the brands on your farm', run: () => open({ kind: 'partners', tab: 'offers' }) },
+        { label: 'Training', note: (s.trainings ?? []).length ? `${(s.trainings ?? []).length} booked · book a course` : 'Book a farmer course', run: () => open({ kind: 'training' }) },
+        { label: 'Loan calculator', note: 'What a farm loan costs', run: () => open({ kind: 'loan', view: 'calc' }) },
         { label: 'Farming steps', note: 'The classic maize season', run: () => open({ kind: 'steps', step: 'landprep' }) },
         { label: 'Settings', note: 'Farm view, full screen', run: () => open({ kind: 'settings' }) },
       ];
@@ -35,7 +51,7 @@ export function MainMenu({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
     <ModalShell frame="shop" x={178} y={28} title="Main menu" close={[633, 56]} onClose={() => dispatch({ type: 'close' })} isMenu>
       <div className="panel" style={{ left: 213, top: 78, width: 446, height: 254, padding: '12px 18px' }}>
         <p className="section-title">
-          {s.farmer?.name ?? 'Farmer'} · Level {s.level} <span style={{ fontWeight: 400, opacity: 0.75 }}>· {money(s.coins)} coins · {fmt(s.points)} points</span>
+          {s.farmer?.name ?? 'Farmer'} · Level {s.level} <span style={{ fontWeight: 400, opacity: 0.75 }}>· {money(s.coins)} · {fmt(s.points)} points</span>
         </p>
         <MenuScroll>
           {items.map(it => (

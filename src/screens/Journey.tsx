@@ -17,7 +17,9 @@ import {
   daysToHarvest,
   expectedHarvest,
   profitPerBag,
+  qualityPrice,
   saleQuote,
+  sellAt,
   stepIndex,
   type Action,
   type GameState,
@@ -25,7 +27,9 @@ import {
   type Prices,
   type SeasonResult,
 } from '../state';
-import { VALUE_X, money } from '../money';
+import { fromLocal, localNumber, money } from '../money';
+import { REWARD_SPONSOR, brandOf } from '../partners/data';
+import { BrandMark, openOffer } from '../partners/ui';
 
 type Props = { s: GameState; dispatch: Dispatch<Action> };
 
@@ -76,8 +80,8 @@ function Empty({ s, dispatch, title, body, style }: Props & { title: string; bod
 
 const notSellingCopy = (s: GameState) =>
   s.stage === SOLD
-    ? { title: 'This season is sold', body: 'Check your season results, then start the next season to farm again.' }
-    : { title: 'Nothing to sell yet', body: `Your maize is still growing. It will be ready in about ${daysToHarvest(s)} days if you keep up with the farming steps.` };
+    ? { title: 'This season is sold', body: 'Check your results, then start the next season.' }
+    : { title: 'Nothing to sell yet', body: `Your maize is growing: ready in about ${daysToHarvest(s)} days if you keep up.` };
 
 /* ================================================================== */
 /* Sale of produce                                                      */
@@ -93,8 +97,8 @@ export function SaleModal({ s, dispatch }: Props) {
     { key: 'storage', label: 'Storage cost' },
   ];
   const setPrice = (key: keyof Prices, raw: string) => {
-    // prices are typed as shown (10 times the stored value, src/money.ts)
-    const n = Math.min(key === 'market' || key === 'farmgate' ? 60 : 200, (Number(raw.replace(/\D/g, '')) || 0) / VALUE_X);
+    // prices are typed as shown, in the player's currency (src/money.ts)
+    const n = Math.min(key === 'market' || key === 'farmgate' ? 60 : 200, fromLocal(Number(raw.replace(/[^\d.]/g, '')) || 0));
     dispatch({ type: 'prices', prices: { ...p, [key]: n } });
   };
   const selling = s.stage === SELLING && s.harvested;
@@ -127,7 +131,7 @@ export function SaleModal({ s, dispatch }: Props) {
                     <span className="field-box">
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         <Img src={img.coin20} w={20} h={21} />
-                        <input id={`price-${f.key}`} inputMode="numeric" value={money(p[f.key]).replace(/,/g, '')} aria-label={f.label} onChange={e => setPrice(f.key, e.target.value)} />
+                        <input id={`price-${f.key}`} inputMode="numeric" value={localNumber(p[f.key]).replace(/,/g, '')} aria-label={f.label} onChange={e => setPrice(f.key, e.target.value)} />
                       </span>
                       <EditIcon size={20} />
                     </span>
@@ -141,9 +145,10 @@ export function SaleModal({ s, dispatch }: Props) {
                   <Coin size={14} /> {money(perBag)}/bag
                 </Row>
               </div>
-              <p style={{ fontSize: 9, color: p.farmgate >= perBag ? '#c0392b' : undefined }}>
-                {p.farmgate >= perBag ? 'Selling at the gate pays more right now: ' : 'Market pays more: '}
+              <p style={{ fontSize: 9, color: sellAt(p) === 'gate' ? '#c0392b' : undefined }}>
+                {sellAt(p) === 'gate' ? 'The gate pays more right now, so you sell there: ' : 'Market pays more: '}
                 {money(p.farmgate)}/bag at your gate vs {money(perBag)}/bag at market
+                {s.harvested!.quality < 5 ? ` · ${s.harvested!.quality}-star grain fetches ${Math.round(qualityPrice(s.harvested!.quality) * 100)}% of that` : ''}
               </p>
               <GoldButton font={10} height={29} onClick={() => go(dispatch, { kind: 'storage' })}>
                 Continue · choose storage
@@ -240,10 +245,10 @@ export function TimingModal({ s, dispatch }: Props) {
         <p style={{ position: 'absolute', left: 239, top: 80, fontSize: 10, fontWeight: 600 }}>{progress}%</p>
         <p style={{ position: 'absolute', left: 9, top: 98, width: 250, fontSize: 8, lineHeight: 1.5 }}>
           {ready
-            ? 'Your crop is ready. Choose when to harvest: waiting a little can raise yield, waiting too long lowers quality.'
+            ? 'Your crop is ready. A short wait can raise yield; too long lowers quality.'
             : s.stage > stepIndex('harvest')
               ? 'This season is already harvested.'
-              : `Not ready yet: about ${toGo} days to go. Finish ${current.label} and the steps after it first.`}
+              : `About ${toGo} days to go. Finish ${current.label} and the later steps first.`}
         </p>
 
         <div style={box({ left: 272, top: 12, width: 250, height: 108, border: 0, background: 'rgba(255,255,255,0.35)', padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 6 })}>
@@ -402,7 +407,7 @@ export function ProcessModal({ s, dispatch }: Props) {
                 <Coin size={14} /> + {p.profitIncrease}%
               </p>
               <p style={{ fontSize: 8, marginTop: 4, lineHeight: 1.4 }}>
-                <b>{money(q.revenue)}</b> coins vs {money(plain.revenue)} as plain grain
+                <b>{money(q.revenue)}</b> vs {money(plain.revenue)} as plain grain
               </p>
             </div>
             <GoldButton font={10} height={27} style={{ position: 'absolute', left: 16, top: 218, width: 201 }} onClick={() => dispatch({ type: 'completeSale', processId: p.id })}>
@@ -493,11 +498,11 @@ function lessonsFor(r: SeasonResult) {
     const [title, body] = STEP_LESSON[id];
     out.push({ title, body: `You did ${Math.round(v * 100)}% of the recommended ${STEPS[stepIndex(id)].label.toLowerCase()} work. ${body}` });
   }
-  if (r.choice === 'now') out.push({ title: 'Harvest timing', body: 'Harvesting straight away cost you about 15% of the yield. A short wait usually pays.' });
-  else if (r.choice === 'week') out.push({ title: 'Harvest timing', body: 'Waiting a week let the crop over-ripen and lowered quality.' });
+  if (r.choice === 'now') out.push({ title: 'Harvest timing', body: 'Harvesting at once cost about 15% of the yield. A short wait pays.' });
+  else if (r.choice === 'week') out.push({ title: 'Harvest timing', body: 'Waiting a week over-ripened the crop.' });
   else out.push({ title: 'Harvest timing', body: 'Waiting two days gave the best yield and quality.' });
   const lost = r.bagsHarvested - r.bagsSold;
-  if (out.length < 3) out.push({ title: 'Storage', body: lost > 0 ? `${lost} bags spoiled in storage. Better storage or sorting cuts losses.` : 'Good storage: almost nothing spoiled.' });
+  if (out.length < 3) out.push({ title: 'Storage', body: lost > 0 ? `${lost} bags spoiled. Better storage or sorting helps.` : 'Good storage: almost nothing spoiled.' });
   if (out.length < 3) out.push({ title: 'Market timing is key', body: 'Selecting when demand is high maximizes your profit.' });
   return out.slice(0, 3);
 }
@@ -535,7 +540,7 @@ export function OutcomeModal({ s, dispatch }: Props) {
             s={s}
             dispatch={dispatch}
             title="No harvest yet"
-            body="Your results appear here after you harvest and sell your first maize crop: yield, quality, money made and what to do better next time."
+            body="Your results appear here after your first harvest and sale."
           />
         ) : (
           <>
@@ -660,8 +665,15 @@ export function RewardsModal({ s, dispatch }: Props) {
                 <div key={r.id} className="card" style={{ height: 107, padding: '6px 8px 9px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                   <Img src={r.icon} w={33} h={32} alt="" />
                   <p style={{ fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', marginTop: 4 }}>{r.name}</p>
-                  <p style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 8, opacity: 0.85 }}>
+                  <p style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 8, opacity: 0.85, whiteSpace: 'nowrap' }}>
                     <Img src={img.coupon} w={16} h={16} /> {r.off}% OFF
+                  {brandOf(REWARD_SPONSOR[r.id]) && (
+                    <button type="button" className="sponsor-line is-tiny" onClick={() => openOffer(dispatch, 'rewards', REWARD_SPONSOR[r.id]!)} aria-label={`${r.name} with ${brandOf(REWARD_SPONSOR[r.id])!.name}: see the offer`}>
+                      <span>with</span>
+                      <BrandMark b={brandOf(REWARD_SPONSOR[r.id])!} size={11} />
+                      <b>{brandOf(REWARD_SPONSOR[r.id])!.name}</b>
+                    </button>
+                  )}
                   </p>
                   <GoldButton
                     selected={done}

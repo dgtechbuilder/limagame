@@ -11,6 +11,7 @@ import { CHECK_DAYS, DAMAGE, WRONG_FIX_COST, canTreat, causeOf, checkKey, farmNa
 import { fmt } from '../components/ui';
 import { track } from '../first/track';
 import { FOLLOW_UP, PRESCRIBE, fixOrder } from '../care/data';
+import { TREATMENTS } from '../care/treatments';
 import { voiceFor } from '../care/voice';
 import {
   CARRY_NAME,
@@ -30,21 +31,30 @@ import {
   signOf,
   sprayJobs,
   treatCost,
+  treatCostFor,
   type Place,
   type Task,
   type TaskIcon,
   type TreatJob,
   type SprayFor,
 } from './field';
-import { FarmWorld, PLACES, STAGE_H, STAGE_W, TRACTOR_BOARD, type Fx } from './engine';
+import { BILLBOARDS, FarmWorld, PLACES, STAGE_H, STAGE_W, TRACTOR_BOARD, type Fx } from './engine';
+import { slotBrand, type SlotId } from '../partners/data';
+import { useSlotView } from '../partners/track';
+import { BrandMark, openOffer } from '../partners/ui';
 import { useNav } from '../components/Nav';
 import { ClimateIcon } from '../components/Icons';
 import { rating } from '../climate/model';
 import { TRACTOR_BONUS } from '../tractor/data';
 import { JOB_INFO, KIND_WORDS, toolJobs, toolName, tractorName, type PlotKind } from '../plots/data';
 import type { Rig } from '../plots/TractorPick';
-import { money } from '../money';
+import { currency, money, moneyShort } from '../money';
 import { sfx } from '../sfx';
+import { ProgressButton } from '../components/ProgressButton';
+import { RiskHud, useRisk } from '../risk/RiskHud';
+import { WaterButton } from '../water/WaterButton';
+import { EvidenceAsk } from '../evidence/Ask';
+import type { RiskItem } from '../risk/model';
 
 // from Wakala Agent: the screens after a right call, at the shed and at the Hire spot, loaded when first opened
 const Prescribe = lazy(() => import('../care/Prescribe').then(m => ({ default: m.Prescribe })));
@@ -74,9 +84,9 @@ function farmToDrive(st: GameState) {
 
 const JOB_HINT: Record<TreatJob, string> = {
   weed: 'walk over the weeds to cut them',
-  water: 'fill the watering can at the pond and water every row',
-  feed: 'get fertilizer from the shed and top-dress every row',
-  spray: 'get the sprayer from the shed and spray every row',
+  water: 'fill the can at the pond and water every row',
+  feed: 'top-dress every row',
+  spray: 'spray every row',
   drain: 'walk over the puddles to dig drains',
   goat: 'walk up to the goat to chase it out',
   birds: 'walk into the birds to scare them off',
@@ -118,6 +128,8 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
   const name = s.farmer?.name ?? 'Farmer';
   const day = fieldDay(t, today);
   const task = useMemo(() => nextTask(s.field, t, today, s.coins), [s.field, t, today, s.coins]);
+  /** money at risk on the six farms (src/risk) */
+  const risk = useRisk(s, today);
 
   const say = (text: string) => setHint({ text, id: Date.now() });
 
@@ -194,7 +206,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     const tick = window.setInterval(() => {
       const f = w.farmerScreen();
       const sg = eng.current && atSignRef.current >= 0 ? signOf(atSignRef.current) : null;
-      const next = { farmer: f, sign: sg ? w.project(sg.x, 2.5, sg.z) : null, riding: w.isRiding(), nearTractor: w.nearTractor(), plot: w.plotJobHere() };
+      const next = { farmer: f, sign: sg ? w.project(sg.x, 2.5, sg.z) : null, riding: w.isRiding(), nearTractor: w.nearTractor(), plot: w.plotJobHere(), bill: billboardNear(w) };
       // the HUD follows the farmer: re-render only when something on it would move or change
       setAnchors(a => (sameAnchors(a, next) ? a : next));
     }, 120);
@@ -270,7 +282,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
   function mountTractor() {
     const w = eng.current;
     if (!w) return;
-    if (w.isBusy()) return say('The tractor is busy ploughing: wait for it to finish');
+    if (w.isBusy()) return say('The tractor is busy ploughing');
     if (sRef.current.trial?.phase === 'growing') return setCare({ kind: 'rig' });
     ride(null);
   }
@@ -279,13 +291,13 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     const w = eng.current;
     if (!w) return;
     const r = w.mount(rig ?? undefined);
-    if (r === 'busy') return say('The tractor is busy ploughing: wait for it to finish');
+    if (r === 'busy') return say('The tractor is busy ploughing');
     if (r === 'far') return;
     setRig(rig);
     track('tractor_ride', { stage: 'seat', ...(rig ?? {}) });
     if (rig) {
       const jobs = toolJobs(rig.tool).map(j => JOB_INFO[j].name.toLowerCase());
-      say(`${tractorName(rig.tractor)} tractor with the ${toolName(rig.tool).toLowerCase()}: drive over a farm's plots to ${jobs.join(' or ')}. +${TRACTOR_BONUS.perJob} points for a whole farm`);
+      say(`${tractorName(rig.tractor)} tractor, ${toolName(rig.tool).toLowerCase()}: drive over plots to ${jobs.join(' or ')}. +${TRACTOR_BONUS.perJob} points a farm`);
     } else say('On the tractor');
   }
 
@@ -295,7 +307,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     if (!w) return;
     if (w.isRiding()) {
       w.dismount();
-      return say('You got off. Small jobs (weeds, water, spray) are done on foot');
+      return say('Off the tractor: small jobs are done on foot');
     }
     if (w.nearTractor()) return mountTractor();
     rideIntent.current = true;
@@ -330,6 +342,9 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       const at = w.farmerAt();
       if (Math.hypot(at.x - PLACES.hire.x, at.z - PLACES.hire.z) < PLACES.hire.r) return onPlace('hire');
     }
+    // already standing at the shed, the pond, the house or the market (after stepping back out of its screen, say):
+    // walking there again would not arrive, so the place answers again
+    if ('place' in task.target) w.revisit(task.target.place);
     const p = targetOf(task, w);
     intent.current = 'place' in task.target ? null : task.target.at === 'sign' ? task.target.farm : null;
     // already at the sign: open the check
@@ -339,6 +354,26 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     }
     w.walkTo(p.x, p.z);
   };
+
+  /** From the at-risk list: straight to that farm's sign, into its check (or the fix, or the work left). */
+  function goToProblem(item: RiskItem) {
+    const w = eng.current;
+    if (!w) return;
+    if (w.isRiding()) w.dismount();
+    const sg = signOf(item.farm);
+    w.spawn(sg.x, sg.z + 0.7);
+    intent.current = null;
+    if (item.status === 'work') {
+      const st = sRef.current;
+      const tr = st.trial;
+      const pend = tr ? careLeft(st.field.cycle === tr.cycle ? st.field : { ...st.field, marks: {} }, tr, item.farm, fieldDay(tr, dayNumber())) : null;
+      if (pend) say(`${farmName(item.farm)}: ${JOB_HINT[pend.job]}`);
+      const tile = w.nextTile(item.farm);
+      w.walkTo(tile.x, tile.z);
+      return;
+    }
+    openCheck(item.farm);
+  }
 
   function onPlace(p: Place) {
     const st = sRef.current;
@@ -353,12 +388,12 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         return setCare({ kind: 'tractor', farm: drive });
       }
       dispatch({ type: 'fieldHire' });
-      return say('The ploughing has begun: watch it work the farms');
+      return say('The ploughing has begun');
     }
     if (p === 'market') {
       if (!tr || tr.phase !== 'growing') return say('Nothing to sell yet: grow a cycle first');
-      if (d <= CHECK_DAYS) return say(`The maize is still growing: harvest comes after day ${CHECK_DAYS}`);
-      if (!allHarvested(st.field, tr)) return say('Harvest every farm first, then bring the corn here');
+      if (d <= CHECK_DAYS) return say(`Still growing: harvest after day ${CHECK_DAYS}`);
+      if (!allHarvested(st.field, tr)) return say('Harvest every farm first');
       dispatch({ type: 'trialHarvest' });
       window.setTimeout(() => dispatch({ type: 'trials', open: true }), 1400);
       return;
@@ -467,8 +502,15 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
           name={name}
           cost={WRONG_FIX_COST[h] ?? 0}
           wrongBefore={rec?.wrongFixes ?? 0}
-          then={job ? `${JOB_HINT[job]} (${money(treatCost(h))} coins).${FOLLOW_UP[h] ? ` ${FOLLOW_UP[h]!.why}` : ''}` : 'deal with it.'}
+          then={job ? `${JOB_HINT[job]} (${money(treatCostFor(tr, c.farm, c.day, h))}).${FOLLOW_UP[h] ? ` ${FOLLOW_UP[h]!.why}` : ''}` : 'deal with it.'}
           onPick={op => dispatch({ type: 'prescribe', farm: c.farm, day: c.day, pick: op.id, right: op.right })}
+          treatments={TREATMENTS[h]}
+          treatment={rec?.treatment}
+          baseCost={treatCost(h)}
+          onTreat={w => {
+            dispatch({ type: 'treatChoose', farm: c.farm, day: c.day, id: w.id });
+            track('treatment_choice', { farm: c.farm, day: c.day, hazard: h, way: w.id });
+          }}
           onDone={() => {
             setCare(null);
             if (job) say(`Now: ${JOB_HINT[job]}`);
@@ -503,7 +545,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
           coins={s.coins}
           dispatch={dispatch}
           tag={`The shed · ${KIND_WORDS[k].title.toLowerCase()}`}
-          line={`${KIND_WORDS[k].rule} Tap a box to see every choice.`}
+          line={`${KIND_WORDS[k].rule} Tap a box for choices.`}
           done={{ label: c.then === 'sprayer' ? 'Pick up the sprayer' : c.then === 'seeds' ? 'Take the seed' : 'Take the fertilizer', onClick: pick }}
           onLeave={() => setCare(null)}
         />
@@ -555,10 +597,10 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     let then = '';
     if (h === 'hail') then = 'Nothing to treat: hail-damaged plants often recover.';
     else if (job && canTreat(h, plan) && PRESCRIBE[h]) then = 'Next: choose the fix.';
-    else if (job && canTreat(h, plan)) then = `Now ${JOB_HINT[job]} (${money(DAMAGE[h].treat)} coins).`;
-    else if (DAMAGE[h].treat > 0) then = 'It stays untreated, so the damage goes on.';
+    else if (job && canTreat(h, plan)) then = `Now ${JOB_HINT[job]} (${money(DAMAGE[h].treat)}).`;
+    else if (DAMAGE[h].treat > 0) then = 'Untreated: the damage goes on.';
     const voice = voiceFor(t.cycle, checking.farm, checking.day, h, !!returnedProblem(t, checking.farm, checking.day));
-    return { r, voice, after: { right: [cause, h === 'healthy' ? '' : then].filter(Boolean).join(' '), wrong: DAMAGE[h].missed ? `Look again in ${CHECK_WAIT_S} seconds: until it is read right, it costs harvest.` : '' } };
+    return { r, voice, after: { right: [cause, h === 'healthy' ? '' : then].filter(Boolean).join(' '), wrong: DAMAGE[h].missed ? `Look again in ${CHECK_WAIT_S} seconds: until read right, it costs harvest.` : '' } };
   }, [checking, t]);
 
   /* ---------------- pointer: tap to walk, drag for the joystick ---------------- */
@@ -663,9 +705,9 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
 
       {/* coins and points */}
       <div className="hud-pills">
-        <span className="hud-pill" title="Coins">
+        <span className="hud-pill" title={`Money (${currency().name})`}>
           <img src={img.cash} alt="" width={26} height={26} />
-          <b>{money(s.coins)}</b>
+          <b>{moneyShort(s.coins)}</b>
           <button type="button" aria-label="Shop" onClick={() => dispatch({ type: 'open', modal: { kind: 'shop', tab: 'food' } })}>
             +
           </button>
@@ -683,10 +725,12 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         <span>CLIMATE</span>
         {grade && <i className="hud-badge" aria-hidden="true">{grade.grade}</i>}
       </button>
+      <ProgressButton s={s} dispatch={dispatch} />
       <button type="button" className="hud-round hud-mission" onClick={() => dispatch({ type: 'trials', open: true })} aria-label="Mission: plan, progress and results of your farms">
         <ClipboardIcon />
         <span>MISSION</span>
       </button>
+      <WaterButton s={s} dispatch={dispatch} />
       <button type="button" className="hud-round hud-shop" onClick={() => dispatch({ type: 'open', modal: { kind: 'shop', tab: 'food' } })} aria-label="Shop">
         <img src={img.cart} alt="" width={30} height={30} />
         <span>SHOP</span>
@@ -698,7 +742,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
           <TaskGlyph icon={task.icon} />
           {(task.coins !== undefined || task.points) && (
             <small className={task.coins !== undefined && task.coins < 0 ? 'is-cost' : ''}>
-              <img src={task.points ? img.star : img.coin} alt="" width={10} height={10} />
+              {task.points && <img src={img.star} alt="" width={10} height={10} />}
               {task.points ? `+${task.points}` : money(Math.abs(task.coins ?? 0))}
             </small>
           )}
@@ -726,6 +770,12 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         </>
       )}
 
+      {/* the evidence layer: now and then, "have you tried this on your own farm?" */}
+      {!overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen) && <EvidenceAsk s={s} dispatch={dispatch} />}
+
+      {/* money at risk on the six farms: the first thing on the farm the eye lands on, beside the task card */}
+      <RiskHud s={s} risk={risk} dispatch={dispatch} hud={!(s.roundsOpen || s.trialsOpen || s.bizOpen) && !overlay} busy={overlay || s.roundsOpen || s.trialsOpen || s.bizOpen} onGo={goToProblem} />
+
       {/* clearing and planting: the button on the plot under the farmer, then its timer */}
       {working && !overlay && <PlotTimer at={anchors.farmer} start={working.start} ms={working.ms} verb={working.job === 'prep' ? 'Clearing' : 'Planting'} row={working.row} />}
       {!working && anchors.plot && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen) && (
@@ -742,6 +792,10 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
             <i>{rowName(anchors.plot.row)}</i>
           </span>
         </button>
+      )}
+
+      {anchors.bill && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen) && (
+        <BillboardTag bill={anchors.bill} dispatch={dispatch} />
       )}
 
       {hint && (
@@ -792,6 +846,8 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
               if (fixLeft(sRef.current.trial ?? t, c.farm, c.day)) setCare({ kind: 'fix', farm: c.farm, day: c.day });
             }}
             onLeave={() => setChecking(null)}
+            progress={{ done: t.plans.filter((_, i) => t.checks[checkKey(i, checking.day)]?.right).length, total: t.plans.length, unit: 'farm' }}
+            stake={risk.items.find(x => x.farm === checking.farm)?.amount}
           />
         </div>
       )}
@@ -809,13 +865,34 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
 /** The plot under the farmer that is waiting to be cleared or planted (its button shows). */
 /** The row of plots under the farmer waiting for the button: its plots still to do are bits. */
 type PlotHere = { farm: number; plot: number; row: number; bits: number; job: 'prep' | 'sow'; fx: Fx };
-type Anchors = { farmer: { x: number; y: number }; sign: { x: number; y: number; visible: boolean } | null; riding: boolean; nearTractor: boolean; plot: PlotHere | null };
+type Anchors = {
+  farmer: { x: number; y: number };
+  sign: { x: number; y: number; visible: boolean } | null;
+  riding: boolean;
+  nearTractor: boolean;
+  plot: PlotHere | null;
+  /** a partner billboard the farmer is near, where it shows on the stage */
+  bill?: { slot: SlotId; x: number; y: number } | null;
+};
 const samePlot = (a: PlotHere | null, b: PlotHere | null) => a === b || (!!a && !!b && a.farm === b.farm && a.row === b.row && a.job === b.job);
 const near = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.abs(a.x - b.x) < 1 && Math.abs(a.y - b.y) < 1;
 function sameAnchors(a: Anchors, b: Anchors) {
   if (a.riding !== b.riding || a.nearTractor !== b.nearTractor || !near(a.farmer, b.farmer) || !samePlot(a.plot, b.plot)) return false;
+  if (a.bill?.slot !== b.bill?.slot || (a.bill && b.bill && !near(a.bill, b.bill))) return false;
   if (!a.sign || !b.sign) return a.sign === b.sign;
   return a.sign.visible === b.sign.visible && near(a.sign, b.sign);
+}
+
+/** The partner billboard the farmer is close to (and that shows on screen): its offer tag goes over it. */
+const BILL_REACH = 7.5;
+function billboardNear(w: FarmWorld): Anchors['bill'] {
+  const me = w.farmerAt();
+  for (const bb of BILLBOARDS) {
+    if (!slotBrand(bb.slot) || Math.hypot(me.x - bb.x, me.z - bb.z) > BILL_REACH) continue;
+    const p = w.project(bb.x, 0.2, bb.z + 0.9);
+    if (p.visible) return { slot: bb.slot, x: p.x, y: p.y };
+  }
+  return null;
 }
 
 /** The timer over the farmer while a plot is cleared or planted: a stopwatch whose ring fills, and the seconds left. */
@@ -1031,4 +1108,23 @@ export function TaskGlyph({ icon }: { icon: TaskIcon }) {
         </svg>
       );
   }
+}
+
+/** The tag over a partner billboard the farmer walked up to: tap it for the brand's offer. */
+function BillboardTag({ bill, dispatch }: { bill: NonNullable<Anchors['bill']>; dispatch: Dispatch<Action> }) {
+  const b = slotBrand(bill.slot)!;
+  useSlotView(bill.slot);
+  return (
+    <button
+      type="button"
+      className="hud-bill"
+      style={{ left: Math.min(STAGE_W - 80, Math.max(80, bill.x)), top: Math.min(STAGE_H - 40, Math.max(84, bill.y)), ['--brand' as string]: b.color, ['--accent' as string]: b.accent }}
+      onClick={() => openOffer(dispatch, bill.slot, b.id)}
+      aria-label={`${b.name} billboard: see the offer`}
+    >
+      <BrandMark b={b} size={16} />
+      <b>{b.name}</b>
+      <span>See offer ›</span>
+    </button>
+  );
 }

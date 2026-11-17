@@ -1,7 +1,11 @@
+import { farmSignal } from './signal';
+import { TrendChart } from './TrendChart';
+import { URGENT, traitsOf, urgencyOf, type FarmSignal } from './model';
 import { useEffect, useMemo, useRef, useState, type Dispatch } from 'react';
 import { img } from '../assets';
 import { FarmMap } from '../components/FarmMap';
 import { NavBar } from '../components/Nav';
+import { CloseX } from '../components/Success';
 import { GoldButton } from '../components/ui';
 import { GuideLine } from '../first/Review';
 import type { Action, GameState } from '../state';
@@ -15,7 +19,6 @@ import {
   CLUSTER,
   CROPS,
   DAY_HOURS,
-  DRIVER_WAGE,
   HUBS,
   HUB_SHARE,
   MAP_H,
@@ -78,7 +81,7 @@ import {
 import { newDrive, type Drive, type DriveResult } from './drive';
 import { DriveGame } from './DriveGame';
 import { Face, Says } from './Cast';
-import { kshText } from '../money';
+import { kshText, withMoney } from '../money';
 import { sfx } from '../sfx';
 
 /* The tractor business, to Hello Tractor's brief: Today (scout farms with Campbell, book each job, plan the route,
@@ -89,7 +92,7 @@ import { sfx } from '../sfx';
 /** shillings on screen: 10 times the stored value (src/money.ts) */
 const ksh = (n: number) => kshText(Math.round(n));
 const pct = (x: number) => `${Math.round(x * 100)}%`;
-type Tab = 'today' | 'hub' | 'calendar' | 'partners' | 'fleet';
+type Tab = 'today' | 'hub' | 'calendar' | 'trend' | 'partners' | 'fleet';
 
 /** The map drawn on the stage (its own pixels are the model's map pixels; the foot is kept for the route strip). */
 const MAP_PX = { x: 16, y: 92, w: MAP_W, h: MAP_H };
@@ -111,6 +114,8 @@ export function Business({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
   const b = useMemo(() => bizOf(s.biz), [s.biz]);
   const [tab, setTab] = useState<Tab>('today');
   const [result, setResult] = useState<DayResult | null>(null);
+  // the graduation offer, put off until the business is opened again
+  const [gradLater, setGradLater] = useState(false);
   const close = () => dispatch({ type: 'biz', open: false });
   const lvl = levelOf(b.helped);
   const nxt = nextLevel(b.helped);
@@ -131,7 +136,7 @@ export function Business({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
           Tractor business
         </span>
       </div>
-      <NavBar horizontal onBack={close} style={{ right: 6, top: 4 }} />
+      <NavBar horizontal onBack={close} style={{ right: 28, top: 8 }} />
 
       {/* the business at a glance: its level, the two numbers, and counted acres on the way to a tractor */}
       <div className="biz-head">
@@ -173,6 +178,7 @@ export function Business({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
               ['today', 'Today'],
               ['hub', 'Hub'],
               ['calendar', 'Calendar'],
+              ['trend', 'My trend'],
               ['partners', 'Partners'],
               ['fleet', 'Fleet'],
             ] as const
@@ -184,15 +190,20 @@ export function Business({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
         </div>
       </div>
 
-      {tab === 'today' && <Today key={b.day} b={b} name={name} dispatch={dispatch} onDone={r => setResult(r)} />}
+      {tab === 'today' && <Today key={b.day} b={b} name={name} dispatch={dispatch} onDone={r => setResult(r)} signal={farmSignal(s)} />}
       {tab === 'hub' && <Hub b={b} dispatch={dispatch} />}
       {tab === 'calendar' && <Calendar b={b} name={name} />}
+      {tab === 'trend' && (
+        <div className="biz-card biz-trend-card">
+          <TrendChart history={b.history} />
+        </div>
+      )}
       {tab === 'partners' && <Partners b={b} dispatch={dispatch} />}
       {tab === 'fleet' && <Fleet b={b} dispatch={dispatch} />}
 
       {result && <Results r={result} b={b} onNext={() => setResult(null)} />}
       {!result && !b.intro && <Welcome name={name} onGo={() => dispatch({ type: 'bizIntro' })} />}
-      {!result && b.intro && grad?.due && tab === 'today' && <Graduation b={b} name={name} onSign={() => dispatch({ type: 'bizGraduate' })} />}
+      {!result && b.intro && grad?.due && tab === 'today' && !gradLater && <Graduation b={b} name={name} onSign={() => dispatch({ type: 'bizGraduate' })} onLater={() => setGradLater(true)} />}
     </div>
   );
 }
@@ -203,22 +214,23 @@ function Welcome({ name, onGo }: { name: string; onGo: () => void }) {
   return (
     <div className="abs ending" style={{ inset: 0 }} role="dialog" aria-label="Welcome to the Narok hub">
       <div className="fs-panel ht-card ht-plum">
+        <CloseX onClick={onGo} />
         <Says who="sasha" tone="white">
-          <b>Welcome to the {TERRITORY.hub}, {name}.</b> You are our Booking Agent here: no land, no machine, just your word and your eye for a field. Find farmers who need
-          mechanised work, scout their land with Campbell, and book the hub tractor to do it. Book densely and keep your word, and we finance you into a tractor of your own.
+          <b>Welcome to the {TERRITORY.hub}, {name}.</b> As our Booking Agent, find farmers who need mechanised work and book the hub tractor. Book
+          densely, keep your word, and we finance your own tractor.
         </Says>
         <ul className="ht-steps">
           <li>
-            <b>Scout.</b> Tap a farm: Campbell reads its crop and flags what the farmer is doing the slow way.
+            <b>Scout.</b> Tap a farm: Campbell flags what is being done the slow way.
           </li>
           <li>
-            <b>Book.</b> Each job goes on the hub tractor you dispatch, or to a partner. The hub keeps {Math.round(HUB_SHARE * 100)}% of the tractor’s hire.
+            <b>Book.</b> Each job goes on the hub tractor, or to a partner. The hub keeps {Math.round(HUB_SHARE * 100)}% of the hire.
           </li>
           <li>
-            <b>Drive.</b> At every stop you take the wheel for ten seconds. Beat the hub driver’s {Math.round(BASELINE * 100)}% and the job is cleaner.
+            <b>Drive.</b> Ten seconds at the wheel per stop. Beat the hub driver’s {Math.round(BASELINE * 100)}% for a cleaner job.
           </li>
           <li>
-            <b>Grow.</b> Counted acres (acres × activities) reach {PAYG.tiers[0].counted} at {Math.round(PAYG.fulfilment * 100)}% fulfilment: a {PAYG.tiers[0].hp}HP tractor on Pay-As-You-Go.
+            <b>Grow.</b> {PAYG.tiers[0].counted} counted acres at {Math.round(PAYG.fulfilment * 100)}% fulfilment earns a {PAYG.tiers[0].hp}HP tractor on Pay-As-You-Go.
           </li>
         </ul>
         <GoldButton font={12} height={36} style={{ width: 220, marginTop: 8 }} onClick={onGo} ariaLabel="Let's go">
@@ -229,20 +241,20 @@ function Welcome({ name, onGo }: { name: string; onGo: () => void }) {
   );
 }
 
-function Graduation({ b, name, onSign }: { b: Biz; name: string; onSign: () => void }) {
+function Graduation({ b, name, onSign, onLater }: { b: Biz; name: string; onSign: () => void; onLater: () => void }) {
   const g = graduation(b)!;
   const second = b.owned.length > 0;
   return (
     <div className="abs ending" style={{ inset: 0 }} role="dialog" aria-label="Graduation">
       <div className="fs-panel ht-card ht-grad">
+        <CloseX onClick={onLater} label="Not now" />
         <p className="ht-grad-title">{second ? 'Your second tractor' : 'Graduation day'}</p>
         <Says who="sasha" tone="white">
-          <b>{name}, your book is underwritable.</b> {Math.floor(b.counted)} counted acres at {pct(fulfilment(b))} fulfilment: every job you booked, you closed. Hello Tractor is
-          financing you into a <b>{g.tier.name}</b> under Pay-As-You-Go: {ksh(g.tier.price)}, paid off from {Math.round(PAYG.share * 100)}% of each day’s hire.
+          <b>{name}, your book is underwritable.</b> {Math.floor(b.counted)} counted acres at {pct(fulfilment(b))} fulfilment. Hello Tractor finances you into a <b>{g.tier.name}</b> on
+          Pay-As-You-Go: {ksh(g.tier.price)}, paid from {Math.round(PAYG.share * 100)}% of each day’s hire.
         </Says>
         <Says who="aziza" tone="sage">
-          Your machine does <b>{g.tier.capacity} acres of field work a day</b>. Keep it over half busy and your bookings closed, or it goes back. The Marketplace opens: trade
-          contracts with agents in other hubs whose seasons run when ours is quiet.
+          It does <b>{g.tier.capacity} acres a day</b>. Keep it over half busy, or it goes back. The Marketplace is now open.
         </Says>
         <GoldButton font={12} height={36} style={{ width: 260, marginTop: 6 }} onClick={onSign} ariaLabel="Sign the PAYG agreement">
           Sign the PAYG agreement
@@ -271,7 +283,7 @@ interface Run {
   last: string | null;
 }
 
-function Today({ b, name, dispatch, onDone }: { b: Biz; name: string; dispatch: Dispatch<Action>; onDone: (r: DayResult) => void }) {
+function Today({ b, name, dispatch, onDone, signal }: { b: Biz; name: string; dispatch: Dispatch<Action>; onDone: (r: DayResult) => void; signal: FarmSignal }) {
   const requests = useMemo(() => requestsFor(b), [b]);
   const map = useMemo(() => mapFor(b.day), [b.day]);
   const [bookings, setBookings] = useState<Bookings>({});
@@ -280,7 +292,7 @@ function Today({ b, name, dispatch, onDone }: { b: Biz; name: string; dispatch: 
   const [step, setStep] = useState<Step>('book');
   const [pick, setPick] = useState<string | null>(null);
   const [run, setRun] = useState<Run | null>(null);
-  const plan = planDay(b, requests, bookings, route, run?.drives ?? {});
+  const plan = planDay(b, requests, bookings, route, run?.drives ?? {}, signal);
   const farms = [...new Set(requests.map(clientKey))];
   const mine = myFarms(bookings);
   const kimani = b.partners.includes('kimani');
@@ -328,7 +340,7 @@ function Today({ b, name, dispatch, onDone }: { b: Biz; name: string; dispatch: 
     if (!run || run.phase !== 'home') return;
     dispatch({ type: 'bizRun', bookings, route, drives: run.drives });
     // the reducer works the same day out again from the same bookings, route and drives
-    const final = planDay(b, requests, bookings, route, run.drives);
+    const final = planDay(b, requests, bookings, route, run.drives, signal);
     onDone(runDay(b, final, activitiesDone(requests, bookings, final)).result);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [run?.phase]);
@@ -341,25 +353,25 @@ function Today({ b, name, dispatch, onDone }: { b: Biz; name: string; dispatch: 
   const atFarm = run?.phase === 'drive' ? clientOf(run.stops[run.leg]) : null;
   const line = run
     ? run.phase === 'drive'
-      ? `${atFarm!.name}'s farm: take the wheel, ${name}. Ten seconds. Work every strip once, and mind what's in the way.`
+      ? `${atFarm!.name}'s farm: take the wheel, ${name}. Ten seconds: work every strip once.`
       : run.last
         ? `${run.last} On to ${run.leg < run.stops.length ? clientOf(run.stops[run.leg]).name : 'the yard'}.`
-        : `On the road, ${name}: ${run.stops.length} farm${run.stops.length === 1 ? '' : 's'}. Let's see how good your route was.`
+        : `On the road, ${name}: ${run.stops.length} farm${run.stops.length === 1 ? '' : 's'}. Let's test your route.`
     : step === 'route'
       ? plan.unrouted.length
         ? route.length
-          ? `Next stop? Tap the farm your tractor drives to after ${clientOf(route[route.length - 1]).name}. Every km costs diesel and time.`
-          : `Plan the shortest route, ${name}: tap the farm your tractor visits first. Follow the roads with your eye: there are no distances.`
+          ? `Next stop after ${clientOf(route[route.length - 1]).name}? Every km costs diesel and time.`
+          : `Plan the shortest route, ${name}: tap the first farm. Follow the roads by eye.`
         : plan.dropped.length
-          ? `Too sparse: ${plan.dropped.map(k => clientOf(clientKey(k)).name).join(', ')} would be dropped as unserviceable (${plan.ser.toFixed(2)} acres a km). Book denser, or go.`
-          : 'Your route is set. Start the day, or clear it and try another order.'
+          ? `Too sparse: ${plan.dropped.map(k => clientOf(clientKey(k)).name).join(', ')} would be dropped (${plan.ser.toFixed(2)} acres a km). Book denser, or go.`
+          : 'Route set. Start the day, or clear it and try again.'
       : plan.problem && Object.keys(bookings).length && !plan.problem.startsWith('Plan your route')
         ? plan.problem
         : pick
           ? scan?.rec && !(pick in b.advised)
-            ? `Campbell says ${clientOf(pick).name} ${scan.rec.flag}. Deliver the advice, then book each part.`
+            ? `Campbell says ${clientOf(pick).name} ${scan.rec.flag}. Advise, then book.`
             : `Book each part of ${clientOf(pick).name}'s farm: ${rig.name}, or a partner.`
-          : `${farms.length} farms booked work today, ${name}. ${rig.name[0].toUpperCase()}${rig.name.slice(1)} must visit at least ${plan.needed}. Tap a farm to scout it.`;
+          : `${farms.length} farms booked work today, ${name}. ${rig.name[0].toUpperCase()}${rig.name.slice(1)} must visit at least ${plan.needed}. Tap a farm to scout.`;
 
   return (
     <>
@@ -397,7 +409,7 @@ function Today({ b, name, dispatch, onDone }: { b: Biz; name: string; dispatch: 
               <>
                 <p className="biz-route-tip">{jobText(requests, bookings, atFarm.id)}</p>
                 <p className="biz-route-tip">
-                  Drive it yourself for a cleaner job, or hand it to the hub driver ({Math.round(BASELINE * 100)}%). A field under {Math.round(BASELINE * 0.8 * 100)}% is left unfinished.
+                  Drive for a cleaner job, or hand it to the hub driver ({Math.round(BASELINE * 100)}%). Under {Math.round(BASELINE * 0.8 * 100)}% is left unfinished.
                 </p>
                 <div className="biz-route-tools">
                   <button type="button" className="biz-link" onClick={() => driven(atFarm.id, BASELINE, `The hub driver did ${atFarm.name}'s job.`)}>
@@ -421,7 +433,7 @@ function Today({ b, name, dispatch, onDone }: { b: Biz; name: string; dispatch: 
             <p className="biz-farm-title">
               <b>Plan the route</b> · {route.length} of {mine.length} stops
             </p>
-            <p className="biz-route-tip">Tap your farms in the order the tractor visits them, from the yard and back.</p>
+            <p className="biz-route-tip">Tap farms in visiting order, from the yard and back.</p>
             <div className="biz-route-tools">
               <button type="button" className="biz-link" disabled={!route.length} onClick={() => setRoute(r => r.slice(0, -1))}>
                 Undo last stop
@@ -465,6 +477,7 @@ function Today({ b, name, dispatch, onDone }: { b: Biz; name: string; dispatch: 
                         {toolName(part.tool)} · {part.acres} acre{part.acres === 1 ? '' : 's'} of {cropName(part.crop).toLowerCase()} · hire {ksh(hireOf(part.tool) * part.acres)}
                         {extra ? ' · on your advice' : ''}
                       </small>
+                      <FarmerChips client={pick} activity={activity} signal={signal} />
                     </span>
                     <span className="biz-seg" role="group" aria-label={`${part.name}: who does it`}>
                       <button type="button" className={v === 'me' ? 'is-on' : ''} disabled={!hasTool} onClick={() => book(k, v === 'me' ? null : 'me')} title={hasTool ? '' : `You have no ${toolName(part.tool).toLowerCase()}`}>
@@ -488,13 +501,13 @@ function Today({ b, name, dispatch, onDone }: { b: Biz; name: string; dispatch: 
           </div>
         ) : (
           <div className="biz-farm is-empty">
-            <p>Tap a farm on the map. Campbell scouts it; then book each part for {rig.name}, or pass it to a partner (you keep {Math.round(PARTNER_CUT * 100)}%).</p>
+            <p>Tap a farm to scout it, then book it for {rig.name} or a partner (you keep {Math.round(PARTNER_CUT * 100)}%).</p>
             <p>
-              The tractor must visit at least <b>{plan.needed} farms</b>. Book them close together: acres for every kilometre driven is your Service Efficiency Ratio.
+              Visit at least <b>{plan.needed} farms</b>, close together: acres per kilometre driven is your Service Efficiency Ratio.
             </p>
             {offers.length > 0 && (
               <div className="ht-offers">
-                <small>Marketplace: a day away, if Narok is quiet</small>
+                <small>Marketplace: a day away</small>
                 {offers.map(o => (
                   <button key={o.id} type="button" className="ht-offer" onClick={() => takeOffer(o)} disabled={mine.length > 0} title={mine.length ? 'Nothing on your tractor today to take a contract' : ''}>
                     <b>
@@ -524,7 +537,7 @@ function Today({ b, name, dispatch, onDone }: { b: Biz; name: string; dispatch: 
               Work diesel <b className="is-cost">−{ksh(plan.workDiesel)}</b>
             </span>
             <span>
-              Driver <b className="is-cost">−{ksh(mine.length ? DRIVER_WAGE : 0)}</b>
+              Driver <b className="is-cost">−{ksh(plan.wage)}</b>
             </span>
             {plan.hubFee > 0 && (
               <span>
@@ -567,7 +580,7 @@ function Today({ b, name, dispatch, onDone }: { b: Biz; name: string; dispatch: 
         </div>
       </aside>
 
-      <GuideLine text={line} face={<Face who="caro" size={40} />} style={{ left: 16, right: 16, bottom: 4, minHeight: 0, padding: '2px 10px 2px 4px' }} />
+      <GuideLine text={line} face={<Face who="caro" size={40} />} style={{ left: 30, right: 30, bottom: 8, minHeight: 0, padding: '2px 10px 2px 4px' }} />
     </>
   );
 }
@@ -607,10 +620,10 @@ function Campbell({ b, scan, onDeliver }: { b: Biz; scan: ReturnType<typeof scan
       )}
       {answered && (
         <p className={`ht-answer is-${yes ? 'yes' : 'no'}`}>
-          <Face who="wekeza" size={26} /> {yes ? `“You make it sound easy. Book it, and I will tell the neighbours.” A new job is on the list.` : scan.client.inside ? '“Not this season. Show me it working first.” A demo plot would help.' : '“We are far from your hub. Maybe next year.” Outside the territory, advice rarely lands.'}
+          <Face who="wekeza" size={26} /> {yes ? `“Book it, and I will tell the neighbours.” A new job is on the list.` : scan.client.inside ? '“Show me it working first.” A demo plot would help.' : '“We are far from your hub.” Outside the territory, advice rarely lands.'}
         </p>
       )}
-      {!scan.rec && !answered && <p className="ht-campbell-flag">Everything in window is booked already. {scan.notNow ? `${ACTIVITY_NAME[scan.notNow.activity]}: ${scan.notNow.months}.` : ''}</p>}
+      {!scan.rec && !answered && <p className="ht-campbell-flag">All in-window work is booked. {scan.notNow ? `${ACTIVITY_NAME[scan.notNow.activity]}: ${scan.notNow.months}.` : ''}</p>}
       {scan.notNow && scan.rec && !answered && (
         <small className="ht-campbell-why">
           Not yet: {ACTIVITY_NAME[scan.notNow.activity].toLowerCase()} for {cropName(scan.crop).toLowerCase()} is {scan.notNow.months}.
@@ -874,6 +887,7 @@ function Results({ r, b, onNext }: { r: DayResult; b: Biz; onNext: () => void })
   return (
     <div className="abs ending" style={{ inset: 0 }} role="dialog" aria-label={`Day ${r.day} done`}>
       <div className="fs-panel biz-result">
+        <CloseX onClick={onNext} />
         <p className="biz-result-title">
           Day {r.day} done
           <span className="biz-stars" aria-label={`${r.stars} of 3 stars`}>
@@ -882,11 +896,10 @@ function Results({ r, b, onNext }: { r: DayResult; b: Biz; onNext: () => void })
           </span>
         </p>
         {r.kind === 'county' ? (
-          <p className="biz-result-line">Your tractor worked on the county's roads all day: {ksh(r.revenue)}, the driver paid. No farms were served today.</p>
+          <p className="biz-result-line">County road work all day: {ksh(r.revenue)}, driver paid. No farms served.</p>
         ) : r.kind === 'contract' ? (
           <p className="biz-result-line">
-            A day in the {r.contract?.hub} for {r.contract?.agent}: {r.acres} acres of {ACTIVITY_NAME[r.contract?.activity ?? 'transport'].toLowerCase()}, {r.km} km there and back. The tractor
-            stayed busy while Narok was quiet.
+            A day in the {r.contract?.hub} for {r.contract?.agent}: {r.acres} acres of {ACTIVITY_NAME[r.contract?.activity ?? 'transport'].toLowerCase()}, {r.km} km there and back.
           </p>
         ) : (
           <>
@@ -900,10 +913,10 @@ function Results({ r, b, onNext }: { r: DayResult; b: Biz; onNext: () => void })
                 <span className="biz-eff-text">
                   <b>{bestOne ? 'The most efficient route!' : 'Not the most efficient route'}</b>
                   {bestOne ? (
-                    <>You found the shortest way round: {r.km.toFixed(1)} km.</>
+                    <>Shortest way round: {r.km.toFixed(1)} km.</>
                   ) : (
                     <>
-                      Yours was {r.km.toFixed(1)} km; the best was {r.bestKm.toFixed(1)} km: {(r.km - r.bestKm).toFixed(1)} km of diesel and time lost.
+                      {r.km.toFixed(1)} km vs best {r.bestKm.toFixed(1)} km: {(r.km - r.bestKm).toFixed(1)} km lost.
                     </>
                   )}
                   {r.route && <small>Your route: {names(r.route)}</small>}
@@ -917,25 +930,41 @@ function Results({ r, b, onNext }: { r: DayResult; b: Biz; onNext: () => void })
               </div>
             )}
             <p className="biz-result-line">
-              {r.farmers} farmer{r.farmers === 1 ? '' : 's'} helped by your tractor{r.partnerFarmers ? `, ${r.partnerFarmers} through a partner` : ''}: {r.acres.toFixed(1)} acres
+              {r.farmers} farmer{r.farmers === 1 ? '' : 's'} helped{r.partnerFarmers ? `, ${r.partnerFarmers} through a partner` : ''}: {r.acres.toFixed(1)} acres
               {r.hours ? ` in ${r.hours.toFixed(1)} hours` : ''}
-              {r.overH ? ` (${r.overH.toFixed(1)} h of overtime for the driver)` : ''}.
+              {r.overH ? ` (${r.overH.toFixed(1)} h overtime)` : ''}.
               {r.cleanFarms > 0 && ` ${r.cleanFarms} clean drive${r.cleanFarms === 1 ? '' : 's'} (+${r.cleanFarms * CLEAN_DRIVE.points} points).`}
-              {r.cluster && ` ${r.cluster.farms} farms on ${ACTIVITY_NAME[r.cluster.activity].toLowerCase()} the same week: a neighbourhood synchronised (+${CLUSTER.points} points).`}
+              {r.cluster && ` ${r.cluster.farms} farms on ${ACTIVITY_NAME[r.cluster.activity].toLowerCase()} together: neighbourhood synced (+${CLUSTER.points} points).`}
             </p>
             {(r.dropped.length > 0 || r.unfinished.length > 0) && (
               <p className="biz-result-line is-warn">
-                {r.dropped.length > 0 && `Dropped as unserviceable (too far for too little): ${r.dropped.map(farmOf).join(', ')}. Counted acres halved today. `}
-                {r.unfinished.length > 0 && `Left unfinished at the stop: ${r.unfinished.map(farmOf).join(', ')}: those bookings did not close.`}
+                {r.dropped.length > 0 && `Dropped (too far for too little): ${r.dropped.map(farmOf).join(', ')}. Counted acres halved. `}
+                {r.unfinished.length > 0 && `Unfinished: ${r.unfinished.map(farmOf).join(', ')}: not closed.`}
               </p>
             )}
           </>
+        )}
+        {r.kind === 'farms' && r.value !== undefined && (
+          <p className="biz-result-line biz-value">
+            <b>Day value {r.value}/100</b> · the shortest route is not always the best: {r.collected !== undefined && r.revenue ? `${Math.round((100 * r.collected) / r.revenue)}% of the hire collected` : 'all the hire collected'}
+            {r.urgentServed ? `, ${r.urgentServed} urgent job${r.urgentServed === 1 ? '' : 's'} done (+${r.urgentServed * URGENT.points} points)` : ''}
+            {r.urgentWaiting ? `, ${r.urgentWaiting} urgent left waiting` : ''}.
+          </p>
         )}
         <dl className="biz-sheet">
           <div>
             <dt>Hire from farmers</dt>
             <dd>{ksh(r.revenue)}</dd>
           </div>
+          {!!r.shortfall && (
+            <div>
+              <dt>{r.shortfall > 0 ? 'Not paid (bargained down, bad debt)' : 'Extra for urgent work'}</dt>
+              <dd className={r.shortfall > 0 ? 'is-cost' : ''}>
+                {r.shortfall > 0 ? '−' : '+'}
+                {ksh(Math.abs(r.shortfall))}
+              </dd>
+            </div>
+          )}
           {r.commission > 0 && (
             <div>
               <dt>From partner jobs</dt>
@@ -968,20 +997,20 @@ function Results({ r, b, onNext }: { r: DayResult; b: Biz; onNext: () => void })
           )}
         </dl>
         <p className="biz-result-line is-small">
-          {r.saved > 0 && <>The farmers saved {ksh(r.saved)} against doing it by hand. </>}
-          {r.missed > 0 ? `${r.missed} job${r.missed === 1 ? '' : 's'} nobody took: those farmers wait another day.` : 'No farmer was left waiting.'}
+          {r.saved > 0 && <>Farmers saved {ksh(r.saved)} vs by hand. </>}
+          {r.missed > 0 ? `${r.missed} job${r.missed === 1 ? '' : 's'} not taken.` : 'No farmer left waiting.'}
           {` Fulfilment today ${r.fulfilled} of ${r.booked}; +${Math.floor(r.counted)} counted acres.`}
           {r.points > 0 && ` +${r.points} points.`}
         </p>
         {r.payg && (
           <p className={`biz-result-line is-small${r.payg.warn ? ' is-warn' : ''}`}>
             {r.payg.repossessed
-              ? `Repossessed: the tractor sat idle too long (${pct(r.payg.util)} of its capacity used, ${pct(r.payg.fulfil)} fulfilment). Hello Tractor took it back; qualify again in ${PAYG.cooldown} days.`
+              ? `Repossessed: too idle (${pct(r.payg.util)} used, ${pct(r.payg.fulfil)} fulfilment). Qualify again in ${PAYG.cooldown} days.`
               : r.payg.warn
-                ? `Warning ${r.payg.warn} of ${PAYG.warn.days}: ${pct(r.payg.util)} of the tractor's capacity used this week, ${pct(r.payg.fulfil)} fulfilment. Fill the calendar, or it goes back.`
+                ? `Warning ${r.payg.warn} of ${PAYG.warn.days}: ${pct(r.payg.util)} used, ${pct(r.payg.fulfil)} fulfilment. Fill the calendar, or it goes back.`
                 : r.payg.left > 0
-                  ? `PAYG: ${ksh(r.payg.left)} still to pay; the tractor ran at ${pct(r.payg.util)} of its capacity this week.`
-                  : 'The loan is paid: the tractor is yours outright.'}
+                  ? `PAYG: ${ksh(r.payg.left)} to pay; ${pct(r.payg.util)} used this week.`
+                  : 'Loan paid: the tractor is yours.'}
           </p>
         )}
         {rose && <p className="biz-rose">Level {lvl.level}: {lvl.name}!</p>}
@@ -1004,7 +1033,7 @@ function Hub({ b, dispatch }: { b: Biz; dispatch: Dispatch<Action> }) {
       <div className="biz-card">
         <small>The Hub Manager</small>
         <b>Demo plots · {b.demos.length} of {slots}</b>
-        <p>Working examples that convince sceptical farmers. A demo plot for a crop lifts how often farmers inside the territory take your advice on it by {Math.round(100 * 0.25)} points. One plot a business level.</p>
+        <p>A demo plot lifts advice uptake on its crop by {Math.round(100 * 0.25)} points. One a business level.</p>
         <div className="ht-chips">
           {(Object.keys(CROPS) as Crop[]).map(c => {
             const has = b.demos.includes(c);
@@ -1021,8 +1050,7 @@ function Hub({ b, dispatch }: { b: Biz; dispatch: Dispatch<Action> }) {
         <small>The CX Team</small>
         <b>Outreach that repeats your advice</b>
         <Says who="caro" tone="sage" style={{ marginTop: 2 }}>
-          Every farmer you advise inside the territory gets a call from us the same week, saying what you said. Outside the territory there is no call, no demo plot and no
-          guaranteed tractor: a farmer there takes advice one time in four.
+          We call every farmer you advise in the territory to repeat it. Outside, advice lands one time in four.
         </Says>
       </div>
       <div className="biz-card ht-board">
@@ -1040,7 +1068,7 @@ function Hub({ b, dispatch }: { b: Biz; dispatch: Dispatch<Action> }) {
           ))}
         </ol>
         <p>
-          Farmers read this. At {Math.round(0.9 * 100)}% or better one more farm books each day; under {Math.round(0.6 * 100)}%, one fewer.
+          At {Math.round(0.9 * 100)}%+ one more farm books each day; under {Math.round(0.6 * 100)}%, one fewer.
         </p>
       </div>
     </div>
@@ -1098,8 +1126,7 @@ function Calendar({ b, name }: { b: Biz; name: string }) {
           </tbody>
         </table>
         <p className="ht-legend">
-          L land preparation · P planting · F fertilizer · H harvest · transport all year. The hub tractor you dispatch is a 75HP-class machine; a financed tractor must stay over{' '}
-          {Math.round(PAYG.warn.utilization * 100)}% busy.
+          L land prep · P planting · F fertilizer · H harvest · transport all year. A financed tractor must stay over {Math.round(PAYG.warn.utilization * 100)}% busy.
         </p>
       </div>
       <div className="biz-card">
@@ -1111,7 +1138,7 @@ function Calendar({ b, name }: { b: Biz; name: string }) {
               {rig.name.slice(1)} · {ksh(Math.max(0, rig.own.price - rig.own.paid))} to pay
             </b>
             <Says who="gitonga" tone="sage">
-              {rig.own.warn ? `Warning ${rig.own.warn} of ${PAYG.warn.days}. A machine that sits is a loan that defaults: fill the quiet days from the Marketplace.` : `Owning is the start of the real problem: keep ${rig.capacity} acres a day fed, every week of the year.`}
+              {rig.own.warn ? `Warning ${rig.own.warn} of ${PAYG.warn.days}. Fill the quiet days from the Marketplace.` : `Now keep ${rig.capacity} acres a day fed, all year.`}
             </Says>
           </>
         ) : (
@@ -1120,8 +1147,7 @@ function Calendar({ b, name }: { b: Biz; name: string }) {
               {Math.floor(b.counted)} of {PAYG.tiers[0].counted} counted acres · {pct(fulfilment(b))} fulfilment
             </b>
             <Says who="aziza" tone="sage">
-              {name}, counted acres are acres × activities: 100 acres of land prep alone count 100; the same 100 acres prepared, planted, fertilised and harvested count 400. Get every
-              farmer onto the full cycle. {grad?.why ? `You need ${grad.why}.` : ''}
+              {name}, counted acres = acres × activities. Sell the full cycle: prep, plant, feed, harvest. {grad?.why ? `You need ${grad.why}.` : ''}
             </Says>
           </>
         )}
@@ -1130,8 +1156,7 @@ function Calendar({ b, name }: { b: Biz; name: string }) {
         <small>The Marketplace · complementary hubs</small>
         <b>{rig.own ? 'Contracts from agents in other hubs' : 'Opens with your own tractor'}</b>
         <p>
-          {HUBS.map(h => `${h.name}: ${h.note}`).join('. ')}. A harvest contract there fills a week when Narok is between seasons; offers appear on Today when nothing is on
-          your tractor. Peer-to-peer trading with live agents comes with the network; these offers are the backstop.
+          {HUBS.map(h => `${h.name}: ${h.note}`).join('. ')}. They fill Narok’s quiet weeks; offers show on Today.
         </p>
       </div>
     </div>
@@ -1150,7 +1175,7 @@ function Partners({ b, dispatch }: { b: Biz; dispatch: Dispatch<Action> }) {
           <div key={p.id} className={`biz-card${signed ? ' is-signed' : ''}`}>
             <small>{p.kind}</small>
             <b>{p.name}</b>
-            <p>{p.does}</p>
+            <p>{withMoney(p.does)}</p>
             {signed ? (
               <span className="biz-tag">✓ Signed</span>
             ) : block ? (
@@ -1185,7 +1210,7 @@ function Fleet({ b, dispatch }: { b: Biz; dispatch: Dispatch<Action> }) {
             {ksh(rig.own.paid)} of {ksh(rig.own.price)} paid.{b.owned.length > 1 ? ` The ${b.owned[0].hp}HP is paid off and works the Marketplace.` : ''}
           </p>
         ) : (
-          <p>By hand, ploughing one acre would cost a farmer about {ksh(handCost('plough', 1))}. A job you have no implement for can go to a partner.</p>
+          <p>Ploughing an acre by hand costs about {ksh(handCost('plough', 1))}. Jobs without an implement go to a partner.</p>
         )}
       </div>
       {SHOP.map(item => {
@@ -1208,5 +1233,25 @@ function Fleet({ b, dispatch }: { b: Biz; dispatch: Dispatch<Action> }) {
         );
       })}
     </div>
+  );
+}
+
+/** A farmer's traits on a booking: how urgent the job is today (the player's own farm can make it more so), what they
+    pay, and whether they pay. */
+function FarmerChips({ client, activity, signal }: { client: string; activity: import('./model').Activity; signal: FarmSignal }) {
+  const tr = traitsOf(client);
+  const u = urgencyOf(client, activity, signal);
+  return (
+    <span className="biz-traits">
+      <i className={`is-u${u}`} title={u === 3 ? `Urgent: done today it pays ${Math.round(URGENT.premium * 100)}% more` : u === 2 ? 'This week' : 'Can wait'}>
+        {u === 3 ? 'Urgent' : u === 2 ? 'This week' : 'Can wait'}
+      </i>
+      <i className={tr.pay >= 1 ? 'is-good' : 'is-warn'} title="What they pay against the list hire">
+        Pays {Math.round(tr.pay * 100)}%
+      </i>
+      <i className={tr.reliability >= 0.9 ? 'is-good' : 'is-warn'} title="The share of what is owed they actually pay">
+        {tr.reliability >= 0.95 ? 'Pays on time' : tr.reliability >= 0.85 ? 'Mostly pays' : 'Often late or unpaid'}
+      </i>
+    </span>
   );
 }
