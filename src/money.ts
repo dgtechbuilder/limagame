@@ -135,3 +135,13 @@ export const withMoney = (text: string) => text.replace(/\{money:(-?\d+(?:\.\d+)
 
 /** The same as money(): kept for screens that once showed shillings. */
 export const kshText = money;
+
+/** A money amount kept as short as it goes, for the at-risk button: "KSh 50k", "KSh 1.2M", "$388"; below a thousand
+    as money() shows it. */
+export function moneyCompact(n: number): string {
+  const v = Math.abs(toLocal(n));
+  if (v < 1000) return `${toLocal(n) <= -0.5 ? '−' : ''}${current.symbol}${sep(current)}${Math.round(v)}`;
+  const [d, unit] = v >= 1e9 ? [v / 1e9, 'B'] : v >= 1e6 ? [v / 1e6, 'M'] : [v / 1e3, 'k'];
+  const num = d >= 10 ? Math.round(d).toString() : (Math.round(d * 10) / 10).toString();
+  return `${toLocal(n) < 0 ? '−' : ''}${current.symbol}${sep(current)}${num}${unit}`;
+}

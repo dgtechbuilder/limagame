@@ -38,6 +38,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [Sound effects](#sound-effects)
 - [Money on screen](#money-on-screen)
 - [Settings](#settings)
+- [Money at risk](#money-at-risk)
 - [Climate tracking](#climate-tracking)
 - [Achievements, the daily streak and certificates](#achievements-the-daily-streak-and-certificates)
 - [My Progress: certification levels and learning credits](#my-progress-certification-levels-and-learning-credits)
@@ -121,6 +122,7 @@ src/
   art/                     retro anime characters: anime.tsx (SVG kit: farmer, guide, shopkeeper, Ojuok),
                            Cast.tsx (anime or original picture), style.ts (style and read-aloud contexts)
   speech.ts                Read aloud: the phone's own voice (speechSynthesis)
+  risk/                    money at risk: config.ts (every number to tune), model.ts (the list, from the save), RiskHud.tsx (the button)
   climate/                 climate tracking: model.ts (every factor, the ledger, rating, levels), track.ts (which
                            actions record what, and the end-of-day payment), land.ts (land farmed, bare or idle,
                            and what a credit pays), Tag.tsx (climate tags on choices), sample.ts (design review)
@@ -867,6 +869,47 @@ four sections. Every control works at once and is saved on the device; *Reset pr
 The settings live in `GameState.settings` (`src/state.ts`). The 3D farm is rebuilt when the character style or the
 graphics change. `tests/settings.spec.ts` plays every section.
 
+## Money at risk
+
+The farm's first button, top centre beside the task card: **the money every unresolved problem on the six farms
+would cost if it is left**, added up and written short in the player's currency (*KSh 50k at risk*, *KSh 1.2M at
+risk*). It makes the daily loop's stakes visible at a glance and gives a reason to open the game every day.
+
+![The at-risk list: each farm, what is at risk and when it grows, never the cause](docs/at-risk-list.webp)
+
+- **What it counts.** Every farm that is planted and shows a problem with a cost (pests, water, plant food, weeds,
+  animals, hail…) that has not been dealt with: read right, and the fix done by hand (hail: read right). A problem's
+  **stated cost** is what the six-farm model takes off that farm's harvest if it is never dealt with
+  (`DAMAGE[…].missed` × what the farm's harvest is worth as it grows), the same number the check shows: *Will cost you
+  about KSh 10,730 if it is left alone*.
+- **It grows if left.** On the day a problem shows, half its stated cost is at risk; each day it is left adds a
+  quarter, up to the whole stated cost. **A problem left unresolved stays on its farm the next day** (until it is
+  dealt with or the harvest), so a player can still catch it late; one never dealt with costs, at harvest, what was at
+  risk by then. A problem the plan cannot treat (pests on a farm with no pest control) does not carry over, and once
+  read right it leaves the list as lost, not saved. All of it is in `src/risk/config.ts` (`startShare`,
+  `escalatePerDay`, `carryOver`).
+- **Tap it** for the list, biggest first: the farm and its plots, what is at risk now, and what it will be in a day
+  (or *Full cost*). The list never says what the problem is, only where the player is with it (*Not checked yet*,
+  *Read wrong: look again*, *Read right: choose the fix*, *Read right: the work is left*). **Tap a farm** to go straight
+  to its sign and into its check (or the fix, or the work left).
+- **Live.** Dealing with a problem takes it off at once: the button pops, a *KSh 9.6k saved* chip floats off it and a
+  *Caught in time* card follows (after any check or fix screen has closed). With nothing at risk the button turns calm
+  green, *All clear* (*Harvest time* once the checks are over). It first appears with the first problem of the first
+  planting period, and stays from then on.
+- **While you were away.** The button as last seen is saved; a player coming back on a later day to more at risk sees
+  what grew (*KSh 3.5k at risk when you left, KSh 11k now*) and can open the list from there.
+- **Forecast shocks** (drought, flood, hail by the season's forecast, less what crop cover pays; cover is the Kinga
+  Cover offer for now) can be added to the total: off (`RISK.includeShocks`) until confirmed.
+- **Evidence** (for the evidence layer to come): every tap on the button and on a farm in its list is counted, and
+  every problem dealt with is kept with when it was first on the button in front of the player and when it was fixed
+  (`GameState.risk`, the last 100). Events: `risk_open`, `risk_row`, `risk_fixed` (with `msFromSeen`).
+- **Not yet:** a push or SMS reminder (*KSh 50k at risk on Farm 2*) is out of scope until confirmed.
+
+`src/risk/model.ts` works the list out from the save (no screens; `riskOf`), `src/risk/RiskHud.tsx` is the button, the
+list and the two cards, and `tests/risk.spec.ts` plays the acceptance checks: three problems add up, a fix drops the
+total by exactly its amount, a day left raises each by the escalation (up to its stated cost), a carried problem
+stays on its farm, the list never names a cause and a tap opens that farm's check.
+
 ## Climate tracking
 
 Every job in the game now records what it does to the climate, the water and the land. The **CLIMATE** button
@@ -1128,7 +1171,8 @@ player's saved game or events.
   stand in for a whole season) and the rotation. Round points are illustrative.
 - **Lima AI** is a rule-based stand-in that reads the season's numbers; it does not call an AI service.
 - **Rewards** are saved in the game but nothing is sent to a partner; there is no redemption backend.
-- **Missed checks** cost harvest on the six farms (see `DAMAGE` in `src/trials/model.ts`). In the everyday field
+- **Missed checks** cost harvest on the six farms (see `DAMAGE` in `src/trials/model.ts`); a problem left unresolved
+  now stays on its farm until it is dealt with, and costs at harvest what was at risk by then (`src/risk/config.ts`). In the everyday field
   rounds they still only show as a bed to look at again.
 - **The six-farm model** (yields, problem odds, damage, prices) is illustrative and needs agronomist review before any
   pilot. Only maize is planned in it so far; beans, sukuma wiki and tomatoes would each need their own table.

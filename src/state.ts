@@ -1,3 +1,4 @@
+import { riskReduce, type RiskAction, type RiskState } from './risk/model';
 import { useEffect, useReducer, useRef } from 'react';
 import { FARMS, ROUND_POINTS, dayNumber } from './rounds/farms';
 import {
@@ -241,6 +242,8 @@ export interface GameState {
   trainings?: TrainingBooking[];
   /** partner offers the player saved (src/partners/data.ts; missing in older saves) */
   offers?: BrandId[];
+  /** money at risk: the button as last seen, and every problem dealt with (src/risk/model.ts; missing in older saves) */
+  risk?: RiskState;
   collectedDay: Record<string, string>; // milk/eggs → date last collected
   // season
   season: number;
@@ -497,7 +500,8 @@ export type Action =
   /** partners: get a brand's offer (its code is kept in Messages) */
   | { type: 'partnerSave'; id: BrandId }
   /** go to a web address (src/route.ts): the screen it names, if the player may go there now */
-  | { type: 'route'; path: string };
+  | { type: 'route'; path: string }
+  | RiskAction;
 
 let toastId = 0;
 let successId = 0;
@@ -1228,6 +1232,10 @@ function play(s: GameState, a: Action): GameState {
         toast: toast(`Level ${l.n} · ${l.name}: +${money(l.coins)} · +${fmt(l.points)} points`),
       };
     }
+    case 'riskSnap':
+    case 'riskFixed':
+    case 'riskTap':
+      return { ...s, risk: riskReduce(s.risk, a) };
     case 'partnerSave': {
       const b = brandOf(a.id);
       const saved = s.offers ?? [];

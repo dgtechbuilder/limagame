@@ -30,6 +30,7 @@ import {
 } from '../plots/data';
 import type { ImplId } from '../tractor/data';
 import { money } from '../money';
+import { RISK, riskShare } from '../risk/config';
 
 /* ---------------- the plan ---------------- */
 
@@ -452,10 +453,41 @@ export function returnedProblem(t: Pick<Trial, 'followUps'>, farm: number, day: 
 }
 
 /** What a farm shows on a day of the cycle: what its plan and luck drew (baseHazard), unless follow-up care was
-    missed the day before, which brings that problem back. */
-export function hazardFor(t: Pick<Trial, 'cycle' | 'forecast' | 'plans' | 'guided' | 'followUps' | 'crops'>, farm: number, day: number): TrialHazard {
-  const back = returnedProblem(t, farm, day);
-  return back ? back.hazard : baseHazard(t, farm, day);
+    missed the day before, which brings that problem back, or a problem was left unresolved the day before, which
+    stays on the farm (src/risk/config.ts: RISK.carryOver). */
+export function hazardFor(t: Pick<Trial, 'cycle' | 'forecast' | 'plans' | 'guided' | 'followUps' | 'crops'> & Partial<Pick<Trial, 'checks'>>, farm: number, day: number): TrialHazard {
+  return shownOn(t, farm, day).hazard;
+}
+
+/** A problem on a farm: what it is, and the day it first showed (earlier than today when it was carried over). */
+export interface Episode {
+  hazard: TrialHazard;
+  start: number;
+}
+
+/** A problem left unresolved stays on the farm the next day if it is one the farm can deal with: treatable on its
+    plan, or hail (dealt with by reading it right). Timing problems and pests on a farm with no pest control do not. */
+export const carriesOver = (h: TrialHazard, p: Plan) => DAMAGE[h].missed > 0 && (canTreat(h, p) || h === 'hail');
+
+/** The problem shown on a farm on a day was dealt with that day: read right, and the fix done by hand (or, for what
+    can't be treated, read right). */
+export function resolvedOn(t: Partial<Pick<Trial, 'checks'>> & Pick<Trial, 'plans'>, farm: number, day: number, h: TrialHazard): boolean {
+  const rec = t.checks?.[checkKey(farm, day)];
+  return !!rec?.right && (rec.treated || !canTreat(h, t.plans[farm]));
+}
+
+/** The problem a farm shows on a day, and the day it first showed. */
+export function shownOn(t: Pick<Trial, 'cycle' | 'forecast' | 'plans' | 'guided' | 'followUps' | 'crops'> & Partial<Pick<Trial, 'checks'>>, farm: number, day: number): Episode {
+  let ep: Episode | null = null;
+  for (let d = Math.min(1, day); d <= day; d++) {
+    const back = returnedProblem(t, farm, d);
+    const prev: Episode | null = ep;
+    // left unresolved yesterday: it is still there today
+    const stays = !!prev && RISK.carryOver && !!t.checks && d > 1 && carriesOver(prev.hazard, t.plans[farm]) && !resolvedOn(t, farm, d - 1, prev.hazard);
+    if (back) ep = { hazard: back.hazard, start: d };
+    else if (!stays) ep = { hazard: baseHazard(t, farm, d), start: d };
+  }
+  return ep ?? { hazard: baseHazard(t, farm, day), start: day };
 }
 
 /** What a farm shows on a day of the cycle. The plan's timing shows on fixed days; the rest is drawn from its odds. */
@@ -483,12 +515,33 @@ function planHazard(t: Pick<Trial, 'cycle' | 'forecast' | 'plans' | 'guided'>, f
 }
 
 /** The day's problems on a farm and how well each was caught (what the farm loses
-    differs with its seed, fertilizer and sprayer: plotLoss). */
+    differs with its seed, fertilizer and sprayer: plotLoss). A problem carried over from one day to the next
+    (RISK.carryOver) counts once, on the day it first showed: caught if it was dealt with on any of its days; if never
+    dealt with, it costs the share of its stated cost at risk by the harvest (src/risk/config.ts: riskShare). */
 function farmProblems(t: Trial, farm: number, lastDay: number) {
   const p = t.plans[farm];
   const problemOn = (day: number) => (WAKALA_YIELD_EFFECTS && MISSED_FOLLOW_UP_RETURNS ? hazardFor(t, farm, day) : baseHazard(t, farm, day));
-  const out: { hazard: TrialHazard; day: number; caught: boolean; treated: boolean }[] = [];
+  const out: { hazard: TrialHazard; day: number; caught: boolean; treated: boolean; scale: number }[] = [];
   for (let day = 1; day <= lastDay; day++) {
+    const ep = RISK.carryOver ? shownOn(t, farm, day) : null;
+    // a carried day is the same problem as the day before: counted on its first day
+    if (ep && ep.start < day) continue;
+    const carried = ep && carriesOver(ep.hazard, p) && lastDay > day && shownOn(t, farm, day + 1).start === day;
+    if (ep && carried) {
+      // the problem stayed on the farm: caught if it was dealt with on any of its days
+      let end = day;
+      while (end + 1 <= lastDay && shownOn(t, farm, end + 1).start === day) end++;
+      let caught = false;
+      let treated = false;
+      for (let d = day; d <= end; d++) {
+        if (resolvedOn(t, farm, d, ep.hazard)) {
+          caught = true;
+          treated = !!t.checks[checkKey(farm, d)]?.treated;
+        }
+      }
+      out.push({ hazard: ep.hazard, day, caught, treated, scale: caught ? 1 : riskShare(lastDay + 1 - day) });
+      continue;
+    }
     const h = problemOn(day);
     if (!DAMAGE[h].missed) continue;
     const rec = t.checks[checkKey(farm, day)];
@@ -497,15 +550,17 @@ function farmProblems(t: Trial, farm: number, lastDay: number) {
     const caught = shown
       ? !!rec?.right && (rec.treated || !canTreat(shown.hazard, p))
       : !!rec?.right && (rec.treated || !canTreat(h, p)) && (h === 'hail' || canTreat(h, p));
-    out.push({ hazard: h, day, caught, treated: !!rec?.treated });
+    // a problem never dealt with costs what is at risk by the harvest (all of it, once it has been left long enough)
+    const scale = !caught && RISK.carryOver && carriesOver(h, p) ? riskShare(lastDay + 1 - day) : 1;
+    out.push({ hazard: h, day, caught, treated: !!rec?.treated, scale });
   }
   return out;
 }
 
 /** What one problem costs one plot: the farm's loss, changed by the plot's seed, fertilizer and sprayer. */
-export function plotLoss(h: TrialHazard, caught: boolean, treated: boolean, r: PlotRecord): number {
+export function plotLoss(h: TrialHazard, caught: boolean, treated: boolean, r: PlotRecord, scale = 1): number {
   const d = DAMAGE[h];
-  let loss = caught ? d.caught : d.missed;
+  let loss = caught ? d.caught : d.missed * scale;
   // a pest or disease treated by spraying: each plot is saved as well as its sprayer covers it
   if ((h === 'armyworm' || h === 'aphids' || h === 'disease') && caught && treated && r.sprayer) {
     // a sprayer covers aphids as it covers armyworm: both are sprayed on the leaves
@@ -550,7 +605,7 @@ function growPlot(t: Trial, farm: number, r: PlotRecord, ctx: ReturnType<typeof 
   // land turned by the tractor from the seat gets the tractor's land prep instead of the plan's
   const land = r.tractor && r.tools?.prep ? TRACTOR_LAND_FACTOR / ctx.factors.land : 1;
   const own = { land, seed: seed.factor[t.forecast], fert: fertOf(r.fert).factor, tools: toolsFactor(r, farm) };
-  const keep = ctx.found.reduce((n, q) => n * (1 - plotLoss(q.hazard, q.caught, q.treated, r)), 1);
+  const keep = ctx.found.reduce((n, q) => n * (1 - plotLoss(q.hazard, q.caught, q.treated, r, q.scale)), 1);
   const bags = POTENTIAL_BAGS * PLOT_SHARE * ctx.farmShare * own.land * own.seed * own.fert * own.tools * keep;
   return { bags, keep, own, seed };
 }
@@ -594,7 +649,7 @@ export function harvestFarm(t: Trial, farm: number, lastDay = CHECK_DAYS): FarmR
   const out = { ...factors, seed: geo(x => x.factors.seed), fert: geo(x => x.factors.fert) };
   const costs = farmCost(t, farm) + (t.treatments[farm] ?? 0) + (t.fuel?.[farm] ?? 0);
   const problems = found
-    .map(q => ({ hazard: q.hazard, day: q.day, caught: q.caught, loss: plots.reduce((n, x) => n + plotLoss(q.hazard, q.caught, q.treated, x.inputs), 0) / plots.length }))
+    .map(q => ({ hazard: q.hazard, day: q.day, caught: q.caught, loss: plots.reduce((n, x) => n + plotLoss(q.hazard, q.caught, q.treated, x.inputs, q.scale), 0) / plots.length }))
     .sort((a, b) => b.loss - a.loss);
   return { bags, beans, quality, income, costs, profit: income - costs, factors: out, lost, problems, plots, plotFactor };
 }
