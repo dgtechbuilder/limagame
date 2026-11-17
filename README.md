@@ -375,8 +375,10 @@ WASD. The **task card** at the top says what to do next; tap it and the farmer w
 ![The farm world](docs/farm-world.webp)
 
 - **The mini forest**: 10 acres of idle land left to grow as forest, top right of the farm above the pond, with a
-  *Mini forest · 10 acres* sign (`FOREST` in `src/world/engine.ts`). The farmer walks round its trees. It is the
-  farm's biggest carbon store (Climate → Farm areas).
+  *Mini forest · 10 acres* sign (`FOREST` in `src/world/engine.ts`). It is planted like a tree farm (`forest` in
+  `src/world/models.ts`): short, round-crowned trees in straight rows with a few tall, skinny trees among them, and
+  grass tufts and small bushes at the foot of each trunk. Only the trunks block the farmer, so the lanes between the
+  rows can be run straight through. It is the farm's biggest carbon store (Climate → Farm areas).
 - **The six farms** are **4 acres** each, with **20 plots** of a fifth of an acre (4 × 5 tiles, Plot 1 at the back left), Farms 1–3 at the back and 4–6 in
   front, each with a sign. The plots make **4 rows of 5** (each row runs from the back of the farm to the front).
   **Clearing and planting are done a row at a time**: the farmer stands anywhere in a row, a **Clear Row 1** or
