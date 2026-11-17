@@ -19,7 +19,7 @@ const STORY_PAGES = STORY.length;
 const SETTINGS: Record<SettingsTab, string> = { farmer: 'my-farmer', game: 'game', display: 'display', help: 'help' };
 const CLIMATE: Record<ClimateTab, string> = { overview: 'overview', land: 'land-and-pay', areas: 'farm-areas', emissions: 'emissions', water: 'water-and-soil', tank: 'water-tank', credits: 'credits', shocks: 'shocks', activity: 'activity' };
 const ACH: Record<AchTab, string> = { journey: 'journey', modules: 'modules', today: 'today', badges: 'badges', certificates: 'certificates' };
-const PARTNERS: Record<PartnersTab, string> = { offers: 'offers', placements: 'placements' };
+const PARTNERS: Record<PartnersTab, string> = { offers: 'offers', placements: 'placements', join: 'partner-with-us', shortlist: 'shortlist' };
 const BRAND_WORD = Object.fromEntries(BRANDS.map(b => [b.id, b.id])) as Record<BrandId, string>;
 const SHOP: Record<ShopTab, string> = { food: 'food', fertilizer: 'fertilizer', tank: 'water-tanks', equipment: 'equipment' };
 const STEPS: Record<StepId, string> = { landprep: 'land-prep', planting: 'planting', fertilizer: 'fertilizer', pesticides: 'pesticides', water: 'water', harvest: 'harvest' };
@@ -68,7 +68,7 @@ function modalPath(s: GameState, m: Modal): string {
     case 'achievements':
       return `/progress/${ACH[m.tab ?? 'journey']}`;
     case 'partners':
-      return `/partners/${PARTNERS[m.tab ?? 'offers']}${m.tab !== 'placements' && m.brand ? `/${BRAND_WORD[m.brand]}` : ''}`;
+      return `/partners/${PARTNERS[m.tab ?? 'offers']}${(m.tab ?? 'offers') === 'offers' && m.brand ? `/${BRAND_WORD[m.brand]}` : ''}`;
     case 'shop':
       return `/shop/${SHOP[m.tab]}`;
     case 'steps':
@@ -157,8 +157,9 @@ export function routeTo(s: GameState, raw: string): Action[] {
 
   /* ---------- the first session ---------- */
   if (phase !== 'done') {
-    // the menu and Settings are open during the first session, as their buttons are
-    if (modal) return modal.kind === 'menu' || modal.kind === 'settings' ? [{ type: 'open', modal }] : say('Finish checking your first crops to open the farm.');
+    // the menu and Settings are open during the first session, as their buttons are; so is Partners, for a partner
+    // visiting before they play
+    if (modal) return modal.kind === 'menu' || modal.kind === 'settings' || modal.kind === 'partners' ? [{ type: 'open', modal }] : say('Finish checking your first crops to open the farm.');
     const close: Action[] = s.modal ? [{ type: 'close' }, { type: 'close' }] : [];
     const step = (to: FsPhase, page?: number): Action[] => [...close, { type: 'fs', phase: to, page }];
     // the step the player is on (e.g. Back from the menu to it)

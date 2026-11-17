@@ -45,7 +45,7 @@ const SCREENS = [
   ...['my-farmer', 'game', 'display', 'help'].map(t => `/settings/${t}`),
   ...['overview', 'land-and-pay', 'farm-areas', 'emissions', 'water-and-soil', 'shocks', 'activity'].map(t => `/climate/${t}`),
   ...['journey', 'modules', 'today', 'badges', 'certificates'].map(t => `/progress/${t}`),
-  '/partners/offers', '/partners/placements',
+  '/partners/offers', '/partners/placements', '/partners/partner-with-us', '/partners/shortlist',
   ...['food', 'fertilizer', 'water-tanks', 'equipment'].map(t => `/shop/${t}`),
   ...['land-prep', 'planting', 'fertilizer', 'pesticides', 'water', 'harvest'].map(t => `/steps/${t}`),
   '/loan-calculator', '/loan-calculator/quote',

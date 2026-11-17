@@ -43,7 +43,7 @@ import { slotBrand, type SlotId } from '../partners/data';
 import { useSlotView } from '../partners/track';
 import { BrandMark, openOffer } from '../partners/ui';
 import { useNav } from '../components/Nav';
-import { ClimateIcon } from '../components/Icons';
+import { ClimateIcon, PartnersIcon } from '../components/Icons';
 import { rating } from '../climate/model';
 import { TRACTOR_BONUS } from '../tractor/data';
 import { JOB_INFO, KIND_WORDS, toolJobs, toolName, tractorName, type PlotKind } from '../plots/data';
@@ -731,6 +731,10 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         <span>MISSION</span>
       </button>
       <WaterButton s={s} dispatch={dispatch} />
+      <button type="button" className="hud-round hud-partners" onClick={() => dispatch({ type: 'open', modal: { kind: 'partners' } })} aria-label="Partners: offers, placements and ways to partner with Lima">
+        <PartnersIcon />
+        <span>PARTNERS</span>
+      </button>
       <button type="button" className="hud-round hud-shop" onClick={() => dispatch({ type: 'open', modal: { kind: 'shop', tab: 'food' } })} aria-label="Shop">
         <img src={img.cart} alt="" width={30} height={30} />
         <span>SHOP</span>
