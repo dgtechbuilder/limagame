@@ -23,8 +23,15 @@ export interface Brand {
   accent: string;
   /** a mark for the brand where no logo file is supplied */
   mark: string;
-  /** the offer a player can save from the Partners page */
-  offer: { title: string; line: string };
+  /** the offer a player can get from the Partners page: what it is, what it gives, and where in the game it is used */
+  offer: {
+    title: string;
+    line: string;
+    /** what the player gets, a line each, shown before they take it */
+    get: string[];
+    /** where it is used: the button after it is taken, and the game address it opens (src/route.ts) */
+    use: { label: string; to: string };
+  };
   /** where "Visit" goes (opened in a new tab); none for sample brands */
   url?: string;
   /** a made-up brand standing in until a real partner signs */
@@ -40,7 +47,7 @@ export const BRANDS: Brand[] = [
     color: '#1f6f5c',
     accent: '#f5c21b',
     mark: '🚜',
-    offer: { title: 'Book a tractor through a booking agent', line: 'Ploughing, harrowing and planting at an agreed price per acre' },
+    offer: { title: 'Book a tractor through a booking agent', line: 'Ploughing, harrowing and planting at an agreed price per acre', get: ['Ploughing, harrowing and planting booked for farmers near you', 'An agreed price per acre, settled before the tractor comes', 'Book the jobs yourself in the Tractor business'], use: { label: 'Open the Tractor business', to: '/tractor-business' } },
     url: 'https://hellotractor.com',
     sample: false,
   },
@@ -52,7 +59,7 @@ export const BRANDS: Brand[] = [
     color: '#2f8a3c',
     accent: '#ffd23f',
     mark: '🌿',
-    offer: { title: '10% off Rutuba Gold NPK', line: 'In the Shop’s fertilizer section, and a planting guide with every bag' },
+    offer: { title: '10% off Rutuba Gold NPK', line: 'In the Shop’s fertilizer section, and a planting guide with every bag', get: ['10% off Rutuba Gold NPK in the Shop', 'A planting guide with every bag: how much, and when to top-dress'], use: { label: 'Open the fertilizer shop', to: '/shop/fertilizer' } },
     sample: true,
   },
   {
@@ -63,7 +70,7 @@ export const BRANDS: Brand[] = [
     color: '#b5651d',
     accent: '#ffe08a',
     mark: '🌽',
-    offer: { title: 'Seed discount voucher', line: 'Redeem points for certified maize seed in the Rewards hub' },
+    offer: { title: 'Seed discount voucher', line: 'Redeem points for certified maize seed in the Rewards hub', get: ['A voucher for certified maize seed', 'Redeemed with your points in the Rewards hub'], use: { label: 'Open the Rewards hub', to: '/rewards' } },
     sample: true,
   },
   {
@@ -74,7 +81,7 @@ export const BRANDS: Brand[] = [
     color: '#2a7fd0',
     accent: '#bfe7f2',
     mark: '💧',
-    offer: { title: 'Free gutter kit with a 5,000 L tank', line: 'With the Tangi tank in the Shop’s water-tank section' },
+    offer: { title: 'Free gutter kit with a 5,000 L tank', line: 'With the Tangi tank in the Shop’s water-tank section', get: ['A gutter kit, free with a Tangi 5,000 L tank', 'Catch the rain off your roof and water through the dry weeks'], use: { label: 'Open the water-tank shop', to: '/shop/water-tanks' } },
     sample: true,
   },
   {
@@ -85,7 +92,7 @@ export const BRANDS: Brand[] = [
     color: '#5b3fa0',
     accent: '#ffcf3f',
     mark: '📱',
-    offer: { title: 'Plan a farm loan', line: 'See what a loan costs in the Loan calculator before you borrow' },
+    offer: { title: 'Plan a farm loan', line: 'See what a loan costs in the Loan calculator before you borrow', get: ['A loan quote: what you pay each month, and in all', 'How much of the farm’s income the payments would take'], use: { label: 'Open the Loan calculator', to: '/loan-calculator' } },
     sample: true,
   },
   {
@@ -96,7 +103,7 @@ export const BRANDS: Brand[] = [
     color: '#c0392b',
     accent: '#fff1c2',
     mark: '☂️',
-    offer: { title: 'Learn about crop cover', line: 'What a drought or a flood costs your farm, on the Climate page' },
+    offer: { title: 'Learn about crop cover', line: 'What a drought or a flood costs your farm, on the Climate page', get: ['What a dry spell or a flood would cost your farm', 'How crop cover would pay out if one comes'], use: { label: 'Open Climate › Shocks', to: '/climate/shocks' } },
     sample: true,
   },
   {
@@ -107,7 +114,7 @@ export const BRANDS: Brand[] = [
     color: '#e67e22',
     accent: '#fff6d6',
     mark: '☀️',
-    offer: { title: 'Solar pump discount', line: 'Redeem points for solar power and irrigation in the Rewards hub' },
+    offer: { title: 'Solar pump discount', line: 'Redeem points for solar power and irrigation in the Rewards hub', get: ['A discount on a solar pump and irrigation', 'Redeemed with your points in the Rewards hub'], use: { label: 'Open the Rewards hub', to: '/rewards' } },
     sample: true,
   },
   {
@@ -118,12 +125,25 @@ export const BRANDS: Brand[] = [
     color: '#1e5b78',
     accent: '#ffcf3f',
     mark: '🎓',
-    offer: { title: 'Your farming certificates', line: 'Earn certification levels in My Progress as you play' },
+    offer: { title: 'Your farming certificates', line: 'Earn certification levels in My Progress as you play', get: ['A certificate at each level you reach, co-signed by Ujuzi', 'Learning credits for every part of the game'], use: { label: 'Open My Progress', to: '/progress/journey' } },
     sample: true,
   },
 ];
 
 export const brandOf = (id: BrandId | null | undefined) => (id ? BRANDS.find(b => b.id === id) : undefined);
+
+/** The player's code for a brand's offer, e.g. "RUTU-7K3Q": the brand's first letters, then four from the farmer's
+    name, so it is the same each time it is shown and needs nothing more in the save. */
+export function offerCode(id: BrandId, farmer = '') {
+  const b = brandOf(id);
+  const head = (b?.name ?? id).replace(/[^A-Za-z]/g, '').slice(0, 4).toUpperCase();
+  let h = 2166136261;
+  for (const ch of `${id}:${farmer.trim().toLowerCase()}`) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
+  const abc = '23456789ABCDEFGHJKMNPQRSTUVWXYZ'; // no 0/O, 1/I/L: easy to read out
+  let tail = '';
+  for (let i = 0; i < 4; i++, h = Math.floor(h / abc.length)) tail += abc[h % abc.length];
+  return `${head}-${tail}`;
+}
 
 /* ---------------- the slots: every place a brand can appear ---------------- */
 

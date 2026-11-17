@@ -1,3 +1,6 @@
+import { farmSignal } from './signal';
+import { TrendChart } from './TrendChart';
+import { URGENT, traitsOf, urgencyOf, type FarmSignal } from './model';
 import { useEffect, useMemo, useRef, useState, type Dispatch } from 'react';
 import { img } from '../assets';
 import { FarmMap } from '../components/FarmMap';
@@ -78,7 +81,7 @@ import {
 import { newDrive, type Drive, type DriveResult } from './drive';
 import { DriveGame } from './DriveGame';
 import { Face, Says } from './Cast';
-import { kshText } from '../money';
+import { kshText, withMoney } from '../money';
 import { sfx } from '../sfx';
 
 /* The tractor business, to Hello Tractor's brief: Today (scout farms with Campbell, book each job, plan the route,
@@ -89,7 +92,7 @@ import { sfx } from '../sfx';
 /** shillings on screen: 10 times the stored value (src/money.ts) */
 const ksh = (n: number) => kshText(Math.round(n));
 const pct = (x: number) => `${Math.round(x * 100)}%`;
-type Tab = 'today' | 'hub' | 'calendar' | 'partners' | 'fleet';
+type Tab = 'today' | 'hub' | 'calendar' | 'trend' | 'partners' | 'fleet';
 
 /** The map drawn on the stage (its own pixels are the model's map pixels; the foot is kept for the route strip). */
 const MAP_PX = { x: 16, y: 92, w: MAP_W, h: MAP_H };
@@ -133,7 +136,7 @@ export function Business({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
           Tractor business
         </span>
       </div>
-      <NavBar horizontal onBack={close} style={{ right: 6, top: 4 }} />
+      <NavBar horizontal onBack={close} style={{ right: 28, top: 8 }} />
 
       {/* the business at a glance: its level, the two numbers, and counted acres on the way to a tractor */}
       <div className="biz-head">
@@ -175,6 +178,7 @@ export function Business({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
               ['today', 'Today'],
               ['hub', 'Hub'],
               ['calendar', 'Calendar'],
+              ['trend', 'My trend'],
               ['partners', 'Partners'],
               ['fleet', 'Fleet'],
             ] as const
@@ -186,9 +190,14 @@ export function Business({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
         </div>
       </div>
 
-      {tab === 'today' && <Today key={b.day} b={b} name={name} dispatch={dispatch} onDone={r => setResult(r)} />}
+      {tab === 'today' && <Today key={b.day} b={b} name={name} dispatch={dispatch} onDone={r => setResult(r)} signal={farmSignal(s)} />}
       {tab === 'hub' && <Hub b={b} dispatch={dispatch} />}
       {tab === 'calendar' && <Calendar b={b} name={name} />}
+      {tab === 'trend' && (
+        <div className="biz-card biz-trend-card">
+          <TrendChart history={b.history} />
+        </div>
+      )}
       {tab === 'partners' && <Partners b={b} dispatch={dispatch} />}
       {tab === 'fleet' && <Fleet b={b} dispatch={dispatch} />}
 
@@ -275,7 +284,7 @@ interface Run {
   last: string | null;
 }
 
-function Today({ b, name, dispatch, onDone }: { b: Biz; name: string; dispatch: Dispatch<Action>; onDone: (r: DayResult) => void }) {
+function Today({ b, name, dispatch, onDone, signal }: { b: Biz; name: string; dispatch: Dispatch<Action>; onDone: (r: DayResult) => void; signal: FarmSignal }) {
   const requests = useMemo(() => requestsFor(b), [b]);
   const map = useMemo(() => mapFor(b.day), [b.day]);
   const [bookings, setBookings] = useState<Bookings>({});
@@ -284,7 +293,7 @@ function Today({ b, name, dispatch, onDone }: { b: Biz; name: string; dispatch: 
   const [step, setStep] = useState<Step>('book');
   const [pick, setPick] = useState<string | null>(null);
   const [run, setRun] = useState<Run | null>(null);
-  const plan = planDay(b, requests, bookings, route, run?.drives ?? {});
+  const plan = planDay(b, requests, bookings, route, run?.drives ?? {}, signal);
   const farms = [...new Set(requests.map(clientKey))];
   const mine = myFarms(bookings);
   const kimani = b.partners.includes('kimani');
@@ -332,7 +341,7 @@ function Today({ b, name, dispatch, onDone }: { b: Biz; name: string; dispatch: 
     if (!run || run.phase !== 'home') return;
     dispatch({ type: 'bizRun', bookings, route, drives: run.drives });
     // the reducer works the same day out again from the same bookings, route and drives
-    const final = planDay(b, requests, bookings, route, run.drives);
+    const final = planDay(b, requests, bookings, route, run.drives, signal);
     onDone(runDay(b, final, activitiesDone(requests, bookings, final)).result);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [run?.phase]);
@@ -469,6 +478,7 @@ function Today({ b, name, dispatch, onDone }: { b: Biz; name: string; dispatch: 
                         {toolName(part.tool)} · {part.acres} acre{part.acres === 1 ? '' : 's'} of {cropName(part.crop).toLowerCase()} · hire {ksh(hireOf(part.tool) * part.acres)}
                         {extra ? ' · on your advice' : ''}
                       </small>
+                      <FarmerChips client={pick} activity={activity} signal={signal} />
                     </span>
                     <span className="biz-seg" role="group" aria-label={`${part.name}: who does it`}>
                       <button type="button" className={v === 'me' ? 'is-on' : ''} disabled={!hasTool} onClick={() => book(k, v === 'me' ? null : 'me')} title={hasTool ? '' : `You have no ${toolName(part.tool).toLowerCase()}`}>
@@ -571,7 +581,7 @@ function Today({ b, name, dispatch, onDone }: { b: Biz; name: string; dispatch: 
         </div>
       </aside>
 
-      <GuideLine text={line} face={<Face who="caro" size={40} />} style={{ left: 16, right: 16, bottom: 4, minHeight: 0, padding: '2px 10px 2px 4px' }} />
+      <GuideLine text={line} face={<Face who="caro" size={40} />} style={{ left: 30, right: 30, bottom: 8, minHeight: 0, padding: '2px 10px 2px 4px' }} />
     </>
   );
 }
@@ -936,11 +946,27 @@ function Results({ r, b, onNext }: { r: DayResult; b: Biz; onNext: () => void })
             )}
           </>
         )}
+        {r.kind === 'farms' && r.value !== undefined && (
+          <p className="biz-result-line biz-value">
+            <b>Day value {r.value}/100</b> · the shortest route is not always the best: {r.collected !== undefined && r.revenue ? `${Math.round((100 * r.collected) / r.revenue)}% of the hire collected` : 'all the hire collected'}
+            {r.urgentServed ? `, ${r.urgentServed} urgent job${r.urgentServed === 1 ? '' : 's'} done (+${r.urgentServed * URGENT.points} points)` : ''}
+            {r.urgentWaiting ? `, ${r.urgentWaiting} urgent left waiting` : ''}.
+          </p>
+        )}
         <dl className="biz-sheet">
           <div>
             <dt>Hire from farmers</dt>
             <dd>{ksh(r.revenue)}</dd>
           </div>
+          {!!r.shortfall && (
+            <div>
+              <dt>{r.shortfall > 0 ? 'Not paid (bargained down, bad debt)' : 'Extra for urgent work'}</dt>
+              <dd className={r.shortfall > 0 ? 'is-cost' : ''}>
+                {r.shortfall > 0 ? '−' : '+'}
+                {ksh(Math.abs(r.shortfall))}
+              </dd>
+            </div>
+          )}
           {r.commission > 0 && (
             <div>
               <dt>From partner jobs</dt>
@@ -1155,7 +1181,7 @@ function Partners({ b, dispatch }: { b: Biz; dispatch: Dispatch<Action> }) {
           <div key={p.id} className={`biz-card${signed ? ' is-signed' : ''}`}>
             <small>{p.kind}</small>
             <b>{p.name}</b>
-            <p>{p.does}</p>
+            <p>{withMoney(p.does)}</p>
             {signed ? (
               <span className="biz-tag">✓ Signed</span>
             ) : block ? (
@@ -1213,5 +1239,25 @@ function Fleet({ b, dispatch }: { b: Biz; dispatch: Dispatch<Action> }) {
         );
       })}
     </div>
+  );
+}
+
+/** A farmer's traits on a booking: how urgent the job is today (the player's own farm can make it more so), what they
+    pay, and whether they pay. */
+function FarmerChips({ client, activity, signal }: { client: string; activity: import('./model').Activity; signal: FarmSignal }) {
+  const tr = traitsOf(client);
+  const u = urgencyOf(client, activity, signal);
+  return (
+    <span className="biz-traits">
+      <i className={`is-u${u}`} title={u === 3 ? `Urgent: done today it pays ${Math.round(URGENT.premium * 100)}% more` : u === 2 ? 'This week' : 'Can wait'}>
+        {u === 3 ? 'Urgent' : u === 2 ? 'This week' : 'Can wait'}
+      </i>
+      <i className={tr.pay >= 1 ? 'is-good' : 'is-warn'} title="What they pay against the list hire">
+        Pays {Math.round(tr.pay * 100)}%
+      </i>
+      <i className={tr.reliability >= 0.9 ? 'is-good' : 'is-warn'} title="The share of what is owed they actually pay">
+        {tr.reliability >= 0.95 ? 'Pays on time' : tr.reliability >= 0.85 ? 'Mostly pays' : 'Often late or unpaid'}
+      </i>
+    </span>
   );
 }

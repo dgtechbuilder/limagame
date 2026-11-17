@@ -1,7 +1,7 @@
 /* First session: farmer looks, the crops the player checks on their own farm, and every line they read.
    One review system drives every check; to add one, add an entry to SHAMBAS. */
 
-import { kshText } from '../money';
+import { kshText, withMoney } from '../money';
 
 export type Call =
   | 'healthy'
@@ -152,7 +152,7 @@ export const SHAMBAS: Record<string, ShambaReview> = {
   },
 };
 
-export const say = (line: string, name: string) => line.replace(/\{name\}/g, name);
+export const say = (line: string, name: string) => withMoney(line.replace(/\{name\}/g, name));
 
 /* ------------------------------------------------------------------ */
 /* The story so far: three pages, after the farmer is named and before the first walk.
@@ -235,7 +235,7 @@ export const STORY: StoryPage[] = [
           maize: 'Tap the maize seeds, then tap the maize bed to sow them.',
           kale: 'Now tap the sukuma seeds, then tap the sukuma bed.',
         },
-        after: `Seed, fertiliser and labour went in: ${kshText(38000)} spent.`,
+        after: 'Seed, fertiliser and labour went in: {money:38000} spent.',
         cheer: { title: 'Well done, {name}!', line: 'Your maize and sukuma wiki are in the ground. The season has begun.' },
       },
       {
@@ -249,7 +249,7 @@ export const STORY: StoryPage[] = [
         id: 'harvest',
         button: 'Harvest',
         doing: 'Harvesting…',
-        after: `Only a little was left to sell: ${kshText(14500)}.`,
+        after: 'Only a little was left to sell: {money:14500}.',
         cheer: { title: 'Congratulations!', line: 'Your first harvest is done, {name}.' },
       },
     ],

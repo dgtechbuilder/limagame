@@ -268,9 +268,35 @@ export function forestSignTexture() {
   });
 }
 
-/** The mini forest: a stand of trees of mixed sizes, with bushes under them, on a darker forest floor, filling the
-    rectangle x0..x1, z0..z1. The trees are placed the same way every time (no randomness). Returns the parts and
-    where each trunk stands (the farmer walks round them). */
+/** A short planted tree for the tree farm: a straight trunk and a compact round crown, about head height and a half. */
+function farmTree(scale = 1, tint = 0): Part[] {
+  const leaf = tint ? C.leafLight : C.leaf;
+  return place(
+    [
+      { geo: G.cyl6, color: '#8b5a2b', m: at(0, 0.55, 0, { sx: 0.22, sy: 1.1, sz: 0.22 }) },
+      { geo: G.ico, color: leaf, m: at(0, 1.45, 0, { s: 1.15, sy: 1.0 }) },
+      { geo: G.ico, color: C.leafLight, m: at(0.2, 1.75, 0.12, { s: 0.7 }) },
+    ],
+    at(0, 0, 0, { s: scale }),
+  );
+}
+
+/** A tall, skinny tree (like a young eucalyptus or cypress): a thin trunk and a narrow, pointed crown. */
+function tallTree(scale = 1): Part[] {
+  return place(
+    [
+      { geo: G.cyl6, color: '#7a4c24', m: at(0, 1.1, 0, { sx: 0.16, sy: 2.2, sz: 0.16 }) },
+      { geo: G.cone6, color: C.leaf, m: at(0, 2.9, 0, { sx: 0.95, sy: 2.6, sz: 0.95 }) },
+      { geo: G.cone6, color: C.leafLight, m: at(0, 3.9, 0, { sx: 0.6, sy: 1.4, sz: 0.6 }) },
+    ],
+    at(0, 0, 0, { s: scale }),
+  );
+}
+
+/** The mini forest: a planted tree farm on a darker forest floor, filling the rectangle x0..x1, z0..z1. Short trees
+    stand in straight rows with open lanes between them, so the farmer can run through; a few tall, skinny trees rise
+    out of the rows. Grass tufts and small bushes grow at the foot of the trees. Placed the same way every time (no
+    randomness). Returns the parts and where each trunk stands (the farmer walks round the trunks only). */
 export function forest(x0: number, z0: number, x1: number, z1: number): { parts: Part[]; floor: Part[]; trunks: { x: number; z: number; r: number }[] } {
   const floor: Part[] = [
     { geo: roundRect(x0 - 0.4, z0 - 0.4, x1 + 0.4, z1 + 0.4, 1.4), color: '#4c9a3c', m: at(0, 0.006, 0) },
@@ -279,18 +305,42 @@ export function forest(x0: number, z0: number, x1: number, z1: number): { parts:
   const parts: Part[] = [];
   const trunks: { x: number; z: number; r: number }[] = [];
   const jit = (i: number, k: number) => Math.sin(i * 12.9898 + k * 78.233) * 0.5;
-  const step = 1.55;
+  // a straight grid, centred in the rectangle: columns across x, rows down z
+  const sx = 1.7;
+  const sz = 1.85;
+  const inset = 0.9;
+  const cols = Math.floor((x1 - x0 - 2 * inset) / sx) + 1;
+  const rows = Math.floor((z1 - z0 - 2 * inset) / sz) + 1;
+  const ox = (x0 + x1) / 2 - ((cols - 1) * sx) / 2;
+  const oz = (z0 + z1) / 2 - ((rows - 1) * sz) / 2;
   let i = 0;
-  for (let z = z0 + 0.8; z <= z1 - 0.5; z += step) {
-    const row = Math.round((z - z0) / step);
-    for (let x = x0 + 0.8 + (row % 2) * (step / 2); x <= x1 - 0.5; x += step) {
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
       i++;
-      const tx = x + jit(i, 1) * 0.7;
-      const tz = z + jit(i, 2) * 0.6;
-      const s = 0.72 + (jit(i, 3) + 0.5) * 0.5;
-      parts.push(...place(tree(s, i % 3 === 0 ? 1 : 0), at(tx, 0, tz, { ry: jit(i, 4) * 6 })));
-      trunks.push({ x: tx, z: tz, r: 0.55 * s });
-      if (i % 2 === 0) parts.push(...place(bush(0.55 + (jit(i, 5) + 0.5) * 0.3), at(tx + 0.7, 0, tz + 0.45)));
+      const tx = ox + c * sx + jit(i, 1) * 0.12;
+      const tz = oz + r * sz + jit(i, 2) * 0.12;
+      const tall = (r * 3 + c * 5) % 7 === 2;
+      if (tall) {
+        const s = 0.95 + (jit(i, 3) + 0.5) * 0.2;
+        parts.push(...place(tallTree(s), at(tx, 0, tz, { ry: jit(i, 4) * 6 })));
+        trunks.push({ x: tx, z: tz, r: 0.12 * s });
+      } else {
+        const s = 0.88 + (jit(i, 3) + 0.5) * 0.18;
+        parts.push(...place(farmTree(s, i % 3 === 0 ? 1 : 0), at(tx, 0, tz, { ry: jit(i, 4) * 6 })));
+        trunks.push({ x: tx, z: tz, r: 0.16 * s });
+      }
+      // grass round the foot of the trunk
+      const n = 3 + (i % 2);
+      for (let k = 0; k < n; k++) {
+        const a = (k / n) * Math.PI * 2 + jit(i, 6 + k) * 0.8;
+        const d = 0.36 + (jit(i, 9 + k) + 0.5) * 0.16;
+        parts.push(...place(grassClump(0.48 + (jit(i, 12 + k) + 0.5) * 0.16, k % 2 ? C.grassLight : C.leafYoung), at(tx + Math.cos(a) * d, 0, tz + Math.sin(a) * d, { ry: a })));
+      }
+      // a small bush under most trees, tucked against the trunk
+      if (i % 3 !== 1) {
+        const a = jit(i, 15) * 6;
+        parts.push(...place(bush(0.42 + (jit(i, 16) + 0.5) * 0.12), at(tx + Math.cos(a) * 0.46, 0, tz + Math.sin(a) * 0.46)));
+      }
     }
   }
   return { parts, floor, trunks };

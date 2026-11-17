@@ -1,3 +1,6 @@
+import { StrategyBoard } from '../strategy/StrategyBoard';
+import { chosen, rowLesson, strategiesOf } from '../strategy/model';
+import { doneMask } from '../world/field';
 import { useState, type Dispatch, type ReactNode } from 'react';
 import { NavBar } from '../components/Nav';
 import { CloseX } from '../components/Success';
@@ -81,7 +84,7 @@ export function Trials({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
     body = <PlanBoard s={s} tr={tr} dispatch={dispatch} t={t} />;
   } else if (tr.phase === 'growing') {
     title = `Cycle ${tr.cycle} · growing`;
-    body = <Growing tr={tr} dispatch={dispatch} t={t} inWorld={s.view === 'world'} />;
+    body = <Growing s={s} tr={tr} dispatch={dispatch} t={t} inWorld={s.view === 'world'} />;
   } else {
     title = `Cycle ${tr.cycle} · results`;
     body = <Compare s={s} tr={tr} dispatch={dispatch} t={t} />;
@@ -97,7 +100,7 @@ export function Trials({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
         </span>
       </div>
       {tr && <span className="rr-roundtag">{cropsLine(tr)} · {FORECASTS[tr.forecast].label.split(':')[0]}</span>}
-      <NavBar horizontal onBack={close} style={{ right: 6, top: 4 }} />
+      <NavBar horizontal onBack={close} style={{ right: 28, top: 8 }} />
       {body}
     </div>
   );
@@ -141,6 +144,7 @@ function PlanBoard({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) 
   const [pick, setPick] = useState<{ farm: number; key: StepKey } | null>(null);
   const [planting, setPlanting] = useState(false);
   const [board, setBoard] = useState<number | null>(null);
+  const [rowsFor, setRowsFor] = useState<number | null>(null);
   const k = tr.plans.length;
   const total = trialCost(tr);
   const problem = planProblem(tr, s.coins);
@@ -225,6 +229,16 @@ function PlanBoard({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) 
               </button>
             ))}
           </Row>
+          <Row label="Rows">
+            {tr.plans.map((_, i) => {
+              const n = strategiesOf(tr, i).filter(st => chosen(st).length).length;
+              return (
+                <button type="button" key={i} className={`tr-cell tr-rows-cell${n ? ' is-diff' : ''}`} onClick={() => setRowsFor(i)} aria-label={`${farmName(i)}: row strategies. Tap to choose each row's way of farming`}>
+                  {n ? `${n} of 4 rows changed` : 'Row strategies'}
+                </button>
+              );
+            })}
+          </Row>
         </div>
         <div className="tr-foot">
           <span>
@@ -253,6 +267,7 @@ function PlanBoard({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) 
       )}
 
       {pick && <Picker s={s} tr={tr} farm={pick.farm} stepKey={pick.key} dispatch={dispatch} onClose={() => setPick(null)} />}
+      {rowsFor !== null && <StrategyBoard tr={tr} farm={rowsFor} locked={() => false} dispatch={dispatch} onClose={() => setRowsFor(null)} />}
 
       {planting && (
         <div className="abs ending" style={{ inset: 0 }} onClick={() => setPlanting(false)}>
@@ -327,7 +342,9 @@ function Picker({ s, tr, farm, stepKey, dispatch, onClose }: { s: GameState; tr:
 
 /* ---------------- growing ---------------- */
 
-function Growing({ tr, dispatch, t, inWorld }: Props & { tr: Trial; inWorld: boolean }) {
+function Growing({ s, tr, dispatch, t, inWorld }: Props & { s: GameState; tr: Trial; inWorld: boolean }) {
+  const [rowsFor, setRowsFor] = useState<number | null>(null);
+  const sown = (farm: number) => s.field.cycle === tr.cycle && doneMask(s.field, tr.cycle, farm, 'sow') > 0;
   const day = currentDay(tr, dayNumber());
   const ready = day > CHECK_DAYS;
   const k = tr.plans.length;
@@ -429,9 +446,13 @@ function Growing({ tr, dispatch, t, inWorld }: Props & { tr: Trial; inWorld: boo
               One day each real day instead
             </button>
           )}
+          <button type="button" className="tr-link" onClick={() => setRowsFor(0)}>
+            Row strategies
+          </button>
         </div>
       </div>
       <GuideLine text={line} action={action} />
+      {rowsFor !== null && <StrategyBoard tr={tr} farm={rowsFor} locked={sown} dispatch={dispatch} onClose={() => setRowsFor(null)} />}
     </>
   );
 }
@@ -443,6 +464,8 @@ function Compare({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) {
   const why = explain(tr, results);
   const [keep, setKeep] = useState(why.best);
   const [byPlot, setByPlot] = useState(false);
+  const [byRow, setByRow] = useState(false);
+  const hasRows = results.some(r => r.rows);
   const lessons = plotLessons(tr);
   const k = tr.plans.length;
   const maxBags = Math.max(6, ...results.map(r => r.bags));
@@ -453,7 +476,9 @@ function Compare({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) {
   return (
     <>
       <div className="fs-panel tr-panel tr-compare">
-        {byPlot ? (
+        {byRow ? (
+          <RowResults tr={tr} />
+        ) : byPlot ? (
           <PlotResults tr={tr} />
         ) : (
         <div className="tr-grid" style={{ gridTemplateColumns: `86px repeat(${k}, minmax(0, 1fr))` }}>
@@ -498,15 +523,26 @@ function Compare({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) {
         )}
         <aside className="tr-why">
           <div className="tr-tabs" role="tablist" aria-label="Results">
-            <button type="button" role="tab" aria-selected={!byPlot} className={!byPlot ? 'is-on' : ''} onClick={() => setByPlot(false)}>
+            <button type="button" role="tab" aria-selected={!byPlot && !byRow} className={!byPlot && !byRow ? 'is-on' : ''} onClick={() => (setByPlot(false), setByRow(false))}>
               By farm
             </button>
-            <button type="button" role="tab" aria-selected={byPlot} className={byPlot ? 'is-on' : ''} onClick={() => setByPlot(true)}>
+            <button type="button" role="tab" aria-selected={byPlot} className={byPlot ? 'is-on' : ''} onClick={() => (setByPlot(true), setByRow(false))}>
               By input
             </button>
+            {hasRows && (
+              <button type="button" role="tab" aria-selected={byRow} className={byRow ? 'is-on' : ''} onClick={() => (setByRow(true), setByPlot(false))}>
+                By row
+              </button>
+            )}
           </div>
           <p className="tr-why-title">Lima AI</p>
-          {byPlot ? (
+          {byRow ? (
+            <div className="tr-lessons">
+              {results.map((r, i) => (r.rows ? rowLesson(r.rows, farmName(i)) : null)).filter(Boolean).map(l => (
+                <p key={l!}>{l}</p>
+              ))}
+            </div>
+          ) : byPlot ? (
             <div className="tr-lessons">
               {lessons.map(l => (
                 <p key={l.topic}>
@@ -538,6 +574,44 @@ const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
 
 /** The crops of a cycle, for its tag: "Maize" or "Maize & sukuma wiki". */
 const cropsLine = (tr: Trial) => cap([...new Set(tr.plans.map((_, i) => CROP_WORDS[cropOf(tr, i)].name))].join(' & '));
+
+/** Each farm's four rows side by side: what each row's strategy grew and earned, its return and its climate. */
+function RowResults({ tr }: { tr: Trial }) {
+  const results = tr.results ?? [];
+  return (
+    <div className="tr-rowres" aria-label="Harvest by row">
+      <div className="tr-rowres-farm">
+        <div className="tr-head tr-corner">By row</div>
+        {[1, 2, 3, 4].map(r => (
+          <div key={r} className="tr-head">
+            <b>Row {r}</b>
+          </div>
+        ))}
+      </div>
+      {results.map((res, i) =>
+        res.rows ? (
+          <div key={i} className="tr-rowres-farm">
+            <b>{farmName(i)}</b>
+            {res.rows.map(row => {
+              const best = res.rows!.every(x => x.profit <= row.profit);
+              return (
+                <div key={row.row} className={`tr-rowres-cell${best ? ' is-best' : ''}`} title={row.options.join(', ') || 'As the farm plan'}>
+                  <b>{row.bags} bags</b> · {money(row.profit)}
+                  <small>{row.ret === null ? 'As the plan' : `Return ${row.ret >= 0 ? '+' : '−'}${Math.round(Math.abs(row.ret) * 100)}%`} · {row.labour.toFixed(1)} days</small>
+                  <small>{row.options.join(', ') || 'As the farm plan'}</small>
+                  <small>
+                    {Math.round(row.co2)} kg CO₂ · stores {Math.round(row.stored)} · {row.water > 0 ? '+' : ''}
+                    {Math.round(row.water)} L
+                  </small>
+                </div>
+              );
+            })}
+          </div>
+        ) : null,
+      )}
+    </div>
+  );
+}
 
 /** Every farm's harvest beside its inputs: what each seed, fertilizer, sprayer and machine grew under the same weather. */
 function PlotResults({ tr }: { tr: Trial }) {

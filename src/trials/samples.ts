@@ -8,6 +8,7 @@ import {
   canTreat,
   checkKey,
   explain,
+  baseHazard,
   harvestFarm,
   hazardFor,
   newTrial,
@@ -25,7 +26,8 @@ function play(t: Trial, upto: number, miss: [number, number][] = []): Trial {
   for (let d = 1; d <= upto; d++)
     for (let f = 0; f < t.plans.length; f++) {
       if (miss.some(([mf, md]) => mf === f && md === d)) continue;
-      const h = hazardFor(t, f, d);
+      // what the farm shows given the checks so far (a skipped farm's problem stays the next day)
+      const h = hazardFor(out, f, d);
       const treat = canTreat(h, t.plans[f]);
       out.checks[checkKey(f, d)] = { right: true, tries: 1, treated: treat };
       if (treat) out.treatments[f] += DAMAGE[h].treat;
@@ -84,7 +86,7 @@ const OTHER_PLAN: Plan = { ...COMMON_PLAN, fert: 'basalTop' };
 function findCase(plans: Plan[], want: TrialHazard, minDay = 2): { trial: Trial; day: number } {
   for (let cycle = 2; cycle < 2000; cycle++) {
     const t: Trial = { ...newTrial(cycle, false, plans[0]), plans, treatments: plans.map(() => 0), phase: 'growing', clock: 'fast', planted: 0 };
-    for (let day = minDay; day <= CHECK_DAYS - 1; day++) if (hazardFor(t, 0, day) === want) return { trial: { ...t, day }, day };
+    for (let day = minDay; day <= CHECK_DAYS - 1; day++) if (baseHazard(t, 0, day) === want) return { trial: { ...t, day }, day };
   }
   throw new Error(`No cycle shows ${want}`);
 }
