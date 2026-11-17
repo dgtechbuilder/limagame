@@ -11,6 +11,7 @@ import { CHECK_DAYS, DAMAGE, WRONG_FIX_COST, canTreat, causeOf, checkKey, farmNa
 import { fmt } from '../components/ui';
 import { track } from '../first/track';
 import { FOLLOW_UP, PRESCRIBE, fixOrder } from '../care/data';
+import { TREATMENTS } from '../care/treatments';
 import { voiceFor } from '../care/voice';
 import {
   CARRY_NAME,
@@ -30,6 +31,7 @@ import {
   signOf,
   sprayJobs,
   treatCost,
+  treatCostFor,
   type Place,
   type Task,
   type TaskIcon,
@@ -49,6 +51,8 @@ import { currency, money, moneyShort } from '../money';
 import { sfx } from '../sfx';
 import { ProgressButton } from '../components/ProgressButton';
 import { RiskHud, useRisk } from '../risk/RiskHud';
+import { WaterButton } from '../water/WaterButton';
+import { EvidenceAsk } from '../evidence/Ask';
 import type { RiskItem } from '../risk/model';
 
 // from Wakala Agent: the screens after a right call, at the shed and at the Hire spot, loaded when first opened
@@ -497,8 +501,15 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
           name={name}
           cost={WRONG_FIX_COST[h] ?? 0}
           wrongBefore={rec?.wrongFixes ?? 0}
-          then={job ? `${JOB_HINT[job]} (${money(treatCost(h))}).${FOLLOW_UP[h] ? ` ${FOLLOW_UP[h]!.why}` : ''}` : 'deal with it.'}
+          then={job ? `${JOB_HINT[job]} (${money(treatCostFor(tr, c.farm, c.day, h))}).${FOLLOW_UP[h] ? ` ${FOLLOW_UP[h]!.why}` : ''}` : 'deal with it.'}
           onPick={op => dispatch({ type: 'prescribe', farm: c.farm, day: c.day, pick: op.id, right: op.right })}
+          treatments={TREATMENTS[h]}
+          treatment={rec?.treatment}
+          baseCost={treatCost(h)}
+          onTreat={w => {
+            dispatch({ type: 'treatChoose', farm: c.farm, day: c.day, id: w.id });
+            track('treatment_choice', { farm: c.farm, day: c.day, hazard: h, way: w.id });
+          }}
           onDone={() => {
             setCare(null);
             if (job) say(`Now: ${JOB_HINT[job]}`);
@@ -718,6 +729,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         <ClipboardIcon />
         <span>MISSION</span>
       </button>
+      <WaterButton s={s} dispatch={dispatch} />
       <button type="button" className="hud-round hud-shop" onClick={() => dispatch({ type: 'open', modal: { kind: 'shop', tab: 'food' } })} aria-label="Shop">
         <img src={img.cart} alt="" width={30} height={30} />
         <span>SHOP</span>
@@ -756,6 +768,9 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       </div>
         </>
       )}
+
+      {/* the evidence layer: now and then, "have you tried this on your own farm?" */}
+      {!overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen) && <EvidenceAsk s={s} dispatch={dispatch} />}
 
       {/* money at risk on the six farms: the first thing on the farm the eye lands on, beside the task card */}
       <RiskHud s={s} risk={risk} dispatch={dispatch} hud={!(s.roundsOpen || s.trialsOpen || s.bizOpen) && !overlay} busy={overlay || s.roundsOpen || s.trialsOpen || s.bizOpen} onGo={goToProblem} />

@@ -7,6 +7,7 @@
    job, one bit per plot.
    No pictures or three.js here, so the saved game can use it. */
 
+import { treatmentOf } from '../care/treatments';
 import { PRESCRIBE, followUpTitle } from '../care/data';
 import { PLOTS_PER_FARM, type PlotKind } from '../plots/data';
 import {
@@ -254,6 +255,11 @@ export function followUpLeft(f: Field, t: Trial, farm: number, day: number): { j
 export const careLeft = (f: Field, t: Trial, farm: number, day: number) => treatLeft(f, t, farm, day) ?? followUpLeft(f, t, farm, day);
 
 export const treatCost = (h: TrialHazard) => DAMAGE[h].treat;
+/** What a farm's treatment costs, the way the farmer chose to do it (care/treatments.ts). */
+export function treatCostFor(t: Pick<Trial, 'checks'>, farm: number, day: number, h: TrialHazard): number {
+  const way = treatmentOf(h, t.checks[checkKey(farm, day)]?.treatment);
+  return Math.round(DAMAGE[h].treat * (way?.costX ?? 1));
+}
 
 /** Whether any job left today still uses what the farmer is carrying (if not, it is put down). */
 export function carryNeeded(f: Field, t: Trial, day: number): boolean {
@@ -361,9 +367,10 @@ export function nextTask(f: Field, t: Trial | null, today: number, coins: number
     const tr = treatLeft(f, t, i, day);
     if (tr) {
       const w = JOB_WORDS[tr.job];
-      const then: Task = { title: `${w.title} ${name(i)}`, coins: -treatCost(tr.hazard), icon: w.icon, target: { farm: i, at: 'plot' } };
+      const cost = treatCostFor(t, i, day, tr.hazard);
+      const then: Task = { title: `${w.title} ${name(i)}`, coins: -cost, icon: w.icon, target: { farm: i, at: 'plot' } };
       const item = JOB_CARRY[tr.job];
-      if (item && coins >= treatCost(tr.hazard)) return needCarry(f, item, then);
+      if (item && coins >= cost) return needCarry(f, item, then);
       return then;
     }
   }

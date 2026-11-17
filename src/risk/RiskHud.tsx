@@ -2,10 +2,13 @@ import { useEffect, useMemo, useRef, useState, type Dispatch } from 'react';
 import type { Action, GameState } from '../state';
 import { CloseX, SuccessCard, useEscape } from '../components/Success';
 import { money, moneyCompact } from '../money';
-import { farmName, CHECK_DAYS } from '../trials/model';
+import { farmName, CHECK_DAYS, checkKey } from '../trials/model';
+import { treatmentOf } from '../care/treatments';
 import { dayNumber } from '../rounds/farms';
 import { track } from '../first/track';
 import { sfx } from '../sfx';
+import { hasCover, isLow } from '../water/model';
+import { WATER } from '../water/config';
 import { STATUS_WORDS, riskOf, wasResolved, type RiskItem, type RiskSummary } from './model';
 
 /* The "at risk" button on the farm: the money every unresolved problem on the six farms would cost, added up.
@@ -16,7 +19,9 @@ const SHOCK_WORDS = { drought: 'Drought', flood: 'Flood', hail: 'Hail' } as cons
 
 /** Every unresolved problem today, worked out from the save. */
 export function useRisk(s: GameState, today: number): RiskSummary {
-  return useMemo(() => riskOf(s.trial, s.field, today, { covered: !!s.offers?.includes('kinga') }), [s.trial, s.field, today, s.offers]);
+  const covered = hasCover(s) || !!s.offers?.includes('kinga');
+  const low = isLow(s);
+  return useMemo(() => riskOf(s.trial, s.field, today, { covered, worse: low ? { drought: WATER.droughtLowTank } : undefined }), [s.trial, s.field, today, covered, low]);
 }
 
 export function RiskHud({
@@ -57,12 +62,17 @@ export function RiskHud({
     const gone = before.items.filter(x => !risk.items.some(y => y.key === x.key));
     const fixed = gone.filter(x => wasResolved(s.trial!, x.farm, x.start, dayNumber()));
     if (!fixed.length) return;
-    const amount = fixed.reduce((n, x) => n + x.amount, 0);
+    // a gentler way of treating saves a little less of what was at risk (care/treatments.ts)
+    const kept = (x: RiskItem) => {
+      const way = treatmentOf(x.hazard, s.trial!.checks[checkKey(x.farm, risk.day || before.day)]?.treatment);
+      return Math.round(x.amount * (way?.effect ?? 1));
+    };
+    const amount = fixed.reduce((n, x) => n + kept(x), 0);
     const at = Date.now();
     fixed.forEach(x => {
-      dispatch({ type: 'riskFixed', fix: { key: x.key, farm: x.farm, amount: x.amount, fixedAt: at, daysOpen: x.daysOpen } });
+      dispatch({ type: 'riskFixed', fix: { key: x.key, farm: x.farm, amount: kept(x), fixedAt: at, daysOpen: x.daysOpen } });
       const seen = s.risk?.seenAt[x.key];
-      track('risk_fixed', { farm: x.farm, amount: x.amount, daysOpen: x.daysOpen, msFromSeen: seen ? at - seen : null });
+      track('risk_fixed', { farm: x.farm, amount: kept(x), daysOpen: x.daysOpen, msFromSeen: seen ? at - seen : null });
     });
     setSaved({ amount, farms: fixed.map(x => x.farm), id: at });
     // eslint-disable-next-line react-hooks/exhaustive-deps

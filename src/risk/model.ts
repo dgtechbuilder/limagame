@@ -79,7 +79,13 @@ export const riskKey = (cycle: number, farm: number, start: number) => `${cycle}
 const fieldFor = (f: Field | undefined, t: Trial) => (f && f.cycle === t.cycle ? f : emptyField(t.cycle));
 
 /** Every unresolved problem with a cost on the six farms today, and their total. */
-export function riskOf(t: Trial | null | undefined, field: Field | undefined, today: number, opts: { covered?: boolean } = {}): RiskSummary {
+export function riskOf(
+  t: Trial | null | undefined,
+  field: Field | undefined,
+  today: number,
+  /** covered: crop cover this cycle; worse: problems that cost more right now (a drought with the tank low: src/water) */
+  opts: { covered?: boolean; worse?: Partial<Record<TrialHazard, number>> } = {},
+): RiskSummary {
   const empty: RiskSummary = { items: [], shocks: [], total: 0, day: 0, cycle: t?.cycle ?? 0, anyEver: false };
   if (!t || t.phase !== 'growing') return empty;
   const day = currentDay(t, today);
@@ -99,7 +105,7 @@ export function riskOf(t: Trial | null | undefined, field: Field | undefined, to
       if (resolvedOn(t, farm, day, h)) return;
       // read right but nothing more can be done (pests on a farm with no pest control): no longer at risk, lost
       if (rec?.right && !carriesOver(h, p)) return;
-      const stated = statedCost(t, farm, h, value);
+      const stated = Math.round(statedCost(t, farm, h, value) * (opts.worse?.[h] ?? 1));
       const daysOpen = day - ep.start;
       const share = riskShare(daysOpen);
       const amount = Math.round(stated * share);
