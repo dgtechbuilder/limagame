@@ -1,4 +1,4 @@
-# Lima UI: spacing and layout plan
+# TemoLima UI: spacing and layout plan
 
 A plan to make every screen feel calm, premium and easy to use on a phone held sideways: one spacing scale, one type
 scale, one way to navigate, and a limit on how much any single screen asks of the player. It starts from a measured
@@ -205,7 +205,7 @@ one button.
 6. **Farming steps**: task cards 3 × 2 with 12px gaps, climate tags 11px, *Skip* as a text button.
 7. **Storage, Harvest timing, Value addition**: three option cards, each with at most three facts (cost, loss,
    time) at 12px; the rest under *Details*.
-8. **Outcome comparison**: the season's profit as the one hero number; lessons as a list of three; *Lima AI*
+8. **Outcome comparison**: the season's profit as the one hero number; lessons as a list of three; *TemoLima AI*
    below it rather than in a third narrow column.
 9. **Rewards**: *Redeem* buttons 32px tall with 12px text; the points goal as one bar above the grid.
 

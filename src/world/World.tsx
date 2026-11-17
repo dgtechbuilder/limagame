@@ -731,7 +731,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         <span>MISSION</span>
       </button>
       <WaterButton s={s} dispatch={dispatch} />
-      <button type="button" className="hud-round hud-partners" onClick={() => dispatch({ type: 'open', modal: { kind: 'partners' } })} aria-label="Partners: offers, placements and ways to partner with Lima">
+      <button type="button" className="hud-round hud-partners" onClick={() => dispatch({ type: 'open', modal: { kind: 'partners' } })} aria-label="Partners: offers, placements and ways to partner with TemoLima">
         <PartnersIcon />
         <span>PARTNERS</span>
       </button>

@@ -226,7 +226,7 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
             className="abs"
             style={{ left: 715, top: 310, width: 56, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}
             onClick={() => open({ kind: 'partners' })}
-            aria-label="Partners: offers, placements and ways to partner with Lima"
+            aria-label="Partners: offers, placements and ways to partner with TemoLima"
           >
             <span className="peach-btn" style={{ width: 56, height: 48.66 }}>
               <PartnersIcon size={30} />
