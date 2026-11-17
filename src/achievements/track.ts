@@ -76,6 +76,10 @@ function counted(prev: GameState, s: GameState, a: Action): Partial<AchStats> {
     case 'collect':
       if (s.coins > prev.coins) add.collects = 1;
       break;
+    case 'tidyClear':
+      // the whole tidy-up done: the day's last bush or rock cleared
+      if (s.tidy && s.tidy.days > (prev.tidy?.days ?? 0)) add.tidyDays = 1;
+      break;
   }
   // a problem treated: in the rounds, or by hand in the farm world
   if (s.trial && prev.trial && s.trial.cycle === prev.trial.cycle) {

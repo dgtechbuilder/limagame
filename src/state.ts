@@ -51,6 +51,7 @@ import { DEFAULT_LOAN, type LoanAsk } from './finance/loan';
 import { bookingRef, courseDate, courseOf, dayText, type TrainingBooking } from './training/data';
 import type { SfxKind } from './sfx';
 import { money } from './money';
+import { clearPiece, tidyFor, TIDY_TOTAL, type TidyState } from './tidy/model';
 import { PAYG, SHOP, activitiesDone, bizOf, contractDay, demoSlots, farmerAccepts, graduation, hireOutDay, offersFor, partnerBlock, partnerOf, planDay, requestsFor, runDay, scanFarm, shopBlock, type Biz, type Bookings, type Crop, type Drives, type FleetItem, type PartnerId } from './business/model';
 import {
   GROWING_STEPS,
@@ -262,6 +263,8 @@ export interface GameState {
   ledger?: Ledger;
   /** the evidence layer: decisions, cohort tags, "tried it on your farm?" answers (src/evidence; missing in older saves) */
   evidence?: Partial<EvidenceState>;
+  /** the daily tidy-up: today's bushes and rocks cleared, and the tidy streak (src/tidy/model.ts; missing in older saves) */
+  tidy?: TidyState;
   collectedDay: Record<string, string>; // milk/eggs → date last collected
   // season
   season: number;
@@ -514,6 +517,10 @@ export type Action =
   | { type: 'achClaim'; id: string }
   | { type: 'achClaimAll' }
   | { type: 'achDaily' }
+  /** the farm opened on a new day (or a new day started while it was open): today's bushes and rocks turn up */
+  | { type: 'tidyDay' }
+  /** one of today's bushes or rocks cleared in the farm world */
+  | { type: 'tidyClear'; id: string }
   /** My Progress: claim a certification level's reward */
   | { type: 'levelClaim'; id: string }
   /** partners: get a brand's offer (its code is kept in Messages) */
@@ -564,7 +571,7 @@ let sfxId = 0;
 /** Flows: finishing one of these ends a whole piece of play. */
 const FLOWS = new Set<Action['type']>(['achClaimAll', 'completeSale', 'trialHarvest', 'bizRun', 'bizHireOut', 'bizContract', 'bizGraduate', 'tractorDone']);
 /** Actions: finishing one of these is one thing done. Some only count when they earned something (their message). */
-const ACTIONS = new Set<Action['type']>(['achClaim', 'achDaily', 'levelClaim', 'partnerSave', 'buy', 'sell', 'bookTraining', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo']);
+const ACTIONS = new Set<Action['type']>(['achClaim', 'achDaily', 'levelClaim', 'partnerSave', 'buy', 'sell', 'bookTraining', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo', 'tidyClear']);
 const EARNED = new Set<Action['type']>(['roundResult', 'trialCheck', 'fieldMark']);
 const FS_ORDER: FsPhase[] = ['create', 'story', 'walk1', 'update', 'review1', 'walkRetry', 'retry', 'walk2', 'review2', 'done'];
 
@@ -580,6 +587,8 @@ function soundOf(s: GameState, next: GameState, a: Action): SfxKind | null {
     return next.fs.phase === 'done' || s.fs.phase === 'story' ? 'flow' : 'action';
   }
   if (FLOWS.has(a.type)) return 'flow';
+  // the last bush or rock of the day finishes the whole tidy-up
+  if (a.type === 'tidyClear' && (next.tidy?.cleared.length ?? 0) === TIDY_TOTAL) return 'flow';
   if (ACTIONS.has(a.type)) return 'action';
   if (a.type === 'prescribe') return a.right ? 'action' : null;
   if (EARNED.has(a.type)) return next.toast && next.toast !== s.toast && !/^(You need|That costs)/.test(next.toast.text) ? 'action' : null;
@@ -1357,6 +1366,29 @@ function play(s: GameState, a: Action): GameState {
       if (!b || saved.includes(a.id)) return s;
       const code = offerCode(b.id, s.farmer?.name);
       return { ...s, offers: [...saved, a.id], note: `Offer from ${b.name}: ${b.offer.title}, code ${code}. ${b.offer.line}.`, toast: toast(`Offer from ${b.name}: code ${code} · it is in Messages`) };
+    }
+    case 'tidyDay': {
+      const today = achClock.today();
+      if (s.tidy?.date === today) return s;
+      const first = !s.tidy?.date;
+      return {
+        ...s,
+        tidy: tidyFor(s.tidy, today),
+        toast: toast(first ? 'Tidy-up: clear 3 bushes and 5 rocks around the farm every day' : 'New day: 3 bushes and 5 rocks to clear around the farm'),
+      };
+    }
+    case 'tidyClear': {
+      const r = clearPiece(s.tidy, a.id, achClock.today());
+      if (!r) return s;
+      return {
+        ...s,
+        tidy: r.tidy,
+        points: s.points + r.points,
+        coins: s.coins + r.coins,
+        ...(r.finished
+          ? { toast: toast(`Farm tidy! +${money(r.coins)} · +${r.points} points${r.tidy.streak > 1 ? ` · ${r.tidy.streak}-day tidy streak` : ''}`) }
+          : {}),
+      };
     }
     case 'achDaily': {
       const ach = achOfSave(s.ach);

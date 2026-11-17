@@ -15,6 +15,8 @@ import { sfxLog } from '../sfx';
 import { wakalaCase, type WakalaCase } from '../trials/samples';
 import { PLACES } from '../world/engine';
 import { PLOTS, signOf, tileCenter } from '../world/field';
+import { tidyItems } from '../tidy/model';
+import { achClock } from '../achievements/track';
 
 export function install(get: () => GameState, dispatch: Dispatch<Action>) {
   const jump = (state: Partial<GameState>) => dispatch({ type: 'reset', state: { ...initialState, ...REVIEW_BASE, ...state } });
@@ -52,6 +54,8 @@ export function install(get: () => GameState, dispatch: Dispatch<Action>) {
     plots: PLOTS,
     sign: signOf,
     tile: tileCenter,
+    /** today's bushes and rocks for the daily tidy-up (cleared or not) */
+    tidy: () => tidyItems(achClock.today()),
     events,
     clearEvents,
     /** the sound effects played so far, newest last */
