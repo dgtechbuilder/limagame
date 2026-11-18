@@ -8,7 +8,8 @@
    trained driver drives faster. The farm's power system makes the workshop's repairs cheaper. No screens here
    (TractorHub.tsx), so the saved game can use it. Money is stored money (src/money.ts: 1 = KSh 10). */
 
-export type HubSection = 'train' | 'learn' | 'safety' | 'service' | 'repair' | 'refuel' | 'hire' | 'drive';
+/** 'yard' is the walkable tractor yard itself, where the other sections are stations */
+export type HubSection = 'yard' | 'train' | 'learn' | 'safety' | 'service' | 'repair' | 'refuel' | 'hire' | 'drive';
 
 export const HUB = {
   /** the tank holds this many litres; a plot driven burns this much and wears the tractor this much (condition points) */
@@ -42,14 +43,16 @@ export interface HubState {
   fuel: number;
   /** each section done, counted */
   done: Partial<Record<HubSection, number>>;
+  /** the best score (0 to 1) at each section's mini-game: the stars on its station in the yard */
+  best: Partial<Record<HubSection, number>>;
   /** the farm day of the last safety check */
   safetyDay: number | null;
   /** newest first */
   log: { day: number; text: string }[];
 }
 
-export const newHub = (): HubState => ({ xp: 0, lessons: [], condition: 100, fuel: HUB.tankL, done: {}, safetyDay: null, log: [] });
-export const hubOf = (h: Partial<HubState> | undefined): HubState => ({ ...newHub(), ...(h ?? {}), done: { ...(h?.done ?? {}) } });
+export const newHub = (): HubState => ({ xp: 0, lessons: [], condition: 100, fuel: HUB.tankL, done: {}, best: {}, safetyDay: null, log: [] });
+export const hubOf = (h: Partial<HubState> | undefined): HubState => ({ ...newHub(), ...(h ?? {}), done: { ...(h?.done ?? {}) }, best: { ...(h?.best ?? {}) } });
 
 /** The driver's level, 0 to 3. */
 export const levelOf = (xp: number) => HUB.levels.filter(n => xp >= n).length;
@@ -67,7 +70,8 @@ export function cannotDrive(h: HubState): string | null {
 export interface Lesson {
   id: string;
   title: string;
-  questions: { q: string; options: string[]; right: number; why: string }[];
+  /** art: the drawing for the question (minigames/fun.tsx QuizArt) */
+  questions: { q: string; options: string[]; right: number; why: string; art?: 'pto' | 'linkage' | 'radiator' | 'slope' | 'getoff' | 'rider' | 'wetsoil' | 'deep' | 'tyre' }[];
 }
 
 /** Learn: short lessons, each a few questions. */
@@ -76,27 +80,27 @@ export const LESSONS: Lesson[] = [
     id: 'parts',
     title: 'Know your tractor',
     questions: [
-      { q: 'Which part turns the plough or the mower behind the tractor?', options: ['The PTO shaft', 'The steering wheel', 'The fuel cap'], right: 0, why: 'The power take-off (PTO) shaft drives the tool behind. Never step over it while it turns.' },
-      { q: 'What do the three-point linkage arms do?', options: ['Lift and hold the tool', 'Pump the tyres', 'Cool the engine'], right: 0, why: 'They lift, lower and hold the plough, harrow or planter.' },
-      { q: 'Where does the engine’s heat go?', options: ['The radiator', 'The battery', 'The seat'], right: 0, why: 'The radiator cools it: keep its fins clean of chaff and mud.' },
+      { art: 'pto', q: 'Which part turns the plough or the mower behind the tractor?', options: ['The PTO shaft', 'The steering wheel', 'The fuel cap'], right: 0, why: 'The power take-off (PTO) shaft drives the tool behind. Never step over it while it turns.' },
+      { art: 'linkage', q: 'What do the three-point linkage arms do?', options: ['Lift and hold the tool', 'Pump the tyres', 'Cool the engine'], right: 0, why: 'They lift, lower and hold the plough, harrow or planter.' },
+      { art: 'radiator', q: 'Where does the engine’s heat go?', options: ['The radiator', 'The battery', 'The seat'], right: 0, why: 'The radiator cools it: keep its fins clean of chaff and mud.' },
     ],
   },
   {
     id: 'safety',
     title: 'Working safely',
     questions: [
-      { q: 'Driving across a steep slope, the tractor can…', options: ['Roll over', 'Go faster', 'Use less diesel'], right: 0, why: 'Drive straight up and down slopes, never across them, and keep the ROPS frame up with the belt on.' },
-      { q: 'Before getting off the tractor you…', options: ['Lower the tool, stop the PTO and set the brake', 'Leave the engine running', 'Lift the plough high'], right: 0, why: 'A tool left up or a turning shaft injures people walking past.' },
-      { q: 'Who rides on the tractor?', options: ['Only the driver', 'Two friends on the mudguards', 'Children for fun'], right: 0, why: 'Passengers fall under the wheels: the seat is for one.' },
+      { art: 'slope', q: 'Driving across a steep slope, the tractor can…', options: ['Roll over', 'Go faster', 'Use less diesel'], right: 0, why: 'Drive straight up and down slopes, never across them, and keep the ROPS frame up with the belt on.' },
+      { art: 'getoff', q: 'Before getting off the tractor you…', options: ['Lower the tool, stop the PTO and set the brake', 'Leave the engine running', 'Lift the plough high'], right: 0, why: 'A tool left up or a turning shaft injures people walking past.' },
+      { art: 'rider', q: 'Who rides on the tractor?', options: ['Only the driver', 'Two friends on the mudguards', 'Children for fun'], right: 0, why: 'Passengers fall under the wheels: the seat is for one.' },
     ],
   },
   {
     id: 'soil',
     title: 'Look after the soil',
     questions: [
-      { q: 'Driving on wet soil…', options: ['Packs it hard (compaction)', 'Makes it softer', 'Adds nitrogen'], right: 0, why: 'Heavy wheels on wet ground squeeze out the air roots need. Wait until it is dry enough.' },
-      { q: 'Ploughing too deep every season…', options: ['Brings up poor subsoil and loses carbon', 'Always raises the yield', 'Stops weeds for good'], right: 0, why: 'Plough shallow, vary the depth, or use a ripper and keep crop residue on top.' },
-      { q: 'Tyre pressure for field work should be…', options: ['Lower than on the road', 'As hard as possible', 'Flat'], right: 0, why: 'Lower pressure spreads the weight and packs the soil less.' },
+      { art: 'wetsoil', q: 'Driving on wet soil…', options: ['Packs it hard (compaction)', 'Makes it softer', 'Adds nitrogen'], right: 0, why: 'Heavy wheels on wet ground squeeze out the air roots need. Wait until it is dry enough.' },
+      { art: 'deep', q: 'Ploughing too deep every season…', options: ['Brings up poor subsoil and loses carbon', 'Always raises the yield', 'Stops weeds for good'], right: 0, why: 'Plough shallow, vary the depth, or use a ripper and keep crop residue on top.' },
+      { art: 'tyre', q: 'Tyre pressure for field work should be…', options: ['Lower than on the road', 'As hard as possible', 'Flat'], right: 0, why: 'Lower pressure spreads the weight and packs the soil less.' },
     ],
   },
 ];
@@ -104,6 +108,8 @@ export const lessonOf = (id: string) => LESSONS.find(l => l.id === id);
 
 /** Safety check: the walk-round before starting, in order. */
 export const SAFETY_STEPS = ['Walk round: nobody near the tractor', 'Check the oil and the water', 'Check the tyres and the hitch pins', 'Sit down and put the belt on', 'Gear in neutral, PTO off', 'Start the engine'];
+/** A picture for each safety step, in the same order. */
+export const SAFETY_ICONS = ['👀', '🛢️', '🛞', '💺', '🕹️', '🔑'];
 
 /** Service: the points to grease and check, on the tractor drawing (stage coordinates of the mini-game). */
 export const SERVICE_SPOTS = [

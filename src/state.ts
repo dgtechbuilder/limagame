@@ -1695,34 +1695,35 @@ function hubAction(s: GameState, a: Extract<Action, { type: 'tractorHub' }>): Ga
   const day = lifeOf(s.life).day;
   const score = Math.max(0, Math.min(1, a.score));
   const done = { ...h.done, [a.section]: (h.done[a.section] ?? 0) + 1 };
+  const best = { ...h.best, [a.section]: Math.max(h.best[a.section] ?? 0, Math.max(0, Math.min(1, a.score))) };
   const log = (text: string) => [{ day, text }, ...h.log].slice(0, 20);
   const pts = Math.round((HUB.points[a.section as keyof typeof HUB.points] ?? 0) * score);
   switch (a.section) {
     case 'train': {
       const xp = h.xp + Math.round(30 * score);
       const up = hubLevel(xp) > hubLevel(h.xp);
-      return { ...s, points: s.points + pts, hub: { ...h, xp, done, log: log(`Practice drive: ${Math.round(score * 100)}%`) }, ...gainXp(s, 0.04), toast: toast(up ? `Driver level ${hubLevel(xp)}: the tractor drives ${Math.round(hubLevel(xp) * HUB.speedPerLevel * 100)}% faster · +${pts} points` : `Practice drive done · +${Math.round(30 * score)} experience · +${pts} points`) };
+      return { ...s, points: s.points + pts, hub: { ...h, xp, done, best, log: log(`Practice drive: ${Math.round(score * 100)}%`) }, ...gainXp(s, 0.04), toast: toast(up ? `Driver level ${hubLevel(xp)}: the tractor drives ${Math.round(hubLevel(xp) * HUB.speedPerLevel * 100)}% faster · +${pts} points` : `Practice drive done · +${Math.round(30 * score)} experience · +${pts} points`) };
     }
     case 'learn': {
       const l = a.id ? lessonOf(a.id) : undefined;
       if (!l) return s;
       const pass = score >= 0.6;
       const first = pass && !h.lessons.includes(l.id);
-      return { ...s, points: s.points + (first ? pts : 0), hub: { ...h, xp: h.xp + (first ? 20 : 0), lessons: pass ? [...new Set([...h.lessons, l.id])] : h.lessons, done, log: log(`${l.title}: ${Math.round(score * 100)}%`) }, toast: toast(pass ? `${l.title}: passed${first ? ` · +${pts} points` : ''}` : `${l.title}: ${Math.round(score * 100)}%. Try again to pass`) };
+      return { ...s, points: s.points + (first ? pts : 0), hub: { ...h, xp: h.xp + (first ? 20 : 0), lessons: pass ? [...new Set([...h.lessons, l.id])] : h.lessons, done, best, log: log(`${l.title}: ${Math.round(score * 100)}%`) }, toast: toast(pass ? `${l.title}: passed${first ? ` · +${pts} points` : ''}` : `${l.title}: ${Math.round(score * 100)}%. Try again to pass`) };
     }
     case 'safety':
-      return { ...s, points: s.points + (h.safetyDay === day ? 0 : pts), hub: { ...h, safetyDay: day, done, log: log('Safety check before starting') }, toast: toast(`Safety check done${h.safetyDay === day ? '' : ` · +${pts} points`}`) };
+      return { ...s, points: s.points + (h.safetyDay === day ? 0 : pts), hub: { ...h, safetyDay: day, done, best, log: log('Safety check before starting') }, toast: toast(`Safety check done${h.safetyDay === day ? '' : ` · +${pts} points`}`) };
     case 'service': {
       const cost = Math.round(HUB.serviceCost * (1 - repairCut(s)));
       if (s.coins < cost) return { ...s, toast: toast(`Oil, grease and filters cost ${money(cost)}`) };
       const condition = Math.min(100, Math.round(h.condition + 10 + 25 * score));
-      return { ...s, coins: s.coins - cost, points: s.points + pts, hub: { ...h, condition, done, log: log(`Serviced: condition ${condition}%`) }, toast: toast(`Serviced · condition ${condition}% · ${money(cost)}`) };
+      return { ...s, coins: s.coins - cost, points: s.points + pts, hub: { ...h, condition, done, best, log: log(`Serviced: condition ${condition}%`) }, toast: toast(`Serviced · condition ${condition}% · ${money(cost)}`) };
     }
     case 'repair': {
       const cost = Math.round(HUB.repairCost * (1 - repairCut(s)));
       if (s.coins < cost) return { ...s, toast: toast(`The parts cost ${money(cost)}`) };
       const condition = Math.max(h.condition, Math.round(60 + 40 * score));
-      return { ...s, coins: s.coins - cost, points: s.points + pts, hub: { ...h, condition, done, log: log(`Repaired: condition ${condition}%`) }, toast: toast(`Repaired · condition ${condition}% · ${money(cost)}${repairCut(s) ? ' (workshop power: cheaper)' : ''}`) };
+      return { ...s, coins: s.coins - cost, points: s.points + pts, hub: { ...h, condition, done, best, log: log(`Repaired: condition ${condition}%`) }, toast: toast(`Repaired · condition ${condition}% · ${money(cost)}${repairCut(s) ? ' (workshop power: cheaper)' : ''}`) };
     }
     case 'refuel': {
       const want = Math.max(0, Math.min(a.litres ?? HUB.tankL, HUB.tankL - h.fuel));
@@ -1731,14 +1732,14 @@ function hubAction(s: GameState, a: Extract<Action, { type: 'tractorHub' }>): Ga
       const got = Math.round(want * (0.8 + 0.2 * score) * 10) / 10;
       const p = powerOf(s.power);
       if (p.parts.fuel && p.fuel >= want) {
-        return { ...s, points: s.points + pts, power: { ...p, fuel: Math.round((p.fuel - want) * 10) / 10 }, hub: { ...h, fuel: Math.round((h.fuel + got) * 10) / 10, done, log: log(`Refuelled ${got} L from the farm tank`) }, toast: toast(`${got} L from the farm’s diesel tank${got < want ? ` (${Math.round((want - got) * 10) / 10} L spilt)` : ''}`) };
+        return { ...s, points: s.points + pts, power: { ...p, fuel: Math.round((p.fuel - want) * 10) / 10 }, hub: { ...h, fuel: Math.round((h.fuel + got) * 10) / 10, done, best, log: log(`Refuelled ${got} L from the farm tank`) }, toast: toast(`${got} L from the farm’s diesel tank${got < want ? ` (${Math.round((want - got) * 10) / 10} L spilt)` : ''}`) };
       }
       const cost = Math.round(want * HUB.pumpPrice);
       if (s.coins < cost) return { ...s, toast: toast(`${want} L at the pump costs ${money(cost)}`) };
-      return { ...s, coins: s.coins - cost, points: s.points + pts, hub: { ...h, fuel: Math.round((h.fuel + got) * 10) / 10, done, log: log(`Refuelled ${got} L at the pump`) }, toast: toast(`${got} L of diesel from the pump · ${money(cost)}`) };
+      return { ...s, coins: s.coins - cost, points: s.points + pts, hub: { ...h, fuel: Math.round((h.fuel + got) * 10) / 10, done, best, log: log(`Refuelled ${got} L at the pump`) }, toast: toast(`${got} L of diesel from the pump · ${money(cost)}`) };
     }
     default:
-      return { ...s, hub: { ...h, done } };
+      return { ...s, hub: { ...h, done, best } };
   }
 }
 

@@ -1342,10 +1342,18 @@ A chip at the bottom says *Night · lights on* or *off*.
 ## The tractor screen
 
 The **Hire** spot is now the **Train** spot. Walking to it, or tapping **TRACTOR** on the HUD, opens the tractor screen
-(`src/tractor/TractorHub.tsx`, numbers in `hub.ts`), with a mini-game in each section:
+(`src/tractor/TractorHub.tsx`, numbers in `hub.ts`) in the **tractor yard** (`src/tractor/Yard.tsx`): a small place
+seen from above that the farmer walks round. Tap the ground to walk there (or use the arrow keys / WASD); tap a station
+to walk to it and open it; standing on a station's pad shows a **▶ Play** button (Enter works too). Each station
+shows its best stars on its pad and a red **!** when it needs the farmer (a lesson to pass, today's walk-round, a
+worn tractor, a low tank, a farm waiting to be ploughed). A mechanic by the workbench calls out tips, and **Hop on**
+in the corner drives straight away. The yard opens on a section instead when one is urgent (Repair, Refuel, Hire).
+The sections are still listed down the left, and **← Back to the yard** walks back out; a finished mini-game also
+returns to the yard. Each station is a mini-game:
 
 | Section | Mini-game | Does |
 | --- | --- | --- |
+| Yard | walk round the yard to the stations | — |
 | Train | steer round the cones down the practice lane | experience: each driver level (60, 150, 300) drives 5% faster |
 | Learn | three lessons of questions (parts, safety, soil) | points; the why after each answer |
 | Safety check | the walk-round in the right order | points |
@@ -1447,6 +1455,24 @@ the crop's health, unless the solar drip is on. The harvest goes into the store 
 **timing** (press in the green), **hold** (hold to fill, let go at the line), **tap** (tap the right spots before the
 time runs out, in order or not, decoys cost points), **wires**, **order**, **quiz**, **aim**, **steer** and
 **balance**. Every game is played with taps or a held press (keyboard too).
+
+**The game layer** (`src/minigames/fun.tsx`) is shared by every quiz, form and test in the game:
+
+- **A coach** (in a work cap) introduces each mini-game in a speech bubble, thinks while a question is open, smiles
+  at a right answer, winces at a wrong one and cheers a three-star result.
+- **Pictures for answers**: `iconFor(text)` picks a picture for any answer or step from its words, so every list of
+  options gets one without new data. The tractor lessons have drawn pictures for each question (`QuizArt`: the PTO
+  shaft, the linkage, the radiator, a slope, getting off, one rider, wet soil, deep ploughing, tyre pressure).
+- **Quiz**: a picture beside each question, answers as picture cards (A, B, C; keys 1–3 work), the answers shuffled
+  so the right one is not always first, a ⚡ clock for a quick answer, a 🔥 streak, confetti and a float-up for a
+  right answer, a shake for a wrong one. The score is still the share answered right.
+- **Order**: each step has a picture, and a tractor rolls along a road of numbered checkpoints to the flag as the
+  steps go in; a wrong step stalls it.
+- **Results**: the stars pop in one by one, with confetti for two or three stars.
+- **The care screens** (the spray kit and product at the shed, choosing the fix, the tractor's hitch and fill-up)
+  give each answer a picture, shake a wrong one and throw confetti for the right one; a right crop call in field
+  rounds and the first review throws confetti too; the "on your own farm?" question has the coach and picture
+  answers.
 
 ## The tractor game: the mini farm
 

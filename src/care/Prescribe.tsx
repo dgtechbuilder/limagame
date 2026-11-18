@@ -10,6 +10,7 @@ import { HAZARD_WORDS, type TrialHazard } from '../trials/model';
 import type { FixOption } from './data';
 import type { Treatment } from './treatments';
 import { money } from '../money';
+import { Confetti, iconFor } from '../minigames/fun';
 
 /* From Wakala Agent: after a right call in the farm world, pick the fix. One of three is right; a wrong one costs
    coins and says why it would not work, then the player picks again. The right one leads to the work by hand. */
@@ -108,11 +109,19 @@ export function Prescribe({
                 <span className="care-mark" aria-hidden="true">
                   {wrong ? '✕' : isRight ? '✓' : ''}
                 </span>
+                <span className="care-icon" aria-hidden="true">
+                  {iconFor(op.label)}
+                </span>
                 <span>{op.label}</span>
                 {wrong && <small>−{money(cost)}</small>}
               </button>
             );
           })}
+          {right && (
+            <span className="care-cheer">
+              <Confetti n={24} />
+            </span>
+          )}
           {right && treatments && treatments.length > 1 && (
             <div className="care-ways" role="group" aria-label="How to do it">
               <p className="care-ask">How will you do it?</p>
