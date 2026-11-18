@@ -36,13 +36,14 @@ test('a sale opens the Sale Success dialog instead of a passing message; a secon
 });
 
 test('a storage upgrade opens its dialog, unless it was turned off; a downgrade does not', () => {
-  const up = reducer(selling({ storage: 'home' }), { type: 'storage', id: 'cold' });
-  expect(up.storage).toBe('cold');
-  expect(up.success).toMatchObject({ kind: 'storage', from: 'home', to: 'cold' });
+  // hermetic bags are open from day 1 (cold storage opens on day 3: src/unlock/model.ts)
+  const up = reducer(selling({ storage: 'home' }), { type: 'storage', id: 'hermetic' });
+  expect(up.storage).toBe('hermetic');
+  expect(up.success).toMatchObject({ kind: 'storage', from: 'home', to: 'hermetic' });
   expect((up.success as { saved: number }).saved).toBeGreaterThan(0);
   expect(reducer(selling({ storage: 'cold' }), { type: 'storage', id: 'home' }).success).toBeNull();
   const off = selling({ storage: 'home', settings: { ...initialState.settings, upgradeNotes: false } });
-  expect(reducer(off, { type: 'storage', id: 'cold' }).success).toBeNull();
+  expect(reducer(off, { type: 'storage', id: 'hermetic' }).success).toBeNull();
 });
 
 test('booking a training: a seat, a reminder in Messages and the Booking Success dialog; paid once', () => {
@@ -136,14 +137,14 @@ test('selling food in the shop opens the Sale Success dialog; Escape closes only
 test('the storage upgrade dialog, and "Don’t show this" turns it off', async ({ page }) => {
   await boot(page);
   await jump(page, { stage: SELLING, harvested: { bags: 120, quality: 4 }, storage: 'home', modal: { kind: 'storage' } });
-  await page.getByRole('button', { name: 'Select Cold storage' }).click();
+  await page.getByRole('button', { name: 'Select Hermetic bags' }).click();
   const ok = page.getByRole('dialog', { name: 'Storage upgraded' });
   await expect(ok).toBeVisible();
   await ok.getByRole('checkbox').check();
   await ok.getByRole('button', { name: 'Stay here' }).click();
   await expect(ok).toBeHidden();
   await page.getByRole('button', { name: 'Select Home Storage' }).click();
-  await page.getByRole('button', { name: 'Select Cooperative warehouse' }).click();
+  await page.getByRole('button', { name: 'Select Hermetic bags' }).click();
   await expect(ok).toBeHidden();
 });
 

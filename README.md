@@ -55,6 +55,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [The tractor screen](#the-tractor-screen)
 - [The coop and the cow shed](#the-coop-and-the-cow-shed)
 - [The shed's options](#the-sheds-options)
+- [Options that open as you grow](#options-that-open-as-you-grow)
 - [The market stall](#the-market-stall)
 - [Farms 7 and 8](#farms-7-and-8)
 - [Mini-games](#mini-games)
@@ -841,7 +842,7 @@ them. Every word and number is in `src/plots/data.ts`, for an agronomist's revie
 - **The inputs board** shows a farm's seed, fertilizer and sprayer, with what each choice is, when it is the right one
   and what it costs. It opens in the plan (the *Inputs* row, one box per farm), and at the fertilizer and sprayer sheds.
   A farm already sown or spread keeps its input; a change while the farms grow pays or refunds the difference.
-- **The tractor can be used at any point.** At the tractor the farmer picks its type (compact, standard, large: fuel,
+- **The tractor can be used at any point.** At the tractor the farmer picks its type (compact, standard, walking, large, 4WD: fuel,
   speed, how much it packs the soil) and its tool (plough, harrow, ridger, planter, seed drill, inter-row cultivator,
   fertilizer spreader, boom sprayer, maize or bean harvester), with what each tool is for and which farms need that
   job today. The tool decides the job, and the tractor works the plots it drives over. The spreader also does the
@@ -1086,14 +1087,15 @@ saves a little less: the money-at-risk cheer and the harvest both use it. Each w
   and in **Climate › Water**. 10,000 L to start, plus every tank bought in the Shop. Each day (the player's midnight, or
   a night slept on the fast clock): **rain** off 120 m² of roofs in (by the season's forecast), the **house** (100 L),
   the **animals** and the **rows** (a can a row a day by hand, plus their watering habits and mulches) out. **Piped
-  water** (5,000 L) and a **bowser** (10,000 L, dearer a litre) can be bought.
+  water** (5,000 L), a **bowser** (10,000 L, dearer a litre), a donkey cart, a neighbour's borehole and a big bowser
+  can be bought, the last three opening on days 2 and 3.
 - **Cows or hens.** The herd can be changed (0–6 cows, 0–60 hens): a cow drinks 50 L a day and gives off methane, a hen
   a cup. The herd also sets the animals' emissions in Climate › Farm areas.
 - **Shocks have consequences.** With the tank under 20%, a drought on a farm puts 1.5 times as much at risk, and a
   drought can't be watered by hand until there is water in the tank (the farm world's work waits; on the Mission
   screen it stays untreated).
-- **Crop cover** (Climate › Water) is bought for a cycle and pays back 70% of what drought, flood and hail took at
-  harvest. **Its price is set by the farm's water practices**: a tank at least half full, rows that keep water in the
+- **Crop cover** (Climate › Water) is bought for a cycle; the standard plan pays back 70% of what drought, flood and
+  hail took at harvest (five plans, from basic to full cover, open by day 3). **Its price is set by the farm's water practices**: a tank at least half full, rows that keep water in the
   soil (mulch, zai pits, tied ridges, morning watering, drought-tolerant seed, minimum tillage), and a fair share of the
   dam each take some off, up to 40%. A dry season loads it.
 - **Credits of every kind.** The credit ledger (`src/credits/ledger.ts`) now holds more than CO₂: **water credits**, one
@@ -1132,7 +1134,8 @@ fast clock (the first cycle) or with a calendar day; the first night brings a **
 - **Water:** what the cows and hens drink is drawn by the water model each day; on top, a dry season makes cows drink a
   fifth more, heat stress more again, and a leaking trough wastes **300 L a day** until its valve is fixed. The Water tab
   shows every litre and how many days the tank lasts at today's use.
-- **Coop** (from day 2): a **simple coop** (room for 20, +15% eggs) or a **raised coop with wire mesh** (room for 60,
+- **Coop** (from day 2): five to choose from (a night shelter, a **simple coop**, a movable coop, the raised coop and a
+  layer house: [Options that open as you grow](#options-that-open-as-you-grow)), such as a **simple coop** (room for 20, +15% eggs) or a **raised coop with wire mesh** (room for 60,
   +25% eggs, fewer coop diseases); with its door shut it keeps out most thieves and predators. With no coop, hens roost
   in the trees and lose 30% of their eggs in the bush. It stands in the 3D farm once built (a pile of timber before).
 - **Herd:** cows and hens are bought at a price (a cow KSh 80,000, a hen KSh 700) and sold for 80% of it; the water
@@ -1294,7 +1297,9 @@ was up, the Climate page included, and block it. A morning's news now waits unti
 
 Over the **first 7 farm days** the farmer builds a solar power system in the **power yard**, top right of the farm
 above the pond (where the mini forest was; the forest is now bottom right). One part a day, each with its own
-mini-game; a part can go in on its day or any day after, in order (`src/power/config.ts` `POWER_STEPS`):
+mini-game; a part can go in on its day or any day after, in order (`src/power/config.ts` `POWER_STEPS`). Each part
+has five options to choose from before its mini-game (see [Options that open as you grow](#options-that-open-as-you-grow));
+the table gives the default ones:
 
 | Day | Part | Mini-game |
 | --- | --- | --- |
@@ -1364,6 +1369,58 @@ Standing on the **Seeds**, **Fertilizer** or **Sprayer** spot, a button shows un
 option*. It lists every option (what it is, what it is best for, its cost); the one chosen goes on every farm that can
 still take it (not yet sown, spread or sprayed), is kept for the next planting (`prefs`), and is picked up
 (`shedChoose` in `src/state.ts`).
+
+## Options that open as you grow
+
+Every buying decision offers several options, up to five, but not all at once, so the first days teach one choice at
+a time and the farm's mechanics come in slowly (`src/unlock/model.ts`):
+
+| When | Options open in each list |
+| --- | --- |
+| Day 1 | the first 2 |
+| Day 2, or Level 2 reached sooner | the first 3 |
+| Day 3, or Level 3 reached sooner | all of them (up to 5) |
+
+An option's place in its list is its tier, so every list runs from the simplest choice to the most advanced. A locked
+option still shows, greyed with a dashed border and a lock (*🔒 Opens on day 3 or at Level 3*), and a line over the
+list says how many are open (*2 of 5 options open · more on day 2 or at Level 2*). The rules refuse a locked option
+too, with the same words, so nothing gets round the lock. The days are farm days (`lifeOf(s.life).day`); the levels
+are the certification levels in My Progress. `UNLOCK` holds the tiers to tune.
+
+| Buying decision | Options, simplest first (day 1 · day 2 · day 3) |
+| --- | --- |
+| Solar panels | 1.5 kW kit, 3 kW array · second-hand 3 kW · 5 kW array, 3 kW bifacial on a tracker |
+| Inverter | modified sine 3 kW, pure sine 3 kW · hybrid MPPT 3 kW · hybrid MPPT 5 kW, microinverters |
+| Battery bank | lead-acid 5 kWh, lithium 10 kWh · lithium 5 kWh · lead-acid 20 kWh, lithium 15 kWh |
+| Farm lights | LED bulbs, lights on poles · motion floodlights · stand-alone solar lights, smart lights on a timer |
+| Generator | diesel 2.5 kVA, diesel 5 kVA · second-hand 5 kVA · inverter generator 4 kVA, biogas generator |
+| Diesel tank | 100 L drum, 200 L locked tank · 300 L bunded tank · 500 L tank, 1,000 L tank and pump |
+| Chicken coop | night shelter, simple coop · movable coop · raised coop with mesh, layer house |
+| Cow shed (from day 3) | shade roof, roofed shed, shed with stalls and mats, zero-grazing unit, barn with a milking parlour |
+| Seed | long-season hybrid, saved seed · drought-tolerant · open-pollinated, hybrid + beans, close spacing |
+| Fertilizer | DAP at planting, DAP + CAN · manure · none (control), double dose |
+| Sprayer | knapsack, mist blower · battery knapsack · boom sprayer, check strip |
+| Tractor type | compact, standard · walking (two-wheel) · large, 4WD |
+| Farm plan: land prep, pest control, water | the same rule, in each step's order (date and harvest timing are open) |
+| Row strategies | *as the farm plan* and the next · the third · the rest |
+| Buying water | piped water, a bowser · donkey cart · neighbour's borehole, big bowser |
+| Crop cover | basic (50%), standard (70%) · drought index (80% of drought) · group cover, full cover (90%) |
+| Shop: tanks | small, medium · large · 20,000 L, water pan (partners' products are never locked) |
+| Shop: fertilizer, equipment | balanced NPK, manure · nitrogen · phosphorus, potassium; hoe, spade · wheelbarrow · the rest |
+| Storage | home storage, hermetic bags · co-op warehouse · metal silo, cold storage |
+| Security (from day 2) | community watch, padlocks · night watchman · the other seven |
+
+**What the options change.** Each power option carries its own numbers (`PartOption` in `src/power/config.ts`): the
+panels' kW, the most kW an inverter can carry (panels beyond it are wasted: a 5 kW array needs the 5 kW inverter),
+the battery's usable share (lead-acid gives half), the lights' load, eggs and whether they keep thieves off, the
+generator's kWh a litre (biogas burns the cows' manure first), the diesel tank's size and first fill. The chosen
+option is kept with the part (`parts[id].option`); a save from before keeps the part it had. Coops and sheds keep
+their upgrade rule (by price, paying the difference) and show on the 3D farm as the model they look like (`look`).
+Crop cover's plans set what it pays back, of which shocks, and its premium.
+
+Seeds already had six options; the sixth (close spacing, which shows why spacing matters) opens with the others on
+day 3. Security's ten measures are add-ons, not alternatives, so they open by the same rule rather than being cut to
+five. Farms 7 and 8 open on day 4, when every crop is open.
 
 ## The market stall
 
@@ -1615,6 +1672,7 @@ Some tests use no browser: they call the game's rules directly.
 | `phases.spec.ts`, `risk.spec.ts` | climate-smart row strategies and treatment choices; money at risk and the evidence log |
 | `achievements.spec.ts`, `progress.spec.ts`, `success.spec.ts` | badges, the streak and certificates; My Progress and partners; the success dialogs, training and the loan quote |
 | `frame.spec.ts` | every screen keeps its boxes and buttons inside the rounded frame |
+| `unlock.spec.ts` | options that open as you grow: two on day 1, three on day 2, five on day 3 or Level 3, across every buying decision, and the power yard's picker |
 
 They run on every pull request (`.github/workflows/tests.yml`), with one retry on CI; the report and screenshots are
 kept with the run for 14 days.

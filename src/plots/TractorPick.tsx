@@ -1,3 +1,5 @@
+import { LockTag } from '../unlock/Lock';
+import { idOpen, isOpen, type UnlockHost } from '../unlock/model';
 import { useState } from 'react';
 import { NavBar } from '../components/Nav';
 import { img } from '../assets';
@@ -42,11 +44,11 @@ export function jobsDue(field: Field, tr: Trial | null, day: number): Partial<Re
 
 const farmsText = (farms: number[]) => (farms.length > 3 ? `${farms.length} farms` : farms.map(farmName).join(', '));
 
-export function TractorPick({ tr, field, day, rig, onGo, onLeave }: { tr: Trial; field: Field; day: number; rig: Rig | null; onGo: (rig: Rig) => void; onLeave: () => void }) {
+export function TractorPick({ tr, field, day, rig, onGo, onLeave, gate = {} }: { tr: Trial; field: Field; day: number; rig: Rig | null; onGo: (rig: Rig) => void; onLeave: () => void; gate?: UnlockHost }) {
   const due = jobsDue(field, tr, day);
   const firstDue = JOB_ORDER.find(j => due[j]);
   const [step, setStep] = useState<'tractor' | 'tool'>('tractor');
-  const [tractor, setTractor] = useState<TractorId | null>(rig?.tractor ?? null);
+  const [tractor, setTractor] = useState<TractorId | null>(rig && idOpen(gate, TRACTORS, rig.tractor) ? rig.tractor : null);
   const [tool, setTool] = useState<ImplId | null>(rig && (!firstDue || toolJobs(rig.tool).includes(firstDue)) ? rig.tool : null);
   const plots = tr.plans.map((_, i) => plotsOf(tr, i));
   const jobs = JOB_ORDER.filter(j => tr.routine || !ROUTINE_TOOL_JOBS.includes(j));
@@ -86,13 +88,14 @@ export function TractorPick({ tr, field, day, rig, onGo, onLeave }: { tr: Trial;
       <div className="fs-panel tp-panel">
         {step === 'tractor' ? (
           <div className="tp-cards" role="radiogroup" aria-label="Tractor type">
-            {TRACTORS.map(k => {
+            {TRACTORS.map((k, i) => {
               const works = worksOf(k.id);
+              const gated = !isOpen(gate, i);
               return (
-                <button type="button" key={k.id} role="radio" aria-checked={tractor === k.id} className={`tp-card${tractor === k.id ? ' is-on' : ''}`} onClick={() => setTractor(k.id)}>
+                <button type="button" key={k.id} role="radio" aria-checked={tractor === k.id} disabled={gated} className={`tp-card${tractor === k.id ? ' is-on' : ''}${gated ? ' is-gated' : ''}`} onClick={() => setTractor(k.id)}>
                   <span className="tp-head">
                     <span className="tp-pic">
-                      <TractorArt kind={k.id} width={k.id === 'compact' ? 64 : k.id === 'standard' ? 72 : 80} />
+                      <TractorArt kind={k.art} width={Math.round(72 * k.size)} />
                     </span>
                     <span className="tp-name">
                       <b>{k.name}</b>
@@ -112,6 +115,7 @@ export function TractorPick({ tr, field, day, rig, onGo, onLeave }: { tr: Trial;
                   <span className="tp-meta">
                     Fuel <b>{money(TRACTOR_PLOT[k.id].fuel)}</b> a farm · speed {Math.round(TRACTOR_PLOT[k.id].speed * 100)}%
                   </span>
+                  {gated && <LockTag s={gate} index={i} />}
                   <small>{works.length ? `Works ${works.slice(0, 3).join(', ')}${works.length > 3 ? '…' : ''}` : 'Not used yet this cycle'}</small>
                 </button>
               );

@@ -41,12 +41,13 @@ test('the sale: storage is paid on every bag stored, the grade sets the price, t
 
 test('a shop item used in a farming step counts in the season’s costs', () => {
   let s: GameState = { ...initialState, coins: 1000, stage: 2 };
-  s = reducer(s, { type: 'buy', id: 'nitrogen', price: 40, name: 'Nitrogen' });
+  // (balanced NPK is open from day 1; single nutrients open later: src/unlock/model.ts)
+  s = reducer(s, { type: 'buy', id: 'npk', price: 40, name: 'Balance NPK' });
   expect(s.coins).toBe(960);
-  s = reducer(s, { type: 'task', step: 'fertilizer', id: 'f-nitrogen', price: 40, name: 'Nitrogen' });
+  s = reducer(s, { type: 'task', step: 'fertilizer', id: 'f-npk', price: 40, name: 'Balance NPK' });
   // no second charge, but the 40 coins it cost in the shop are this season's spending
   expect(s.coins).toBe(960);
-  expect(s.inventory).not.toContain('nitrogen');
+  expect(s.inventory).not.toContain('npk');
   expect(s.seasonSpend).toBe(40);
 });
 

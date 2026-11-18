@@ -1,3 +1,5 @@
+import { LockTag, OpenLine } from '../unlock/Lock';
+import { isOpen, type UnlockHost } from '../unlock/model';
 import { useState, type Dispatch } from 'react';
 import type { Action } from '../state';
 import { CloseX, useEscape } from '../components/Success';
@@ -12,7 +14,7 @@ import { retOf, rowEffect, strategiesOf } from './model';
 
 const pct = (x: number) => `${x >= 0 ? '+' : '−'}${Math.round(Math.abs(x) * 100)}%`;
 
-export function StrategyBoard({ tr, farm: farm0, locked, dispatch, onClose }: { tr: Trial; farm: number; locked: (farm: number) => boolean; dispatch: Dispatch<Action>; onClose: () => void }) {
+export function StrategyBoard({ tr, farm: farm0, locked, dispatch, onClose, gate = {} }: { tr: Trial; farm: number; locked: (farm: number) => boolean; dispatch: Dispatch<Action>; onClose: () => void; gate?: UnlockHost }) {
   const [farm, setFarm] = useState(farm0);
   const [pick, setPick] = useState<{ row: number; dim: Dimension } | null>(null);
   useEscape(() => (pick ? setPick(null) : onClose()));
@@ -131,15 +133,18 @@ export function StrategyBoard({ tr, farm: farm0, locked, dispatch, onClose }: { 
             <p className="sg-picker-title">
               Row {pick.row + 1} · {pick.dim.label}
             </p>
+            <OpenLine s={gate} total={pick.dim.options.length} />
             <div className="sg-opts">
-              {pick.dim.options.map(o => {
+              {pick.dim.options.map((o, i) => {
                 const on = optionIn(pick.dim.id, rows[pick.row][pick.dim.id]) === o;
                 const ret = retOf(o, tr.forecast);
+                const gated = !on && !isOpen(gate, i);
                 return (
                   <button
                     key={o.id}
                     type="button"
-                    className={`sg-opt${on ? ' is-on' : ''}`}
+                    disabled={gated}
+                    className={`sg-opt${on ? ' is-on' : ''}${gated ? ' is-gated' : ''}`}
                     onClick={() => {
                       set(pick.row, pick.dim.id, o.id);
                       setPick(null);
@@ -157,6 +162,7 @@ export function StrategyBoard({ tr, farm: farm0, locked, dispatch, onClose }: { 
                       {o.stored ? ` · stores ${o.stored} kg CO₂` : ''}
                       {o.water ? ` · ${o.water > 0 ? '+' : ''}${o.water} L water` : ''}
                     </small>
+                    {gated && <LockTag s={gate} index={i} />}
                   </button>
                 );
               })}

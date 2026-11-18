@@ -4,8 +4,9 @@ import { MiniGame, type GameSpec } from '../minigames/MiniGame';
 import { money } from '../money';
 import { lifeOf } from '../livestock/model';
 import type { Action, GameState, PowerTab } from '../state';
-import { POWER, POWER_STEPS, type LoadId, type StepId } from './config';
-import { forecastDay, has, loadOn, loadsAvailable, nextStep, powerOf, powerOn, servedShare, stepBlock } from './model';
+import { POWER, POWER_STEPS, partOptionOf, type LoadId, type PartOption, type StepId } from './config';
+import { OptionPicker } from '../unlock/Picker';
+import { batteryUsable, forecastDay, fuelTankL, has, lightsEggs, loadKwh, loadOn, loadsAvailable, nextStep, partOf, powerOf, powerOn, servedShare, stepBlock } from './model';
 import { tankOf } from '../water/model';
 import { coldRoom, repairCut } from '../systems/track';
 
@@ -64,15 +65,47 @@ export function gameFor(id: StepId, s: GameState): GameSpec {
       return {
         type: 'balance',
         supply: Math.round((f.solar + (has(s, 'battery') ? 4 : 0)) * 10) / 10,
-        loads: loadsAvailable(s).map(id => ({ id, name: POWER.loads[id].name, kwh: POWER.loads[id].kwh, need: id === 'pump' || id === 'lights' || (id === 'cooler' && cows > 0) })),
+        loads: loadsAvailable(s).map(id => ({ id, name: POWER.loads[id].name, kwh: loadKwh(s, id), need: id === 'pump' || id === 'lights' || (id === 'cooler' && cows > 0) })),
       };
     }
+  }
+}
+
+/** What each part's choice is about, over its options. */
+const PICK_LEAD: Partial<Record<StepId, string>> = {
+  panels: 'More kW makes more power, but the inverter (day 2) must be big enough to carry it.',
+  inverter: 'An inverter carries only its own kW: match it to your panels. A better one wastes less.',
+  battery: 'Lead-acid is cheap, but only half its charge can be used. Lithium costs more and lasts.',
+  lights: 'Lights on poles or floodlights keep thieves off; lights in the coop make hens lay more.',
+  generator: 'The generator covers what the sun can’t. A better engine burns less diesel for each kWh.',
+  fuel: 'A bigger tank means fewer trips to town for the generator and the tractor.',
+};
+
+/** A part option's numbers, for its card. */
+export function factsOf(id: StepId, o: PartOption): string[] {
+  switch (id) {
+    case 'panels':
+      return [`${o.size} kW`, o.out !== 1 ? `${o.out! > 1 ? '+' : '−'}${Math.abs(Math.round((o.out! - 1) * 100))}% power` : 'full power'];
+    case 'inverter':
+      return [o.size > 50 ? 'No kW limit' : `Carries ${o.size} kW`, `${Math.round((o.out ?? 1) * 100)}% of the panels’ power`];
+    case 'battery':
+      return [`${o.size} kWh`, `${o.size * (o.out ?? 1)} kWh usable`];
+    case 'lights':
+      return [o.size ? `${o.size} kWh a day` : 'Uses no system power', `+${Math.round((o.eggs ?? 0) * 100)}% eggs`, o.secure ? 'Keeps thieves off' : 'No security'];
+    case 'generator':
+      return [`${o.size} kWh a litre`, ...(o.biogas ? [`${o.biogas} kWh a cow a day on biogas`] : [])];
+    case 'fuel':
+      return [`${o.size} L`, `Filled with ${o.fill} L`];
+    default:
+      return [];
   }
 }
 
 export function PowerPage({ s, dispatch, tab = 'build' }: { s: GameState; dispatch: Dispatch<Action>; tab?: PowerTab }) {
   const setTab = (t: PowerTab) => dispatch({ type: 'open', modal: { kind: 'power', tab: t } });
   const [playing, setPlaying] = useState<StepId | null>(null);
+  const [picking, setPicking] = useState<StepId | null>(null);
+  const [option, setOption] = useState<string | null>(null);
   const p = powerOf(s.power);
   const day = lifeOf(s.life).day;
   const due = nextStep(s);
@@ -112,15 +145,23 @@ export function PowerPage({ s, dispatch, tab = 'build' }: { s: GameState; dispat
                   </div>
                   <p>{st.does}</p>
                   {done ? (
-                    <span className="pg-status">✓ Done on day {done.day} · {Math.round(done.score * 100)}%</span>
+                    <span className="pg-status">
+                      ✓ {partOptionOf(st.id, done.option)?.name ?? 'Done'} · day {done.day} · {Math.round(done.score * 100)}%
+                    </span>
                   ) : (
                     <>
                       <p>
                         <b>Job:</b> {st.task}
-                        {st.price ? ` · ${money(st.price)}` : ''}
+                        {st.options.length ? ` · ${st.options.length} options, from ${money(Math.min(...st.options.map(o => o.price)))}` : ''}
                       </p>
-                      <button type="button" className="gold-btn" disabled={!!block} title={block ?? undefined} onClick={() => setPlaying(st.id)}>
-                        {locked ? `Opens on day ${st.day}` : block && !block.startsWith('You need') ? block.replace(/^.*?: /, '') : st.id === 'switchOn' ? 'Switch on' : `Install · ${money(st.price)}`}
+                      <button
+                        type="button"
+                        className="gold-btn"
+                        disabled={st.options.length ? locked || (!!block && !block.startsWith('You need')) : !!block}
+                        title={block ?? undefined}
+                        onClick={() => (st.options.length ? setPicking(st.id) : (setOption(null), setPlaying(st.id)))}
+                      >
+                        {locked ? `Opens on day ${st.day}` : block && !block.startsWith('You need') ? block.replace(/^.*?: /, '') : st.id === 'switchOn' ? 'Switch on' : 'Choose and install'}
                       </button>
                     </>
                   )}
@@ -133,6 +174,23 @@ export function PowerPage({ s, dispatch, tab = 'build' }: { s: GameState; dispat
       {tab === 'today' && <Today s={s} dispatch={dispatch} />}
       {tab === 'impact' && <Impact s={s} />}
       {tab === 'history' && <History s={s} />}
+      {picking && (
+        <OptionPicker
+          s={s}
+          kicker={`Power · day ${POWER_STEPS.find(x => x.id === picking)!.day}`}
+          title={`${POWER_STEPS.find(x => x.id === picking)!.name}: choose one`}
+          lead={PICK_LEAD[picking]}
+          options={POWER_STEPS.find(x => x.id === picking)!.options.map(o => ({ id: o.id, name: o.name, does: o.does, facts: factsOf(picking, o), price: o.price }))}
+          coins={s.coins}
+          verb="Install"
+          onClose={() => setPicking(null)}
+          onPick={id => {
+            setOption(id);
+            setPlaying(picking);
+            setPicking(null);
+          }}
+        />
+      )}
       {playing && (
         <MiniGame
           title={POWER_STEPS.find(x => x.id === playing)!.name}
@@ -142,7 +200,7 @@ export function PowerPage({ s, dispatch, tab = 'build' }: { s: GameState; dispat
           doneLabel={playing === 'switchOn' ? 'Power on' : 'Finish the install'}
           onClose={() => setPlaying(null)}
           onDone={(score, data) => {
-            dispatch({ type: 'powerInstall', id: playing, score, loads: playing === 'switchOn' ? (data as LoadId[]) : undefined });
+            dispatch({ type: 'powerInstall', id: playing, score, loads: playing === 'switchOn' ? (data as LoadId[]) : undefined, option: option ?? undefined });
             setPlaying(null);
           }}
         />
@@ -161,8 +219,8 @@ function Today({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
       <div className="pg-tiles">
         <Tile label="Sun today" value={`${f.solar} kWh`} sub={`${f.sun} sun hours (${s.trial?.forecast ?? 'normal'} season)`} tone="good" />
         <Tile label="Needed a day" value={`${f.need} kWh`} sub={`${p.loads.length} things switched on`} />
-        <Tile label="Battery" value={has(s, 'battery') ? `${p.battery} kWh` : '—'} sub={has(s, 'battery') ? `of ${POWER.batteryKwh} kWh` : 'day 3'} />
-        <Tile label="Diesel" value={has(s, 'fuel') ? `${Math.round(p.fuel)} L` : '—'} sub={has(s, 'fuel') ? `of ${POWER.tankL} L · generator and tractor` : 'day 6'} tone={has(s, 'fuel') && p.fuel < 20 ? 'bad' : undefined} />
+        <Tile label="Battery" value={has(s, 'battery') ? `${p.battery} kWh` : '—'} sub={has(s, 'battery') ? `of ${batteryUsable(s)} kWh usable` : 'day 3'} />
+        <Tile label="Diesel" value={has(s, 'fuel') ? `${Math.round(p.fuel)} L` : '—'} sub={has(s, 'fuel') ? `of ${fuelTankL(s)} L · generator and tractor` : 'day 6'} tone={has(s, 'fuel') && p.fuel < 20 ? 'bad' : undefined} />
       </div>
       {last && (
         <p className="pg-lead">
@@ -179,7 +237,7 @@ function Today({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
             <i aria-hidden="true">{id === 'pump' ? '💧' : id === 'cooler' ? '🥛' : id === 'lights' ? '💡' : id === 'house' ? '🏠' : '🔧'}</i>
             <span className="pg-row-text">
               <b>
-                {l.name} · {l.kwh} kWh a day
+                {l.name} · {loadKwh(s, id)} kWh a day
               </b>
               <small>{l.does}</small>
             </span>
@@ -196,7 +254,7 @@ function Today({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
             <b>Buy diesel · {money(POWER.dieselPrice)} a litre</b>
             <small>For the generator on cloudy days, and the tractor (refuel it at the tractor)</small>
           </span>
-          <button type="button" className="gold-btn" style={{ height: 28, padding: '0 12px', fontSize: 11 }} disabled={p.fuel >= POWER.tankL} onClick={() => dispatch({ type: 'powerFuel', litres: 50 })}>
+          <button type="button" className="gold-btn" style={{ height: 28, padding: '0 12px', fontSize: 11 }} disabled={p.fuel >= fuelTankL(s)} onClick={() => dispatch({ type: 'powerFuel', litres: 50 })}>
             50 L · {money(50 * POWER.dieselPrice)}
           </button>
         </div>
@@ -211,7 +269,7 @@ function Impact({ s }: { s: GameState }) {
   const lines: [string, string, string, boolean][] = [
     ['💧', 'Water', `The solar pump lifts up to ${POWER.pumpLitres} L a day from the pond into the tank (${p.totals.water.toLocaleString('en-US')} L so far), and drips Farms 7 and 8 with ${Math.round(POWER.dripShare * 100)}% of the water.`, loadOn(s, 'pump')],
     ['🌍', 'Climate', `Clean power keeps ${Math.round(p.totals.avoided)} kg CO₂ out of the air (paid as climate credits); the generator has burned ${Math.round(p.totals.fuelL)} L of diesel (${Math.round(p.totals.emitted)} kg CO₂). Pumping and cooking count as solar.`, on],
-    ['💰', 'Profit', `Chilled milk sells for ${Math.round(POWER.milkPremium * 100)}% more, lit coops lay ${Math.round(POWER.eggBoost * 100)}% more eggs, the cold room keeps fresh produce (+10% at the stall, no wilting). Saved on bills: ${money(Math.max(0, p.totals.saved))}.`, coldRoom(s) || loadOn(s, 'lights')],
+    ['💰', 'Profit', `Chilled milk sells for ${Math.round(POWER.milkPremium * 100)}% more, lit coops lay ${Math.round((partOf(s, 'lights')?.eggs ?? POWER.eggBoost) * 100)}% more eggs, the cold room keeps fresh produce (+10% at the stall, no wilting). Saved on bills: ${money(Math.max(0, p.totals.saved))}.`, coldRoom(s) || lightsEggs(s) > 0],
     ['🚜', 'Tractor', `The workshop’s power tools cut servicing and repairs by ${Math.round(POWER.repairCut * 100)}%; the diesel tank refuels the tractor without a trip to the pump.`, repairCut(s) > 0 || has(s, 'fuel')],
     ['🔒', 'Security', 'The farm lights work as a security light: thieves keep to the dark.', loadOn(s, 'lights')],
     ['⚡', 'Electricity', `${Math.round(p.totals.solar)} kWh from the sun and ${Math.round(p.totals.gen)} kWh from the generator so far, over ${p.totals.days} days. Yesterday it gave ${Math.round(servedShare(s) * 100)}% of what was needed.`, on],

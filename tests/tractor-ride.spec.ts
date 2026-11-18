@@ -43,7 +43,10 @@ test('pick a tractor and a tool, then work a farm\'s plots from the seat', async
   // the tractor screen opens on Drive
   await button.click();
   await page.getByRole('dialog', { name: 'Tractor' }).getByRole('button', { name: 'Hop on', exact: true }).click();
-  await expect(page.locator('.tp-card', { hasText: 'Large' })).toContainText('Fuel');
+  await expect(page.locator('.tp-card', { hasText: 'Compact' })).toContainText('Fuel');
+  // on day 1 the first two types are open; the large tractor opens on day 3 (src/unlock/model.ts)
+  await expect(page.locator('.tp-card', { hasText: 'Large' })).toBeDisabled();
+  await expect(page.locator('.tp-card', { hasText: 'Large' })).toContainText('Opens on day 3');
   await page.locator('.tp-card', { hasText: 'Standard' }).click();
   await page.getByRole('button', { name: 'Next: the tool', exact: true }).click();
   await expect(page.locator('.tp-job.is-due')).toContainText('Prepare the land');
@@ -66,8 +69,8 @@ test('pick a tractor and a tool, then work a farm\'s plots from the seat', async
 
   // another tractor and tool work the next column: no more fuel for this farm's ploughing
   await page.locator('.hud-rig').click();
-  await pick(page, 'Large', 'Disc harrow');
-  await expect(page.locator('.hud-status')).toContainText('Large · Disc harrow');
+  await pick(page, 'Compact', 'Disc harrow');
+  await expect(page.locator('.hud-status')).toContainText('Compact · Disc harrow');
   await drivePlot(page, 0, 1);
   await expect.poll(async () => ((await state(page)).field.marks['0:prep'] ?? 0) & columnMask(1), { timeout: 60_000 }).toBe(columnMask(1));
   expect((await state(page)).coins).toBe(before.coins - TRACTOR_PLOT.standard.fuel);

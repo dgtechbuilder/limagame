@@ -68,11 +68,12 @@ export const SHOP_TABS: ShopTabDef[] = [
     priceFont: 8,
     nameFont: 8,
     items: [
+      // simplest first: a balanced NPK and manure from day 1, single nutrients later (src/unlock/model.ts)
+      { id: 'npk', name: 'Balance NPK', icon: asset('fert-npk.png'), iconSize: [31, 23], price: 40 },
+      { id: 'manure', name: 'Organic Manure', icon: asset('fert-manure.png'), iconSize: [31, 23], price: 40 },
       { id: 'nitrogen', name: 'Nitrogen', icon: asset('fert-nitrogen.png'), iconSize: [31, 23], price: 40 },
       { id: 'phosphorus', name: 'Phosphorus', icon: asset('fert-phosphorus.png'), iconSize: [31, 23], price: 40 },
       { id: 'potassium', name: 'Potassium', icon: asset('fert-potassium.png'), iconSize: [31, 23], price: 40 },
-      { id: 'npk', name: 'Balance NPK', icon: asset('fert-npk.png'), iconSize: [31, 23], price: 40 },
-      { id: 'manure', name: 'Organic Manure', icon: asset('fert-manure.png'), iconSize: [31, 23], price: 40 },
       // the fertilizer partner's product: an NPK at the partner's 10% off
       { id: 'rutuba-npk', name: 'Rutuba Gold NPK', icon: asset('fert-npk.png'), iconSize: [31, 23], price: 36, partner: 'rutuba', standsIn: 'npk' },
     ],
@@ -92,6 +93,8 @@ export const SHOP_TABS: ShopTabDef[] = [
       { id: 'tank-s', name: 'Small', icon: asset('tank-small.png'), iconSize: [24, 35], price: 2500 },
       { id: 'tank-m', name: 'Medium', icon: asset('tank-medium.png'), iconSize: [24, 35], price: 5000 },
       { id: 'tank-l', name: 'Large', icon: asset('tank-large.png'), iconSize: [30, 35], price: 10000 },
+      { id: 'tank-xl', name: '20,000 L', icon: asset('tank-large.png'), iconSize: [34, 35], price: 18000 },
+      { id: 'tank-pan', name: 'Water pan', icon: asset('tank-large.png'), iconSize: [38, 30], price: 24000 },
       // the water partner's tank: a medium tank with a gutter kit
       { id: 'tank-tangi', name: 'Tangi 5,000 L', icon: asset('tank-medium.png'), iconSize: [24, 35], price: 5000, partner: 'tangi' },
     ],
@@ -272,9 +275,12 @@ export interface StorageOption {
   time: string;
 }
 
+/** Simplest first: the first two from day 1, the third from day 2, the rest from day 3 or Level 3 (src/unlock/model.ts). */
 export const STORAGE_OPTIONS: StorageOption[] = [
   { id: 'home', name: 'Home Storage', icon: asset('storage-home.png'), iconSize: [40, 43], costPerBag: 0, spoilage: 'High', loss: 0.12, time: '3 days' },
+  { id: 'hermetic', name: 'Hermetic bags', icon: asset('storage-home.png'), iconSize: [34, 37], costPerBag: 1, spoilage: 'Low', loss: 0.03, time: '3 days' },
   { id: 'coop', name: 'Cooperative warehouse', icon: asset('storage-coop.png'), iconSize: [54, 43], costPerBag: 2, spoilage: 'Medium', loss: 0.05, time: '2 days' },
+  { id: 'silo', name: 'Metal silo', icon: asset('storage-cold.png'), iconSize: [30, 38], costPerBag: 3, spoilage: 'Low', loss: 0.02, time: '3 days' },
   { id: 'cold', name: 'Cold storage', icon: asset('storage-cold.png'), iconSize: [34, 43], costPerBag: 4, spoilage: 'Low', loss: 0.01, time: '1 day' },
 ];
 
@@ -388,7 +394,16 @@ export const TASK_TIPS: Record<string, string> = {
 
 /** Farming-step tasks that can use an item bought in the Shop instead of coins. */
 /** Litres each water tank holds. */
-export const TANK_LITRES: Record<string, number> = { 'tank-s': 1000, 'tank-m': 5000, 'tank-l': 10000, 'tank-tangi': 5000 };
+export const TANK_LITRES: Record<string, number> = { 'tank-s': 1000, 'tank-m': 5000, 'tank-l': 10000, 'tank-xl': 20000, 'tank-pan': 40000, 'tank-tangi': 5000 };
+
+/** An item's place among the plain items of its Shop section, for the options that open a few at a time
+    (src/unlock/model.ts); -1 when it is not gated (food to sell, and partners' branded products). */
+export function shopIndex(id: string): number {
+  const tab = SHOP_TABS.find(t => t.items.some(i => i.id === id));
+  if (!tab || tab.id === 'food') return -1;
+  const plain = tab.items.filter(i => !i.partner);
+  return plain.findIndex(i => i.id === id);
+}
 
 /** Branded products and the plain item each does the job of (a task that uses NPK takes Rutuba Gold NPK too). */
 export const STANDS_IN: Record<string, string> = Object.fromEntries(

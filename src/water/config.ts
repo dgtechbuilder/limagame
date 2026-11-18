@@ -13,7 +13,7 @@ export const WATER = {
     base: 10_000,
     start: 6_000,
     /** litres each tank bought in the Shop adds */
-    adds: { 'tank-s': 2_000, 'tank-m': 5_000, 'tank-l': 10_000, 'tank-tangi': 5_000 } as Record<string, number>,
+    adds: { 'tank-s': 2_000, 'tank-m': 5_000, 'tank-l': 10_000, 'tank-xl': 20_000, 'tank-pan': 40_000, 'tank-tangi': 5_000 } as Record<string, number>,
     /** below this share of the tank it is low: a drought then costs more, and watering by hand may not be possible */
     low: 0.2,
   },
@@ -26,6 +26,15 @@ export const WATER = {
   piped: { per1000: 15, litres: 5_000 },
   /** a water bowser: a whole load delivered, dearer a litre */
   transported: { litres: 10_000, price: 1_100 },
+  /** every way to buy water, simplest first: the first two from day 1, the third from day 2, the rest from day 3 or
+      Level 3 (src/unlock/model.ts). A price is for the whole load; piped water is paid by the 1,000 L. */
+  buys: [
+    { id: 'piped', name: 'Piped water', does: 'The county connection: the cheapest a litre, up to 5,000 L a day.', litres: 5_000, per1000: 15 },
+    { id: 'transported', name: 'A bowser', does: 'A 10,000 L tanker load, delivered to the tank.', litres: 10_000, price: 1_100 },
+    { id: 'cart', name: 'Donkey cart', does: 'Ten 20 L jerrycans: a small load, dear a litre, but any day.', litres: 200, price: 40 },
+    { id: 'borehole', name: 'Neighbour’s borehole', does: 'Clean groundwater by hosepipe from next door, at a fair price.', litres: 2_000, price: 60 },
+    { id: 'bulk', name: 'Big bowser', does: 'A 20,000 L tanker: the cheapest load a litre, if the tank has room.', litres: 20_000, price: 1_900 },
+  ] as WaterBuy[],
   /** a day's use */
   house: 100,
   /** litres a day an animal drinks (the same numbers as Climate › Farm areas) */
@@ -58,6 +67,15 @@ export const WATER = {
     maxOff: 0.4,
     /** share of a weather shock's loss it pays back at harvest */
     payout: 0.7,
+    /** the cover plans, simplest first (src/unlock/model.ts): what each pays back, of which shocks, and its premium
+        against the standard plan's */
+    plans: [
+      { id: 'basic', name: 'Basic cover', does: 'The cheapest: pays back half of what drought, flood and hail take.', payout: 0.5, price: 0.65, hazards: ['drought', 'flood', 'hail'] },
+      { id: 'standard', name: 'Standard cover', does: 'Pays back 70% of what drought, flood and hail take.', payout: 0.7, price: 1, hazards: ['drought', 'flood', 'hail'] },
+      { id: 'drought', name: 'Drought index cover', does: 'Pays 80% of drought losses only, on the rain gauge’s reading: cheap and quick to pay.', payout: 0.8, price: 0.55, hazards: ['drought'] },
+      { id: 'group', name: 'Group cover, through the co-op', does: 'The co-op covers all its members together: standard cover for less.', payout: 0.7, price: 0.8, hazards: ['drought', 'flood', 'hail'] },
+      { id: 'full', name: 'Full cover', does: 'Pays back 90% of what drought, flood and hail take: the dearest.', payout: 0.9, price: 1.45, hazards: ['drought', 'flood', 'hail'] },
+    ] as CoverPlan[],
   },
 
   /* ---- the shared catchment (Phase 4: docs/shared-water.md) ---- */
@@ -83,4 +101,27 @@ export const WATER = {
 } as const;
 
 export type Herd = { cows: number; hens: number };
+export type WaterBuyId = 'piped' | 'transported' | 'cart' | 'borehole' | 'bulk';
+export interface WaterBuy {
+  id: WaterBuyId;
+  name: string;
+  does: string;
+  litres: number;
+  /** the whole load's price, or (piped) the price a 1,000 L */
+  price?: number;
+  per1000?: number;
+}
+export interface CoverPlan {
+  id: string;
+  name: string;
+  does: string;
+  payout: number;
+  /** its premium against the standard plan's */
+  price: number;
+  hazards: string[];
+}
+export const waterBuyOf = (id: string) => WATER.buys.find(b => b.id === id) ?? WATER.buys[0];
+/** What a load costs, for the litres that fit. */
+export const waterBuyPrice = (b: WaterBuy, litres = b.litres) => (b.per1000 ? Math.round((litres / 1000) * b.per1000) : b.price!);
+export const coverPlanOf = (id: string | undefined) => WATER.cover.plans.find(p => p.id === id) ?? WATER.cover.plans[1];
 export type DrawPolicy = 'full' | 'fair';

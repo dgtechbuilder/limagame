@@ -52,20 +52,8 @@ export interface SeedOption extends InputOption<SeedId> {
   beans?: boolean;
 }
 
+/** Simplest first: the first two from day 1, the third from day 2, the rest from day 3 or Level 3 (src/unlock/model.ts). */
 export const SEEDS: SeedOption[] = [
-  {
-    id: 'saved',
-    label: 'Saved seed',
-    name: 'Saved seed',
-    does: 'Last season’s grain. Almost free, but hybrids do not breed true: plants come up uneven and weak.',
-    bestFor: 'Only when there is no money for seed.',
-    cost: 10,
-    color: '#a07d4b',
-    factor: { normal: 0.75, dry: 0.72, wet: 0.75 },
-    drought: 1,
-    rust: 1.3,
-    quality: -1,
-  },
   {
     id: 'certified',
     label: 'Long-season hybrid',
@@ -78,6 +66,19 @@ export const SEEDS: SeedOption[] = [
     drought: 1,
     rust: 1,
     quality: 0,
+  },
+  {
+    id: 'saved',
+    label: 'Saved seed',
+    name: 'Saved seed',
+    does: 'Last season’s grain. Almost free, but hybrids do not breed true: plants come up uneven and weak.',
+    bestFor: 'Only when there is no money for seed.',
+    cost: 10,
+    color: '#a07d4b',
+    factor: { normal: 0.75, dry: 0.72, wet: 0.75 },
+    drought: 1,
+    rust: 1.3,
+    quality: -1,
   },
   {
     id: 'dt',
@@ -147,29 +148,8 @@ export interface FertOption extends InputOption<FertId> {
   withoutTop?: { factor: number; hunger: number };
 }
 
+/** Simplest first: the first two from day 1, the third from day 2, the rest from day 3 or Level 3 (src/unlock/model.ts). */
 export const FERTS: FertOption[] = [
-  {
-    id: 'none',
-    label: 'None',
-    name: 'No fertilizer (a control plot)',
-    does: 'Nothing added: what the soil gives on its own.',
-    bestFor: 'Measuring what fertilizer adds.',
-    cost: 0,
-    color: '#9a9a9a',
-    factor: 0.55,
-    hunger: 1.6,
-  },
-  {
-    id: 'manure',
-    label: 'Manure',
-    name: 'Farmyard manure',
-    does: 'Rotted manure in the planting holes. Feeds slowly, keeps soil moist, little nitrogen.',
-    bestFor: 'Building the soil over seasons, and farms with animals.',
-    cost: 60,
-    color: '#7a5230',
-    factor: 0.72,
-    hunger: 1.1,
-  },
   {
     id: 'basal',
     label: 'DAP at planting',
@@ -195,6 +175,28 @@ export const FERTS: FertOption[] = [
     withoutTop: { factor: 0.75, hunger: 1 },
   },
   {
+    id: 'manure',
+    label: 'Manure',
+    name: 'Farmyard manure',
+    does: 'Rotted manure in the planting holes. Feeds slowly, keeps soil moist, little nitrogen.',
+    bestFor: 'Building the soil over seasons, and farms with animals.',
+    cost: 60,
+    color: '#7a5230',
+    factor: 0.72,
+    hunger: 1.1,
+  },
+  {
+    id: 'none',
+    label: 'None',
+    name: 'No fertilizer (a control plot)',
+    does: 'Nothing added: what the soil gives on its own.',
+    bestFor: 'Measuring what fertilizer adds.',
+    cost: 0,
+    color: '#9a9a9a',
+    factor: 0.55,
+    hunger: 1.6,
+  },
+  {
     id: 'double',
     label: 'Double dose',
     name: 'Twice the DAP and twice the CAN',
@@ -211,7 +213,7 @@ export const FERTS: FertOption[] = [
 
 /* ---------------- sprayers ---------------- */
 
-export type SprayerId = 'knapsack' | 'mist' | 'boom' | 'none';
+export type SprayerId = 'knapsack' | 'mist' | 'electric' | 'boom' | 'none';
 
 export interface SprayerOption extends InputOption<SprayerId> {
   /** on a day a pest or disease was treated: the share of the damage the spray stopped on this plot */
@@ -220,6 +222,7 @@ export interface SprayerOption extends InputOption<SprayerId> {
   damage: number;
 }
 
+/** Simplest first: the first two from day 1, the third from day 2, the rest from day 3 or Level 3 (src/unlock/model.ts). */
 export const SPRAYERS: SprayerOption[] = [
   {
     id: 'knapsack',
@@ -241,6 +244,17 @@ export const SPRAYERS: SprayerOption[] = [
     cost: 0,
     color: '#5aa0c8',
     cover: { armyworm: 0.75, disease: 1 },
+    damage: 1,
+  },
+  {
+    id: 'electric',
+    label: 'Battery sprayer',
+    name: 'Battery knapsack sprayer',
+    does: 'A knapsack with a rechargeable pump: no pumping by hand, an even pressure, still aimed into each funnel.',
+    bestFor: 'Armyworm on a bigger farm, without tired arms.',
+    cost: 0,
+    color: '#7a6cc4',
+    cover: { armyworm: 1, disease: 0.9 },
     damage: 1,
   },
   {
@@ -275,7 +289,9 @@ export type TractorId = TractorKind['id'];
 export const TRACTOR_PLOT: Record<TractorId, { fuel: number; compaction: number; speed: number; teach: string }> = {
   compact: { fuel: 24 * FARM_SCALE, compaction: 1, speed: 0.85, teach: 'Light on the soil. Slowest; cheapest on fuel.' },
   standard: { fuel: 36 * FARM_SCALE, compaction: 0.99, speed: 1, teach: 'Packs the soil a little. Middle speed and fuel.' },
+  walking: { fuel: 14 * FARM_SCALE, compaction: 1, speed: 0.7, teach: 'Walk behind it. Slowest of all, but the cheapest to run and kind to the soil.' },
   large: { fuel: 56 * FARM_SCALE, compaction: 0.96, speed: 1.25, teach: 'Fastest, but packs the soil (less grain) and burns the most fuel.' },
+  fourwd: { fuel: 44 * FARM_SCALE, compaction: 0.98, speed: 1.15, teach: 'Fast and sure on wet ground; packs the soil a little and burns more fuel.' },
 };
 
 /** Land turned by a tractor: the yield factor of its land prep (a hand hoe is 0.95, oxen 1). */

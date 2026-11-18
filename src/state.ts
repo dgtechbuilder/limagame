@@ -1,24 +1,25 @@
 import { farmSignal } from './business/signal';
+import { idBlock, lockBlock } from './unlock/model';
 import { evidenceReduce, trackEvidence, type EvidenceAction, type EvidenceState } from './evidence/model';
-import { WATER, type DrawPolicy } from './water/config';
+import { WATER, coverPlanOf, waterBuyOf, waterBuyPrice, type DrawPolicy, type WaterBuyId } from './water/config';
 import { capacityOf, coverQuote, tankOf } from './water/model';
 import { treatmentOf } from './care/treatments';
 import type { TankState } from './water/model';
 import type { Ledger } from './credits/ledger';
 import { trackWater } from './water/track';
-import { ROWS_PER_FARM } from './strategy/data';
+import { DIMENSIONS, ROWS_PER_FARM } from './strategy/data';
 import { riskReduce, type RiskAction, type RiskState } from './risk/model';
 import { LIFE, type CareId, type CoopId, type Group, type IssueId, type PreventId, type ShedId } from './livestock/config';
 import { buildCoop, buildShed, doCare, doPrevent, fixIssue, lifeOf, type LifeEvent, type LifeState } from './livestock/model';
 import { trackWallet, type WalletState } from './wallet/model';
-import { POWER, stepOf, type LoadId, type StepId as PowerStepId } from './power/config';
-import { loadsAvailable, powerOf, stepBlock, type PowerState } from './power/model';
+import { POWER, partOptionOf, stepOf, type LoadId, type StepId as PowerStepId } from './power/config';
+import { fuelTankL, loadsAvailable, powerOf, stepBlock, type PowerState } from './power/model';
 import { HUB, hubOf, levelOf as hubLevel, lessonOf, type HubSection, type HubState } from './tractor/hub';
 import { sell as sellProduce, stock, type ProduceId, type ProduceState } from './produce/model';
 import { GARDEN, GARDEN_NAMES, cropOf as gardenCrop, gardenOf, harvestKg, type GardenCropId, type GardenState } from './garden/model';
 import { trackSystems, coldRoom, repairCut } from './systems/track';
 import { trackLife } from './livestock/track';
-import { measureOf, type MeasureId } from './security/config';
+import { MEASURES, measureOf, type MeasureId } from './security/config';
 import { cropsTaken, harvestLessTheft, securityOf, storeTheftShare, type SecurityState } from './security/model';
 import { useEffect, useReducer, useRef } from 'react';
 import { FARMS, ROUND_POINTS, dayNumber } from './rounds/farms';
@@ -42,6 +43,8 @@ import {
   trialCost,
   setChoice,
   suggestPlans,
+  planOptionBlock,
+  planOptionOpen,
   type Plan,
   type StepKey,
   type Trial,
@@ -51,7 +54,7 @@ import { FOLLOW_UP } from './care/data';
 import { FULL, ROUTINE_POINTS, carryNeeded, doneMask, emptyField, followUpLeft, plotLocked, routineLeft, treatCostFor, treatLeft, type Carry, type Field } from './world/field';
 import { TRACTOR_BONUS, type ImplId } from './tractor/data';
 import { rewardFor } from './tractor/sim';
-import { OPTIONS, ROUTINE, TRACTOR_PLOT, plotCost, setPlotInput, toolName, type PlotJob, type PlotKind, type TractorId } from './plots/data';
+import { OPTIONS, ROUTINE, TRACTOR_PLOT, plotCost, setPlotInput, toolName, tractorName, type PlotJob, type PlotKind, type TractorId } from './plots/data';
 import { initialClimate, type ClimateState } from './climate/model';
 import { settleDays, trackClimate } from './climate/track';
 import { achClock, trackAchievements } from './achievements/track';
@@ -77,6 +80,7 @@ import {
   TASK_TIPS,
   TASK_USES_ITEM,
   itemsFor,
+  shopIndex,
   type HarvestChoice,
   type ShopTab,
   type StepId,
@@ -588,10 +592,10 @@ export type Action =
   /** how a treatment is done (care/treatments.ts) */
   | { type: 'treatChoose'; farm: number; day: number; id: string }
   /** water (src/water): buy piped water or a bowser; change the herd; how the farm draws on the shared dam; crop cover */
-  | { type: 'waterBuy'; kind: 'piped' | 'transported' }
+  | { type: 'waterBuy'; kind: WaterBuyId }
   | { type: 'herdSet'; cows: number; hens: number }
   | { type: 'drawPolicy'; policy: DrawPolicy }
-  | { type: 'coverBuy' }
+  | { type: 'coverBuy'; plan?: string }
   /** a row's strategy (src/strategy): one option on one dimension; row -1 sets every row of the farm */
   | { type: 'strategySet'; farm: number; row: number; dim: string; option: string }
   /** the animals (src/livestock): a day's job, a fix for a problem, a prevention, the coop, buying or selling */
@@ -606,7 +610,7 @@ export type Action =
   /** the cow shed (from day 3) */
   | { type: 'shedBuild'; id: ShedId }
   /** the power system: a part put in (score: how its mini-game went), a load switched, diesel bought */
-  | { type: 'powerInstall'; id: PowerStepId; score: number; loads?: LoadId[] }
+  | { type: 'powerInstall'; id: PowerStepId; score: number; loads?: LoadId[]; option?: string }
   | { type: 'powerLoad'; id: LoadId; on: boolean }
   | { type: 'powerFuel'; litres: number }
   /** the tractor screen: a section's mini-game done (score 0 to 1) */
@@ -701,6 +705,8 @@ function play(s: GameState, a: Action): GameState {
       return { ...s, onboarded: true };
     case 'buy': {
       if (KEEPS.has(a.id) && s.inventory.includes(a.id)) return { ...s, toast: toast(`You already have a ${a.name.toLowerCase()}`) };
+      const gate = lockBlock(s, shopIndex(a.id), a.name);
+      if (gate) return { ...s, toast: toast(gate) };
       if (s.coins < a.price) return { ...s, toast: toast(`You need ${money(a.price)} for ${a.name}`) };
       return {
         ...s,
@@ -810,6 +816,8 @@ function play(s: GameState, a: Action): GameState {
       const from = STORAGE_OPTIONS.find(o => o.id === s.storage);
       const to = STORAGE_OPTIONS.find(o => o.id === a.id);
       if (!to) return s;
+      const gate = idBlock(s, STORAGE_OPTIONS, a.id);
+      if (gate) return { ...s, toast: toast(gate) };
       const next = { ...s, storage: a.id };
       // a move to storage that loses less is an upgrade: a dialog says what it changes, unless it was turned off
       if (!from || to.loss >= from.loss || s.settings.upgradeNotes === false || s.stage !== SELLING || !s.harvested) return next;
@@ -991,13 +999,15 @@ function play(s: GameState, a: Action): GameState {
     case 'trialPlan': {
       const t = s.trial;
       if (!t || t.phase !== 'plan' || (t.guided && a.farm === 0)) return s;
+      const locked = planOptionBlock(s, a.key, a.value);
+      if (locked) return { ...s, toast: toast(locked) };
       const plans = t.plans.map((p, i) => (i === a.farm ? setChoice(p, a.key, a.value) : p));
       return { ...s, trial: { ...t, plans } };
     }
     case 'trialSuggest': {
       const t = s.trial;
       if (!t || t.phase !== 'plan') return s;
-      return { ...s, trial: { ...t, plans: suggestPlans(t.plans[0], t.plans.length, Math.floor(Math.random() * 7)) } };
+      return { ...s, trial: { ...t, plans: suggestPlans(t.plans[0], t.plans.length, Math.floor(Math.random() * 7), (key, id) => planOptionOpen(s, key, id)) } };
     }
     case 'trialPlant': {
       const t = s.trial;
@@ -1182,13 +1192,15 @@ function play(s: GameState, a: Action): GameState {
         return { ...s1, field, trial, points: s1.points + points, ...gainXp(s1, 0.03), toast: toast(`${farmName(a.farm)} ${ROUTINE[due.job].done} · +${points} points`) };
       }
       if (bonus) return { ...s1, field, points: s1.points + bonus, ...gainXp(s1, 0.02), toast: toast(`Tractor bonus · +${bonus} points · ${farmName(a.farm)} done by tractor${fuel ? ` · −${money(fuel)} of fuel` : ''}`) };
-      if (fuel && a.rig) return { ...s1, field, toast: toast(`${farmName(a.farm)}: the ${a.rig.tractor} tractor's ${toolName(a.rig.tool).toLowerCase()} at work · −${money(fuel)} of fuel`) };
+      if (fuel && a.rig) return { ...s1, field, toast: toast(`${farmName(a.farm)}: the ${tractorName(a.rig.tractor).toLowerCase()} tractor's ${toolName(a.rig.tool).toLowerCase()} at work · −${money(fuel)} of fuel`) };
       return { ...s1, field };
     }
     case 'plotSet': {
       const t = s.trial;
       if (!t || t.phase === 'done') return s;
       const rows = plotsOf(t, a.farm);
+      const gate = idBlock(s, OPTIONS[a.kind], a.value);
+      if (gate && rows[a.plot]?.[a.kind] !== a.value) return { ...s, toast: toast(gate) };
       const next = setPlotInput(rows, a.kind, a.plot, a.value);
       if (rows[a.plot][a.kind] === next[a.plot][a.kind]) return s;
       // a plot already sown, spread or sprayed keeps what it has
@@ -1383,15 +1395,17 @@ function play(s: GameState, a: Action): GameState {
       const cap = capacityOf(s);
       const room = Math.max(0, cap - tank.level);
       if (room < 1) return { ...s, toast: toast('The tank is full') };
-      const o = a.kind === 'piped' ? WATER.piped : WATER.transported;
+      const gate = idBlock(s, WATER.buys, a.kind);
+      if (gate) return { ...s, toast: toast(gate) };
+      const o = waterBuyOf(a.kind);
       const litres = Math.min(room, o.litres);
-      const price = a.kind === 'piped' ? Math.round((litres / 1000) * WATER.piped.per1000) : WATER.transported.price;
+      const price = waterBuyPrice(o, litres);
       if (s.coins < price) return { ...s, toast: toast(`You need ${money(price)} for that water`) };
       return {
         ...s,
         coins: s.coins - price,
-        tank: { ...tank, level: tank.level + litres, bought: { ...tank.bought, [a.kind]: tank.bought[a.kind] + litres } },
-        toast: toast(`${fmt(litres)} L ${a.kind === 'piped' ? 'of piped water' : 'delivered by bowser'} · −${money(price)}`),
+        tank: { ...tank, level: tank.level + litres, bought: { ...tank.bought, [a.kind]: (tank.bought[a.kind] ?? 0) + litres } },
+        toast: toast(`${fmt(litres)} L ${a.kind === 'piped' ? 'of piped water' : a.kind === 'transported' ? 'delivered by bowser' : `· ${o.name.toLowerCase()}`} · −${money(price)}`),
       };
     }
     case 'herdSet': {
@@ -1437,24 +1451,25 @@ function play(s: GameState, a: Action): GameState {
       return 'error' in r ? { ...s, toast: toast(r.error) } : { ...r.state, ...gainXp(s, 0.1), points: s.points + 60, toast: toast(`${r.text} · +60 points`) };
     }
     case 'powerInstall': {
-      const block = stepBlock(s, a.id, s.coins);
+      const block = stepBlock(s, a.id, s.coins, a.option);
       if (block) return { ...s, toast: toast(block) };
       const st = stepOf(a.id);
+      const opt = partOptionOf(a.id, a.option);
       const p = powerOf(s.power);
       const day = lifeOf(s.life).day;
       const score = Math.max(0, Math.min(1, a.score));
-      const parts = { ...p.parts, [a.id]: { day, score } };
-      const fuel = a.id === 'fuel' ? Math.round(POWER.firstFill * (0.85 + 0.15 * score)) : p.fuel;
+      const parts = { ...p.parts, [a.id]: { day, score, ...(opt ? { option: opt.id } : {}) } };
+      const fuel = a.id === 'fuel' ? Math.round((opt?.fill ?? POWER.firstFill) * (0.85 + 0.15 * score)) : p.fuel;
       const on = a.id === 'switchOn';
       const loads = on ? (a.loads ?? loadsAvailable(s)) : p.loads;
       const pts = on ? POWER.switchOnPoints : POWER.points;
       return {
         ...s,
-        coins: s.coins - st.price,
+        coins: s.coins - (opt?.price ?? st.price),
         points: s.points + pts,
         power: { ...p, parts, fuel, loads, day: on ? day : p.day },
         ...gainXp(s, 0.08),
-        toast: toast(on ? `The power is on: ${loads.length} things powered · +${pts} points` : `${st.name} in · +${pts} points`),
+        toast: toast(on ? `The power is on: ${loads.length} things powered · +${pts} points` : `${st.name} in${opt ? ` (${opt.name})` : ''} · +${pts} points`),
       };
     }
     case 'powerLoad': {
@@ -1467,7 +1482,7 @@ function play(s: GameState, a: Action): GameState {
     case 'powerFuel': {
       const p = powerOf(s.power);
       if (!p.parts.fuel) return { ...s, toast: toast('Put in the diesel tank first (day 6)') };
-      const litres = Math.max(0, Math.min(a.litres, POWER.tankL - p.fuel));
+      const litres = Math.max(0, Math.min(a.litres, fuelTankL(s) - p.fuel));
       if (litres <= 0) return { ...s, toast: toast('The diesel tank is full') };
       const cost = Math.round(litres * POWER.dieselPrice);
       if (s.coins < cost) return { ...s, toast: toast(`You need ${money(cost)} for ${litres} L of diesel`) };
@@ -1525,6 +1540,8 @@ function play(s: GameState, a: Action): GameState {
       };
     }
     case 'shedChoose': {
+      const gate = idBlock(s, OPTIONS[a.kind], a.id);
+      if (gate) return { ...s, toast: toast(gate) };
       const t = s.trial;
       let next: GameState = { ...s, prefs: { ...(s.prefs ?? {}), [a.kind]: a.id } };
       const set: number[] = [];
@@ -1543,6 +1560,8 @@ function play(s: GameState, a: Action): GameState {
     }
     case 'securityBuy': {
       const m = measureOf(a.id);
+      const gate = idBlock(s, MEASURES, a.id);
+      if (gate && !securityOf(s.security).owned.includes(a.id)) return { ...s, toast: toast(gate) };
       const sec = securityOf(s.security);
       if (m.kind === 'nightly') return play(s, { type: 'securityHire', id: a.id, on: true });
       if (sec.owned.includes(a.id)) return { ...s, toast: toast(`You have the ${m.name.toLowerCase()} already`) };
@@ -1559,6 +1578,8 @@ function play(s: GameState, a: Action): GameState {
       const m = measureOf(a.id);
       const sec = securityOf(s.security);
       if (m.kind !== 'nightly' || sec.hired.includes(a.id) === a.on) return s;
+      const gate = a.on ? idBlock(s, MEASURES, a.id) : null;
+      if (gate) return { ...s, toast: toast(gate) };
       return {
         ...s,
         security: { ...sec, hired: a.on ? [...sec.hired, a.id] : sec.hired.filter(x => x !== a.id) },
@@ -1574,9 +1595,12 @@ function play(s: GameState, a: Action): GameState {
       const tank = tankOf(s.tank);
       if (!t || t.phase === 'done') return { ...s, toast: toast('Crop cover is bought for a cycle: plan one first') };
       if (tank.cover?.cycle === t.cycle) return { ...s, toast: toast('This cycle is already covered') };
-      const q = coverQuote(s);
+      const plan = coverPlanOf(a.plan);
+      const gate = idBlock(s, WATER.cover.plans, plan.id);
+      if (gate) return { ...s, toast: toast(gate) };
+      const q = coverQuote(s, plan.id);
       if (s.coins < q.premium) return { ...s, toast: toast(`You need ${money(q.premium)} for crop cover`) };
-      return { ...s, coins: s.coins - q.premium, tank: { ...tank, cover: { cycle: t.cycle, premium: q.premium } }, toast: toast(`Crop cover for cycle ${t.cycle} · −${money(q.premium)}`) };
+      return { ...s, coins: s.coins - q.premium, tank: { ...tank, cover: { cycle: t.cycle, premium: q.premium, plan: plan.id } }, toast: toast(`${plan.name} for cycle ${t.cycle} · −${money(q.premium)}`) };
     }
     case 'treatChoose': {
       const t = s.trial;
@@ -1592,6 +1616,9 @@ function play(s: GameState, a: Action): GameState {
       const f = s.field.cycle === t.cycle ? s.field : emptyField(t.cycle);
       // a row already sown keeps its strategy
       if (t.phase === 'growing' && doneMask(f, t.cycle, a.farm, 'sow')) return { ...s, toast: toast(`${farmName(a.farm)} is already sown: its rows keep their strategies`) };
+      const dimOpts = DIMENSIONS.find(d => d.id === a.dim)?.options ?? [];
+      const gate = idBlock(s, dimOpts, a.option);
+      if (gate) return { ...s, toast: toast(gate) };
       const rows = Array.from({ length: ROWS_PER_FARM }, (_, r) => ({ ...(t.strategies?.[a.farm]?.[r] ?? {}) }));
       rows.forEach((st, r) => {
         if (a.row === -1 || a.row === r) st[a.dim] = a.option;
