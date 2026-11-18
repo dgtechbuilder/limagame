@@ -66,7 +66,7 @@ export function MarketPage({ s, dispatch }: { s: GameState; dispatch: Dispatch<A
                   </b>
                   <small>{p.store[id]} kg in the store</small>
                 </span>
-                <span className="pg-step">
+                <span className="pg-stepper">
                   <button type="button" aria-label={`5 kg less ${PRODUCE[id].name}`} onClick={() => change(id, -5)}>
                     −
                   </button>

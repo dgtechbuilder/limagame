@@ -5,17 +5,22 @@ import { money } from '../money';
 import type { Action, GameState } from '../state';
 import { powerOf } from '../power/model';
 import { repairCut } from '../systems/track';
-import { HUB, LESSONS, SAFETY_STEPS, SERVICE_SPOTS, cannotDrive, faultsFor, hubOf, levelOf, speedOf, type HubSection } from './hub';
+import { HUB, LESSONS, SAFETY_ICONS, SAFETY_STEPS, SERVICE_SPOTS, cannotDrive, faultsFor, hubOf, levelOf, speedOf, type HubSection } from './hub';
+import { TractorYard, type Station, type StationInfo } from './Yard';
+import { LOOKS } from '../first/data';
+import { lifeOf } from '../livestock/model';
 
 /* The tractor screen: what the farm's tractor needs and what the farmer can learn on it. Opened by tapping TRACTOR on
-   the farm, or by walking to the Train spot beside the tractor. Each section is a short mini-game; Hire and Drive
+   the farm, or by walking to the Train spot beside the tractor. It opens in the tractor yard (Yard.tsx), a small
+   place the farmer walks round, with a station for each section; each section is a short mini-game. Hire and Drive
    hand back to the farm (the oxen or the tractor plough the farms; the farmer hops on). */
 
 const SECTIONS: { id: HubSection; label: string; icon: string; does: string }[] = [
+  { id: 'yard', label: 'Yard', icon: '🏡', does: 'Walk round the tractor yard: each station is a mini-game.' },
   { id: 'train', label: 'Train', icon: '🎓', does: 'Drive the practice course round the cones: a better driver drives faster.' },
   { id: 'learn', label: 'Learn', icon: '📖', does: 'Short lessons: the tractor’s parts, working safely, looking after the soil.' },
   { id: 'safety', label: 'Safety check', icon: '🦺', does: 'The walk-round before starting, in the right order.' },
-  { id: 'service', label: 'Service', icon: '🛢', does: 'Check the oil and filters, grease the nipples: keeps it in good condition.' },
+  { id: 'service', label: 'Service', icon: '🛢️', does: 'Check the oil and filters, grease the nipples: keeps it in good condition.' },
   { id: 'repair', label: 'Repair', icon: '🔧', does: 'Find what is wrong and fix it: a worn tractor drives slower, then will not start.' },
   { id: 'refuel', label: 'Refuel', icon: '⛽', does: 'Diesel from the farm’s tank (the power yard) or the pump in town.' },
   { id: 'hire', label: 'Hire', icon: '🐂', does: 'The oxen or the tractor plough the farms whose plan hires them.' },
@@ -30,7 +35,7 @@ export function gameOf(section: HubSection, s: GameState, lesson: string): GameS
     case 'learn':
       return { type: 'quiz', questions: LESSONS.find(l => l.id === lesson)!.questions };
     case 'safety':
-      return { type: 'order', steps: SAFETY_STEPS };
+      return { type: 'order', steps: SAFETY_STEPS, icons: SAFETY_ICONS };
     case 'service':
       return { type: 'tap', scene: 'tractor', verb: 'Checked', spots: SERVICE_SPOTS, seconds: 20, ordered: true, mark: '✓' };
     case 'repair':
@@ -65,12 +70,37 @@ export function TractorHub({
   const h = hubOf(s.hub);
   const [lesson, setLesson] = useState(LESSONS[0].id);
   const [playing, setPlaying] = useState(false);
+  /** the section was opened from a station in the yard: Back (and a finished game) walks back out to it */
+  const [fromYard, setFromYard] = useState(section === 'yard');
   const sec = SECTIONS.find(x => x.id === section)!;
   const cut = repairCut(s);
   const farmFuel = powerOf(s.power).parts.fuel ? powerOf(s.power).fuel : null;
   const lvl = levelOf(h.xp);
   const block = cannotDrive(h);
   const game = gameOf(section, s, lesson);
+  const look = LOOKS[s.farmer?.look ?? 0] ?? LOOKS[0];
+  const today = lifeOf(s.life).day;
+  const stations: StationInfo[] = SECTIONS.filter((x): x is typeof x & { id: Station } => x.id !== 'yard').map(x => ({
+    id: x.id,
+    label: x.label === 'Safety check' ? 'Safety' : x.label,
+    icon: x.icon,
+    best: h.best[x.id],
+    due:
+      x.id === 'repair' && h.condition < HUB.worn
+        ? 'the tractor is worn'
+        : x.id === 'service' && h.condition < 70
+          ? 'due a service'
+          : x.id === 'refuel' && h.fuel < 10
+            ? 'the tank is low'
+            : x.id === 'hire' && hire.ready
+              ? 'a farm is waiting'
+              : x.id === 'safety' && h.safetyDay !== today
+                ? 'today’s walk-round'
+                : x.id === 'learn' && h.lessons.length < LESSONS.length
+                  ? `${LESSONS.length - h.lessons.length} lesson${LESSONS.length - h.lessons.length === 1 ? '' : 's'} to pass`
+                  : undefined,
+    off: x.id === 'drive' ? (block ?? undefined) : undefined,
+  }));
   const cost = section === 'service' ? Math.round(HUB.serviceCost * (1 - cut)) : section === 'repair' ? Math.round(HUB.repairCost * (1 - cut)) : section === 'refuel' && (farmFuel ?? 0) < HUB.tankL - h.fuel ? Math.round((HUB.tankL - h.fuel) * HUB.pumpPrice) : 0;
   return (
     <Page
@@ -81,14 +111,39 @@ export function TractorHub({
       onTab={onSection}
       dispatch={dispatch}
       onClose={onClose}
-      foot={
-        <>
-          Driver level {lvl} · {Math.round((speedOf(h) - 1) * 100)}% speed
-          <br />
-          Condition {Math.round(h.condition)}% · {Math.round(h.fuel)} L of diesel
-        </>
-      }
     >
+      {section === 'yard' ? (
+        <TractorYard
+          stations={stations}
+          name={s.farmer?.name ?? 'Farmer'}
+          look={{ skin: look.skin, shirt: look.outfit }}
+          onOpen={id => {
+            setFromYard(true);
+            onSection(id);
+          }}
+          top={
+            <>
+              <span className={`ty-chip${lvl > 0 ? ' is-good' : ''}`}>🎓 Driver level {lvl} · {Math.round((speedOf(h) - 1) * 100)}% speed</span>
+              <span className={`ty-chip${h.condition < HUB.worn ? ' is-bad' : ''}`}>🔧 {Math.round(h.condition)}%</span>
+              <span className={`ty-chip${h.fuel < 10 ? ' is-bad' : ''}`}>⛽ {Math.round(h.fuel)} L</span>
+              <span className="ty-chip">📖 {h.lessons.length}/{LESSONS.length} lessons</span>
+            </>
+          }
+          corner={
+            !block && (
+              <button type="button" className="gold-btn ty-hop" onClick={onDrive}>
+                Hop on
+              </button>
+            )
+          }
+        />
+      ) : (
+      <>
+      {fromYard && (
+        <button type="button" className="ty-back" onClick={() => onSection('yard')}>
+          ← Back to the yard
+        </button>
+      )}
       <div className="pg-tiles">
         <Tile label="Driver" value={`Level ${lvl}`} sub={lvl < 3 ? `${HUB.levels[lvl] - h.xp} experience to level ${lvl + 1}` : 'top level'} tone={lvl > 0 ? 'good' : undefined} />
         <Tile label="Condition" value={`${Math.round(h.condition)}%`} sub={h.condition < HUB.worn ? 'worn: drives slower' : 'good'} tone={h.condition < HUB.worn ? 'bad' : 'good'} />
@@ -131,6 +186,8 @@ export function TractorHub({
           Hop on
         </button>
       )}
+      </>
+      )}
       {playing && game && (
         <MiniGame
           title={section === 'learn' ? LESSONS.find(l => l.id === lesson)!.title : sec.label}
@@ -141,6 +198,8 @@ export function TractorHub({
           onDone={score => {
             dispatch({ type: 'tractorHub', section, score, id: section === 'learn' ? lesson : undefined, label: sec.label });
             setPlaying(false);
+            // back out to the yard, to see the stars on the station
+            if (fromYard) onSection('yard');
           }}
         />
       )}

@@ -442,7 +442,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     } else say('On the tractor');
   }
 
-  /** The Tractor button: get off, or open the tractor screen (train, learn, service, repair, refuel, hire, drive). */
+  /** The Tractor button: get off, or open the tractor screen in its yard (train, learn, service, repair, refuel, hire, drive). */
   const toggleRide = () => {
     const w = eng.current;
     if (!w) return;
@@ -451,7 +451,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       return say('Off the tractor: small jobs are done on foot');
     }
     const h = hubOf(sRef.current.hub);
-    setHub(h.condition <= 0 ? 'repair' : h.fuel <= 0 ? 'refuel' : 'drive');
+    setHub(h.condition <= 0 ? 'repair' : h.fuel <= 0 ? 'refuel' : 'yard');
   };
   /** Drive (from the tractor screen): walk to the tractor and hop on. */
   const driveTractor = () => {
@@ -539,7 +539,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       if (!careOpen(st)) return say(`The cows are in your care from day ${LIFE.startDay}: sleep at the farmhouse first`);
       return dispatch({ type: 'open', modal: { kind: 'animals', tab: 'today' } });
     }
-    if (p === 'hire') return setHub(hireInfo(st).ready ? 'hire' : 'train');
+    if (p === 'hire') return setHub(hireInfo(st).ready ? 'hire' : 'yard');
     if (p === 'market') return onMarket();
     if (p === 'house') {
       const tk = nextTask(st.field, tr, dayNumber(), st.coins);

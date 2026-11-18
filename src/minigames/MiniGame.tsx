@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { CoachSays, Coach, Confetti, FloatUp, IconArt, QuizArt, iconFor, type ArtId, type Mood } from './fun';
 
 /* The mini-games: short hands-on moments behind every new job (the power system's parts, the tractor's sections,
    building the coop and the cow shed, planting and harvesting the new farms). One frame for all of them: what to do,
@@ -16,10 +17,10 @@ export type GameSpec =
   | { type: 'tap'; scene: Scene; spots: Pt[]; decoys?: Pt[]; seconds: number; ordered?: boolean; verb: string; mark?: string; hidden?: boolean; spotMark?: string; decoyMark?: string }
   /** connect each cable to its terminal */
   | { type: 'wires'; pairs: { label: string; color: string }[] }
-  /** tap the steps in the right order */
-  | { type: 'order'; steps: string[] }
-  /** answer the questions */
-  | { type: 'quiz'; questions: { q: string; options: string[]; right: number; why: string }[] }
+  /** tap the steps in the right order (each step gets a picture from its words, or from icons) */
+  | { type: 'order'; steps: string[]; icons?: string[] }
+  /** answer the questions: each with a drawing (art) or a picture from its words */
+  | { type: 'quiz'; questions: QuizQuestion[] }
   /** turn something to face the right way: a slider, and a meter of how well it faces */
   | { type: 'aim'; target: number; label: string }
   /** drive down a lane and steer round the cones */
@@ -28,6 +29,15 @@ export type GameSpec =
   | { type: 'balance'; loads: { id: string; name: string; kwh: number; need: boolean }[]; supply: number };
 
 export type Scene = 'tractor' | 'yard' | 'rows' | 'orchard';
+
+export interface QuizQuestion {
+  q: string;
+  options: string[];
+  right: number;
+  why: string;
+  /** a drawing for the question (minigames/fun.tsx); without one, a picture from its words */
+  art?: ArtId;
+}
 
 export const stars = (score: number) => (score >= 0.85 ? 3 : score >= 0.6 ? 2 : score > 0 ? 1 : 0);
 
@@ -60,9 +70,9 @@ export function MiniGame({ title, kicker, task, spec, onDone, onClose, doneLabel
         </header>
         {phase === 'intro' && (
           <div className="mg-intro">
-            <p>{task}</p>
+            <CoachSays mood="idle">{task}</CoachSays>
             <button type="button" className="gold-btn mg-go" onClick={() => setPhase('play')}>
-              Start
+              <span aria-hidden="true">▶ </span>Start
             </button>
           </div>
         )}
@@ -73,9 +83,13 @@ export function MiniGame({ title, kicker, task, spec, onDone, onClose, doneLabel
         )}
         {phase === 'result' && (
           <div className="mg-result" role="status">
+            {n >= 2 && <Confetti n={n === 3 ? 34 : 20} spread={1.4} />}
+            <div className="mg-result-coach">
+              <Coach mood={n === 3 ? 'cheer' : n >= 1 ? 'happy' : 'sad'} size={50} />
+            </div>
             <p className="mg-stars" aria-label={`${n} of 3 stars`}>
               {[0, 1, 2].map(i => (
-                <span key={i} className={i < n ? 'is-on' : ''}>
+                <span key={i} className={i < n ? 'is-on' : ''} style={{ animationDelay: `${0.15 + i * 0.22}s` }}>
                   ★
                 </span>
               ))}
@@ -413,28 +427,70 @@ function Wires({ spec, onEnd }: Of<'wires'>) {
 /* ---------------- order ---------------- */
 
 function Order({ spec, onEnd }: Of<'order'>) {
-  const cards = useMemo(() => shuffled(spec.steps.map((t, i) => ({ t, i })), 5), [spec]);
+  const cards = useMemo(() => shuffled(spec.steps.map((t, i) => ({ t, i, icon: spec.icons?.[i] ?? iconFor(t, '🔹') })), 5), [spec]);
   const [done, setDone] = useState(0);
   const [wrong, setWrong] = useState(0);
   const [shake, setShake] = useState<number | null>(null);
+  const [streak, setStreak] = useState(0);
+  const [pop, setPop] = useState(0);
+  const total = spec.steps.length;
   const tap = (i: number) => {
     if (i !== done) {
       setWrong(w => w + 1);
+      setStreak(0);
       setShake(i);
       window.setTimeout(() => setShake(null), 350);
       return;
     }
     setDone(done + 1);
-    if (done + 1 === spec.steps.length) window.setTimeout(() => onEnd(Math.max(0.2, 1 - wrong / spec.steps.length)), 400);
+    setStreak(x => x + 1);
+    setPop(p => p + 1);
+    if (done + 1 === total) window.setTimeout(() => onEnd(Math.max(0.2, 1 - wrong / total)), 700);
   };
+  // the tractor rolls along the road, a checkpoint for each step
+  const at = (k: number) => 16 + (k / total) * 300;
   return (
     <div className="mg-order">
-      <p className="mg-progress">Tap the steps in order · {done} of {spec.steps.length}</p>
+      <div className="mg-road-wrap">
+        <svg viewBox="0 0 340 46" className="mg-road" aria-hidden="true">
+          <rect x={0} y={26} width={340} height={14} rx={7} fill="#c9a37a" />
+          <line x1={8} x2={332} y1={33} y2={33} stroke="#fdedd4" strokeWidth={2} strokeDasharray="8 8" />
+          {spec.steps.map((_, k) => (
+            <g key={k} transform={`translate(${at(k + 1)},33)`}>
+              <circle r={7} fill={k < done ? '#2f9b14' : '#fff8ea'} stroke={k < done ? '#1d6b0c' : '#c9a37a'} strokeWidth={2} />
+              <text y={3.5} fontSize={8} textAnchor="middle" fill={k < done ? '#fff' : '#86604c'} fontWeight={800}>
+                {k + 1}
+              </text>
+            </g>
+          ))}
+          <text x={at(total) + 12} y={24} fontSize={16}>
+            🏁
+          </text>
+          <g className={`mg-road-tractor${shake !== null ? ' is-stall' : ''}`} style={{ transform: `translate(${at(done)}px, 0)` }}>
+            <text y={26} fontSize={20} textAnchor="middle" transform="scale(-1,1)">
+              🚜
+            </text>
+          </g>
+        </svg>
+        <span className="mg-pop-at" style={{ left: `${((at(done) + 4) / 340) * 100}%` }}>
+          {pop > 0 && (
+            <FloatUp key={pop} tone={streak >= 3 ? 'gold' : 'good'}>
+              {streak >= 3 ? `🔥 ${streak} in a row` : '✓ Next!'}
+            </FloatUp>
+          )}
+        </span>
+      </div>
+      <p className="mg-progress">
+        Tap the steps in order · {done} of {total}
+        {wrong > 0 && <b className="mg-time is-bad">{wrong} wrong</b>}
+      </p>
       <div className="mg-cards">
         {cards.map(c => (
           <button key={c.i} type="button" className={`mg-card-btn${c.i < done ? ' is-done' : ''}${shake === c.i ? ' is-wrong' : ''}`} disabled={c.i < done} onClick={() => tap(c.i)}>
-            {c.i < done && <b>{c.i + 1}</b>}
-            {c.t}
+            <span className="mg-card-icon" aria-hidden="true">
+              {c.i < done ? <b>{c.i + 1}</b> : c.icon}
+            </span>
+            <span className="mg-card-text">{c.t}</span>
           </button>
         ))}
       </div>
@@ -444,39 +500,104 @@ function Order({ spec, onEnd }: Of<'order'>) {
 
 /* ---------------- quiz ---------------- */
 
+/** Seconds a question counts as a quick answer. */
+const QUICK_S = 8;
+
 function Quiz({ spec, onEnd }: Of<'quiz'>) {
+  // the answers in a fixed shuffle for each question (a retry is fair), so the right one is not always first
+  const questions = useMemo(
+    () =>
+      spec.questions.map((x, n) => {
+        const order = shuffled(x.options.map((_, k) => k), n * 3 + 1);
+        return { ...x, options: order.map(k => x.options[k]), right: order.indexOf(x.right) };
+      }),
+    [spec],
+  );
   const [i, setI] = useState(0);
   const [picked, setPicked] = useState<number | null>(null);
   const [right, setRight] = useState(0);
-  const q = spec.questions[i];
+  const [streak, setStreak] = useState(0);
+  const [left, setLeft] = useState(QUICK_S);
+  const [quick, setQuick] = useState(false);
+  const q = questions[i];
+  useFrames(dt => setLeft(t => Math.max(0, t - dt)), picked === null);
   const pick = (k: number) => {
     if (picked !== null) return;
     setPicked(k);
-    if (k === q.right) setRight(r => r + 1);
+    if (k === q.right) {
+      setRight(r => r + 1);
+      setStreak(x => x + 1);
+      setQuick(left > 0);
+    } else {
+      setStreak(0);
+      setQuick(false);
+    }
   };
   const next = () => {
-    if (i + 1 >= spec.questions.length) return onEnd(right / spec.questions.length);
+    if (i + 1 >= questions.length) return onEnd(right / questions.length);
     setI(i + 1);
     setPicked(null);
+    setLeft(QUICK_S);
   };
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => {
+      const n = Number(e.key);
+      if (picked === null && n >= 1 && n <= q.options.length) pick(n - 1);
+      else if (picked !== null && e.key === 'Enter') next();
+    };
+    window.addEventListener('keydown', k);
+    return () => window.removeEventListener('keydown', k);
+  });
+  const ok = picked !== null && picked === q.right;
+  const mood: Mood = picked === null ? 'think' : ok ? 'happy' : 'sad';
+  const letters = ['A', 'B', 'C', 'D', 'E'];
   return (
     <div className="mg-quiz">
-      <Progress done={i} total={spec.questions.length} label="Question" />
-      <p className="mg-q">{q.q}</p>
-      <div className="mg-options">
-        {q.options.map((o, k) => (
-          <button key={k} type="button" className={`mg-opt${picked !== null && k === q.right ? ' is-right' : ''}${picked === k && k !== q.right ? ' is-wrong' : ''}`} disabled={picked !== null} onClick={() => pick(k)}>
-            {o}
-          </button>
-        ))}
+      <div className="mg-quiz-top">
+        <Progress done={i} total={questions.length} label="Question" />
+        {streak >= 2 && <span className="mg-streak">🔥 {streak} in a row</span>}
+        <span className={`mg-clock${left <= 0 ? ' is-out' : ''}`} aria-hidden="true" title="Answer quickly for a ⚡">
+          <i style={{ width: `${(left / QUICK_S) * 100}%` }} />
+          <b>⚡</b>
+        </span>
+      </div>
+      <div className="mg-quiz-body" key={i}>
+        <div className={`mg-quiz-art${picked !== null ? (ok ? ' is-right' : ' is-wrong') : ''}`}>
+          {q.art ? <QuizArt art={q.art} /> : <IconArt icon={iconFor(q.q, '❓')} />}
+          <span className="mg-quiz-coach">
+            <Coach mood={mood} size={34} />
+          </span>
+          {ok && <Confetti n={18} spread={0.7} />}
+          {picked !== null && (
+            <FloatUp key={`${i}-${picked}`} tone={ok ? (quick ? 'gold' : 'good') : 'bad'}>
+              {ok ? (quick ? '⚡ Quick and right!' : '✓ Right!') : '✕ Not quite'}
+            </FloatUp>
+          )}
+        </div>
+        <div className="mg-quiz-main">
+          <p className="mg-q">{q.q}</p>
+          <div className="mg-options">
+            {q.options.map((o, k) => (
+              <button key={k} type="button" className={`mg-opt${picked !== null && k === q.right ? ' is-right' : ''}${picked === k && k !== q.right ? ' is-wrong' : ''}`} disabled={picked !== null} onClick={() => pick(k)}>
+                <span className="mg-opt-key" aria-hidden="true">
+                  {picked !== null && k === q.right ? '✓' : picked === k ? '✕' : letters[k]}
+                </span>
+                <span className="mg-opt-icon" aria-hidden="true">
+                  {iconFor(o)}
+                </span>
+                <span className="mg-opt-text">{o}</span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
       {picked !== null && (
-        <div className="mg-why" role="status">
+        <div className={`mg-why${ok ? ' is-right' : ' is-wrong'}`} role="status">
           <p>
-            <b>{picked === q.right ? 'Right.' : 'Not quite.'}</b> {q.why}
+            <b>{ok ? 'Right.' : 'Not quite.'}</b> {q.why}
           </p>
           <button type="button" className="gold-btn mg-go" onClick={next}>
-            {i + 1 >= spec.questions.length ? 'Finish' : 'Next question'}
+            {i + 1 >= questions.length ? 'Finish' : 'Next question'}
           </button>
         </div>
       )}

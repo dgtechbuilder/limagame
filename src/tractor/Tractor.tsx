@@ -423,6 +423,9 @@ export function Tractor({ farm, cycle, best, name, demo, onFinish, onClose, gate
               <span className="care-mark" aria-hidden="true">
                 {checks.includes(k) ? '✓' : ''}
               </span>
+              <span className="care-icon" aria-hidden="true">
+                {k === 'fuel' ? '⛽' : '🔗'}
+              </span>
               <span>{label}</span>
             </button>
           ))}

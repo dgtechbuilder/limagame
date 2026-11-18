@@ -7,6 +7,7 @@ import { track } from '../first/track';
 import { HAZARD_WORDS } from '../trials/model';
 import type { SprayFor } from '../world/field';
 import { KIT, KIT_LESSON, PRODUCTS, type Product } from './data';
+import { Coach, Confetti, iconFor } from '../minigames/fun';
 
 /** What a spray is against, in words: a problem a check found, or stalk borer (scheduled care). */
 const sprayWords = (h: SprayFor) => (h === 'borer' ? 'stalk borer' : HAZARD_WORDS[h]);
@@ -72,6 +73,10 @@ export function Spray({ jobs, name, onDone, onLeave }: { jobs: { farm: number; h
         <div className="kit-art" aria-hidden="true">
           <KitArt on={kit} />
         </div>
+        <span className="care-coach">
+          <Coach mood={said && !said.right ? 'sad' : ready ? 'cheer' : said?.right || kit.length ? 'happy' : 'idle'} size={44} key={`${kit.length}-${at}-${tried.length}`} />
+        </span>
+        {(kitOn || said?.right) && <span className="care-cheer" key={`c${at}-${kitOn}`}><Confetti n={kitOn && !said ? 18 : 22} /></span>}
         {!kitOn ? (
           <div className="care-opts" role="group" aria-label="Safety kit">
             <p className="care-ask">Put on every piece</p>
@@ -79,6 +84,9 @@ export function Spray({ jobs, name, onDone, onLeave }: { jobs: { farm: number; h
               <button type="button" key={k.id} className={`care-opt${kit.includes(k.id) ? ' is-right' : ''}`} aria-pressed={kit.includes(k.id)} onClick={() => wear(k.id)}>
                 <span className="care-mark" aria-hidden="true">
                   {kit.includes(k.id) ? '✓' : ''}
+                </span>
+                <span className="care-icon" aria-hidden="true">
+                  {iconFor(k.label)}
                 </span>
                 <span>{k.label}</span>
               </button>
@@ -91,6 +99,9 @@ export function Spray({ jobs, name, onDone, onLeave }: { jobs: { farm: number; h
               <button type="button" key={p.id} className={`care-opt${tried.includes(p.id) ? ' is-wrong' : ''}`} disabled={tried.includes(p.id)} onClick={() => pick(p)}>
                 <span className="care-mark" aria-hidden="true">
                   {tried.includes(p.id) ? '✕' : ''}
+                </span>
+                <span className="care-icon" aria-hidden="true">
+                  {iconFor(`${p.name} ${p.kind}`, '🧴')}
                 </span>
                 <span>
                   {p.name}

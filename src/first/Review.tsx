@@ -12,6 +12,7 @@ import { speak } from '../speech';
 import { Field, FIELD_H, FIELD_W, FarmerFigure, PartArt, rowGeometry } from './art';
 import { CALLS, PART_LABELS, savedLine, say, stakeLine, type Call, type Look, type PartId, type ShambaReview } from './data';
 import { track } from './track';
+import { Confetti } from '../minigames/fun';
 
 /* One review, driven entirely by a ShambaReview record:
    Look (four parts, tap to zoom) → Spot (tap the rows that look wrong) → Judge (pick a call) → Result. */
@@ -382,6 +383,11 @@ export function Review({
           </svg>
         )}
 
+        {step === 'right' && (
+          <span className="abs" style={{ left: 709, top: 90, width: 0, height: 0 }} aria-hidden="true">
+            <Confetti n={30} spread={1.3} />
+          </span>
+        )}
         {step === 'right' && (
           <svg viewBox="-40 -100 80 104" className="cheer" style={{ position: 'absolute', left: 650, top: 36, width: 118, height: 154 }} aria-hidden="true">
             <FarmerFigure look={look} pose="cheer" />

@@ -14,6 +14,7 @@ import { CALL_GROUPS, CROP_NAME, CYCLE_DAYS, STAGE_LABELS, type CallGroup } from
 import { PhotoPicture } from '../components/PhotoPicture';
 import { photoInfo } from './photos';
 import { ScenePart } from './scene';
+import { Confetti, FloatUp } from '../minigames/fun';
 
 /* One farm check: Look at five pictures (crop, pests & disease, soil, water, state of the farm) → Judge → Result.
    A picture is a real photo when one has been added for it (see photos.ts), and drawn art until then. */
@@ -246,6 +247,8 @@ export function Inspect({
               <RoundPicture round={round} part={round.clue.part} flag={step === 'wrong'} credit />
               <span className="zoom-label">{ROUND_PART_LABELS[round.clue.part]}</span>
               {step === 'right' && <span className="clue-spotted">✓ Clue spotted</span>}
+              {step === 'right' && <Confetti n={28} spread={1.2} />}
+              {step === 'right' && <FloatUp tone="gold">⭐ Good eye!</FloatUp>}
             </div>
             {step === 'right' ? (
               <VisitWin round={round} name={t('{name}')} look={look} payout={payout} second={second} after={after?.right} progress={progress} />
