@@ -23,6 +23,7 @@ type Win = Window & {
     clearEvents: () => void;
     tractorClock: (scale: number) => void;
     driveClock: (scale: number) => void;
+    miniClock: (scale: number) => void;
     plots: { x: number; z: number }[];
   };
   __limaWorld?: {

@@ -59,6 +59,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [The market stall](#the-market-stall)
 - [Farms 7 and 8](#farms-7-and-8)
 - [Mini-games](#mini-games)
+- [The tractor game: the mini farm](#the-tractor-game-the-mini-farm)
 - [Achievements, the daily streak and certificates](#achievements-the-daily-streak-and-certificates)
 - [My Progress: certification levels and learning credits](#my-progress-certification-levels-and-learning-credits)
 - [Partners: billboards, branded products and offers](#partners-billboards-branded-products-and-offers)
@@ -174,6 +175,7 @@ src/
   garden/                  Farms 7 and 8 (spinach, orchard…): model.ts, Garden.tsx
   systems/track.ts         the newer systems through the days: power, gutters, drip, wilting, tractor wear, morning news
   minigames/MiniGame.tsx   the mini-games: timing, hold-to-fill, tap the spots, wires, order, quiz, aim, steer, balance
+  minifarm/                the tractor game: sim.ts (the rules, no DOM), MiniFarm.tsx (the page and its canvas)
   components/Page.tsx      a page with sections down the left (Wallet, Power, Market, New farms, Tractor)
   training/data.ts         farmer training courses and bookings
   farmSize.ts              how big the six farms are (4 acres, 20 plots) and FARM_SCALE
@@ -933,6 +935,7 @@ reload without losing their place, bookmark a page, and use the browser's **Back
 | `#/rounds` · `#/rounds/six-farms` | Field rounds: every bed, or today's checks of the six farms |
 | `#/mission` | Mission: the six farms |
 | `#/tractor-business` | The tractor business |
+| `#/tractor-game` | The tractor game: plough the mini farm in 30 seconds |
 | `#/settings/my-farmer` · `game` · `display` · `help` | Settings, by section |
 | `#/climate/overview` · `land-and-pay` · `farm-areas` · `emissions` · `water-and-soil` · `shocks` · `activity` | Climate, by section |
 | `#/shop/food` · `fertilizer` · `water-tanks` · `equipment` | Shop, by tab |
@@ -1444,6 +1447,25 @@ the crop's health, unless the solar drip is on. The harvest goes into the store 
 **timing** (press in the green), **hold** (hold to fill, let go at the line), **tap** (tap the right spots before the
 time runs out, in order or not, decoys cost points), **wires**, **order**, **quiz**, **aim**, **steer** and
 **balance**. Every game is played with taps or a held press (keyboard too).
+
+## The tractor game: the mini farm
+
+**Tractor game** in the main menu (address `#/tractor-game`): a small farm seen from above, with **five rocks, three
+trees and four holes** on it, placed fresh every game. The player drives the tractor and plough over the farm and
+has **30 seconds** to plough it.
+
+- Tap and hold where the tractor should go (or steer with the arrow keys / WASD). The plough turns a 40-pixel strip
+  behind the tractor; the land under the rocks, trees and holes doesn't count.
+- **Plough 80% of the land before the clock runs out to win.** Running out of time loses.
+- **A rock or a tree** stops the tractor and costs **3 seconds** off the clock.
+- **A hole** swallows the tractor: the game is lost on the spot.
+- A win scores stars by the time left (3 stars with 10 s or more, 2 with 5 s or more, else 1). The best time left
+  is kept on the phone. The main menu pauses the clock.
+
+Every thing on the farm sits clear of the gate, the fence and every other thing, with room for the tractor to pass
+between. A tidy row-by-row drive on an open farm finishes with about 10 seconds to spare. All the numbers are in
+`MINI_FARM` in `src/minifarm/sim.ts`. Events: `minifarm_start`, `minifarm_done {outcome, share, left, bumps, stars}`.
+Tests: `tests/minifarm-sim.spec.ts` (the rules) and `tests/minifarm.spec.ts` (the page).
 
 ## The first session on the 3D farm
 

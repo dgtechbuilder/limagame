@@ -11,6 +11,7 @@ import { REVIEW_BASE, initialState, type Action, type GameState } from '../state
 import { LAYOUTS } from '../tractor/data';
 import { simClock } from '../tractor/sim';
 import { driveClock } from '../business/drive';
+import { miniClock } from '../minifarm/sim';
 import { sfxLog } from '../sfx';
 import { wakalaCase, type WakalaCase } from '../trials/samples';
 import { PLACES } from '../world/engine';
@@ -67,6 +68,10 @@ export function install(get: () => GameState, dispatch: Dispatch<Action>) {
     /** the business day's ten-second drives run this many times faster */
     driveClock(scale: number) {
       driveClock.scale = scale;
+    },
+    /** the tractor game's 30 seconds run this many times faster */
+    miniClock(scale: number) {
+      miniClock.scale = scale;
     },
   };
   (window as unknown as { __lima: typeof api }).__lima = api;
