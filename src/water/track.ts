@@ -74,7 +74,7 @@ export function trackWater(prev: GameState, s: GameState, a: Action): GameState 
       const t = s.trial;
       const tank = tankOf(next.tank);
       if (!t?.results || prev.trial?.phase !== 'growing' || !tank.cover || tank.cover.cycle !== t.cycle) break;
-      const pay = coverPayout(t);
+      const pay = coverPayout(t, tank.cover.plan);
       if (pay > 0) next = { ...next, coins: next.coins + pay, tank: { ...tank, paidOut: tank.paidOut + pay }, toast: toast(`Crop cover paid ${money(pay)} for the weather's damage`) };
       break;
     }

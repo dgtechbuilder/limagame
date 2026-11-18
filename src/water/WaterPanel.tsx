@@ -1,8 +1,10 @@
-import type { Dispatch } from 'react';
+import { OpenLine } from '../unlock/Lock';
+import { isOpen, lockShort, lockText } from '../unlock/model';
+import { useState, type Dispatch } from 'react';
 import type { Action, GameState } from '../state';
 import { money } from '../money';
 import { CREDIT_TYPES, ledgerOf, type CreditType } from '../credits/ledger';
-import { WATER } from './config';
+import { WATER, coverPlanOf, waterBuyPrice } from './config';
 import { animalsUse, capacityOf, coverQuote, damDay, forecastOf, hasCover, irrigationWant, rainIn, tankOf, useToday } from './model';
 
 /* Climate › Water: the tank as a real object (its level, what comes in and goes out today), buying water, the cows
@@ -39,7 +41,8 @@ export function WaterTab({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
   const use = useToday(s);
   const net = rain - use.total;
   const daysLeft = net < 0 ? Math.floor(tank.level / -net) : null;
-  const q = coverQuote(s);
+  const [plan, setPlan] = useState('standard');
+  const q = coverQuote(s, plan);
   const covered = hasCover(s);
   const want = irrigationWant(s);
   const dam = damDay(tank.dam, f, want, tank.policy);
@@ -85,19 +88,23 @@ export function WaterTab({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
             </dd>
           </div>
         </dl>
+        <OpenLine s={s} total={WATER.buys.length} what="ways to buy water" />
         <div className="wt-buy">
-          <button type="button" onClick={() => dispatch({ type: 'waterBuy', kind: 'piped' })}>
-            <b>Piped water</b>
-            <small>
-              {L(WATER.piped.litres)} · {money(Math.round((WATER.piped.litres / 1000) * WATER.piped.per1000))}
-            </small>
-          </button>
-          <button type="button" onClick={() => dispatch({ type: 'waterBuy', kind: 'transported' })}>
-            <b>A bowser</b>
-            <small>
-              {L(WATER.transported.litres)} · {money(WATER.transported.price)}
-            </small>
-          </button>
+          {WATER.buys.map((b, i) =>
+            isOpen(s, i) ? (
+              <button key={b.id} type="button" title={b.does} data-option={b.id} onClick={() => dispatch({ type: 'waterBuy', kind: b.id })}>
+                <b>{b.name}</b>
+                <small>
+                  {L(b.litres)} · {money(waterBuyPrice(b))}
+                </small>
+              </button>
+            ) : (
+              <button key={b.id} type="button" className="is-gated" disabled title={lockText(s, i) ?? undefined} data-option={b.id}>
+                <b>🔒 {b.name}</b>
+                <small>{lockShort(s, i)}</small>
+              </button>
+            ),
+          )}
         </div>
         <p className="set-body wt-note">
           A bigger tank (Shop › Tanks) catches more of the rain. With the tank low, a drought costs more and the rows can’t be watered by hand.
@@ -139,22 +146,41 @@ export function WaterTab({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
           Crop cover
         </p>
         <div className={`wt-cover${covered ? ' is-on' : ''}`}>
-          <p className="wt-sub">
-            Pays back {Math.round(WATER.cover.payout * 100)}% of what drought, flood and hail take at harvest. Water practices bring the price down:
-          </p>
+          <p className="wt-sub">{coverPlanOf(plan).does} Water practices bring the price down:</p>
           <ul className="cl-list">
             {q.lines.length ? q.lines.map(l => <li key={l.label}>{l.label}: −{Math.round(l.off * 100)}%</li>) : <li>No water practices yet: mulch, zai pits, morning watering, a full tank.</li>}
           </ul>
           {covered ? (
-            <p className="wt-cover-on">Covered this cycle ({money(tankOf(s.tank).cover!.premium)})</p>
+            <p className="wt-cover-on">
+              {coverPlanOf(tankOf(s.tank).cover!.plan).name} this cycle ({money(tankOf(s.tank).cover!.premium)})
+            </p>
           ) : (
-            <button type="button" className="wt-cover-buy" onClick={() => dispatch({ type: 'coverBuy' })} aria-label={`Cover this cycle for ${money(q.premium)}`}>
+            <>
+              <div className="wt-plans" role="radiogroup" aria-label="Cover plan">
+                {WATER.cover.plans.map((p, i) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={plan === p.id}
+                    disabled={!isOpen(s, i)}
+                    title={lockText(s, i) ?? p.does}
+                    className={`${plan === p.id ? 'is-on' : ''}${isOpen(s, i) ? '' : ' is-gated'}`}
+                    onClick={() => setPlan(p.id)}
+                  >
+                    {isOpen(s, i) ? '' : '🔒 '}
+                    {p.name.replace(' cover', '').replace(', through the co-op', '')} · {Math.round(p.payout * 100)}%
+                  </button>
+                ))}
+              </div>
+            <button type="button" className="wt-cover-buy" onClick={() => dispatch({ type: 'coverBuy', plan })} aria-label={`Cover this cycle for ${money(q.premium)}`}>
               <span>Cover this cycle</span>
               <b>
                 {money(q.premium)}
                 {q.off > 0 && <s>{money(q.base)}</s>}
               </b>
             </button>
+            </>
           )}
         </div>
       </div>

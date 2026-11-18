@@ -5,6 +5,7 @@
    problem costs when it is caught or missed) is in the tables below, so an agronomist can review and tune them
    without touching any code. The numbers are illustrative until that review is done. */
 
+import { isOpen, lockBlock, type UnlockHost } from '../unlock/model';
 import { FARM_SCALE } from '../farmSize';
 import {
   FERTS,
@@ -949,7 +950,21 @@ export function causeOf(h: TrialHazard, p: Plan, f: Forecast, rows?: PlotRecord[
 /* ---------------- planning help ---------------- */
 
 /** One change per farm, each on a different step, so every farm tests one thing against Farm 1. */
-export function suggestPlans(base: Plan, count: number, salt = 0): Plan[] {
+/** The plan steps that buy something: their options open a few at a time (src/unlock/model.ts). The planting date and
+    the harvest are timing, open from the start. */
+export const BUYING_STEPS: StepKey[] = ['land', 'seed', 'fert', 'pest', 'water'];
+
+/** A plan step's option can be chosen now. */
+export const planOptionOpen = (s: UnlockHost, key: StepKey, id: string) => !BUYING_STEPS.includes(key) || isOpen(s, stepOf(key).options.findIndex(x => x.id === id));
+/** Why a plan step's option can't be chosen yet, or null. */
+export const planOptionBlock = (s: UnlockHost, key: StepKey, id: string) => {
+  if (planOptionOpen(s, key, id)) return null;
+  const st = stepOf(key);
+  const i = st.options.findIndex(x => x.id === id);
+  return lockBlock(s, i, `${st.label}: ${st.options[i].label}`);
+};
+
+export function suggestPlans(base: Plan, count: number, salt = 0, open: (key: StepKey, id: string) => boolean = () => true): Plan[] {
   const out: Plan[] = [base];
   const steps = FARM_STEP_KEYS;
   let k = salt;
@@ -957,7 +972,8 @@ export function suggestPlans(base: Plan, count: number, salt = 0): Plan[] {
     let plan = base;
     for (let tries = 0; tries < 40; tries++) {
       const key = steps[(k + tries) % steps.length];
-      const opts = stepOf(key).options.filter(x => x.id !== String(base[key]));
+      const opts = stepOf(key).options.filter(x => x.id !== String(base[key]) && open(key, x.id));
+      if (!opts.length) continue;
       const pick = opts[(i + salt + tries) % opts.length];
       const candidate = setChoice(base, key, pick.id);
       if (!out.some(q => samePlan(q, candidate))) {

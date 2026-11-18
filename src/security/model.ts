@@ -11,6 +11,7 @@ import { coopOption, shedOption } from '../livestock/config';
 import { lightsLit } from '../power/model';
 import { lifeOf, type LifeEvent, type LifeState } from '../livestock/model';
 import { roll, rollInt } from '../livestock/rand';
+import { isOpen, type UnlockHost } from '../unlock/model';
 import { LATE_HARVEST, MAX_CUT, MEASURES, STORE_THEFT, TAKES, TARGETS, measureOf, type MeasureId, type Target } from './config';
 
 export interface NightReport {
@@ -127,7 +128,7 @@ export function exposure(s: SecurityHost, cycleDay: CycleDay): Exposure[] {
   const tools = toolsIn(s);
   row('tools', tools.length ? `${tools.length} tool${tools.length === 1 ? '' : 's'} in the shed` : null, 1, []);
   const stored = s.stage === 6 && !!s.harvested;
-  row('store', stored ? `${s.harvested!.bags} bags in ${s.storage === 'home' ? 'home storage' : s.storage === 'coop' ? 'the co-op warehouse' : 'cold storage'}` : null, stored ? (STORE_THEFT[s.storage] ?? 0.06) / STORE_THEFT.home : 1, stored && s.storage !== 'home' ? ['a guarded warehouse'] : []);
+  row('store', stored ? `${s.harvested!.bags} bags in ${s.storage === 'home' ? 'home storage' : s.storage === 'hermetic' ? 'hermetic bags at home' : s.storage === 'silo' ? 'a metal silo' : s.storage === 'coop' ? 'the co-op warehouse' : 'cold storage'}` : null, stored ? (STORE_THEFT[s.storage] ?? 0.06) / STORE_THEFT.home : 1, stored && s.storage !== 'home' && s.storage !== 'hermetic' ? [s.storage === 'silo' ? 'a locked silo' : 'a guarded warehouse'] : []);
   const sec = securityOf(s.security);
   row('cash', sec.cash > 0 ? 'money from today’s sale' : null, 1, []);
   const dry = t?.forecast === 'dry';
@@ -139,7 +140,7 @@ export function exposure(s: SecurityHost, cycleDay: CycleDay): Exposure[] {
 /** The strongest measure not yet in place against a target: the tip after a theft. */
 export function bestAgainst(s: SecurityHost, target: Target): string | undefined {
   const ids = activeMeasures(s);
-  const best = MEASURES.filter(m => !ids.includes(m.id) && (m.cut[target] ?? 0) > 0 && (!m.needs || s.biz)).sort((a, b) => (b.cut[target] ?? 0) - (a.cut[target] ?? 0))[0];
+  const best = MEASURES.filter(m => !ids.includes(m.id) && (m.cut[target] ?? 0) > 0 && (!m.needs || s.biz) && isOpen(s as UnlockHost, MEASURES.indexOf(m))).sort((a, b) => (b.cut[target] ?? 0) - (a.cut[target] ?? 0))[0];
   if (target === 'hens' || target === 'predators') {
     const l = lifeOf(s.life);
     if (!l.coop) return 'Build a coop and shut its door every night (Animals › Coop).';

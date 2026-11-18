@@ -5,7 +5,7 @@ import { FORECASTS, CHECK_DAYS, harvestFarm, type Forecast, type Trial } from '.
 import { FACTORS } from '../climate/model';
 import { emptyField, setupLeft, type Field } from '../world/field';
 import { rowEffect, strategiesOf, chosen } from '../strategy/model';
-import { WATER, type DrawPolicy, type Herd } from './config';
+import { WATER, coverPlanOf, type DrawPolicy, type Herd, type WaterBuyId } from './config';
 
 export interface WaterDay {
   label: string;
@@ -39,9 +39,9 @@ export interface TankState {
   /** newest first, the last 14 days */
   days: WaterDay[];
   /** litres bought, all time */
-  bought: { piped: number; transported: number };
+  bought: Partial<Record<WaterBuyId, number>> & { piped: number; transported: number };
   /** crop cover bought for a cycle, and its premium */
-  cover: { cycle: number; premium: number } | null;
+  cover: { cycle: number; premium: number; plan?: string } | null;
   /** crop cover paid out, all time (stored money) */
   paidOut: number;
   /** the irrigation each farm got this cycle, as a share of what its plan wanted: { cycle, want, got } */
@@ -159,7 +159,7 @@ export function deliveredShare(tank: TankState, cycle: number): number {
 
 /* ---------------- crop cover, priced on the farm's water practices ---------------- */
 
-export function coverQuote(s: WaterHost) {
+export function coverQuote(s: WaterHost, plan?: string) {
   const c = WATER.cover;
   const t = s.trial;
   const farms = t?.plans.length ?? 6;
@@ -176,7 +176,7 @@ export function coverQuote(s: WaterHost) {
   }
   if (tank.policy === 'fair') lines.push({ label: 'Draws its fair share of the dam', off: c.fairShare.off });
   const off = Math.min(c.maxOff, lines.reduce((n, x) => n + x.off, 0));
-  const base = Math.round(c.premiumPerFarm * farms * (c.forecast[f] ?? 1));
+  const base = Math.round(c.premiumPerFarm * farms * (c.forecast[f] ?? 1) * coverPlanOf(plan).price);
   return { base, off, premium: Math.round(base * (1 - off)), lines, forecast: f };
 }
 
@@ -186,15 +186,16 @@ export const hasCover = (s: WaterHost) => {
 };
 
 /** What crop cover pays at harvest: a share of what drought, flood and hail took off every farm. */
-export function coverPayout(t: Trial): number {
+export function coverPayout(t: Trial, plan?: string): number {
+  const cp = coverPlanOf(plan);
   if (!t.results) return 0;
   let lost = 0;
   t.results.forEach((r, farm) => {
     const gross = r.lost < 1 ? r.income / Math.max(0.05, 1 - r.lost) : r.income;
-    for (const p of r.problems) if (p.hazard === 'drought' || p.hazard === 'flood' || p.hazard === 'hail') lost += p.loss * gross;
+    for (const p of r.problems) if (cp.hazards.includes(p.hazard)) lost += p.loss * gross;
     void farm;
   });
-  return Math.round(lost * WATER.cover.payout);
+  return Math.round(lost * cp.payout);
 }
 
 /** A farm's harvest value before problems (for the cover's sums). */

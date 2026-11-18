@@ -7,6 +7,7 @@ import { WATER, type Herd } from '../water/config';
 import { animalsUse, tankOf, type TankState } from '../water/model';
 import type { Forecast, Trial } from '../trials/model';
 import { roll } from './rand';
+import { idBlock, type UnlockHost } from '../unlock/model';
 import {
   CARE,
   COOPS,
@@ -268,6 +269,8 @@ export function doPrevent<S extends LifeHost>(s: S, id: PreventId): Patch<S> {
 export function buildCoop<S extends LifeHost>(s: S, id: CoopId): Patch<S> {
   const l = lifeOf(s.life);
   if (l.day < LIFE.coopDay) return { error: `The coop is built from day ${LIFE.coopDay}` };
+  const locked = idBlock(s as UnlockHost, COOPS, id);
+  if (locked) return { error: locked };
   const price = coopPrice(l.coop, id);
   const o = coopOption(id)!;
   if (price === null) return { error: `You have a ${coopOption(l.coop)!.name.toLowerCase()} already` };
@@ -290,6 +293,8 @@ export const coopOpen = (s: Pick<LifeHost, 'life'>) => lifeOf(s.life).day >= LIF
 export function buildShed<S extends LifeHost>(s: S, id: ShedId): Patch<S> {
   const l = lifeOf(s.life);
   if (!shedOpen(s)) return { error: `The cow shed is upgraded from day ${LIFE.shedDay}` };
+  const locked = idBlock(s as UnlockHost, SHEDS, id);
+  if (locked) return { error: locked };
   const price = shedPrice(l.shed, id);
   const o = shedOption(id)!;
   if (price === null) return { error: `You have a ${shedOption(l.shed)!.name.toLowerCase()} already` };
