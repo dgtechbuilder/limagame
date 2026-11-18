@@ -61,7 +61,7 @@ import { TIDY, TIDY_TOTAL, tidyCount, tidyLeft, tidyStreak, type TidyItem } from
 import { AnimalsButton, SecurityButton } from '../livestock/HudButtons';
 import { careOpen, coopOpen, lifeOf, shedOpen } from '../livestock/model';
 import { tankOf } from '../water/model';
-import { LIFE } from '../livestock/config';
+import { LIFE, coopOption, shedOption } from '../livestock/config';
 import { lightsLit, nextStep, powerOf, powerOn } from '../power/model';
 import { cannotDrive, hubOf, speedOf, type HubSection } from '../tractor/hub';
 import { GARDEN, GARDEN_NAMES, cropOf as gardenCropOf, gardenOf, stageOf, statusOf } from '../garden/model';
@@ -356,8 +356,9 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
 
   // the herd and the coop on the 3D farm follow the game: a stolen hen is gone, a built coop stands
   const herd = tankOf(s.tank).herd;
-  const coop = lifeOf(s.life).coop;
-  const shed = lifeOf(s.life).shed ?? null;
+  // each coop and shed shows as the model it looks like (five options, two models each)
+  const coop = coopOption(lifeOf(s.life).coop)?.look ?? null;
+  const shed = shedOption(lifeOf(s.life).shed)?.look ?? null;
   useEffect(() => {
     eng.current?.setLife({ cows: herd.cows, hens: herd.hens, coop, shed });
   }, [herd.cows, herd.hens, coop, shed]);
@@ -700,6 +701,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       };
       return (
         <PlotScreen
+          gate={s}
           tr={tr}
           farm={c.farm}
           kinds={c.kinds}
@@ -717,6 +719,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     if (c.kind === 'rig')
       return (
         <TractorPick
+          gate={s}
           tr={tr}
           field={s.field.cycle === tr.cycle ? s.field : { ...s.field, marks: {} }}
           day={day}
@@ -730,6 +733,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       );
     return (
       <Tractor
+        gate={s}
         farm={c.farm}
         cycle={tr.cycle}
         best={tr.tractor?.[c.farm] ?? null}

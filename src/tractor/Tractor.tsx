@@ -1,3 +1,5 @@
+import { LockTag, OpenLine } from '../unlock/Lock';
+import { isOpen, type UnlockHost } from '../unlock/model';
 import { useEffect, useRef, useState, type PointerEvent as RPointerEvent, type ReactNode } from 'react';
 import { img } from '../assets';
 import { FarmMap } from '../components/FarmMap';
@@ -41,9 +43,11 @@ export interface TractorProps {
   demo?: 'summary';
   onFinish: (r: { score: number; stars: number; Q: number; coins: number; points: number; diesel: number; co2: number; clim: number }) => void;
   onClose: () => void;
+  /** the farm day and levels: tractor types open a few at a time (src/unlock/model.ts) */
+  gate?: UnlockHost;
 }
 
-export function Tractor({ farm, cycle, best, name, demo, onFinish, onClose }: TractorProps) {
+export function Tractor({ farm, cycle, best, name, demo, onFinish, onClose, gate = {} }: TractorProps) {
   const [job, setJob] = useState<Job>(() => createJob(farm));
   const [phase, setPhase] = useState<Phase>('brief');
   const [tractor, setTractor] = useState<TractorKind['id'] | null>(null);
@@ -362,9 +366,10 @@ export function Tractor({ farm, cycle, best, name, demo, onFinish, onClose }: Tr
       phase === 'tractor' ? (
         <div className="tc-choose">
           <p className="tc-ask">Which tractor suits a field of {acresText}?</p>
-          <div className="tc-cards is-three">
-            {TRACTORS.map(t => (
-              <button type="button" key={t.id} className={`tc-card${tractor === t.id ? ' is-on' : ''}`} aria-pressed={tractor === t.id} onClick={() => setTractor(t.id)}>
+          <OpenLine s={gate} total={TRACTORS.length} what="tractors" />
+          <div className="tc-cards is-five">
+            {TRACTORS.map((t, i) => (
+              <button type="button" key={t.id} disabled={!isOpen(gate, i)} className={`tc-card${tractor === t.id ? ' is-on' : ''}${isOpen(gate, i) ? '' : ' is-gated'}`} aria-pressed={tractor === t.id} onClick={() => setTractor(t.id)}>
                 <TractorIcon kind={t} />
                 <b>
                   {t.name} · {t.hp} hp
@@ -380,6 +385,7 @@ export function Tractor({ farm, cycle, best, name, demo, onFinish, onClose }: Tr
                   </span>
                 ))}
                 <em>{t.note}</em>
+                <LockTag s={gate} index={i} />
               </button>
             ))}
           </div>
@@ -641,7 +647,7 @@ function Sources({ figures, onClose }: { figures: MoneyFigure[]; onClose: () => 
 
 function TractorIcon({ kind, small }: { kind: TractorKind; small?: boolean }) {
   const s = (small ? 22 : 40) * kind.size;
-  const body = kind.id === 'compact' ? '#e07b2a' : kind.id === 'large' ? '#2f6fb5' : '#3e8e3a';
+  const body = ({ compact: '#e07b2a', standard: '#3e8e3a', walking: '#c9a227', large: '#2f6fb5', fourwd: '#7a3e8e' } as const)[kind.id];
   return (
     <svg viewBox="0 0 40 36" width={s} height={(s * 36) / 40} aria-hidden="true">
       <rect x={4} y={14} width={24} height={11} rx={2} fill={body} />

@@ -1,3 +1,5 @@
+import { LockTag, OpenLine } from '../unlock/Lock';
+import { isOpen } from '../unlock/model';
 import type { Dispatch } from 'react';
 import { money } from '../money';
 import type { Action, GameState } from '../state';
@@ -27,9 +29,10 @@ export function ShedOptions({ s, of, dispatch, onClose }: { s: GameState; of: Pl
         <p className="pg-lead" style={{ margin: '4px 0 8px' }}>
           {KIND_WORDS[of].rule} Your choice goes on every farm that can still take it, and on your next planting.
         </p>
-        <div className="pg-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', overflowY: 'auto', maxHeight: 280 }}>
-          {OPTIONS[of].map(o => (
-            <div key={o.id} className={`pg-card${now === o.id ? ' is-done' : ''}`}>
+        <OpenLine s={s} total={OPTIONS[of].length} />
+        <div className="pg-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', overflowY: 'auto', maxHeight: 260 }}>
+          {OPTIONS[of].map((o, i) => (
+            <div key={o.id} className={`pg-card${now === o.id ? ' is-done' : ''}${isOpen(s, i) ? '' : ' is-gated'}`}>
               <div className="pg-card-head">
                 <i aria-hidden="true" style={{ width: 12, height: 12, borderRadius: 4, background: o.color, display: 'inline-block' }} />
                 <b>{o.name}</b>
@@ -38,7 +41,7 @@ export function ShedOptions({ s, of, dispatch, onClose }: { s: GameState; of: Pl
               <p>
                 <b>Best for:</b> {o.bestFor}
               </p>
-              <button
+              {isOpen(s, i) ? <button
                 type="button"
                 className="gold-btn"
                 onClick={() => {
@@ -48,7 +51,7 @@ export function ShedOptions({ s, of, dispatch, onClose }: { s: GameState; of: Pl
                 aria-label={`Choose ${o.name}`}
               >
                 {now === o.id ? 'Take it' : `Choose${of === 'sprayer' ? '' : ` · ${money(plotCost(of, o.id))} a farm`}`}
-              </button>
+              </button> : <LockTag s={s} index={i} />}
             </div>
           ))}
         </div>

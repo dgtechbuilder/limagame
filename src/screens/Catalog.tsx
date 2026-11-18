@@ -7,7 +7,8 @@ import { ClimateTag } from '../climate/Tag';
 import { TASK_CLIMATE, waterTask } from '../climate/model';
 import { hasSolar } from '../climate/track';
 import { GoldButton, Img, Partner, PriceChip } from '../components/ui';
-import { SHOP_TABS, STEP_META, STEPS, TASK_USES_ITEM, itemsFor, type ShopTab, type StepId } from '../data';
+import { SHOP_TABS, STEP_META, STEPS, TASK_USES_ITEM, itemsFor, shopIndex, type ShopTab, type StepId } from '../data';
+import { lockText } from '../unlock/model';
 import { stepIndex, tasksDone, type Action, type GameState } from '../state';
 import { money } from '../money';
 import { PartnerRibbon, SponsorLine } from '../partners/ui';
@@ -66,18 +67,21 @@ export function ShopModal({ s, tab, dispatch }: { s: GameState; tab: ShopTab; di
                 const left = item.stock ? s.stock[item.id] ?? 0 : undefined;
                 const owned = !item.stock && s.inventory.includes(item.id);
                 const brand = brandOf(item.partner);
+                const lock = lockText(s, shopIndex(item.id));
                 return (
                   <button
                     key={item.id}
                     type="button"
-                    className={`card${owned ? ' is-owned' : ''}${brand ? ' is-partner' : ''}`}
+                    title={lock ?? undefined}
+                    data-option={item.id}
+                    className={`card${owned ? ' is-owned' : ''}${brand ? ' is-partner' : ''}${lock ? ' is-gated' : ''}`}
                     style={{ width: 66, padding: '4px 8px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, opacity: left === 0 ? 0.55 : 1, ...(brand ? { ['--brand' as string]: brand.color } : {}) }}
                     onClick={() =>
                       item.stock
                         ? dispatch({ type: 'sell', id: item.id, price: item.price, name: item.name })
                         : dispatch({ type: 'buy', id: item.id, price: item.price, name: item.name })
                     }
-                    aria-label={item.stock ? `Sell ${item.name}, ${left} of ${item.stock[1]} bags left, ${money(item.price)} each` : `Buy ${item.name} for ${money(item.price)}${brand ? `, from partner ${brand.name}` : ''}`}
+                    aria-label={item.stock ? `Sell ${item.name}, ${left} of ${item.stock[1]} bags left, ${money(item.price)} each` : `Buy ${item.name} for ${money(item.price)}${brand ? `, from partner ${brand.name}` : ''}${lock ? `. ${lock}` : ''}`}
                   >
                     {item.partner && <PartnerRibbon brand={item.partner} />}
                     <span style={{ fontSize: def.nameFont, fontWeight: 700, lineHeight: 'normal', textAlign: 'center', ...(def.id === 'fertilizer' ? { maxWidth: 52 } : { whiteSpace: 'nowrap', margin: '0 -8px' }) }}>
@@ -90,9 +94,7 @@ export function ShopModal({ s, tab, dispatch }: { s: GameState; tab: ShopTab; di
                       </span>
                     )}
                     <PriceChip price={item.price} width="100%" font={def.priceFont} />
-                    <span style={{ position: 'absolute', right: 2, top: 2 }}>
-                      <InfoDot size={10} />
-                    </span>
+                    <span style={{ position: 'absolute', right: 2, top: 2 }}>{lock ? <span aria-hidden="true" style={{ fontSize: 10 }}>🔒</span> : <InfoDot size={10} />}</span>
                   </button>
                 );
               })}

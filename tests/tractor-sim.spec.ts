@@ -94,7 +94,8 @@ test('the drive can be played by steering: tap-and-hold towards each row, no aut
     expect(r.cov, `farm ${farm + 1} coverage`).toBeGreaterThan(0.6);
     expect(r.score, `farm ${farm + 1} score`).toBeGreaterThan(40);
   }
-  expect(TRACTORS.length).toBe(3);
+  // Wakala's three, a walking tractor and a 4WD
+  expect(TRACTORS.length).toBe(5);
   // Wakala's eight, the fertilizer spreader and the inter-row cultivator (the drive offers the before-planting ones)
   expect(Object.keys(IMPL).length).toBe(10);
 });

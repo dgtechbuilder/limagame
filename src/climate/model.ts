@@ -354,7 +354,7 @@ export const TASK_CLIMATE: Record<string, Delta> = {
 export const waterTask = (litres: number, solar: boolean): Delta => ({ water: litres, emit: { water: pumpCo2(litres, solar) } });
 
 /** Selling: storage, processing, transport and the food lost on the way, per bag. */
-export const STORAGE_CO2: Record<string, number> = { home: 0, coop: 0.4, cold: 2.5 };
+export const STORAGE_CO2: Record<string, number> = { home: 0, hermetic: 0.1, coop: 0.4, silo: 0.1, cold: 2.5 };
 export const PROCESS_CO2: Record<string, number> = { drying: 0, processing: 1.2, packaging: 0.4 };
 
 export function marketDelta(o: { bagsHarvested: number; bagsSold: number; storage: string; processId: string | null; solar: boolean }): Delta {

@@ -1,3 +1,5 @@
+import { LockTag, OpenLine } from '../unlock/Lock';
+import { isOpen, type UnlockHost } from '../unlock/model';
 import { useState, type Dispatch, type ReactNode } from 'react';
 import { NavBar } from '../components/Nav';
 import { img } from '../assets';
@@ -20,7 +22,10 @@ export function PlotBoard({
   coins,
   dispatch,
   onFarm,
+  gate = {},
 }: {
+  /** the farm day and levels: options open a few at a time (src/unlock/model.ts) */
+  gate?: UnlockHost;
   tr: Trial;
   farm: number;
   kinds: PlotKind[];
@@ -98,17 +103,19 @@ export function PlotBoard({
           {farmName(farm)} · {KIND_WORDS[kind].one}
         </p>
         <p className="pb-rule">{lock ? `${farmName(farm)} is ${lock.toLowerCase()}: it keeps what it has.` : KIND_WORDS[kind].rule}</p>
+        <OpenLine s={gate} total={OPTIONS[kind].length} />
         <ul className="pb-opts">
-          {OPTIONS[kind].map(op => {
+          {OPTIONS[kind].map((op, i) => {
             const at = rows.findIndex(r => r[kind] === op.id);
             const on = op.id === current;
             const price = plotCost(kind, op.id);
+            const gated = !on && !isOpen(gate, i);
             return (
               <li key={op.id}>
                 <button
                   type="button"
-                  className={`pb-opt${on ? ' is-on' : ''}`}
-                  disabled={!!lock || on || (at >= 0 && !!lockOf(at, kind))}
+                  className={`pb-opt${on ? ' is-on' : ''}${gated ? ' is-gated' : ''}`}
+                  disabled={!!lock || on || gated || (at >= 0 && !!lockOf(at, kind))}
                   onClick={() => dispatch({ type: 'plotSet', farm, plot, kind, value: op.id })}
                 >
                   <span className="pb-dot" style={{ background: op.color }} aria-hidden="true" />
@@ -119,6 +126,7 @@ export function PlotBoard({
                   </span>
                   <span className="pb-opt-side">
                     <i>{price ? `${money(price)}` : 'Free'}</i>
+                    {gated && <LockTag s={gate} index={i} />}
                     {at >= 0 && <small>This farm</small>}
                   </span>
                 </button>
@@ -167,7 +175,9 @@ export function PlotScreen({
   line,
   done,
   onLeave,
+  gate,
 }: {
+  gate?: UnlockHost;
   tr: Trial;
   farm: number;
   kinds: PlotKind[];
@@ -192,7 +202,7 @@ export function PlotScreen({
       <span className="rr-roundtag">{tag}</span>
       <NavBar horizontal onBack={onLeave} style={{ right: 28, top: 8 }} />
       <div className="fs-panel pb-panel">
-        <PlotBoard tr={tr} farm={farm} kinds={kinds} field={field} coins={coins} dispatch={dispatch} onFarm={setFarm} />
+        <PlotBoard gate={gate} tr={tr} farm={farm} kinds={kinds} field={field} coins={coins} dispatch={dispatch} onFarm={setFarm} />
       </div>
       <GuideLine text={line} action={done} />
     </div>

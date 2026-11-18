@@ -5,7 +5,7 @@ import { payClock } from '../src/climate/track';
 import { achClock } from '../src/achievements/track';
 import { newTrial, COMMON_PLAN, plotsOf } from '../src/trials/model';
 import { lifeOf, type LifeState } from '../src/livestock/model';
-import { LIFE, SHEDS } from '../src/livestock/config';
+import { LIFE, shedOption } from '../src/livestock/config';
 import { POWER, POWER_STEPS } from '../src/power/config';
 import { powerOf, powerOn } from '../src/power/model';
 import { hubOf, HUB } from '../src/tractor/hub';
@@ -132,15 +132,16 @@ test('the coop is upgraded from day 1 and the cow shed from day 3', () => {
   const coins = s.coins;
   s = act(s, { type: 'shedBuild', id: 'zero' });
   expect(lifeOf(s.life).shed).toBe('zero');
-  expect(s.coins).toBe(coins - (SHEDS[1].price - Math.round(SHEDS[0].price * 0.6)));
+  expect(s.coins).toBe(coins - (shedOption('zero')!.price - Math.round(shedOption('roofed')!.price * 0.6)));
 });
 
 test('at the shed: a seed chosen goes on every farm that can still take it, and is picked up', () => {
   let s = game({ trial: { ...newTrial(2, false, COMMON_PLAN), phase: 'plan' } });
-  s = act(s, { type: 'shedChoose', kind: 'seed', id: 'dt' });
-  expect(s.trial!.plans.every((_, i) => plotsOf(s.trial!, i)[0].seed === 'dt')).toBe(true);
+  // saved seed is open on day 1 (drought-tolerant opens on day 2: src/unlock/model.ts)
+  s = act(s, { type: 'shedChoose', kind: 'seed', id: 'saved' });
+  expect(s.trial!.plans.every((_, i) => plotsOf(s.trial!, i)[0].seed === 'saved')).toBe(true);
   expect(s.field.carry).toBe('seeds');
-  expect(s.prefs?.seed).toBe('dt');
+  expect(s.prefs?.seed).toBe('saved');
 });
 
 test('the market stall sells 25 kg of the store a day; a harvest keeps some back for it', () => {

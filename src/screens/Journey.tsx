@@ -1,3 +1,4 @@
+import { lockShort, lockText } from '../unlock/model';
 import { useState, type CSSProperties, type Dispatch, type ReactNode } from 'react';
 import { FarmerPortrait } from '../first/art';
 import { LOOKS } from '../first/data';
@@ -177,15 +178,17 @@ export function StorageModal({ s, dispatch }: Props) {
             <p className="section-title" style={{ position: 'absolute', left: 0, right: 0, top: 8 }}>
               Select how to store your crops
             </p>
-            <div style={{ position: 'absolute', left: 24, top: 30, width: 398, display: 'flex', gap: 10 }}>
-              {STORAGE_OPTIONS.map(o => {
+            <div style={{ position: 'absolute', left: 8, top: 30, width: 430, display: 'flex', gap: 6 }}>
+              {STORAGE_OPTIONS.map((o, i) => {
                 const on = s.storage === o.id;
                 const q = saleQuote({ ...s, storage: o.id }, null);
+                const lock = on ? null : lockText(s, i);
                 return (
                   <div
                     key={o.id}
-                    className="card"
-                    style={{ flex: 1, height: 214, padding: '4px 8px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 9, boxShadow: on ? 'inset 0 0 0 1.5px var(--select-ring)' : undefined }}
+                    className={`card${lock ? ' is-gated' : ''}`}
+                    data-option={o.id}
+                    style={{ flex: 1, minWidth: 0, height: 214, padding: '4px 5px 6px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, boxShadow: on ? 'inset 0 0 0 1.5px var(--select-ring)' : undefined }}
                   >
                     <Img src={o.icon} w={o.iconSize[0]} h={o.iconSize[1]} alt="" />
                     <p style={{ fontSize: 11, fontWeight: 700, textAlign: 'center', lineHeight: 1.45 }}>{o.name}</p>
@@ -202,13 +205,17 @@ export function StorageModal({ s, dispatch }: Props) {
                       <span className="hair" />
                       <Row size={8} label="CO₂e">{STORAGE_CO2[o.id] ? `${o.id === 'cold' && hasSolar(s) ? 0.4 : STORAGE_CO2[o.id]} kg/bag` : 'None'}</Row>
                     </div>
-                    <GoldButton
+                    {lock ? (
+                      <span className="lock-tag" title={lock}>
+                        🔒 {lockShort(s, i)}
+                      </span>
+                    ) : <GoldButton
                       style={{ width: '100%', height: 20, opacity: on ? 1 : 0.85 }}
                       onClick={() => (on ? go(dispatch, { kind: 'value' }) : dispatch({ type: 'storage', id: o.id }))}
                       ariaLabel={on ? `Continue with ${o.name}` : `Select ${o.name}`}
                     >
                       {on ? 'Continue' : 'Select'}
-                    </GoldButton>
+                    </GoldButton>}
                   </div>
                 );
               })}

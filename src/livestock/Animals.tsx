@@ -6,6 +6,8 @@ import { money } from '../money';
 import { WATER } from '../water/config';
 import { capacityOf, tankOf, useToday } from '../water/model';
 import type { Action, AnimalsTab, GameState } from '../state';
+import { LockTag, OpenLine } from '../unlock/Lock';
+import { isOpen } from '../unlock/model';
 import { CARE, COOPS, ISSUES, LIFE, NO_COOP, PREVENT, SHEDS, coopOption, issueOf, shedOption, type CoopId, type Group, type IssueId, type ShedId } from './config';
 import {
   animalWater,
@@ -401,12 +403,14 @@ function Coop({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
           </>
         )}
       </p>
+      <OpenLine s={s} total={COOPS.length} what="coops" />
       <div className="lv-options">
-        {COOPS.map(c => {
+        {COOPS.map((c, i) => {
           const price = coopPrice(l.coop, c.id);
           const built = l.coop === c.id;
+          const gated = !isOpen(s, i);
           return (
-            <div key={c.id} className={`lv-option${built ? ' is-on' : ''}`}>
+            <div key={c.id} className={`lv-option${built ? ' is-on' : ''}${gated && !built ? ' is-gated' : ''}`} data-option={c.id}>
               <p className="set-title">{c.name}</p>
               <p className="set-body">{c.does}</p>
               <ul className="lv-facts">
@@ -419,6 +423,8 @@ function Coop({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
                 <span className="lv-done">✓ Built</span>
               ) : price === null ? (
                 <span className="lv-done is-later">You have a better one</span>
+              ) : gated ? (
+                <LockTag s={s} index={i} />
               ) : (
                 <Btn tone="go" disabled={!open || s.coins < price} onClick={() => setBuilding(c.id)} label={`${l.coop ? 'Upgrade to' : 'Build'} the ${c.name.toLowerCase()} for ${money(price)}`}>
                   {l.coop ? 'Upgrade' : 'Build'} · {money(price)}
@@ -471,12 +477,14 @@ function Shed({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
           </>
         )}
       </p>
+      <OpenLine s={s} total={SHEDS.length} what="sheds" />
       <div className="lv-options">
-        {SHEDS.map(c => {
+        {SHEDS.map((c, i) => {
           const price = shedPrice(l.shed, c.id);
           const built = l.shed === c.id;
+          const gated = !isOpen(s, i);
           return (
-            <div key={c.id} className={`lv-option${built ? ' is-on' : ''}`}>
+            <div key={c.id} className={`lv-option${built ? ' is-on' : ''}${gated && !built ? ' is-gated' : ''}`} data-option={c.id}>
               <p className="set-title">{c.name}</p>
               <p className="set-body">{c.does}</p>
               <ul className="lv-facts">
@@ -489,6 +497,8 @@ function Shed({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
                 <span className="lv-done">✓ Built</span>
               ) : price === null ? (
                 <span className="lv-done is-later">You have a better one</span>
+              ) : gated && open ? (
+                <LockTag s={s} index={i} />
               ) : (
                 <Btn tone="go" disabled={!open || s.coins < price} onClick={() => setBuilding(c.id)} label={`${l.shed ? 'Upgrade to' : 'Build'} the ${c.name.toLowerCase()} for ${money(price)}`}>
                   {open ? `${l.shed ? 'Upgrade' : 'Build'} · ${money(price)}` : `From day ${LIFE.shedDay}`}

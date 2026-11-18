@@ -79,7 +79,7 @@ export const careOf = (id: CareId) => CARE.find(c => c.id === id)!;
 
 /* ---------------- the chicken coop ---------------- */
 
-export type CoopId = 'basic' | 'secure';
+export type CoopId = 'shelter' | 'basic' | 'mobile' | 'secure' | 'layers';
 
 export interface CoopOption {
   id: CoopId;
@@ -95,11 +95,18 @@ export interface CoopOption {
   predators: number;
   /** a share off the risk of the coop's diseases (a raised, slatted floor stays dry) */
   disease: number;
+  /** how it looks on the 3D farm */
+  look: 'basic' | 'secure';
 }
 
+/** Simplest first, by price (an upgrade pays the difference): the first two from day 1, the third from day 2, the last
+    two from day 3 (src/unlock/model.ts). */
 export const COOPS: CoopOption[] = [
-  { id: 'basic', name: 'Simple coop', does: 'Timber walls, an iron-sheet roof, perches and four nest boxes.', price: 1500, room: 20, eggs: 0.15, theft: 0.4, predators: 0.6, disease: 0.1 },
-  { id: 'secure', name: 'Raised coop with wire mesh', does: 'Off the ground on posts, a slatted floor, wire mesh all round and a padlock.', price: 4000, room: 60, eggs: 0.25, theft: 0.75, predators: 0.9, disease: 0.45 },
+  { id: 'shelter', name: 'Night shelter', does: 'A roof on poles over a few perches: dry at night, but open on every side.', price: 600, room: 10, eggs: 0.05, theft: 0.15, predators: 0.3, disease: 0.05, look: 'basic' },
+  { id: 'basic', name: 'Simple coop', does: 'Timber walls, an iron-sheet roof, perches and four nest boxes.', price: 1500, room: 20, eggs: 0.15, theft: 0.4, predators: 0.6, disease: 0.1, look: 'basic' },
+  { id: 'mobile', name: 'Movable coop', does: 'A coop on wheels, moved to fresh grass each week: clean ground, fewer worms, manure spread for you.', price: 2500, room: 15, eggs: 0.2, theft: 0.35, predators: 0.7, disease: 0.35, look: 'basic' },
+  { id: 'secure', name: 'Raised coop with wire mesh', does: 'Off the ground on posts, a slatted floor, wire mesh all round and a padlock.', price: 4000, room: 60, eggs: 0.25, theft: 0.75, predators: 0.9, disease: 0.45, look: 'secure' },
+  { id: 'layers', name: 'Layer house', does: 'A block house with wire windows, a nest box for every four hens, feeders and a locked door.', price: 8000, room: 60, eggs: 0.35, theft: 0.85, predators: 0.95, disease: 0.55, look: 'secure' },
 ];
 export const coopOption = (id: CoopId | null | undefined) => COOPS.find(c => c.id === id) ?? null;
 /** Hens with no coop roost in the trees: some of their eggs are laid in the bush and lost. */
@@ -107,7 +114,7 @@ export const NO_COOP = { room: 10, eggs: -0.3 };
 
 /* ---------------- the cow shed ---------------- */
 
-export type ShedId = 'roofed' | 'zero';
+export type ShedId = 'shade' | 'roofed' | 'stall' | 'zero' | 'barn';
 
 export interface ShedOption {
   id: ShedId;
@@ -122,11 +129,18 @@ export interface ShedOption {
   theft: number;
   /** litres of rain the shed's gutters catch into the tank a day (normal season) */
   gutter: number;
+  /** how it looks on the 3D farm */
+  look: 'roofed' | 'zero';
 }
 
+/** Simplest first, by price (an upgrade pays the difference). The shed opens on day 3, when all five are open
+    (src/unlock/model.ts). */
 export const SHEDS: ShedOption[] = [
-  { id: 'roofed', name: 'Roofed cow shed', does: 'Timber posts, an iron-sheet roof, a feed trough and a raised sleeping area.', price: 6000, milk: 0.1, disease: 0.2, theft: 0.2, gutter: 80 },
-  { id: 'zero', name: 'Zero-grazing unit', does: 'A concrete floor that drains, feed and water troughs, a locked gate and gutters into the tank.', price: 15000, milk: 0.25, disease: 0.45, theft: 0.5, gutter: 220 },
+  { id: 'shade', name: 'Shade roof over the pen', does: 'Iron sheets on poles: shade and a dry spot, but the cows still stand in mud.', price: 2500, milk: 0.04, disease: 0.08, theft: 0.05, gutter: 40, look: 'roofed' },
+  { id: 'roofed', name: 'Roofed cow shed', does: 'Timber posts, an iron-sheet roof, a feed trough and a raised sleeping area.', price: 6000, milk: 0.1, disease: 0.2, theft: 0.2, gutter: 80, look: 'roofed' },
+  { id: 'stall', name: 'Shed with stalls and mats', does: 'A stall and a rubber mat for each cow: clean, dry udders and rested legs.', price: 9000, milk: 0.15, disease: 0.3, theft: 0.25, gutter: 120, look: 'roofed' },
+  { id: 'zero', name: 'Zero-grazing unit', does: 'A concrete floor that drains, feed and water troughs, a locked gate and gutters into the tank.', price: 15000, milk: 0.25, disease: 0.45, theft: 0.5, gutter: 220, look: 'zero' },
+  { id: 'barn', name: 'Barn with a milking parlour', does: 'Cubicles, a clean milking room with a water point, a manure pit and a locked yard.', price: 24000, milk: 0.32, disease: 0.5, theft: 0.6, gutter: 300, look: 'zero' },
 ];
 export const shedOption = (id: ShedId | null | undefined) => SHEDS.find(c => c.id === id) ?? null;
 

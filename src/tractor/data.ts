@@ -86,7 +86,7 @@ export const TRACTOR_REWARD = {
 /* ---------------- tractors and implements ---------------- */
 
 export interface TractorKind {
-  id: 'compact' | 'standard' | 'large';
+  id: 'compact' | 'standard' | 'walking' | 'large' | 'fourwd';
   name: string;
   hp: number;
   /** drive speed, game pixels a second */
@@ -105,13 +105,18 @@ export interface TractorKind {
   /** 1 to 5, for the cards */
   meters: Record<string, number>;
   note: string;
+  /** the picture it is drawn with */
+  art: 'compact' | 'standard' | 'large';
 }
 
-/** Wakala */
+/** Wakala's three, and a walking tractor and a 4WD (new). Simplest first: the first two from day 1, the third from
+    day 2, the last two from day 3 or Level 3 (src/unlock/model.ts). */
 export const TRACTORS: TractorKind[] = [
-  { id: 'compact', name: 'Compact', hp: 35, slow: 65, fast: 100, w: 3.4, fuel: 0.7, hire: 0.8, soil: 0, size: 0.85, meters: { Speed: 2, Turning: 5, 'Fuel use': 1, 'Hire cost': 1 }, note: 'Light and cheap to run, but slow with heavy implements.' },
-  { id: 'standard', name: 'Standard', hp: 60, slow: 80, fast: 135, w: 3, fuel: 1, hire: 1, soil: 5, size: 1, meters: { Speed: 3, Turning: 3, 'Fuel use': 3, 'Hire cost': 3 }, note: 'A good all-rounder for a small farm.' },
-  { id: 'large', name: 'Large', hp: 100, slow: 95, fast: 160, w: 2.3, fuel: 1.5, hire: 1.35, soil: 15, size: 1.2, meters: { Speed: 5, Turning: 1, 'Fuel use': 5, 'Hire cost': 5 }, note: 'Fast and strong, but turns wide, burns fuel and packs the soil.' },
+  { id: 'compact', name: 'Compact', hp: 35, slow: 65, fast: 100, w: 3.4, fuel: 0.7, hire: 0.8, soil: 0, size: 0.85, meters: { Speed: 2, Turning: 5, 'Fuel use': 1, 'Hire cost': 1 }, note: 'Light and cheap to run, but slow with heavy implements.', art: 'compact' },
+  { id: 'standard', name: 'Standard', hp: 60, slow: 80, fast: 135, w: 3, fuel: 1, hire: 1, soil: 5, size: 1, meters: { Speed: 3, Turning: 3, 'Fuel use': 3, 'Hire cost': 3 }, note: 'A good all-rounder for a small farm.', art: 'standard' },
+  { id: 'walking', name: 'Walking', hp: 15, slow: 50, fast: 78, w: 3.8, fuel: 0.4, hire: 0.5, soil: 0, size: 0.7, meters: { Speed: 1, Turning: 5, 'Fuel use': 1, 'Hire cost': 1 }, note: 'A two-wheel tractor you walk behind: the smallholder’s machine.', art: 'compact' },
+  { id: 'large', name: 'Large', hp: 100, slow: 95, fast: 160, w: 2.3, fuel: 1.5, hire: 1.35, soil: 15, size: 1.2, meters: { Speed: 5, Turning: 1, 'Fuel use': 5, 'Hire cost': 5 }, note: 'Fast and strong, but turns wide, burns fuel and packs the soil.', art: 'large' },
+  { id: 'fourwd', name: '4WD', hp: 75, slow: 90, fast: 150, w: 2.7, fuel: 1.2, hire: 1.15, soil: 8, size: 1.1, meters: { Speed: 4, Turning: 2, 'Fuel use': 4, 'Hire cost': 4 }, note: 'Four-wheel drive grips wet and heavy ground with less slip.', art: 'large' },
 ];
 
 export type ImplId = 'plough' | 'harrow' | 'ridger' | 'planter' | 'drill' | 'cultivator' | 'spreader' | 'sprayer' | 'maizeH' | 'beanH';

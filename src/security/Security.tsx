@@ -6,6 +6,8 @@ import { dayNumber } from '../rounds/farms';
 import { currentDay } from '../trials/model';
 import type { Action, GameState, SecurityTab } from '../state';
 import { LIFE } from '../livestock/config';
+import { LockTag, OpenLine } from '../unlock/Lock';
+import { isOpen } from '../unlock/model';
 import { MEASURES, TARGETS, type Target } from './config';
 import { activeMeasures, bestAgainst, exposure, nightlyCost, securityOf, storeTheftShare, theftOpen } from './model';
 
@@ -77,12 +79,15 @@ function Protect({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) 
   const sec = securityOf(s.security);
   return (
     <div className="lv-measures">
+      <OpenLine s={s} total={MEASURES.filter(m => !m.needs || s.biz).length} what="measures" />
       {MEASURES.filter(m => !m.needs || s.biz).map(m => {
         const owned = sec.owned.includes(m.id);
         const hired = sec.hired.includes(m.id);
         const cuts = (Object.entries(m.cut) as [Target, number][]).sort((a, b) => b[1] - a[1]);
+        const at = MEASURES.indexOf(m);
+        const gated = !owned && !hired && !isOpen(s, at);
         return (
-          <div key={m.id} className={`lv-job${owned || hired ? ' is-done' : ''}`}>
+          <div key={m.id} className={`lv-job${owned || hired ? ' is-done' : ''}${gated ? ' is-gated' : ''}`} data-option={m.id}>
             <span className="lv-job-text">
               <b>{m.name}</b>
               <small>{m.does}</small>
@@ -91,7 +96,9 @@ function Protect({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) 
                 {m.recover ? ` · finds stolen ${(Object.keys(m.recover) as Target[]).map(t => SHORT[t]).join(', ')}` : ''}
               </small>
             </span>
-            {m.kind === 'nightly' ? (
+            {gated ? (
+              <LockTag s={s} index={at} />
+            ) : m.kind === 'nightly' ? (
               <button type="button" className={`lv-btn ${hired ? 'is-quiet' : 'is-go'}`} onClick={() => dispatch({ type: 'securityHire', id: m.id, on: !hired })} aria-pressed={hired} aria-label={hired ? `Stop the ${m.name.toLowerCase()}` : `Hire a ${m.name.toLowerCase()} for ${money(m.nightly ?? 0)} a night`}>
                 {hired ? 'Stop' : 'Hire'} · {money(m.nightly ?? 0)}/night
               </button>

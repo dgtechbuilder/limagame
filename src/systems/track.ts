@@ -12,7 +12,7 @@ import { capacityOf, tankOf } from '../water/model';
 import { record } from '../climate/model';
 import { addEntry } from '../wallet/model';
 import { POWER, POWER_STEPS } from '../power/config';
-import { has, loadOn, powerOf, powerOn, runDay } from '../power/model';
+import { has, lightsEggs, loadOn, powerOf, powerOn, runDay } from '../power/model';
 import { HUB, hubOf } from '../tractor/hub';
 import { MARKET, stock, storeNight, type ProduceId } from '../produce/model';
 import { GARDEN, GARDEN_NAMES, cropOf as gardenCrop, gardenNight, gardenOf } from '../garden/model';
@@ -112,7 +112,7 @@ export function trackSystems(prev: GameState, s: GameState, a: Action): GameStat
   // the milk cooler: chilled milk fetches more at the dairy; the lights keep the hens laying longer
   if (a.type === 'animalCare' && next.coins > prev.coins) {
     const earned = next.coins - prev.coins;
-    const bonus = a.id === 'milk' && loadOn(prev, 'cooler') ? earned * POWER.milkPremium : a.id === 'eggs' && loadOn(prev, 'lights') ? earned * POWER.eggBoost : 0;
+    const bonus = a.id === 'milk' && loadOn(prev, 'cooler') ? earned * POWER.milkPremium : a.id === 'eggs' && lightsEggs(prev) ? earned * lightsEggs(prev) : 0;
     if (bonus > 0) {
       const b = Math.round(bonus * 100) / 100;
       next = { ...next, coins: next.coins + b };

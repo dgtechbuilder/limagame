@@ -1,4 +1,5 @@
 import { StrategyBoard } from '../strategy/StrategyBoard';
+import { LockTag, OpenLine } from '../unlock/Lock';
 import { chosen, rowLesson, strategiesOf } from '../strategy/model';
 import { doneMask } from '../world/field';
 import { useState, type Dispatch, type ReactNode } from 'react';
@@ -17,7 +18,9 @@ import { PlotBoard, plotsLine } from '../plots/PlotBoard';
 import { OPTIONS, ROUTINE, seedOf } from '../plots/data';
 import type { Action, GameState } from '../state';
 import {
+  BUYING_STEPS,
   CROP_WORDS,
+  planOptionOpen,
   cropOf,
   CHECK_DAYS,
   FARM_STEPS,
@@ -258,7 +261,7 @@ function PlanBoard({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) 
         <div className="abs ending" style={{ inset: 0 }} onClick={() => setBoard(null)} role="dialog" aria-label="Farm inputs">
           <div className="fs-panel pb-panel is-over" onClick={e => e.stopPropagation()}>
             <CloseX onClick={() => setBoard(null)} />
-            <PlotBoard tr={tr} farm={board} kinds={['seed', 'fert', 'sprayer']} coins={s.coins} dispatch={dispatch} onFarm={setBoard} />
+            <PlotBoard gate={s} tr={tr} farm={board} kinds={['seed', 'fert', 'sprayer']} coins={s.coins} dispatch={dispatch} onFarm={setBoard} />
             <button type="button" className="pb-close" onClick={() => setBoard(null)}>
               Done
             </button>
@@ -267,7 +270,7 @@ function PlanBoard({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) 
       )}
 
       {pick && <Picker s={s} tr={tr} farm={pick.farm} stepKey={pick.key} dispatch={dispatch} onClose={() => setPick(null)} />}
-      {rowsFor !== null && <StrategyBoard tr={tr} farm={rowsFor} locked={() => false} dispatch={dispatch} onClose={() => setRowsFor(null)} />}
+      {rowsFor !== null && <StrategyBoard gate={s} tr={tr} farm={rowsFor} locked={() => false} dispatch={dispatch} onClose={() => setRowsFor(null)} />}
 
       {planting && (
         <div className="abs ending" style={{ inset: 0 }} onClick={() => setPlanting(false)}>
@@ -316,12 +319,14 @@ function Picker({ s, tr, farm, stepKey, dispatch, onClose }: { s: GameState; tr:
             {FORECASTS[tr.forecast].label}.{s.trialHistory.length > 0 ? ` Maize needs about ${WATER_NEED} L/m² a week in all.` : ''}
           </p>
         )}
+        {BUYING_STEPS.includes(stepKey) && <OpenLine s={s} total={step.options.length} />}
         <ul>
-          {step.options.map(op => (
+          {step.options.map((op, i) => (
             <li key={op.id}>
               <button
                 type="button"
-                className={op.id === current ? 'is-on' : ''}
+                className={`${op.id === current ? 'is-on' : ''}${op.id !== current && !planOptionOpen(s, stepKey, op.id) ? ' is-gated' : ''}`}
+                disabled={op.id !== current && !planOptionOpen(s, stepKey, op.id)}
                 onClick={() => {
                   dispatch({ type: 'trialPlan', farm, key: stepKey, value: op.id });
                   onClose();
@@ -331,6 +336,7 @@ function Picker({ s, tr, farm, stepKey, dispatch, onClose }: { s: GameState; tr:
                 <span>{op.does}</span>
                 <ClimateTag d={optionDelta(stepKey, op.id, tr.forecast, hasSolar(s))} />
                 <i>{op.cost ? `${money(op.cost)}` : 'Free'}</i>
+                {op.id !== current && !planOptionOpen(s, stepKey, op.id) && <LockTag s={s} index={i} />}
               </button>
             </li>
           ))}
@@ -452,7 +458,7 @@ function Growing({ s, tr, dispatch, t, inWorld }: Props & { s: GameState; tr: Tr
         </div>
       </div>
       <GuideLine text={line} action={action} />
-      {rowsFor !== null && <StrategyBoard tr={tr} farm={rowsFor} locked={sown} dispatch={dispatch} onClose={() => setRowsFor(null)} />}
+      {rowsFor !== null && <StrategyBoard gate={s} tr={tr} farm={rowsFor} locked={sown} dispatch={dispatch} onClose={() => setRowsFor(null)} />}
     </>
   );
 }

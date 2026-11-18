@@ -1137,6 +1137,7 @@ button.card:active { transform: scale(0.98); }
 .tc-cards { display: grid; gap: 8px; }
 .tc-cards.is-three { grid-template-columns: repeat(3, 1fr); }
 .tc-cards.is-four { grid-template-columns: repeat(4, 1fr); }
+.tc-cards.is-five { grid-template-columns: repeat(5, 1fr); }
 .tc-card {
   display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px; border-radius: 12px; text-align: center;
   background: #fff8ec; border: 2px solid var(--brown-20); color: var(--brown); font-size: 11px; line-height: 1.25;
@@ -2486,6 +2487,9 @@ button.card:active { transform: scale(0.98); }
 .wt-flows .is-in { color: #2c7a12; }
 .wt-flows .is-out { color: #c0392b; }
 .wt-buy { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.wt-plans { display: flex; flex-wrap: wrap; gap: 3px; margin: 3px 0 0; }
+.wt-plans button { padding: 2px 6px; border-radius: 999px; border: 1.5px solid var(--brown-20); background: #fff; font-size: 10px; font-weight: 700; color: var(--ink); }
+.wt-plans button.is-on { border-color: var(--gold-edge); background: var(--gold-soft); }
 .wt-buy button { display: flex; flex-direction: column; padding: 4px 6px; border-radius: 8px; background: #e2f1f8; border: 1.5px solid #8cc3dc; color: #1f5f82; text-align: left; }
 .wt-buy b { font-size: 10.5px; }
 .wt-buy small { font-size: 9px; font-weight: 700; }
@@ -2660,7 +2664,7 @@ button.card:active { transform: scale(0.98); }
 .lv-rows p.is-bad { color: #9a3b26; }
 .lv-rows p.is-total { font-weight: 800; border-top: 1.5px solid var(--brown-20); }
 .lv-actions { margin-top: 8px; }
-.lv-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+.lv-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 8px; }
 .lv-option { padding: 8px 10px; border-radius: 12px; background: #fff8ea; border: 1px solid var(--brown-10); display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
 .lv-option.is-on { border: 1.5px solid #2f9b14; background: #f1f8e8; }
 .lv-facts { margin: 2px 0 4px; padding-left: 14px; font-size: 9px; line-height: 1.5; }
@@ -2857,3 +2861,11 @@ button.card:active { transform: scale(0.98); }
 .mf-stars .is-on { color: #f5b400; }
 .mf-best { color: #7a6448; font-weight: 700; }
 .mf-row { display: flex; gap: 12px; margin-top: 6px; }
+
+/* ---------- Options that open later (src/unlock): a lock on the option, a line over the list ---------- */
+.lock-tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: var(--radius-pill); background: var(--brown-10); color: var(--ink-2); font-size: var(--text-label); font-weight: 600; line-height: 1.4; white-space: normal; }
+.is-gated { opacity: 0.62; }
+.pg-card.is-gated, .lv-option.is-gated, .tp-card.is-gated, .tc-card.is-gated, .pb-opt.is-gated, .sg-opt.is-gated, .card.is-gated, .wt-buy .is-gated { border-style: dashed !important; }
+.is-gated button:disabled { cursor: not-allowed; }
+.open-line { margin: 4px 0 6px; font-size: var(--text-caption); color: var(--ink-2); font-weight: 500; }
+.opt-facts { font-size: var(--text-caption); color: var(--ink-2); font-weight: 600; }
