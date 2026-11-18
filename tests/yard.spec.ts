@@ -17,7 +17,8 @@ test('the tractor yard: tap a station, walk there, play its lesson; the stars sh
   await expect(hub.getByRole('button', { name: 'Hop on', exact: true })).toBeVisible();
 
   // tapping a station walks the farmer there, then opens it
-  await hub.getByRole('button', { name: /^Learn/ }).first().click();
+  await hub.locator('[data-station="learn"]').click();
+  await expect(hub.locator('.ty-farmer.is-walking')).toBeVisible();
   await expect(hub.getByRole('button', { name: '← Back to the yard' })).toBeVisible({ timeout: 10_000 });
   await hub.getByRole('button', { name: /^Start: Know your tractor/ }).click();
   await page.getByRole('button', { name: 'Start', exact: true }).click();
