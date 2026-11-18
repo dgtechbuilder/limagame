@@ -66,6 +66,7 @@ import { lightsLit, nextStep, powerOf, powerOn } from '../power/model';
 import { cannotDrive, hubOf, speedOf, type HubSection } from '../tractor/hub';
 import { GARDEN, GARDEN_NAMES, cropOf as gardenCropOf, gardenOf, stageOf, statusOf } from '../garden/model';
 import { ShedOptions } from '../plots/ShedOptions';
+import { FarmLoading } from './Loading';
 
 // from Wakala Agent: the screens after a right call, at the shed and at the Hire spot, loaded when first opened
 const Prescribe = lazy(() => import('../care/Prescribe').then(m => ({ default: m.Prescribe })));
@@ -136,6 +137,14 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
   const [tidying, setTidying] = useState<{ item: TidyItem; start: number; ms: number } | null>(null);
   /** the farmer is walking to the tractor to hop on */
   const rideIntent = useRef(false);
+  /** the farm's first frame is drawn (the loading screen fades), and a moment later it is gone */
+  const [loaded, setLoaded] = useState(false);
+  const [loadGone, setLoadGone] = useState(false);
+  useEffect(() => {
+    if (!loaded) return;
+    const id = window.setTimeout(() => setLoadGone(true), 320);
+    return () => window.clearTimeout(id);
+  }, [loaded]);
   const nav = useNav();
   /** the farm whose check opens when the farmer reaches its sign (after a tap on the task card) */
   const intent = useRef<number | null>(null);
@@ -208,8 +217,13 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       },
     }, { anime: sRef.current.settings.art === 'anime', graphics: sRef.current.settings.graphics });
     eng.current = w;
-    // for automated play-tests
-    (window as unknown as { __limaWorld?: FarmWorld }).__limaWorld = w;
+    // the loading screen stays until the farm's first frame is drawn; play-tests start then too
+    let live = true;
+    void w.ready.then(() => {
+      if (!live) return;
+      (window as unknown as { __limaWorld?: FarmWorld }).__limaWorld = w;
+      setLoaded(true);
+    });
     // start at the farmhouse door, or (in design review) beside the job at hand
     const tk = nextTask(sRef.current.field, sRef.current.trial, dayNumber(), sRef.current.coins);
     const review = new URLSearchParams(window.location.search).has('review') || new URLSearchParams(window.location.search).has('screen');
@@ -232,6 +246,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       setAnchors(a => (sameAnchors(a, next) ? a : next));
     }, 120);
     return () => {
+      live = false;
       window.removeEventListener('resize', fit);
       window.clearInterval(tick);
       w.dispose();
@@ -861,6 +876,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     <div className={`abs world${nightMode ? ' is-night' : ''}`} style={{ inset: 0 }}>
       <canvas ref={canvas} className="world-canvas" width={STAGE_W} height={STAGE_H} />
       <div ref={pad} className="world-pad" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} />
+      {!loadGone && <FarmLoading done={loaded} />}
 
       {stick && (
         <div className="joy" style={{ left: stick.x - 40, top: stick.y - 40 }} aria-hidden="true">
