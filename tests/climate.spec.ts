@@ -60,7 +60,8 @@ test('a Farm Moja task is tracked: manure stores carbon, earns credits and shows
 test('six farms: planting records each plan; tractor work and drives burn diesel; the harvest closes the cycle', async ({ page }) => {
   await boot(page);
   // a planned cycle (the first one plants itself: maize and sukuma wiki), so the plans can differ
-  await jump(page, { view: 'classic', coins: 100000, trialHistory: [{ cycle: 1, farms: 2, best: 0, bags: [5, 5], profit: [0, 0] }] });
+  // farm day 3: every option open (src/unlock/model.ts)
+  await jump(page, { view: 'classic', coins: 100000, life: { day: 3, date: null, started: 2 }, trialHistory: [{ cycle: 1, farms: 2, best: 0, bags: [5, 5], profit: [0, 0] }] });
   await act(page, { type: 'trialNew' });
   // six farms may not share a plan: one change each, then Farm 2's own
   await act(page, { type: 'trialSuggest' });

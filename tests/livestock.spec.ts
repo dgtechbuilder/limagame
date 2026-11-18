@@ -7,7 +7,7 @@ import { routeTo } from '../src/route';
 import { COMMON_PLAN, harvestFarm, newTrial, type Trial } from '../src/trials/model';
 import { tankOf } from '../src/water/model';
 import { WATER } from '../src/water/config';
-import { CARE, COOPS, LIFE, issueOf } from '../src/livestock/config';
+import { CARE, LIFE, coopOption, issueOf } from '../src/livestock/config';
 import { animalNight, animalWater, careLeft, eggsToday, lifeOf, milkToday, type LifeState } from '../src/livestock/model';
 import { MEASURES, STORE_THEFT, measureOf } from '../src/security/config';
 import { cutFor, exposure, harvestLessTheft, securityOf, theftNight } from '../src/security/model';
@@ -43,11 +43,15 @@ test('the animals come into the player’s care on day 2, with the coop, and a d
   const coins = s.coins;
   s = act(s, { type: 'coopBuild', id: 'basic' });
   expect(lifeOf(s.life).coop).toBe('basic');
-  expect(s.coins).toBe(coins - COOPS[0].price);
-  // an upgrade pays the difference and a little for the work
+  const basic = coopOption('basic')!.price;
+  expect(s.coins).toBe(coins - basic);
+  // the raised coop opens on day 3 (src/unlock/model.ts); the movable coop is open on day 2
   s = act(s, { type: 'coopBuild', id: 'secure' });
-  expect(lifeOf(s.life).coop).toBe('secure');
-  expect(s.coins).toBe(coins - COOPS[1].price - 300);
+  expect(lifeOf(s.life).coop).toBe('basic');
+  // an upgrade pays the difference and a little for the work
+  s = act(s, { type: 'coopBuild', id: 'mobile' });
+  expect(lifeOf(s.life).coop).toBe('mobile');
+  expect(s.coins).toBe(coins - coopOption('mobile')!.price - 300);
   // shutting the coop is a job once it is built
   expect(careLeft(s).map(c => c.id)).toContain('closeCoop');
 });

@@ -92,7 +92,8 @@ test('the plan: one set of inputs per farm, and the results by input', async ({ 
   await page.evaluate(() => {
     const l = (window as unknown as Win).__lima;
     // six 4-acre farms cost more than a new game starts with
-    l.jump({ coins: 100000, trialHistory: [{ cycle: 1, farms: 2, best: 1, bags: [5, 6], profit: [0, 0] }], trialsOpen: true });
+    // farm day 3: every input open (src/unlock/model.ts)
+    l.jump({ coins: 100000, life: { day: 3, date: null, started: 2 }, trialHistory: [{ cycle: 1, farms: 2, best: 1, bags: [5, 6], profit: [0, 0] }], trialsOpen: true } as never);
   });
   await page.evaluate(() => ((window as unknown as Win).__lima as unknown as D).dispatch({ type: 'trialNew' }));
   await expect(page.locator('.tr-plots')).toHaveCount(6);
