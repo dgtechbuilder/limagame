@@ -115,7 +115,9 @@ export type Modal =
   /** the market stall: up to 25 kg of the store sold a day (src/produce) */
   | { kind: 'market' }
   /** Farm 7 or Farm 8, the new farms (src/garden): farm 0 or 1 */
-  | { kind: 'garden'; farm: number };
+  | { kind: 'garden'; farm: number }
+  /** the tractor game: plough the mini farm in 30 seconds, round rocks, trees and holes (src/minifarm) */
+  | { kind: 'tractorGame' };
 
 /** The dialog after something worked: a sale, a training booked, a storage upgrade. It replaces the short message
     at the top of the screen for these, so the player cannot miss it (components/Success.tsx, screens/Success.tsx). */

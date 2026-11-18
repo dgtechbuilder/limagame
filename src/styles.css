@@ -2828,3 +2828,32 @@ button.card:active { transform: scale(0.98); }
 .hud-power.is-on > svg { background: radial-gradient(circle at 50% 35%, #a6f07a, #3f9a1c); }
 /* a pop-up award waits behind the farm world's own screens and the mini-games */
 .stage:has(.world-check) .award-pop, .stage:has(.mg) .award-pop { display: none; }
+
+/* ---------------- the tractor game: the mini farm (src/minifarm) ---------------- */
+.mf { background: radial-gradient(ellipse at 50% 40%, #5f9a3e, #3f6f2a 70%, #2f5520); z-index: 40; }
+.mf-title { position: absolute; left: 24px; top: 12px; margin: 0; color: #fff; font-size: 13px; font-weight: 700; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); }
+.mf-hud { position: absolute; top: 30px; height: 20px; display: flex; align-items: center; gap: 8px; color: #fff; font-size: 11px; font-weight: 800; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45); }
+.mf-clock { width: 44px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.mf-bar { flex: 1.4; height: 8px; border-radius: 4px; background: rgba(0, 0, 0, 0.3); overflow: hidden; }
+.mf-bar > span { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #ffd166, #f8a21e); }
+.mf-bar > span.is-low { background: linear-gradient(90deg, #ff461e, #f8285f); }
+.mf-goal { flex: 1; height: 8px; border-radius: 4px; background: rgba(0, 0, 0, 0.3); overflow: hidden; }
+.mf-goal > span { display: block; height: 100%; width: 0; background: #8a5a36; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25); }
+.mf-share { min-width: 116px; text-align: right; font-variant-numeric: tabular-nums; }
+.mf-note { position: absolute; left: 50%; top: 30px; transform: translateX(-50%); padding: 3px 12px; border-radius: 100px; background: #f8285f; color: #fff; font-size: 11px; white-space: nowrap; pointer-events: none; z-index: 2; }
+.mf-note:empty { display: none; }
+.mf-canvas { position: absolute; border-radius: 6px; touch-action: none; box-shadow: 0 0 0 4px #8a6a3e, 0 0 0 6px #5a4426, 0 6px 16px rgba(0, 0, 0, 0.35); }
+.mf-canvas.is-on { cursor: crosshair; }
+.mf-tip { position: absolute; left: 16px; right: 16px; margin: 0; color: rgba(255, 255, 255, 0.9); font-size: 10px; font-weight: 600; text-align: center; }
+.mf-card { position: absolute; left: 50%; top: 60px; transform: translateX(-50%); width: 400px; padding: 14px 20px 16px; border-radius: 14px; background: rgba(255, 250, 238, 0.97); color: #3a2a18; text-align: center; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.mf-card h2 { margin: 0; font-size: 17px; }
+.mf-card p { margin: 0; font-size: 11.5px; line-height: 1.35; }
+.mf-card.is-win h2 { color: #2f7a34; }
+.mf-card.is-hole h2, .mf-card.is-time h2 { color: #c0392b; }
+.mf-legend { list-style: none; margin: 2px 0 6px; padding: 0; display: flex; flex-direction: column; gap: 4px; align-self: stretch; }
+.mf-legend li { display: flex; align-items: center; gap: 8px; font-size: 11.5px; text-align: left; }
+.mf-swatch { width: 30px; height: 30px; flex: none; }
+.mf-stars { font-size: 26px; letter-spacing: 4px; color: #d8cbb4; }
+.mf-stars .is-on { color: #f5b400; }
+.mf-best { color: #7a6448; font-weight: 700; }
+.mf-row { display: flex; gap: 12px; margin-top: 6px; }

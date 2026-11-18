@@ -32,6 +32,7 @@ export function MainMenu({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
         { label: 'Mission', note: 'Plan, progress, results', run: () => dispatch({ type: 'trials', open: true }) },
         { label: 'Field rounds', note: 'Check every bed', run: () => dispatch({ type: 'rounds', open: true }) },
         { label: 'Tractor', note: 'Pick a type and tool, work a plot', run: () => dispatch({ type: 'ride' }) },
+        { label: 'Tractor game', note: 'Plough the mini farm in 30 seconds', run: () => open({ kind: 'tractorGame' }) },
         { label: 'Tractor business', note: 'Serve farms, plan routes, partners', run: () => dispatch({ type: 'biz', open: true }) },
         { label: 'Wallet', note: 'Every payment in and out', run: () => open({ kind: 'wallet', tab: 'history' }) },
         { label: 'Power', note: 'Solar, battery, lights, generator', run: () => open({ kind: 'power', tab: 'build' }) },

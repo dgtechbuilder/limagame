@@ -17,6 +17,7 @@ const AnimalsPage = lazy(() => import('./livestock/Animals').then(m => ({ defaul
 const SecurityPage = lazy(() => import('./security/Security').then(m => ({ default: m.SecurityPage })));
 const WalletPage = lazy(() => import('./wallet/Wallet').then(m => ({ default: m.WalletPage })));
 const PowerPage = lazy(() => import('./power/Power').then(m => ({ default: m.PowerPage })));
+const TractorGamePage = lazy(() => import('./minifarm/MiniFarm').then(m => ({ default: m.TractorGamePage })));
 const MarketPage = lazy(() => import('./produce/Market').then(m => ({ default: m.MarketPage })));
 const GardenPage = lazy(() => import('./garden/Garden').then(m => ({ default: m.GardenPage })));
 // design review (?review=1) only: its sample screens are computed when it is opened, never for players
@@ -311,6 +312,11 @@ export default function App() {
         {m?.kind === 'market' && (
           <Suspense fallback={null}>
             <MarketPage s={s} dispatch={dispatch} />
+          </Suspense>
+        )}
+        {m?.kind === 'tractorGame' && (
+          <Suspense fallback={null}>
+            <TractorGamePage dispatch={dispatch} />
           </Suspense>
         )}
         {m?.kind === 'garden' && (
