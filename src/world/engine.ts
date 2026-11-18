@@ -114,6 +114,8 @@ const QUALITY = [
 ] as const;
 /** A still farm on a phone is drawn about 30 times a second. */
 const IDLE_FRAME_MS = 31;
+/** The longest the first frame waits for the shaders to finish compiling (the loading screen stays under 2 seconds). */
+const WARM_MAX_MS = 1500;
 
 /** A phone or a small, low-memory device: it gets the lighter picture on Auto graphics. */
 function phoneLike() {
@@ -366,16 +368,35 @@ export class FarmWorld {
 
     window.addEventListener('keydown', this.onKey);
     window.addEventListener('keyup', this.onKey);
-    // build every shader now, while the farm opens, not in the middle of the first walk (a stall on a phone)
+    // build every shader now, while the farm opens, not in the middle of the first walk (a stall on a phone). They
+    // are compiled in parallel, off the main thread where the browser can (KHR_parallel_shader_compile): drawing a
+    // frame before they are linked blocks the page for seconds on a phone, so the first frame waits for them (or
+    // for WARM_MAX_MS, whichever is first) behind the loading screen (World.tsx).
+    this.ready = this.warm();
+  }
+
+  /** Settles once the farm's first frame has been drawn: the loading screen comes off then. */
+  readonly ready: Promise<void>;
+  private disposed = false;
+  private firstFrame: (() => void) | null = null;
+
+  private async warm() {
     try {
-      this.renderer.compile(this.scene, this.camera);
+      await Promise.race([this.renderer.compileAsync(this.scene, this.camera), new Promise(r => setTimeout(r, WARM_MAX_MS))]);
     } catch {
       /* compiled on first use instead */
     }
-    this.loop();
+    if (this.disposed) return;
+    await new Promise<void>(resolve => {
+      this.firstFrame = resolve;
+      this.loop();
+    });
   }
 
   dispose() {
+    this.disposed = true;
+    this.firstFrame?.();
+    this.firstFrame = null;
     cancelAnimationFrame(this.raf);
     window.removeEventListener('keydown', this.onKey);
     window.removeEventListener('keyup', this.onKey);
@@ -1667,7 +1688,8 @@ export class FarmWorld {
 
   private loop = () => {
     this.raf = requestAnimationFrame(this.loop);
-    if (this.view?.paused) return;
+    // the first frame is drawn even under a pop-up, so the farm is ready behind it
+    if (this.view?.paused && !this.firstFrame) return;
     const t0 = performance.now();
     // on a phone, a still farm is drawn 30 times a second instead of 60 (cooler phone, longer battery)
     if (this.level > 0 && !this.busy && t0 - this.lastDraw < IDLE_FRAME_MS) return;
@@ -1676,6 +1698,12 @@ export class FarmWorld {
     this.frame();
     this.cpu.ms += performance.now() - t0;
     this.cpu.frames++;
+    if (this.firstFrame) {
+      const done = this.firstFrame;
+      this.firstFrame = null;
+      // the frame is on screen at the next paint
+      requestAnimationFrame(() => done());
+    }
   };
   private lastDraw = 0;
   /** something moves this frame (the farmer, the tractor, dust, a tap ring): draw every frame */

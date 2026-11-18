@@ -6,6 +6,8 @@ import { ShopModal, StepsModal } from './screens/Catalog';
 import { InfoModal, OutcomeModal, ProcessModal, RewardsModal, SaleModal, StorageModal, TimingModal, ValueModal } from './screens/Journey';
 import { FirstSession } from './first/FirstSession';
 import { FarmMap } from './components/FarmMap';
+import { FarmLoading } from './world/Loading';
+import { img } from './assets';
 
 // the field rounds are loaded only when opened, so the first session stays as small as before
 const Rounds = lazy(() => import('./rounds/Rounds').then(m => ({ default: m.Rounds })));
@@ -157,10 +159,16 @@ export default function App() {
     else window.history.pushState(null, '', url);
   }, [path, urlSeq, review]);
 
-  // The farm world (and its 3D engine) is fetched while the player is busy elsewhere, so it opens without a wait.
+  // The farm world (and its 3D engine) is fetched while the player is busy elsewhere (the first session, the classic
+  // farm), so it opens without a wait; its picture is fetched too, for the loading screen (world/Loading.tsx). When
+  // the farm is the first screen, World is already on its way and this costs nothing more.
   useEffect(() => {
-    if (s.view === 'world' || review) return;
-    const id = window.setTimeout(() => void import('./world/World'), 5000);
+    if (review) return;
+    const id = window.setTimeout(() => {
+      void import('./world/World');
+      const pic = new Image();
+      pic.src = (window.devicePixelRatio || 1) > 1 ? img.bgWorld2x : img.bgWorld;
+    }, 2000);
     return () => window.clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -260,7 +268,7 @@ export default function App() {
           <>
             {/* the farm stays underneath the rounds and the six farms, so it keeps its place */}
             {s.view === 'world' ? (
-              <Suspense fallback={<div className="abs world" style={{ inset: 0 }} />}>
+              <Suspense fallback={<FarmLoading />}>
                 {/* a new farm is built when the character style or the graphics change */}
                 <World key={`${s.settings.art}-${s.settings.graphics}`} s={s} dispatch={dispatch} paused={s.roundsOpen || s.trialsOpen || s.bizOpen || !!m} />
               </Suspense>

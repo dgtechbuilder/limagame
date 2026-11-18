@@ -897,6 +897,20 @@ button.card:active { transform: scale(0.98); }
 .world { overflow: hidden; background: #a5d62c; }
 .world-canvas { position: absolute; inset: 0; width: 874px; height: 402px; display: block; }
 .world-pad { position: absolute; inset: 0; touch-action: none; cursor: pointer; }
+/* the loading screen while the 3D farm opens (world/Loading.tsx): under 2 seconds, then it fades */
+.world-loading { z-index: 25; display: grid; place-items: center; background: #a5d62c; transition: opacity 0.28s ease; }
+.world-loading.is-done { opacity: 0; pointer-events: none; }
+.world-loading-card {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 14px 26px 16px;
+  border-radius: 16px; background: rgba(255, 255, 255, 0.92); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25); color: var(--ink);
+  animation: pop 0.2s ease both;
+}
+.world-loading-card b { font-size: 16px; font-weight: 800; }
+.world-loading-bar { display: block; width: 180px; height: 10px; border-radius: 100px; background: #dfe8cf; overflow: hidden; }
+.world-loading-bar i { display: block; height: 100%; width: 92%; border-radius: inherit; background: linear-gradient(90deg, #6fb52c, #ffae00); transform-origin: left; animation: farmload 1.6s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+.world-loading.is-done .world-loading-bar i { animation: none; width: 100%; }
+@keyframes farmload { from { transform: scaleX(0.04); } }
+.reduce-motion .world-loading-bar i { animation: none; }
 .joy {
   position: absolute; width: 80px; height: 80px; border-radius: 50%; pointer-events: none; z-index: 4;
   background: rgba(255, 255, 255, 0.22); box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.55);
