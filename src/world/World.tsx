@@ -486,14 +486,9 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     const w = eng.current;
     if (!w) return;
     if ('place' in task.target && task.target.place === 'mission') return dispatch({ type: 'trials', open: true });
-    // already standing at the Hire spot: walking there again would not arrive, so open it
-    if ('place' in task.target && task.target.place === 'hire') {
-      const at = w.farmerAt();
-      if (Math.hypot(at.x - PLACES.hire.x, at.z - PLACES.hire.z) < PLACES.hire.r) return onPlace('hire');
-    }
-    // already standing at the shed, the pond, the house or the market (after stepping back out of its screen, say):
-    // walking there again would not arrive, so the place answers again
-    if ('place' in task.target) w.revisit(task.target.place);
+    // already standing in the place the card points to: the tap on the card is the player's choice, so it opens now.
+    // Walking there only brings the farmer to its white square, where a button opts in (nothing opens by itself).
+    if ('place' in task.target && w.placeHere() === task.target.place) return enterPlace();
     const p = targetOf(task, w);
     intent.current = 'place' in task.target ? null : task.target.at === 'sign' ? task.target.farm : null;
     // already at the sign: open the check
@@ -503,6 +498,13 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     }
     w.walkTo(p.x, p.z);
   };
+
+  /** The button on a place's white square: the farmer opts into that activity (nothing starts by just walking in). */
+  function enterPlace() {
+    const w = eng.current;
+    if (!w) return;
+    w.enterPlace();
+  }
 
   /** From the at-risk list: straight to that farm's sign, into its check (or the fix, or the work left). */
   function goToProblem(item: RiskItem) {
@@ -851,6 +853,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
   }, [s.power, s.life, s.garden, s.fs.phase, farmDay]);
   const shedKind: PlotKind | null = anchors.place === 'shed-seeds' ? 'seed' : anchors.place === 'shed-fertilizer' ? 'fert' : anchors.place === 'shed-sprayer' ? 'sprayer' : null;
   const powerHasLights = !!pw.parts.lights;
+  const placeBtn = anchors.place ? placeButton(anchors.place, s.field.carry) : null;
   // the button at a new farm's sign: what that farm needs now
   const gardenBtn = (() => {
     const gi = anchors.garden?.i;
@@ -1081,20 +1084,30 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         </button>
       )}
 
-      {!working && !tidying && !anchors.plot && !anchors.riding && shedKind && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
-        <button
-          type="button"
-          className="hud-plot is-options"
-          style={{ left: Math.min(STAGE_W - 90, Math.max(90, anchors.farmer.x)), top: Math.min(STAGE_H - 60, anchors.farmer.y + 70) }}
-          onClick={() => setCare({ kind: 'options', of: shedKind })}
-          aria-label={`${SHED_WORD[shedKind]}: choose from every option`}
-        >
-          <TaskGlyph icon={shedKind === 'seed' ? 'seeds' : shedKind === 'fert' ? 'fertilizer' : 'spray'} />
-          <span>
-            <b>{SHED_WORD[shedKind]} ▾</b>
-            <i>Choose an option</i>
-          </span>
-        </button>
+      {/* a place's white square (Train, Seeds, Sell, Sleep…): a button opts into its activity; walking in starts nothing */}
+      {!working && !tidying && !anchors.plot && !anchors.riding && placeBtn && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
+        <div className="hud-place" style={{ left: Math.min(STAGE_W - 150, Math.max(150, anchors.farmer.x)), top: Math.min(STAGE_H - 60, anchors.farmer.y + 70) }}>
+          <button type="button" className={`hud-plot is-enter is-${anchors.place}`} onClick={enterPlace} aria-label={placeBtn.aria}>
+            {placeBtn.icon ? <TaskGlyph icon={placeBtn.icon} /> : <span className="hud-place-emoji" aria-hidden>{placeBtn.emoji}</span>}
+            <span>
+              <b>{placeBtn.label}</b>
+              <i>{placeBtn.sub}</i>
+            </span>
+          </button>
+          {shedKind && (
+            <button
+              type="button"
+              className="hud-plot is-options"
+              onClick={() => setCare({ kind: 'options', of: shedKind })}
+              aria-label={`${SHED_WORD[shedKind]}: choose from every option`}
+            >
+              <span>
+                <b>Options ▾</b>
+                <i>Every {SHED_WORD[shedKind].toLowerCase()} choice</i>
+              </span>
+            </button>
+          )}
+        </div>
       )}
       {gardenBtn && anchors.garden && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
         <button type="button" className="hud-check" style={{ left: anchors.garden.x, top: anchors.garden.y }} disabled={gardenBtn.disabled} onClick={gardenBtn.run}>
@@ -1261,6 +1274,38 @@ function PlotTimer({ at, start, ms, verb, what }: { at: { x: number; y: number }
 }
 
 /* ---------------- icons ---------------- */
+
+/** What the button on each place's white square says: the player taps it to start that activity. */
+function placeButton(p: Place, carry: GameState['field']['carry']): { label: string; sub: string; aria: string; icon?: TaskIcon; emoji?: string } {
+  const pick = (item: 'seeds' | 'fertilizer' | 'sprayer' | 'water', label: string, icon: TaskIcon) => {
+    const held = carry === item;
+    return { label, sub: held ? 'In your hands' : 'Tap to pick up', aria: `${label}${held ? ' (already carrying it)' : ''}`, icon };
+  };
+  switch (p) {
+    case 'shed-seeds':
+      return pick('seeds', 'Pick up seeds', 'seeds');
+    case 'shed-fertilizer':
+      return pick('fertilizer', 'Pick up fertilizer', 'fertilizer');
+    case 'shed-sprayer':
+      return pick('sprayer', 'Pick up the sprayer', 'spray');
+    case 'pond':
+      return pick('water', 'Fill the watering can', 'water');
+    case 'hire':
+      return { label: 'Start training', sub: 'Tractor yard', aria: 'Start training at the tractor yard', icon: 'tractor' };
+    case 'market':
+      return { label: 'Open the market', sub: 'Sell your harvest', aria: 'Open the market', icon: 'corn' };
+    case 'house':
+      return { label: 'Go to sleep', sub: 'End the day', aria: 'Go to sleep', icon: 'sleep' };
+    case 'mission':
+      return { label: 'Plan the farms', sub: 'Mission board', aria: 'Plan the farms', icon: 'plan' };
+    case 'pen':
+      return { label: 'See the cows', sub: 'Cow pen', aria: 'See the cows', emoji: '🐄' };
+    case 'coop':
+      return { label: 'See the hens', sub: 'Chicken coop', aria: 'See the hens', emoji: '🐔' };
+    case 'power':
+      return { label: 'Open power', sub: 'Power yard', aria: 'Open the power yard', emoji: '⚡' };
+  }
+}
 
 const SHED_WORD: Record<PlotKind, string> = { seed: 'Seeds', fert: 'Fertilizer', sprayer: 'Sprayer' };
 

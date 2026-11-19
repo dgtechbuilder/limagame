@@ -1001,6 +1001,21 @@ export class FarmWorld {
     return -1;
   }
 
+  /** The farmer opts into the place they stand in (the button on its white square): a shed or the pond hands over
+      its load, every other place opens its screen. Returns false when the farmer stands in no place. */
+  enterPlace(): boolean {
+    const now = this.inPlace;
+    if (!now) return false;
+    const item = PICKUP_OF[now];
+    if (item) this.ev.carry(item);
+    else if (now === 'hire') {
+      // the Train spot opens the tractor screen (World.tsx); its Hire section starts the oxen or the tractor
+      if (this.riding) return false;
+      this.ev.place('hire');
+    } else this.ev.place(now);
+    return true;
+  }
+
   /** The place the farmer stands in (a shed spot, the pond…), or null. */
   placeHere() {
     return this.inPlace;
@@ -1884,12 +1899,6 @@ export class FarmWorld {
     }
   }
 
-  /** The farmer already stands at a place and asks for it again (a tap on the task card that points there): the
-      place answers as if they had just walked in. */
-  revisit(place: Place) {
-    if (this.inPlace === place) this.inPlace = null;
-  }
-
   private places() {
     let now: Place | null = null;
     for (const [k, p] of Object.entries(PLACES) as [Place, (typeof PLACES)[Place]][]) {
@@ -1900,23 +1909,9 @@ export class FarmWorld {
       if (this.target && Math.hypot(this.target.x - p.x, this.target.y - p.z) >= p.r) continue;
       now = k;
     }
-    if (now !== this.inPlace) {
-      this.inPlace = now;
-      if (now) {
-        const item = PICKUP_OF[now];
-        if (item) {
-          // only a spot walked to (or steered into) hands over its item: crossing it on the way somewhere else keeps
-          // what is carried, so the sprayer is not swapped for fertilizer on the way to the farm
-          const p = PLACES[now];
-          const meant = !this.target || Math.hypot(this.target.x - p.x, this.target.y - p.z) < p.r;
-          if (meant && this.view?.field.carry !== item) this.ev.carry(item);
-        } else if (now === 'hire') {
-          // the Train spot opens the tractor screen (World.tsx); its Hire section starts the oxen or the tractor
-          if (!this.riding) this.ev.place('hire');
-        }
-        else this.ev.place(now);
-      }
-    }
+    // Walking into a place's white square never starts its activity by itself: the farmer opts in with the button the
+    // farm shows there (World.tsx), which calls enterPlace().
+    if (now !== this.inPlace) this.inPlace = now;
     // a farm's sign
     let sign = -1;
     const t = this.view?.trial;

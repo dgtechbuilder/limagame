@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { boot, finishLooking, makeCall, scenario, tapTask, type Win } from './helpers';
+import { boot, finishLooking, makeCall, scenario, tapTask, type Win, tapPlaceTask, optIn } from './helpers';
 
 /* A play-through of the new moments on a small touch screen (740 × 340, a phone held sideways), saving a screenshot
    of each to test-results/tour/ (kept with the CI run). It also checks that each screen opens at that size. */
@@ -54,7 +54,7 @@ test('tour of the Wakala moments on a phone-sized screen', async ({ page }) => {
 
   // the safety kit and the product
   await scenario(page, 'spray');
-  await tapTask(page, 'Get the sprayer');
+  await tapPlaceTask(page, 'Get the sprayer');
   await page.locator('.care-opt', { hasText: 'Gloves' }).click();
   await settle(page);
   await page.screenshot({ path: shot('08-safety-kit') });
@@ -66,7 +66,7 @@ test('tour of the Wakala moments on a phone-sized screen', async ({ page }) => {
 
   // the tractor
   await scenario(page, 'tractor');
-  await tapTask(page, 'Hire the tractor');
+  await tapPlaceTask(page, 'Hire the tractor');
   // the Train spot opens the tractor screen on Hire
   await page.getByRole('dialog', { name: 'Tractor' }).getByRole('button', { name: 'Hire now', exact: true }).click();
   await expect(page.locator('.tc-side')).toBeVisible();

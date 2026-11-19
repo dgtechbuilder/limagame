@@ -1017,6 +1017,13 @@ button.card:active { transform: scale(0.98); }
 .hud-plot b { font-size: 14px; font-weight: 900; }
 .hud-plot i { font-size: 10px; font-weight: 700; font-style: normal; opacity: 0.95; }
 .hud-plot:active { transform: translate(-50%, 0) scale(0.96); }
+/* a place's white square (Train, Seeds, Sell, Sleep…): the opt-in button, and a shed's Options beside it */
+.hud-place { position: absolute; z-index: 6; transform: translate(-50%, 0); display: flex; gap: 8px; align-items: center; }
+.hud-place .hud-plot { position: static; transform: none; }
+.hud-place .hud-plot:active { transform: scale(0.96); }
+.hud-plot.is-enter { background: linear-gradient(#5cc2f2, #1f86c9); }
+.hud-plot.is-options { padding-left: 14px; background: linear-gradient(#ffcf4d, #f39c12); }
+.hud-place-emoji { width: 26px; height: 26px; display: grid; place-items: center; font-size: 17px; background: rgba(255, 255, 255, 0.92); border-radius: 100px; }
 /* the daily tidy-up: the button by a bush or rock, and the chip bottom right */
 .hud-plot.is-tidy.is-bush { background: linear-gradient(#7fd35a, #2f9b14); }
 .hud-plot.is-tidy.is-rock { background: linear-gradient(#b9b9b0, #7d7d75); }
