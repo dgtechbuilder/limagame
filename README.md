@@ -43,6 +43,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [Sound effects](#sound-effects)
 - [Money on screen](#money-on-screen)
 - [Settings](#settings)
+- [Game controllers](#game-controllers)
 - [Money at risk](#money-at-risk)
 - [Harvest estimate](#harvest-estimate)
 - [Climate-smart farming: row strategies and treatment choices](#climate-smart-farming-row-strategies-and-treatment-choices)
@@ -150,6 +151,9 @@ src/
   speech.ts                Read aloud: the phone's own voice (speechSynthesis)
   assets.ts                image paths (art exported from Figma into public/assets)
   styles.css               design tokens (colours, gold button, panels) and component styles
+  input/
+    gamepad.ts             game controllers, live: read every frame, turned into keys, focus moves and presses
+    pad.ts                 game controllers, pure: which make, button names, standard and unmapped layouts
   components/
     Nav.tsx                Back / Menu / Farm buttons shared by every screen (NavBar, NavContext)
     FarmMap.tsx            the Figma farm map: the ground of the whole game (1× and 2×)
@@ -1055,18 +1059,45 @@ README says *coins*, it means this money. Points, litres, km, acres and days are
 ## Settings
 
 *Settings* (the **SETTINGS** button on the farm, the main menu, or the top bar in the first session) is a full page with
-four sections. Every control works at once and is saved on the device; *Reset progress* keeps them.
+five sections. Every control works at once and is saved on the device; *Reset progress* keeps them.
 
 | Section | Controls |
 | --- | --- |
 | **My farmer** | rename the farmer; change the look (the farm, the rounds and the HUD all follow) |
 | **Game** | *Character style*: Retro anime or Original · *Farm view*: 3D farm or Classic · *Read aloud*: speaks the guide's lines and the game's messages with the phone's voice (a Kenyan English voice when the phone has one), with a Test button · *Sound effects*: on or off, with a button to hear each one · *Upgrade messages*: the dialog after a storage upgrade, on or off |
 | **Display** | *Graphics*: Auto (shadows and a picture sized to the phone, lighter by itself if it slows down; see [Performance](#performance-on-low-cost-phones)), High (always shadows, the sharpest picture), Low (no shadows, 1× resolution) · *Reduce motion*: ends every animation and transition at once · *Full screen* |
+| **Controller** | the controllers connected, by name and make · *Use a controller*: on or off · *Button names*: Auto (as printed on the controller in use), Xbox, PlayStation or Nintendo · *Confirm button*: Bottom (Xbox, PlayStation) or Right (Nintendo style) · *Stick dead zone*: Small, Medium or Large · *Rumble* · a chart of every button, lit while held · *Set up buttons*: press each button in turn, for a controller the browser does not know (see [Game controllers](#game-controllers)) |
 | **Help & data** | How the farm works · Page addresses (what the address after the `#` does, with this page's) · Design review · Reset progress (asks twice) |
 
 The settings live in `GameState.settings` (`src/state.ts`); each section has its own address (`#/settings/display`).
 The 3D farm is rebuilt when the character style or the
 graphics change. `tests/settings.spec.ts` plays every section.
+
+## Game controllers
+
+Any controller the browser sees plays the whole game: Xbox, PlayStation (DualShock, DualSense), Nintendo Switch
+(Pro Controller, Joy-Con) and other makes (8BitDo, Logitech, PowerA, unbranded USB pads), by USB or Bluetooth.
+`src/input/gamepad.ts` reads them every frame and turns them into what the game already understands, so every screen
+works without code of its own:
+
+| Controller | Does |
+| --- | --- |
+| Left stick, D-pad | walk (the left stick walks the 3D farm at analogue speed), drive, steer, change lanes; on menus and pages, move the focus to the nearest button that way |
+| A / ✕ (Confirm) | press the button in focus, or the farm's action button underfoot (Clear, Plant, Check, Play); Enter for the timing and hold games |
+| B / ○ (Back) | Back / close (Escape) |
+| X / □ | Space for the hold and timing games; the tractor button on the farm |
+| Y / △ | walk to the next task |
+| LB / RB (L1 / R1) | the previous / next button, one by one |
+| LT / RT (L2 / R2) | the page's previous / next section |
+| Menu / Options / + | the main menu |
+| View / Create / − | Settings |
+| Right stick | scroll |
+
+The make is told from the USB vendor (Sony, Nintendo, Microsoft) or the name, and Settings → Controller shows its own
+button names. Controllers the browser maps to the standard layout share one set of button numbers; unmapped ones (some
+older or unbranded pads, some browsers) are read with a best guess, including a D-pad reported as a hat axis, and the
+player can set up each button in Settings → Controller (kept per controller model). `src/input/pad.ts` holds the
+mapping; `tests/controller.spec.ts` plays it with pretend Xbox, PlayStation, Nintendo and unbranded controllers.
 
 ## Money at risk
 
