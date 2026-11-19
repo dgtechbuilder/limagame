@@ -81,6 +81,7 @@ import {
   rockPile,
   roundRect,
   shed,
+  sharpText,
   signTexture,
   stall,
   tree,
@@ -600,7 +601,7 @@ export class FarmWorld {
       const post = new THREE.Mesh(G.cyl6, new THREE.MeshLambertMaterial({ color: '#8b5a2b' }));
       post.scale.set(0.14, 1.3, 0.14);
       post.position.set(FOREST.sign.x, 0.65, FOREST.sign.z);
-      const face = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.2), new THREE.MeshLambertMaterial({ map: forestSignTexture() }));
+      const face = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.2), sharpText(new THREE.MeshLambertMaterial({ map: forestSignTexture() })));
       face.position.set(FOREST.sign.x, 1.55, FOREST.sign.z + 0.1);
       face.rotation.x = -0.55;
       post.castShadow = true;
@@ -755,7 +756,7 @@ export class FarmWorld {
       ['power', 'Power', 'bolt', 1.9],
     ];
     for (const [p, label, glyph, size] of zones) {
-      const mat = new THREE.MeshBasicMaterial({ map: zoneTexture(label, glyphs[glyph]), transparent: true, depthWrite: false });
+      const mat = sharpText(new THREE.MeshBasicMaterial({ map: zoneTexture(label, glyphs[glyph]), transparent: true, depthWrite: false }));
       const zm = new THREE.Mesh(new THREE.PlaneGeometry(size, size).rotateX(-Math.PI / 2), mat);
       zm.position.set(PLACES[p].x, 0.03, PLACES[p].z);
       zm.renderOrder = 2;
@@ -947,7 +948,7 @@ export class FarmWorld {
       const post = new THREE.Mesh(G.cyl6, new THREE.MeshLambertMaterial({ color: '#8b5a2b' }));
       post.scale.set(0.12, 1.0, 0.12);
       post.position.set(sg.x, 0.5, sg.z);
-      const face = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.75, 0.08), new THREE.MeshLambertMaterial({ map: signTexture(i + 7) }));
+      const face = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.75, 0.08), sharpText(new THREE.MeshLambertMaterial({ map: signTexture(i + 7) })));
       face.position.set(sg.x, 1.15, sg.z);
       this.scene.add(post, face);
       this.obstacles.push({ x: sg.x, z: sg.z, r: 0.15 });
@@ -1047,7 +1048,7 @@ export class FarmWorld {
         new THREE.MeshLambertMaterial({ color: '#2fb3cf' }),
         new THREE.MeshLambertMaterial({ color: '#2fb3cf' }),
         new THREE.MeshLambertMaterial({ color: '#2fb3cf' }),
-        new THREE.MeshLambertMaterial({ map: signTexture(f + 1) }),
+        sharpText(new THREE.MeshLambertMaterial({ map: signTexture(f + 1) })),
         new THREE.MeshLambertMaterial({ color: '#2fb3cf' }),
       ]);
       face.position.y = 1.15;

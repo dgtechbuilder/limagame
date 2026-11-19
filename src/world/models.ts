@@ -140,6 +140,50 @@ function canvasTex(w: number, h: number, draw: (g: CanvasRenderingContext2D) => 
   return t;
 }
 
+/** How many canvas pixels each unit of a text face is drawn with: text in the farm stays sharp up close. */
+const TEXT_RES = 2;
+/** The sharpest texture filtering the GPU offers (three.js caps it at the device's own limit): text on the ground and
+    on tilted boards stays readable instead of smearing at a slant. */
+const TEXT_ANISOTROPY = 16;
+
+/** How far toward the sharper mipmap level text is sampled: a board seen small or at a slant reads crisp instead of
+    soft (a little more than the GPU's own choice; the anisotropic filtering keeps it from shimmering). */
+const TEXT_BIAS = -0.6;
+const SHARP_MAP = THREE.ShaderChunk.map_fragment.replace('texture2D( map, vMapUv )', `texture2D( map, vMapUv, ${TEXT_BIAS.toFixed(2)} )`);
+
+/** A material whose map is text: sampled with TEXT_BIAS so its words stay sharp. */
+export function sharpText<M extends THREE.Material>(m: M): M {
+  m.onBeforeCompile = sh => {
+    sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', SHARP_MAP);
+  };
+  m.customProgramCacheKey = () => 'sharp-text';
+  return m;
+}
+
+/** A canvas texture that carries words: drawn at TEXT_RES times the size (the drawing code keeps its own units), with
+    the sharpest filtering, and drawn again once the brand font has loaded (text drawn before it falls back to Arial). */
+function textTex(w: number, h: number, draw: (g: CanvasRenderingContext2D) => void, res = TEXT_RES) {
+  const cv = document.createElement('canvas');
+  cv.width = Math.round(w * res);
+  cv.height = Math.round(h * res);
+  const g = cv.getContext('2d')!;
+  const paint = () => {
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, cv.width, cv.height);
+    g.setTransform(res, 0, 0, res, 0, 0);
+    draw(g);
+  };
+  paint();
+  const t = new THREE.CanvasTexture(cv);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = TEXT_ANISOTROPY;
+  whenBrandFontReady(() => {
+    paint();
+    t.needsUpdate = true;
+  });
+  return t;
+}
+
 export function plaid(color: string) {
   return canvasTex(64, 64, g => {
     g.fillStyle = color;
@@ -179,7 +223,7 @@ export function cowHide() {
 
 /** A ground marker like a game's interaction spot: dashed white corners, an icon and a label. */
 export function zoneTexture(label: string, glyph: (g: CanvasRenderingContext2D) => void) {
-  return canvasTex(256, 256, g => {
+  return textTex(256, 256, g => {
     g.clearRect(0, 0, 256, 256);
     g.strokeStyle = '#ffffff';
     g.lineWidth = 12;
@@ -214,7 +258,7 @@ export function zoneTexture(label: string, glyph: (g: CanvasRenderingContext2D) 
 
 /** A floating badge over a sign: a round bubble with a mark. */
 export function badgeTexture(text: string, bg: string) {
-  return canvasTex(128, 128, g => {
+  return textTex(128, 128, g => {
     g.clearRect(0, 0, 128, 128);
     g.fillStyle = 'rgba(0,0,0,0.18)';
     g.beginPath();
@@ -238,7 +282,7 @@ export function badgeTexture(text: string, bg: string) {
 /** A sign board face: a cyan frame with a maize cob, like a crop marker. */
 /** The mini forest's sign: a wooden board. */
 export function forestSignTexture() {
-  return canvasTex(256, 128, g => {
+  return textTex(256, 128, g => {
     g.fillStyle = '#8b5a2b';
     g.fillRect(0, 0, 256, 128);
     g.fillStyle = '#c9925a';
@@ -347,7 +391,7 @@ export function forest(x0: number, z0: number, x1: number, z1: number): { parts:
 }
 
 export function signTexture(n: number) {
-  return canvasTex(128, 128, g => {
+  return textTex(128, 128, g => {
     g.fillStyle = '#3cc3dd';
     g.fillRect(0, 0, 128, 128);
     g.fillStyle = '#e9fbff';
@@ -411,10 +455,12 @@ export function billboardTexture(b: BillboardBrand) {
   const W = 1024;
   const H = 512;
   const cv = document.createElement('canvas');
-  cv.width = W;
-  cv.height = H;
+  cv.width = W * TEXT_RES;
+  cv.height = H * TEXT_RES;
   const g = cv.getContext('2d')!;
   const draw = () => {
+    // drawn at TEXT_RES times the size, so the words stay sharp
+    g.setTransform(TEXT_RES, 0, 0, TEXT_RES, 0, 0);
     g.clearRect(0, 0, W, H);
     // the ground: a diagonal gradient from a lighter to a deeper brand colour
     const bg = g.createLinearGradient(0, 0, W, H);
@@ -556,7 +602,7 @@ export function billboardTexture(b: BillboardBrand) {
   draw();
   const t = new THREE.CanvasTexture(cv);
   t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 4;
+  t.anisotropy = TEXT_ANISOTROPY;
   return Object.assign(t, {
     redraw() {
       draw();
@@ -567,7 +613,7 @@ export function billboardTexture(b: BillboardBrand) {
 
 /** The plaque on top of a billboard: "Partner" in gold on dark. */
 function plaqueTexture() {
-  return canvasTex(256, 64, g => {
+  return textTex(256, 64, g => {
     const bg = g.createLinearGradient(0, 0, 0, 64);
     bg.addColorStop(0, '#2a2e36');
     bg.addColorStop(1, '#121418');
@@ -600,7 +646,7 @@ function sweepTexture() {
 
 /** A partner's name for the side of the tractor's bonnet. */
 export function liveryTexture(name: string, color: string, accent: string, h = 80) {
-  return canvasTex(256, h, g => {
+  return textTex(256, h, g => {
     g.fillStyle = color;
     g.fillRect(0, 0, 256, h);
     g.fillStyle = accent;
@@ -674,7 +720,7 @@ export function makeBillboard(face: THREE.Texture): Billboard {
   head.position.y = H.y;
   head.rotation.x = H.tilt;
   g.add(head);
-  const faceMat = new THREE.MeshBasicMaterial({ map: face });
+  const faceMat = sharpText(new THREE.MeshBasicMaterial({ map: face }));
   const plane = new THREE.Mesh(new THREE.PlaneGeometry(H.faceW, H.faceH), faceMat);
   plane.position.set(0, H.faceY, 0.025);
   head.add(plane);
@@ -689,7 +735,7 @@ export function makeBillboard(face: THREE.Texture): Billboard {
   sweep.position.set(0, H.faceY, 0.032);
   sweep.visible = false;
   head.add(sweep);
-  const plaque = new THREE.Mesh(new THREE.PlaneGeometry(0.94, 0.235), new THREE.MeshBasicMaterial({ map: plaqueTexture() }));
+  const plaque = new THREE.Mesh(new THREE.PlaneGeometry(0.94, 0.235), sharpText(new THREE.MeshBasicMaterial({ map: plaqueTexture() })));
   plaque.position.set(0, H.faceY + 1.07, 0.025);
   head.add(plaque);
   const lenses = new THREE.MeshBasicMaterial({ color: '#9aa0a8' });
@@ -1280,7 +1326,7 @@ export function makeTractor(livery?: { side: THREE.Texture; top: THREE.Texture }
   }
   g.add(mesh(G.box, lam('#9aa3a8'), at(0, 0.3, -1.25, { sx: 1.4, sy: 0.25, sz: 0.4 })));
   if (livery) {
-    const mat = new THREE.MeshBasicMaterial({ map: livery.side });
+    const mat = sharpText(new THREE.MeshBasicMaterial({ map: livery.side }));
     for (const side of [-1, 1]) {
       const plate = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.3), mat);
       plate.position.set(side * 0.56, 0.86, 0.58);
@@ -1290,7 +1336,7 @@ export function makeTractor(livery?: { side: THREE.Texture; top: THREE.Texture }
     // across the top of the bonnet, reading along the tractor (the farm's camera looks down on it)
     const top = new THREE.PlaneGeometry(0.94, 0.66);
     top.applyMatrix4(new THREE.Matrix4().makeBasis(new THREE.Vector3(0, 0, 1), new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0)));
-    const roof = new THREE.Mesh(top, new THREE.MeshBasicMaterial({ map: livery.top }));
+    const roof = new THREE.Mesh(top, sharpText(new THREE.MeshBasicMaterial({ map: livery.top })));
     roof.position.set(0, 1.056, 0.57);
     g.add(roof);
   }
