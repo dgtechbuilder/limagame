@@ -487,7 +487,7 @@ function Compare({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) {
         ) : byPlot ? (
           <PlotResults tr={tr} />
         ) : (
-        <div className="tr-grid" style={{ gridTemplateColumns: `86px repeat(${k}, minmax(0, 1fr))` }}>
+        <div className="tr-grid" style={{ gridTemplateColumns: `100px repeat(${k}, minmax(0, 1fr))` }}>
           <div className="tr-head tr-corner">Harvest</div>
           {results.map((_, i) => (
             <button type="button" key={i} className={`tr-head tr-pick${i === keep ? ' is-on' : ''}`} onClick={() => setKeep(i)} aria-pressed={i === keep}>

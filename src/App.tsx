@@ -358,7 +358,7 @@ export default function App() {
           </div>
         )}
         {toastVisible && s.toast && (
-          <div key={s.toast.id} className="toast" role="status">
+          <div key={s.toast.id} className={`toast${m ? ' is-over-screen' : ''}`} role="status">
             {s.toast.text}
           </div>
         )}

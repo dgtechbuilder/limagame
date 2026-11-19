@@ -1,6 +1,5 @@
 import { useState, type Dispatch } from 'react';
 import { img } from '../assets';
-import { InfoDot, EditIcon } from '../components/Icons';
 import { IconSidebar, ModalShell } from '../components/Modal';
 import { Cast } from '../art/Cast';
 import { ClimateTag } from '../climate/Tag';
@@ -24,10 +23,9 @@ const SHOP_SLOT: Partial<Record<ShopTab, SlotId>> = { fertilizer: 'shop-fertiliz
 export function ShopModal({ s, tab, dispatch }: { s: GameState; tab: ShopTab; dispatch: Dispatch<Action> }) {
   const def = SHOP_TABS.find(t => t.id === tab)!;
   const close = () => dispatch({ type: 'close' });
-  const rows = [def.items.slice(0, 3), def.items.slice(3)].filter(r => r.length);
 
   return (
-    <ModalShell frame="shop" x={178} y={28} title="Shop" close={[633, 56]} onClose={close}>
+    <ModalShell frame="shop" x={178} y={28} title="Shop" onClose={close}>
       <IconSidebar
         label="Shop sections"
         items={SHOP_TABS.map(t => ({ id: t.id, label: t.label, icon: t.icon, iconOn: t.iconOn, size: t.iconSize, sizeOn: t.iconOnSize }))}
@@ -38,75 +36,55 @@ export function ShopModal({ s, tab, dispatch }: { s: GameState; tab: ShopTab; di
         gap={16}
       />
 
-      {/* Shopkeeper with a speech bubble that changes per section */}
-      <div className="panel" style={{ left: 215, top: 78, width: 197, height: 254, borderRadius: '16px 0 0 16px' }}>
-        <Cast id="shopkeeper" w={197} h={254} alt="Shopkeeper" backdrop="panel" />
-        <div className="speech" style={{ left: 72, top: 149, width: 125, height: 91 }}>
-          <img src={img.bubble} alt="" />
-          <span style={{ width: 98, fontSize: 9, padding: '10px 0 0' }}>{def.speech}</span>
+      {/* the items fill the frame; the shopkeeper stands beside it, her tip one line above the grid */}
+      <div className="panel pp-body" style={{ left: 213, top: 78, width: 446, height: 254 }}>
+        <div className="pp-head">
+          <p className="pp-h">{def.title}</p>
+          <p className="pp-sub is-right">{def.speech}</p>
         </div>
-      </div>
-
-      <div className="panel right-round" style={{ left: 412, top: 78, width: 247, height: 254 }}>
-        <div
-          style={{
-            position: 'absolute',
-            left: 14,
-            right: 14,
-            top: def.id === 'food' ? 6 : 19,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 12,
-          }}
-        >
-          <p className="section-title">{def.title}</p>
-          {rows.map((row, ri) => (
-            <div key={ri} style={{ display: 'flex', gap: 10, alignSelf: ri === 1 && row.length < 3 ? 'flex-start' : 'center', marginLeft: ri === 1 && row.length < 3 ? 2 : 0 }}>
-              {row.map(item => {
-                const left = item.stock ? s.stock[item.id] ?? 0 : undefined;
-                const owned = !item.stock && s.inventory.includes(item.id);
-                const brand = brandOf(item.partner);
-                const lock = lockText(s, shopIndex(item.id));
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    title={lock ?? undefined}
-                    data-option={item.id}
-                    className={`card${owned ? ' is-owned' : ''}${brand ? ' is-partner' : ''}${lock ? ' is-gated' : ''}`}
-                    style={{ width: 66, padding: '4px 8px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, opacity: left === 0 ? 0.55 : 1, ...(brand ? { ['--brand' as string]: brand.color } : {}) }}
-                    onClick={() =>
-                      item.stock
-                        ? dispatch({ type: 'sell', id: item.id, price: item.price, name: item.name })
-                        : dispatch({ type: 'buy', id: item.id, price: item.price, name: item.name })
-                    }
-                    aria-label={item.stock ? `Sell ${item.name}, ${left} of ${item.stock[1]} bags left, ${money(item.price)} each` : `Buy ${item.name} for ${money(item.price)}${brand ? `, from partner ${brand.name}` : ''}${lock ? `. ${lock}` : ''}`}
-                  >
-                    {item.partner && <PartnerRibbon brand={item.partner} />}
-                    <span style={{ fontSize: def.nameFont, fontWeight: 700, lineHeight: 'normal', textAlign: 'center', ...(def.id === 'fertilizer' ? { maxWidth: 52 } : { whiteSpace: 'nowrap', margin: '0 -8px' }) }}>
-                      {item.name}
-                    </span>
-                    <Img src={item.icon} w={item.iconSize[0]} h={item.iconSize[1]} />
-                    {item.stock && (
-                      <span style={{ fontSize: 8, fontWeight: 600, opacity: 0.7 }}>
-                        {left}/{item.stock[1]}
-                      </span>
-                    )}
-                    <PriceChip price={item.price} width="100%" font={def.priceFont} />
-                    <span style={{ position: 'absolute', right: 2, top: 2 }}>{lock ? <span aria-hidden="true" style={{ fontSize: 10 }}>🔒</span> : <InfoDot size={10} />}</span>
-                  </button>
-                );
-              })}
-            </div>
-          ))}
+        <div className="pp-grid" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+          {def.items.map(item => {
+            const left = item.stock ? s.stock[item.id] ?? 0 : undefined;
+            const owned = !item.stock && s.inventory.includes(item.id);
+            const brand = brandOf(item.partner);
+            const lock = lockText(s, shopIndex(item.id));
+            return (
+              <button
+                key={item.id}
+                type="button"
+                title={lock ?? undefined}
+                data-option={item.id}
+                className={`pp-card card${owned ? ' is-owned is-on' : ''}${brand ? ' is-partner' : ''}${lock ? ' is-gated' : ''}`}
+                style={{ height: 84, justifyContent: 'space-between', opacity: left === 0 ? 0.55 : 1, ...(brand ? { ['--brand' as string]: brand.color } : {}) }}
+                onClick={() =>
+                  item.stock
+                    ? dispatch({ type: 'sell', id: item.id, price: item.price, name: item.name })
+                    : dispatch({ type: 'buy', id: item.id, price: item.price, name: item.name })
+                }
+                aria-label={item.stock ? `Sell ${item.name}, ${left} of ${item.stock[1]} bags left, ${money(item.price)} each` : `Buy ${item.name} for ${money(item.price)}${brand ? `, from partner ${brand.name}` : ''}${lock ? `. ${lock}` : ''}`}
+              >
+                {item.partner && <PartnerRibbon brand={item.partner} />}
+                <span className="pp-row" style={{ paddingTop: item.partner ? 12 : 0 }}>
+                  <Img src={item.icon} w={36} h={30} style={{ flexShrink: 0 }} />
+                  <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                    <span className="pp-name">{item.name}</span>
+                    {item.stock && <span className="pp-cap">{left} of {item.stock[1]} left</span>}
+                    {owned && <span className="pp-cap">Owned</span>}
+                  </span>
+                </span>
+                <PriceChip price={item.price} />
+                {lock && <span className="pp-corner" aria-hidden="true">🔒</span>}
+              </button>
+            );
+          })}
         </div>
         {SHOP_SLOT[tab] && slotBrand(SHOP_SLOT[tab]!) ? (
           <SponsorLine slot={SHOP_SLOT[tab]!} label="Featured partner" dispatch={dispatch} className="shop-sponsor" />
         ) : (
-          <Partner top={233} />
+          <Partner top={226} />
         )}
       </div>
+      <Cast id="shopkeeper" w={176} h={226} alt="Shopkeeper" backdrop="none" style={{ position: 'absolute', left: 682, top: 150, pointerEvents: 'none' }} />
     </ModalShell>
   );
 }
@@ -141,7 +119,7 @@ export function StepsModal({ s, step, dispatch }: { s: GameState; step: StepId; 
   const current = STEPS[Math.min(s.stage, STEPS.length - 1)];
 
   return (
-    <ModalShell frame="shop" x={fx} y={28} title="Farming Steps" close={[fx + 455, 56]} onClose={close}>
+    <ModalShell frame="shop" x={fx} y={28} title={def.title} label="Farming Steps" onClose={close}>
       <IconSidebar
         label="Farming steps"
         items={STEPS.map(d => ({
@@ -160,90 +138,104 @@ export function StepsModal({ s, step, dispatch }: { s: GameState; step: StepId; 
         centerY={201}
         gap={4}
       />
-      <div className="panel" style={{ left: fx + 36, top: 78, width: 446, height: 254 }}>
-        <p className="section-title" style={{ position: 'absolute', left: 0, right: 0, top: 2 }}>
-          {def.title}
-          <span style={{ fontWeight: 400, fontSize: 8, opacity: 0.8 }}> · {meta.purpose}</span>
-        </p>
+      <div className="panel pp-body" style={{ left: fx + 36, top: 78, width: 446, height: 254 }}>
         {step === 'water' ? (
           <WaterBody s={s} status={status} dispatch={dispatch} />
         ) : (
           <TaskGrid s={s} step={step} status={status} dispatch={dispatch} />
         )}
-        <div style={{ position: 'absolute', left: 14, right: 14, top: 229, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, fontSize: 8 }}>
-          {status === 'current' && (
-            <>
-              <span style={{ fontWeight: 600 }}>
-                {done}/{meta.need} recommended tasks done
-                <span style={{ fontWeight: 400, opacity: 0.75 }}>
-                  {done < meta.need ? ' · fewer means a weaker crop' : ' · your crop is in good shape'}
-                </span>
-              </span>
-              <GoldButton font={9} height={20} style={{ width: 132, flexShrink: 0 }} onClick={() => dispatch({ type: 'finishStep', step })}>
-                {step === 'harvest' ? 'Harvest the crop' : done === 0 ? `Skip ${def.label}` : `Finish ${def.label} · ${meta.days}d`}
+        <div className="pp-foot">
+          <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+            <b className="pp-name" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {status === 'current'
+                ? `${done}/${meta.need} recommended tasks done`
+                : status === 'finished'
+                  ? `Finished this season · ${Math.round((s.stepScores[step] ?? 0) * 100)}% of the recommended work`
+                  : `Locked · finish ${current.label} first`}
+            </b>
+            <span className="pp-sub" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {status === 'locked' ? 'You can look around to plan ahead.' : status === 'current' ? `${done < meta.need ? 'Fewer means a weaker crop' : 'Your crop is in good shape'}. ${meta.purpose}.` : `${meta.purpose}.`}
+            </span>
+          </span>
+          {status === 'current' &&
+            (done === 0 && step !== 'harvest' ? (
+              <button type="button" className="pp-text-btn" onClick={() => dispatch({ type: 'finishStep', step })}>
+                Skip {def.label}
+              </button>
+            ) : (
+              <GoldButton className="pp-main is-small" style={{ flexShrink: 0 }} onClick={() => dispatch({ type: 'finishStep', step })}>
+                {step === 'harvest' ? 'Harvest the crop' : `Finish ${def.label} · ${meta.days}d`}
               </GoldButton>
-            </>
-          )}
-          {status === 'finished' && (
-            <span style={{ fontWeight: 600, margin: '0 auto' }}>
-              Finished this season · {Math.round((s.stepScores[step] ?? 0) * 100)}% of the recommended work
-            </span>
-          )}
-          {status === 'locked' && (
-            <span style={{ fontWeight: 600, margin: '0 auto' }}>
-              Locked · finish {current.label} first. You can look around to plan ahead.
-            </span>
-          )}
+            ))}
         </div>
       </div>
     </ModalShell>
   );
 }
 
-function TaskChip({ s, taskId, price, done, status, width }: { s: GameState; taskId: string; price: number; done: boolean; status: StepStatus; width: number }) {
-  if (done) return <span className="chip" style={{ width, fontSize: 8, background: '#5fb544', borderColor: '#3e8c2a' }}>Done</span>;
-  if (status !== 'current') return <span className="chip" style={{ width, fontSize: 8, background: '#cdb89a', borderColor: '#a8916f' }}>{status === 'locked' ? 'Locked' : 'Skipped'}</span>;
+function TaskChip({ s, taskId, price, done, status }: { s: GameState; taskId: string; price: number; done: boolean; status: StepStatus }) {
+  if (done) return <span className="pp-price is-done">Done</span>;
+  if (status !== 'current') return <span className="pp-price is-off">{status === 'locked' ? 'Locked' : 'Skipped'}</span>;
   const item = TASK_USES_ITEM[taskId];
-  if (item && itemsFor(item).some(i => s.inventory.includes(i))) return <span className="chip" style={{ width, fontSize: 8, background: '#5fb544', borderColor: '#3e8c2a' }}>In stock · free</span>;
-  return <PriceChip price={price} width={width} />;
+  if (item && itemsFor(item).some(i => s.inventory.includes(i))) return <span className="pp-price is-done">In stock · free</span>;
+  return <PriceChip price={price} />;
+}
+
+/** A task card: picture and name on one row, its climate effect under the name, the price below (3 × 2 at most). */
+function TaskCard({ s, step, t, status, onDo, label, water, tall }: { s: GameState; step: StepId; t: { id: string; name: string; icon: string; iconSize: [number, number]; price: number }; status: StepStatus; onDo: () => void; label: string; water?: number; tall?: boolean }) {
+  const done = s.doneTasks.includes(t.id);
+  const disabled = status !== 'current' || done;
+  const tag = step === 'water' ? waterTask((water ?? 0) * 1000, hasSolar(s)) : TASK_CLIMATE[t.id];
+  const [iw, ih] = t.iconSize;
+  const k = Math.min(1, (tall ? 48 : 30) / iw, (tall ? 36 : 28) / ih);
+  const pic = <Img src={t.icon} w={Math.round(iw * k)} h={Math.round(ih * k)} />;
+  return (
+    <button
+      type="button"
+      className={`pp-card card${done ? ' is-owned is-on' : ''}`}
+      style={{ height: tall ? 132 : 88, padding: tall ? '6px 8px 8px' : '6px 6px 8px', justifyContent: 'space-between', alignItems: tall ? 'center' : undefined, opacity: status === 'locked' ? 0.6 : 1, cursor: disabled ? 'default' : 'pointer' }}
+      onClick={() => !disabled && onDo()}
+      aria-disabled={disabled}
+      aria-label={label}
+    >
+      {tall ? (
+        <>
+          <span style={{ height: 36, display: 'grid', placeItems: 'center' }}>{pic}</span>
+          <span className="pp-name">{t.name}</span>
+          {tag && <ClimateTag short d={tag} style={{ textAlign: 'center', justifyContent: 'center' }} />}
+        </>
+      ) : (
+        <span className="pp-row" style={{ alignItems: 'flex-start' }}>
+          <span style={{ width: 30, height: 30, display: 'grid', placeItems: 'center', flexShrink: 0 }}>{pic}</span>
+          <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+            <span className="pp-name">{t.name}</span>
+            {tag && <ClimateTag short d={tag} style={{ whiteSpace: 'nowrap' }} />}
+          </span>
+        </span>
+      )}
+      <span style={{ alignSelf: 'stretch' }}>
+        <TaskChip s={s} taskId={t.id} price={t.price} done={done} status={status} />
+      </span>
+    </button>
+  );
 }
 
 function TaskGrid({ s, step, status, dispatch }: { s: GameState; step: StepId; status: StepStatus; dispatch: Dispatch<Action> }) {
   const def = STEPS.find(d => d.id === step)!;
-  const three = def.columns === 3;
   return (
-    <div
-      style={{
-        position: 'absolute',
-        left: '50%',
-        translate: '-50% 0',
-        top: step === 'fertilizer' ? 27 : 19,
-        display: 'grid',
-        gridTemplateColumns: three ? 'repeat(3, minmax(0, 1fr))' : 'repeat(2, 127px)',
-        width: three ? 403 : undefined,
-        gap: 10,
-      }}
-    >
+    <div className="pp-grid" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', rowGap: 12, flexShrink: 0 }}>
       {def.tasks.map(t => {
         const done = s.doneTasks.includes(t.id);
-        const disabled = status !== 'current' || done;
         return (
-          <button
+          <TaskCard
             key={t.id}
-            type="button"
-            className={`card${done ? ' is-owned' : ''}`}
-            style={{ padding: '2px 8px 4px', minHeight: step === 'fertilizer' ? 87 : 99, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, opacity: status === 'locked' ? 0.6 : 1, cursor: disabled ? 'default' : 'pointer' }}
-            onClick={() => !disabled && dispatch({ type: 'task', step, id: t.id, price: t.price, name: t.name })}
-            aria-disabled={disabled}
-            aria-label={done ? `${t.name}, done` : status !== 'current' ? `${t.name}, not available` : `${t.name}, ${money(t.price)}`}
-          >
-            <Img src={t.icon} w={t.iconSize[0]} h={t.iconSize[1]} />
-            <span style={{ fontSize: def.nameFont, fontWeight: 700, lineHeight: 1.15, maxWidth: step === 'landprep' ? 66 : 120, textAlign: 'center' }}>
-              {t.name}
-            </span>
-            {TASK_CLIMATE[t.id] && <ClimateTag short d={TASK_CLIMATE[t.id]} style={{ position: 'absolute', left: 0, right: 0, top: 2, justifyContent: 'center' }} />}
-            <TaskChip s={s} taskId={t.id} price={t.price} done={done} status={status} width={110} />
-          </button>
+            s={s}
+            step={step}
+            t={t}
+            status={status}
+            onDo={() => dispatch({ type: 'task', step, id: t.id, price: t.price, name: t.name })}
+            label={done ? `${t.name}, done` : status !== 'current' ? `${t.name}, not available` : `${t.name}, ${money(t.price)}`}
+          />
         );
       })}
     </div>
@@ -260,60 +252,43 @@ function WaterBody({ s, status, dispatch }: { s: GameState; status: StepStatus; 
     setAmount('');
   };
   return (
-    <div style={{ position: 'absolute', left: 12, right: 12, top: 20 }}>
-      <label htmlFor="water-amount" style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>
-        Water amount
-      </label>
+    <>
       <form
-        className="field-box"
-        style={{ height: 35, paddingLeft: 8 }}
+        className="pp-row"
         onSubmit={e => {
           e.preventDefault();
           save();
         }}
       >
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Img src={img.waterInput} w={22} h={23} />
-          <input
-            id="water-amount"
-            inputMode="numeric"
-            placeholder="Enter water amount"
-            value={amount}
-            onChange={e => setAmount(e.target.value)}
-            style={{ width: 220 }}
-          />
+        <label htmlFor="water-amount" className="pp-name" style={{ whiteSpace: 'nowrap' }}>
+          Water amount
+        </label>
+        <span className="field-box" style={{ flex: 1, height: 32, padding: '0 8px', gap: 8 }}>
+          <Img src={img.waterInput} w={20} h={21} />
+          <input id="water-amount" inputMode="numeric" placeholder="Litres per m²" value={amount} onChange={e => setAmount(e.target.value)} style={{ flex: 1, minWidth: 0, fontSize: 12 }} />
+          <span className="pp-cap">L/m²</span>
         </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 12, color: 'var(--brown-50)' }}>L/m^2</span>
-          <EditIcon size={18} />
-          <GoldButton font={10} style={{ width: 63, height: 27 }} onClick={save}>
-            Save
-          </GoldButton>
-        </span>
+        <button type="submit" className="pp-btn">Save</button>
       </form>
-      <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
+      <div className="pp-grid" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', flexShrink: 0 }}>
         {def.tasks.map((t, i) => {
           const done = s.doneTasks.includes(t.id);
-          const disabled = status !== 'current' || done;
           const litres = [1, 5, 10, 20][i];
           return (
-            <button
+            <TaskCard
               key={t.id}
-              type="button"
-              className={`card${done ? ' is-owned' : ''}`}
-              style={{ width: 85, height: 101, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: 6, padding: '6px 6px 8px', opacity: status === 'locked' ? 0.6 : 1, cursor: disabled ? 'default' : 'pointer' }}
-              onClick={() => !disabled && dispatch({ type: 'task', step: 'water', id: t.id, price: t.price, name: `${t.name} of water`, water: litres })}
-              aria-disabled={disabled}
-              aria-label={done ? `${t.name}, added` : `Add ${t.name} of water for ${money(t.price)}`}
-            >
-              <Img src={t.icon} w={t.iconSize[0]} h={t.iconSize[1]} />
-              <span style={{ fontSize: 10, fontWeight: 700 }}>{t.name}</span>
-              <ClimateTag short d={waterTask(litres * 1000, hasSolar(s))} style={{ position: 'absolute', left: 0, right: 0, top: 3, justifyContent: 'center' }} />
-              <TaskChip s={s} taskId={t.id} price={t.price} done={done} status={status} width={70} />
-            </button>
+              s={s}
+              step="water"
+              t={t}
+              water={litres}
+              tall
+              status={status}
+              onDo={() => dispatch({ type: 'task', step: 'water', id: t.id, price: t.price, name: `${t.name} of water`, water: litres })}
+              label={done ? `${t.name}, added` : `Add ${t.name} of water for ${money(t.price)}`}
+            />
           );
         })}
       </div>
-    </div>
+    </>
   );
 }
