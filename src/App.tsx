@@ -31,6 +31,8 @@ import { SettingsPage } from './screens/Settings';
 import { ClimatePage } from './screens/Climate';
 import { AchievementsPage } from './screens/Achievements';
 import { PartnersPage } from './screens/Partners';
+import { GlossaryPage } from './learn/Glossary';
+import { InfoLayer } from './learn/Info';
 
 import { ArtContext, VoiceContext } from './art/style';
 import { speak, stopSpeaking } from './speech';
@@ -346,6 +348,7 @@ export default function App() {
         {m?.kind === 'rewards' && <RewardsModal s={s} dispatch={dispatch} />}
         {m?.kind === 'loan' && <LoanModal s={s} dispatch={dispatch} view={m.view} />}
         {m?.kind === 'training' && <TrainingModal s={s} dispatch={dispatch} />}
+        {m?.kind === 'glossary' && <GlossaryPage key={m.tab ?? 'basics'} s={s} dispatch={dispatch} tab={m.tab} />}
 
         {/* the dialog after something worked: above every screen */}
         <SuccessLayer s={s} dispatch={dispatch} />
@@ -364,6 +367,8 @@ export default function App() {
             {s.toast.text}
           </div>
         )}
+        {/* a farm word's card, or a Farm basics lesson: above everything */}
+        <InfoLayer dispatch={dispatch} read={s.basics ?? []} />
       </div>
 
       {review && (

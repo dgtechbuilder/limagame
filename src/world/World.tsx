@@ -1,4 +1,5 @@
 import { Suspense, useEffect, useMemo, useRef, useState, type Dispatch, type PointerEvent as RPointerEvent } from 'react';
+import { BasicsChip } from '../learn/Basics';
 import { img } from '../assets';
 import { FarmerPortrait } from '../first/art';
 import { LOOKS } from '../first/data';
@@ -1010,6 +1011,8 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
           {task.note && <i>{task.note}</i>}
         </span>
       </button>
+      {/* the first days: today's Farm basics lesson, until it is read */}
+      <BasicsChip day={lifeOf(s.life).day} read={s.basics ?? []} />
 
       {/* the day, and what the farmer carries */}
       <div className="hud-status">

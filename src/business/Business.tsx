@@ -1,4 +1,5 @@
 import { farmSignal } from './signal';
+import { Info } from '../learn/Info';
 import { TrendChart } from './TrendChart';
 import { URGENT, traitsOf, urgencyOf, type FarmSignal } from './model';
 import { useEffect, useMemo, useRef, useState, type Dispatch } from 'react';
@@ -1218,7 +1219,10 @@ function Fleet({ b, dispatch }: { b: Biz; dispatch: Dispatch<Action> }) {
         return (
           <div key={item.id} className={`biz-card${block === 'Owned' ? ' is-signed' : ''}`}>
             <small>{item.id === 'large' ? 'Tractor' : item.id === 'combine' ? 'A separate asset' : 'Implement'}</small>
-            <b>{item.name}</b>
+            <b>
+              {item.name}
+              <Info term={item.id === 'large' ? 'large' : item.id === 'harvester' ? 'maizeH' : item.name} size={14} />
+            </b>
             <p>{item.does}</p>
             {block === 'Owned' ? (
               <span className="biz-tag">✓ Owned</span>

@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { BasicsBox } from '../learn/Basics';
 import { img } from '../assets';
 import { GoldButton } from '../components/ui';
 import { useVoice } from '../art/style';
@@ -57,6 +58,7 @@ export function FarmUpdate({ name, onDone }: { name: string; onDone: () => void 
               </li>
             ))}
           </ul>
+          <BasicsBox />
         </div>
 
         <div className="story-foot">

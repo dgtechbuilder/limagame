@@ -2,7 +2,7 @@ import type { ShopTab, StepId } from './data';
 import { STORY } from './first/data';
 import { CHECK_DAYS, currentDay } from './trials/model';
 import { dayNumber } from './rounds/farms';
-import type { AchTab, Action, AnimalsTab, ClimateTab, FsPhase, GameState, Modal, PartnersTab, PowerTab, SecurityTab, SettingsTab, WalletTab } from './state';
+import type { AchTab, Action, AnimalsTab, ClimateTab, FsPhase, GameState, GlossaryTab, Modal, PartnersTab, PowerTab, SecurityTab, SettingsTab, WalletTab } from './state';
 import { BRANDS, type BrandId } from './partners/data';
 
 /* Web addresses: every screen has its own address after the # (…/limagame/#/settings/display), so a player can
@@ -24,6 +24,7 @@ const ANIMALS: Record<AnimalsTab, string> = { today: 'today', health: 'health', 
 const WALLET: Record<WalletTab, string> = { history: 'history', climate: 'climate-payments', summary: 'summary' };
 const POWER_TABS: Record<PowerTab, string> = { build: 'build', today: 'today', impact: 'impact', history: 'history' };
 const SECURITY: Record<SecurityTab, string> = { protect: 'protect', risk: 'risks', reports: 'night-reports' };
+const GLOSSARY: Record<GlossaryTab, string> = { basics: 'basics', feed: 'fertilizer', protect: 'sprays', pests: 'pests', seed: 'seeds', tools: 'tools', machines: 'tractors', water: 'water-and-storage', animals: 'animals', power: 'power-and-climate' };
 const BRAND_WORD = Object.fromEntries(BRANDS.map(b => [b.id, b.id])) as Record<BrandId, string>;
 const SHOP: Record<ShopTab, string> = { food: 'food', fertilizer: 'fertilizer', tank: 'water-tanks', equipment: 'equipment' };
 const STEPS: Record<StepId, string> = { landprep: 'land-prep', planting: 'planting', fertilizer: 'fertilizer', pesticides: 'pesticides', water: 'water', harvest: 'harvest' };
@@ -91,6 +92,8 @@ function modalPath(s: GameState, m: Modal): string {
       return `/power/${POWER_TABS[m.tab ?? 'build']}`;
     case 'garden':
       return `/new-farms/${m.farm + 7}`;
+    case 'glossary':
+      return `/farm-words/${GLOSSARY[m.tab ?? 'basics']}`;
     default:
       return `/${SIMPLE[m.kind]}`;
   }
@@ -169,6 +172,10 @@ function modalFor(s: GameState, parts: string[]): Modal | null | 'bad' {
     const t = tab(POWER_TABS);
     return t === 'bad' || parts.length > 2 ? 'bad' : { kind: 'power', tab: t ?? 'build' };
   }
+  if (first === 'farm-words') {
+    const t = tab(GLOSSARY);
+    return t === 'bad' || parts.length > 2 ? 'bad' : { kind: 'glossary', tab: t ?? 'basics' };
+  }
   if (first === 'new-farms') {
     if (parts.length > 2) return 'bad';
     const n = second === undefined ? 7 : Number(second);
@@ -196,7 +203,7 @@ export function routeTo(s: GameState, raw: string): Action[] {
   if (phase !== 'done') {
     // the menu and Settings are open during the first session, as their buttons are; so is Partners, for a partner
     // visiting before they play
-    if (modal) return modal.kind === 'menu' || modal.kind === 'settings' || modal.kind === 'partners' ? [{ type: 'open', modal }] : say('Finish checking your first crops to open the farm.');
+    if (modal) return modal.kind === 'menu' || modal.kind === 'settings' || modal.kind === 'partners' || modal.kind === 'glossary' ? [{ type: 'open', modal }] : say('Finish checking your first crops to open the farm.');
     const close: Action[] = s.modal ? [{ type: 'close' }, { type: 'close' }] : [];
     const step = (to: FsPhase, page?: number): Action[] => [...close, { type: 'fs', phase: to, page }];
     // the step the player is on (e.g. Back from the menu to it)

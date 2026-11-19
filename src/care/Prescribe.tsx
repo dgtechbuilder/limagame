@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Info } from '../learn/Info';
 import { NavBar } from '../components/Nav';
 import { img } from '../assets';
 import { FarmMap } from '../components/FarmMap';
@@ -114,6 +115,7 @@ export function Prescribe({
                 </span>
                 <span>{op.label}</span>
                 {wrong && <small>−{money(cost)}</small>}
+                <Info term={op.label} nested size={17} />
               </button>
             );
           })}
@@ -137,7 +139,10 @@ export function Prescribe({
                       onClick={() => onTreat?.(w)}
                       title={w.does}
                     >
-                      <b>{w.label}</b>
+                      <b>
+                        {w.label}
+                        <Info term={w.label} nested size={13} />
+                      </b>
                       <small>
                         {money(Math.round(baseCost * w.costX))} · {w.labour} day{w.labour === 1 ? '' : 's'} · stops {Math.round(w.effect * 100)}%
                       </small>

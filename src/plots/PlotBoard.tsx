@@ -1,4 +1,5 @@
 import { LockTag, OpenLine } from '../unlock/Lock';
+import { Info } from '../learn/Info';
 import { isOpen, type UnlockHost } from '../unlock/model';
 import { useState, type Dispatch, type ReactNode } from 'react';
 import { NavBar } from '../components/Nav';
@@ -130,6 +131,7 @@ export function PlotBoard({
                     {at >= 0 && <small>This farm</small>}
                   </span>
                 </button>
+                <Info term={op.name} size={15} className="pb-info" />
               </li>
             );
           })}

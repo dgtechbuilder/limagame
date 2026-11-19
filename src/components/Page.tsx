@@ -16,6 +16,7 @@ export function Page<T extends string | number>({
   dispatch,
   children,
   onClose,
+  className,
 }: {
   title: string;
   icon: string;
@@ -26,6 +27,8 @@ export function Page<T extends string | number>({
   dispatch: Dispatch<Action>;
   children: ReactNode;
   onClose?: () => void;
+  /** an extra class on the page */
+  className?: string;
 }) {
   const close = onClose ?? (() => dispatch({ type: 'close' }));
   useEffect(() => {
@@ -35,7 +38,7 @@ export function Page<T extends string | number>({
   });
   const here = tabs.find(t => t.id === tab) ?? tabs[0];
   return (
-    <div className="abs settings-page" style={{ inset: 0 }} role="dialog" aria-modal="true" aria-label={title}>
+    <div className={`abs settings-page${className ? ` ${className}` : ''}`} style={{ inset: 0 }} role="dialog" aria-modal="true" aria-label={title}>
       <div className="scrim" onClick={close} />
       <div className="fs-panel set-panel" style={{ left: 24, top: 46, width: 826, height: 334 }}>
         <nav className="set-tabs cl-tabs" aria-label={`${title} sections`}>

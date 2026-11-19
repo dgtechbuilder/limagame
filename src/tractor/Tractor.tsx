@@ -1,4 +1,5 @@
 import { LockTag, OpenLine } from '../unlock/Lock';
+import { Info } from '../learn/Info';
 import { isOpen, type UnlockHost } from '../unlock/model';
 import { useEffect, useRef, useState, type PointerEvent as RPointerEvent, type ReactNode } from 'react';
 import { img } from '../assets';
@@ -374,6 +375,7 @@ export function Tractor({ farm, cycle, best, name, demo, onFinish, onClose, gate
                 <b>
                   {t.name} · {t.hp} hp
                 </b>
+                <Info term={t.id} nested size={15} className="info-corner" />
                 {Object.entries(t.meters).map(([k, v]) => (
                   <span className="tc-meter" key={k}>
                     <span>{k}</span>
@@ -398,6 +400,7 @@ export function Tractor({ farm, cycle, best, name, demo, onFinish, onClose, gate
               <button type="button" key={k} className={`tc-card is-small${impl === k ? ' is-on' : ''}`} aria-pressed={impl === k} onClick={() => setImpl(k)}>
                 <ImplIcon k={k} />
                 <b>{IMPL[k].name}</b>
+                <Info term={IMPL[k].name} nested size={15} className="info-corner" />
                 <em>{IMPL[k].does}</em>
               </button>
             ))}

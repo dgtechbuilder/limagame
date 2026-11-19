@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type Dispatch, type ReactNode } from 'react';
+import { Info } from '../learn/Info';
 import { MiniGame, type GameSpec } from '../minigames/MiniGame';
 import { NavBar } from '../components/Nav';
 import { CloseX } from '../components/Success';
@@ -50,6 +51,10 @@ const TABS: { id: AnimalsTab; label: string; icon: string }[] = [
 const L = (n: number) => `${Math.round(n).toLocaleString('en-US')} L`;
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 const GROUP_NAME: Record<Group, string> = { cows: 'Cows', hens: 'Hens' };
+
+
+/** The farm word (learn/glossary.ts) behind a daily job or a prevention, for its ⓘ. */
+const CARE_TERM: Record<string, string> = { cowFeed: 'napier', henFeed: 'layersMash', coopClean: 'litter', dip: 'acaricide', fmdVax: 'fmd', ncdVax: 'newcastle', deworm: 'deworm' };
 
 export function AnimalsPage({ s, dispatch, tab: startTab }: Props) {
   const tab: AnimalsTab = startTab ?? 'today';
@@ -186,7 +191,10 @@ function Today({ s, dispatch, go }: { s: GameState; dispatch: Dispatch<Action>; 
                 return (
                   <div key={c.id} className={`lv-job${done ? ' is-done' : ''}`}>
                     <span className="lv-job-text">
-                      <b>{c.label}</b>
+                      <b>
+                        {c.label}
+                        <Info term={CARE_TERM[c.id]} size={14} />
+                      </b>
                       <small>{noCoop ? 'Build the coop first (Coop).' : c.does}</small>
                     </span>
                     {done ? (
@@ -253,7 +261,8 @@ function Health({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
               </div>
               {tried.length > 0 && (
                 <p className="lv-hint">
-                  It is <b>{def.name}</b>. {def.cause}
+                  It is <b>{def.name}</b>
+                  <Info term={def.name} size={14} />. {def.cause}
                 </p>
               )}
             </div>
@@ -268,7 +277,10 @@ function Health({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
         return (
           <div key={p.id} className="lv-job">
             <span className="lv-job-text">
-              <b>{p.label}</b>
+              <b>
+                {p.label}
+                <Info term={CARE_TERM[p.id]} size={14} />
+              </b>
               <small>
                 {p.does}
                 {keeps.length ? ` Keeps away ${keeps.join(', ')}.` : ''}
@@ -485,7 +497,10 @@ function Shed({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
           const gated = !isOpen(s, i);
           return (
             <div key={c.id} className={`lv-option${built ? ' is-on' : ''}${gated && !built ? ' is-gated' : ''}`} data-option={c.id}>
-              <p className="set-title">{c.name}</p>
+              <p className="set-title">
+                {c.name}
+                <Info term={c.id === 'zero' ? 'zeroGrazing' : null} size={14} />
+              </p>
               <p className="set-body">{c.does}</p>
               <ul className="lv-facts">
                 <li>+{pct(c.milk)} milk</li>
