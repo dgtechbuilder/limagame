@@ -43,6 +43,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [Money on screen](#money-on-screen)
 - [Settings](#settings)
 - [Money at risk](#money-at-risk)
+- [Harvest estimate](#harvest-estimate)
 - [Climate-smart farming: row strategies and treatment choices](#climate-smart-farming-row-strategies-and-treatment-choices)
 - [Water as a real resource](#water-as-a-real-resource)
 - [The animals: cows, hens and the chicken coop](#the-animals-cows-hens-and-the-chicken-coop)
@@ -1058,6 +1059,32 @@ risk*). It makes the daily loop's stakes visible at a glance and gives a reason 
 list and the two cards, and `tests/risk.spec.ts` plays the acceptance checks: three problems add up, a fix drops the
 total by exactly its amount, a day left raises each by the escalation (up to its stated cost), a carried problem
 stays on its farm, the list never names a cause and a tap opens that farm's check.
+
+## Harvest estimate
+
+Beside the farmer's portrait, top left, styled like the task card: **what the harvest is likely to bring in if it goes
+well, the way the player is farming now**, and under it in small red text **what they are likely to lose if they do
+not put right the problems on the farms now** (*$3.1k*, *−$315 if not fixed*).
+
+![The harvest estimate beside the portrait, and its sheet](docs/harvest-estimate.webp)
+
+- **The estimate** is every farm's harvest from the six-farm model (`harvestFarm`): its plan, its plots' inputs, the
+  care done or missed, and every problem so far as it was dealt with, with today's open problems taken as put right.
+  Nothing new is assumed to go wrong. At harvest time nothing more can be put right, so it is the harvest as the checks
+  made it; once harvested, the button shows *Last harvest* and what it brought in.
+- **The risk line** is every open problem at its full cost if it is left alone: the same number the check shows
+  (*Will cost you about … if it is left alone*). The *at risk* button beside the task card shows what is at risk
+  *today* (half of that on the day a problem shows, growing each day it is left); the harvest line shows where that
+  ends up if nothing is done. With nothing open it reads *Nothing at risk now*.
+- **Tap it** for the sheet: the successful harvest, what would be lost if not put right, the harvest if left alone,
+  what the farms have cost so far and the profit after costs, then each farm's bags, cost, value and its own risk.
+  *See what is at risk* opens the at-risk list, to go and deal with them.
+- It shows only once a planting is growing (or harvested). Evidence: `harvest_open`.
+
+`src/risk/harvest.ts` works it out from the save (no screens; `harvestEstimate`), the button and sheet are in
+`src/risk/RiskHud.tsx`, and `tests/harvest.spec.ts` checks the estimate is the model's harvest with today's problems
+put right, the risk is every open problem's full cost (and drops by exactly one when it is fixed), and the button sits
+beside the portrait, clear of the task card, with the same numbers.
 
 ## Climate-smart farming: row strategies and treatment choices
 
