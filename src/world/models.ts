@@ -887,6 +887,40 @@ export function pond(): Part[] {
   return out;
 }
 
+/** The farm's water tank beside the pond: a green plastic tank up on a timber stand, with a pump pipe down to the
+    water and a tap underneath (the tank the Water page tracks, src/water). Centred at the origin; the pipe runs
+    toward -z for `pipe` units to reach the pond's edge. */
+export function waterTank(pipe = 1.8): Part[] {
+  const wood = '#8b5a2b';
+  const green = '#2f7d4a';
+  const out: Part[] = [];
+  // a concrete pad and four legs with cross braces
+  out.push({ geo: G.box, color: '#bdb6a6', m: at(0, 0.04, 0, { sx: 2.0, sy: 0.08, sz: 2.0 }) });
+  for (const [x, z] of [[-0.7, -0.7], [0.7, -0.7], [-0.7, 0.7], [0.7, 0.7]]) {
+    out.push({ geo: G.box, color: wood, m: at(x, 0.85, z, { sx: 0.16, sy: 1.7, sz: 0.16 }) });
+  }
+  for (const z of [-0.7, 0.7]) out.push({ geo: G.box, color: wood, m: at(0, 0.8, z, { sx: 1.95, sy: 0.08, sz: 0.06, rz: 0.72 }) });
+  for (const x of [-0.7, 0.7]) out.push({ geo: G.box, color: wood, m: at(x, 0.8, 0, { sx: 0.06, sy: 0.08, sz: 1.95, rx: -0.72 }) });
+  // the platform
+  out.push({ geo: G.box, color: C.woodPlank, m: at(0, 1.74, 0, { sx: 1.8, sy: 0.12, sz: 1.8 }) });
+  // the tank: a ribbed cylinder, a domed top and a lid
+  out.push({ geo: G.cyl, color: green, m: at(0, 2.5, 0, { sx: 1.5, sy: 1.4, sz: 1.5 }) });
+  for (const y of [2.05, 2.5, 2.95]) out.push({ geo: G.cyl, color: '#276b3f', m: at(0, y, 0, { sx: 1.56, sy: 0.08, sz: 1.56 }) });
+  out.push({ geo: G.sphere, color: green, m: at(0, 3.2, 0, { sx: 1.5, sy: 0.42, sz: 1.5 }) });
+  out.push({ geo: G.cyl, color: '#1f5a34', m: at(0, 3.42, 0, { sx: 0.42, sy: 0.08, sz: 0.42 }) });
+  // the pump pipe: up the side from the pond into the top of the tank
+  const grey = '#9aa3a8';
+  out.push({ geo: G.cyl6, color: grey, m: at(0, 1.75, -0.86, { sx: 0.09, sy: 3.3, sz: 0.09 }) });
+  out.push({ geo: G.cyl6, color: grey, m: at(0, 3.38, -0.6, { sx: 0.09, sy: 0.6, sz: 0.09, rx: Math.PI / 2 }) });
+  out.push({ geo: G.cyl6, color: grey, m: at(0, 0.12, -0.86 - pipe / 2, { sx: 0.09, sy: pipe, sz: 0.09, rx: Math.PI / 2 }) });
+  out.push({ geo: G.box, color: '#2b2f33', m: at(0, 0.22, -0.86, { sx: 0.3, sy: 0.26, sz: 0.3 }) });
+  // the outlet and tap under the platform, with a bucket
+  out.push({ geo: G.cyl6, color: grey, m: at(0.3, 1.45, 0.3, { sx: 0.07, sy: 0.5, sz: 0.07 }) });
+  out.push({ geo: G.box, color: '#c0392b', m: at(0.3, 1.18, 0.36, { sx: 0.1, sy: 0.08, sz: 0.16 }) });
+  out.push({ geo: G.cyl, color: '#e0a312', m: at(0.3, 0.3, 0.3, { sx: 0.4, sy: 0.42, sz: 0.4 }) });
+  return out;
+}
+
 export function trough(): Part[] {
   return [
     { geo: G.box, color: '#8b5a2b', m: at(0, 0.3, 0, { sx: 1.8, sy: 0.5, sz: 0.6 }) },
