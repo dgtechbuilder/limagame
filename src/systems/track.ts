@@ -6,6 +6,7 @@
    of each harvest goes into the store for the market stall. */
 
 import { toast, type Action, type GameState, type Modal } from '../state';
+import { BASICS, lessonForDay } from '../learn/glossary';
 import { LIFE, shedOption } from '../livestock/config';
 import { lifeOf } from '../livestock/model';
 import { capacityOf, tankOf } from '../water/model';
@@ -73,11 +74,14 @@ function endDay(s: GameState, ended: number): GameState {
 
 /** What is new this morning: today's power part, the cow shed, the new farms. */
 function morningNews(s: GameState, day: number) {
-  const lines: { icon: string; title: string; text: string; go: Modal }[] = [];
+  const lines: { icon: string; title: string; text: string; go: Modal; lesson?: number }[] = [];
   const step = POWER_STEPS.find(p => p.day === day && !has(s, p.id));
   if (step) lines.push({ icon: step.icon, title: step.id === 'switchOn' ? 'Switch on the power' : `Put in the ${step.name.toLowerCase()}`, text: `${step.does} Walk to the power yard (top right) or tap POWER.`, go: { kind: 'power', tab: 'build' } });
   if (day === LIFE.shedDay && !lifeOf(s.life).shed) lines.push({ icon: '🐄', title: 'Upgrade the cow shed', text: 'A roof, a dry floor and troughs: more milk and fewer diseases. Walk to the pen.', go: { kind: 'animals', tab: 'shed' } });
   if (day === GARDEN.openDay) lines.push({ icon: '🌱', title: 'Farms 7 and 8 are open', text: 'Plant spinach, tomatoes, beans, onions, watermelon or a fruit orchard. They are at the bottom of the farm.', go: { kind: 'garden', farm: 0 } });
+  // the Farm basics lesson for the day, for players new to farming
+  const lesson = lessonForDay(day);
+  if (lesson !== null && !(s.basics ?? []).includes(lesson)) lines.push({ icon: BASICS[lesson].icon, title: `Farm basics: ${BASICS[lesson].title.toLowerCase()}`, text: BASICS[lesson].lead, go: { kind: 'glossary', tab: 'basics' }, lesson });
   return lines;
 }
 

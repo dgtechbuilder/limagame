@@ -1,4 +1,5 @@
 import { lockShort, lockText } from '../unlock/model';
+import { Info } from '../learn/Info';
 import { useState, type CSSProperties, type Dispatch, type ReactNode } from 'react';
 import { FarmerPortrait } from '../first/art';
 import { LOOKS } from '../first/data';
@@ -191,6 +192,7 @@ export function StorageModal({ s, dispatch }: Props) {
                     style={{ flex: 1, minWidth: 0, height: 214, padding: '4px 5px 6px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, boxShadow: on ? 'inset 0 0 0 1.5px var(--select-ring)' : undefined }}
                   >
                     <Img src={o.icon} w={o.iconSize[0]} h={o.iconSize[1]} alt="" />
+                    <Info term={({ home: 'homeStore', coop: 'warehouse' } as Record<string, string>)[o.id] ?? o.id} size={14} className="info-corner" />
                     <p style={{ fontSize: 11, fontWeight: 700, textAlign: 'center', lineHeight: 1.45 }}>{o.name}</p>
                     <div style={{ width: '100%', background: 'rgba(255,255,255,0.2)', borderRadius: 4, padding: 4, display: 'flex', flexDirection: 'column', gap: 4 }}>
                       <Row size={8} label="Cost">
@@ -343,6 +345,7 @@ export function ValueModal({ s, dispatch }: Props) {
               {PROCESSES.map(p => (
                 <div key={p.id} className="card" style={{ flex: 1, height: p.step === 2 ? 187 : 182, padding: '8px 8px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                   <Img src={p.icon} w={p.iconSize[0]} h={p.iconSize[1]} alt="" />
+                  <Info term={p.id} size={14} className="info-corner" />
                   <p style={{ fontSize: 11, fontWeight: 700, marginTop: 8 }}>
                     {p.step}. {p.name}
                   </p>

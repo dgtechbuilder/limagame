@@ -1,4 +1,5 @@
 import { LockTag } from '../unlock/Lock';
+import { Info } from '../learn/Info';
 import { idOpen, isOpen, type UnlockHost } from '../unlock/model';
 import { useState } from 'react';
 import { NavBar } from '../components/Nav';
@@ -100,6 +101,7 @@ export function TractorPick({ tr, field, day, rig, onGo, onLeave, gate = {} }: {
                     <span className="tp-name">
                       <b>{k.name}</b>
                       <span className="tp-hp">{k.hp} hp</span>
+                      <Info term={k.id} nested size={15} className="info-corner" />
                     </span>
                   </span>
                   <span>{TRACTOR_PLOT[k.id].teach}</span>
@@ -137,6 +139,7 @@ export function TractorPick({ tr, field, day, rig, onGo, onLeave, gate = {} }: {
                     return (
                       <button type="button" key={k} role="radio" aria-checked={tool === k} className={`tp-tool${tool === k ? ' is-on' : ''}`} onClick={() => setTool(k)}>
                         <b>{IMPL[k].name}</b>
+                        <Info term={IMPL[k].name} nested size={15} className="info-corner" />
                         <span>{TOOL_USE[k]}</span>
                         {fits.length > 0 && <em>Suits {farmsText(fits)}</em>}
                         <small>{used.length ? `Used: ${used.slice(0, 2).join(', ')}${used.length > 2 ? '…' : ''}` : 'Not used yet'}</small>
