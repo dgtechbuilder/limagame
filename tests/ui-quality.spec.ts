@@ -35,3 +35,53 @@ test('pop-ups over the 3D farm hide its HUD, and every gold button has dark text
   await page.evaluate(() => (window.location.hash = '/farm'));
   await expect(page.locator('.hud-round').first()).toBeVisible();
 });
+
+/* Phase 2: the older pop-ups on the wooden frames. Navigation sits in the top bar (Back · Menu · Farm, top right) with
+   no ✕ outside the frame, no text under 10px, and at most one gold button in view. */
+const PHASE2 = [
+  'Shop · Fertilizer',
+  'Shop · Sell Food',
+  'Farming Steps · Land Prep',
+  'Farming Steps · Water',
+  'Storage',
+  'Harvest timing',
+  'Value Addition',
+  'Select Process',
+  'Harvest Info',
+  'Sale of produce',
+  'Outcome comparison',
+  'Rewards & Discounts Hub',
+  'Farmer training',
+];
+
+test('the older pop-ups: navigation in the top bar, text 10px and up, one gold button at most', async ({ page }) => {
+  test.setTimeout(180_000);
+  for (const screen of PHASE2) {
+    await page.goto(`./?review=1&screen=${encodeURIComponent(screen)}`);
+    const dialog = page.getByRole('dialog').first();
+    await expect(dialog, screen).toBeVisible();
+    // Back, Menu and Farm in a row at the top right; the old ✕ beside the frame is gone
+    const nav = dialog.locator('.navbar.is-row');
+    await expect(nav, screen).toBeVisible();
+    const box = (await nav.boundingBox())!;
+    expect(box.y, screen).toBeLessThan(40);
+    expect(box.x + box.width, screen).toBeGreaterThan(780);
+    await expect(dialog.locator('.close-btn'), screen).toHaveCount(0);
+    const found = await dialog.evaluate(root => {
+      const small: string[] = [];
+      const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      while (walk.nextNode()) {
+        const text = walk.currentNode.textContent!.trim();
+        const el = walk.currentNode.parentElement!;
+        // letters only: emoji brand marks are pictures
+        if (!/[a-z0-9]/i.test(text) || el.offsetParent === null) continue;
+        const size = parseFloat(getComputedStyle(el).fontSize);
+        if (size < 10) small.push(`${size}px "${text.slice(0, 30)}"`);
+      }
+      const gold = [...root.querySelectorAll<HTMLElement>('.gold-btn')].filter(e => e.offsetParent !== null).length;
+      return { small, gold };
+    });
+    expect(found.small, screen).toEqual([]);
+    expect(found.gold, screen).toBeLessThanOrEqual(1);
+  }
+});

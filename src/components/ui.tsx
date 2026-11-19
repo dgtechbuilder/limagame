@@ -33,10 +33,10 @@ export function Img({
   );
 }
 
-/** Gold price chip with the green cash note, e.g. "40 💵". */
-export function PriceChip({ price, width, font = 8 }: { price: number; width?: number | string; font?: number }) {
+/** Gold price pill with the green cash note, e.g. "💵 $3.10": 12px bold, 28px tall (docs/ui-spacing-plan.md §4). */
+export function PriceChip({ price, width, font = 12 }: { price: number; width?: number | string; font?: number }) {
   return (
-    <span className="chip" style={{ width, fontSize: font }}>
+    <span className="pp-price" style={{ width, fontSize: Math.max(12, font) }}>
       <img src={img.cash} alt="" width={14} height={14} />
       <span>{money(price)}</span>
     </span>
@@ -48,9 +48,10 @@ export function GoldButton({
   onClick,
   selected,
   style,
-  font = 8,
+  font,
   height,
   ariaLabel,
+  className,
 }: {
   children: ReactNode;
   onClick?: () => void;
@@ -59,16 +60,18 @@ export function GoldButton({
   font?: number;
   height?: number;
   ariaLabel?: string;
+  /** pp-main: the one main button of a pop-up (its size comes from the class) */
+  className?: string;
 }) {
   return (
     <button
       type="button"
-      className={`gold-btn${selected ? ' is-selected' : ''}`}
+      className={`gold-btn${selected ? ' is-selected' : ''}${className ? ` ${className}` : ''}`}
       onClick={selected ? undefined : onClick}
       aria-pressed={selected || undefined}
       aria-label={ariaLabel}
       // 10px at least: the label floor in docs/ui-spacing-plan.md
-      style={{ fontSize: Math.max(10, font), height, ...style }}
+      style={{ fontSize: font != null ? Math.max(10, font) : className ? undefined : 10, height, ...style }}
     >
       {children}
     </button>

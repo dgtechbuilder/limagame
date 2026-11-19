@@ -252,6 +252,22 @@ function Hold({ spec, onEnd }: Of<'hold'>) {
     window.setTimeout(() => setLevel(0), 500);
     if (next.length >= spec.rounds) window.setTimeout(() => onEnd(next.reduce((n, x) => n + x, 0) / spec.rounds), 700);
   };
+  // Space or Enter held anywhere (and a controller's Confirm or X, which press them: input/gamepad.ts) fills too
+  useEffect(() => {
+    const isKey = (e: KeyboardEvent) => e.key === ' ' || e.key === 'Enter';
+    const d = (e: KeyboardEvent) => {
+      if (!isKey(e)) return;
+      e.preventDefault();
+      if (!e.repeat) start();
+    };
+    const u = (e: KeyboardEvent) => isKey(e) && stop();
+    window.addEventListener('keydown', d);
+    window.addEventListener('keyup', u);
+    return () => {
+      window.removeEventListener('keydown', d);
+      window.removeEventListener('keyup', u);
+    };
+  });
   return (
     <div className="mg-hold">
       <Progress done={results.length} total={spec.rounds} label="Fill" />
@@ -366,7 +382,7 @@ function Tap({ spec, onEnd }: Of<'tap'>) {
               <text y={5} textAnchor="middle" fontSize={14} pointerEvents="none">
                 {done ? (spec.mark ?? '✓') : p.real ? (spec.spotMark ?? (spec.hidden ? '?' : '')) : (spec.decoyMark ?? (spec.hidden ? '?' : ''))}
               </text>
-              <rect x={-18} y={-18} width={36} height={36} fill="transparent" role="button" tabIndex={0} aria-label={p.label} onClick={() => hit(p)} onKeyDown={e => e.key === 'Enter' && hit(p)} style={{ cursor: 'pointer' }} />
+              <rect x={-18} y={-18} width={36} height={36} fill="transparent" role="button" tabIndex={0} aria-label={p.label} onClick={() => hit(p)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), hit(p))} style={{ cursor: 'pointer' }} />
             </g>
           );
         })}
@@ -543,7 +559,11 @@ function Quiz({ spec, onEnd }: Of<'quiz'>) {
     const k = (e: KeyboardEvent) => {
       const n = Number(e.key);
       if (picked === null && n >= 1 && n <= q.options.length) pick(n - 1);
-      else if (picked !== null && e.key === 'Enter') next();
+      else if (picked !== null && e.key === 'Enter') {
+        // the Enter is the Next button's own press too: once, not twice
+        e.preventDefault();
+        next();
+      }
     };
     window.addEventListener('keydown', k);
     return () => window.removeEventListener('keydown', k);
@@ -667,8 +687,8 @@ function Steer({ spec, onEnd }: Of<'steer'>) {
   }, !ended.current);
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft') setLane(l => Math.max(0, l - 1));
-      if (e.key === 'ArrowRight') setLane(l => Math.min(2, l + 1));
+      if (e.key === 'ArrowLeft') e.preventDefault(), setLane(l => Math.max(0, l - 1));
+      if (e.key === 'ArrowRight') e.preventDefault(), setLane(l => Math.min(2, l + 1));
     };
     window.addEventListener('keydown', k);
     return () => window.removeEventListener('keydown', k);

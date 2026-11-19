@@ -1,3 +1,4 @@
+import { DEFAULT_PAD, type PadSettings } from './input/pad';
 import { farmSignal } from './business/signal';
 import { idBlock, lockBlock } from './unlock/model';
 import { evidenceReduce, trackEvidence, type EvidenceAction, type EvidenceState } from './evidence/model';
@@ -178,8 +179,10 @@ export interface Settings {
   country: string;
   /** night mode on the 3D farm: follow the phone's clock (night from 7 pm to 6 am), or always day, or always night */
   night?: 'auto' | 'day' | 'night';
+  /** game controllers (Xbox, PlayStation, Nintendo and others): button names, swaps, rumble, own button setup */
+  pad?: PadSettings;
 }
-export type SettingsTab = 'farmer' | 'game' | 'display' | 'help';
+export type SettingsTab = 'farmer' | 'game' | 'display' | 'controller' | 'help';
 export type ClimateTab = 'overview' | 'land' | 'areas' | 'emissions' | 'water' | 'tank' | 'credits' | 'shocks' | 'activity';
 /** My Progress (the achievements page): the journey of certification levels, the modules, today, badges, certificates */
 export type AchTab = 'journey' | 'modules' | 'today' | 'badges' | 'certificates';
@@ -190,7 +193,7 @@ export type WalletTab = 'history' | 'climate' | 'summary';
 export type PowerTab = 'build' | 'today' | 'impact' | 'history';
 /** the Farm words page: the Farm basics lessons, or one section of words (src/learn/glossary.ts) */
 export type GlossaryTab = 'basics' | SectionId;
-export const DEFAULT_SETTINGS: Settings = { art: 'anime', graphics: 'auto', reduceMotion: false, voice: false, sound: true, upgradeNotes: true, country: '', night: 'auto' };
+export const DEFAULT_SETTINGS: Settings = { art: 'anime', graphics: 'auto', reduceMotion: false, voice: false, sound: true, upgradeNotes: true, country: '', night: 'auto', pad: DEFAULT_PAD };
 
 /** Stage index: 0–5 = the farming step being worked on, 6 = harvested and selling, 7 = season sold. */
 export const SELLING = 6;

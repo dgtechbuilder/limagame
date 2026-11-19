@@ -910,7 +910,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         </span>
         <span className="hud-level">{s.level}</span>
       </div>
-      <button type="button" className="hud-round" style={{ left: 14, top: 66 }} onClick={() => dispatch({ type: 'open', modal: { kind: 'settings' } })} aria-label="Settings">
+      <button type="button" className="hud-round" style={{ left: 12, top: 66 }} onClick={() => dispatch({ type: 'open', modal: { kind: 'settings' } })} aria-label="Settings">
         <GearIcon />
         <span>SETTINGS</span>
       </button>
@@ -920,6 +920,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       </button>
       <button
         type="button"
+        data-pad-x
         className={`hud-round hud-tractor${anchors.riding ? ' is-on' : ''}`}
         onClick={toggleRide}
         aria-pressed={anchors.riding}
@@ -996,7 +997,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       </button>
 
       {/* what to do next: tap it to walk there */}
-      <button type="button" className="hud-task" onClick={goToTask} aria-label={`Next: ${task.title}. Tap to walk there.`}>
+      <button type="button" data-pad-y className="hud-task" onClick={goToTask} aria-label={`Next: ${task.title}. Tap to walk there.`}>
         <span className="hud-task-icon">
           <TaskGlyph icon={task.icon} />
           {(task.coins !== undefined || task.points) && (
@@ -1070,6 +1071,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       {!working && !tidying && !anchors.plot && anchors.tidy && tidyOn && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
         <button
           type="button"
+          data-pad-primary
           className={`hud-plot is-tidy is-${anchors.tidy.kind}`}
           style={{ left: Math.min(STAGE_W - 90, Math.max(90, anchors.farmer.x)), top: Math.min(STAGE_H - 60, anchors.farmer.y + 70) }}
           onClick={() => startTidy(anchors.tidy!)}
@@ -1085,6 +1087,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       {!working && !tidying && anchors.plot && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
         <button
           type="button"
+          data-pad-primary
           className={`hud-plot is-${anchors.plot.job}`}
           style={{ left: Math.min(STAGE_W - 90, Math.max(90, anchors.farmer.x)), top: Math.min(STAGE_H - 60, anchors.farmer.y + 70) }}
           onClick={() => startPlot(anchors.plot!)}
@@ -1101,6 +1104,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       {!working && !tidying && !anchors.plot && !anchors.riding && shedKind && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
         <button
           type="button"
+          data-pad-primary
           className="hud-plot is-options"
           style={{ left: Math.min(STAGE_W - 90, Math.max(90, anchors.farmer.x)), top: Math.min(STAGE_H - 60, anchors.farmer.y + 70) }}
           onClick={() => setCare({ kind: 'options', of: shedKind })}
@@ -1114,7 +1118,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         </button>
       )}
       {gardenBtn && anchors.garden && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
-        <button type="button" className="hud-check" style={{ left: anchors.garden.x, top: anchors.garden.y }} disabled={gardenBtn.disabled} onClick={gardenBtn.run}>
+        <button type="button" data-pad-primary className="hud-check" style={{ left: anchors.garden.x, top: anchors.garden.y }} disabled={gardenBtn.disabled} onClick={gardenBtn.run}>
           {gardenBtn.label}
         </button>
       )}
@@ -1135,7 +1139,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         </p>
       )}
       {showCheck && anchors.sign?.visible && (
-        <button type="button" className="hud-check" style={{ left: anchors.sign.x, top: anchors.sign.y }} disabled={wait > 0} onClick={() => openCheck(signFarm)}>
+        <button type="button" data-pad-primary className="hud-check" style={{ left: anchors.sign.x, top: anchors.sign.y }} disabled={wait > 0} onClick={() => openCheck(signFarm)}>
           {wait > 0 ? `Look again in ${wait}s` : `Check ${farmName(signFarm)}`}
         </button>
       )}

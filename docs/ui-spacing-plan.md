@@ -206,24 +206,40 @@ one button.
 Checked by `tests/ui-quality.spec.ts`: eleven pop-ups over the 3D farm, with no HUD button, task card or pill
 under any of them, and every visible gold button dark-on-gold at 10px or more.
 
-**Phase 2: the older pop-ups** (the smallest text in the game)
+**Phase 2: the older pop-ups** ✅ (the smallest text in the game)
 
-5. **Shop**: item names 12, prices 12 bold in 32px buttons, the side tabs 44px tall; the guide's tip in one line
-   above the grid instead of a bubble over the art.
-   ![Shop today](ui-audit/shop-small-text.webp)
-6. **Farming steps**: task cards 3 × 2 with 12px gaps, climate tags 11px, *Skip* as a text button.
-7. **Storage, Harvest timing, Value addition**: three option cards, each with at most three facts (cost, loss,
-   time) at 12px; the rest under *Details*.
-8. **Outcome comparison**: the season's profit as the one hero number; lessons as a list of three; *TemoLima AI*
-   below it rather than in a third narrow column.
-9. **Rewards**: *Redeem* buttons 32px tall with 12px text; the points goal as one bar above the grid.
+All of them keep the wooden frame art and are re-laid out inside it with flex and the tokens (`.pp-*` in
+`src/styles.css`). On every framed pop-up, *Back · Menu · Farm* sit in the top bar, top right, with the same ✕ as the
+pages; the left-hand column and the red ✕ outside the frame are gone. A message (toast) shown over a pop-up moves to
+the top left so it never covers the frame's title.
 
-**Phase 3: the farm and the full pages**
+5. ✅ **Shop**: item names 12, prices 12 bold in 26px pills on cards that are the tap target (84px tall), side-tab
+   labels 10; the shopkeeper's tip is one line above the grid, and she stands beside the frame instead of inside it.
+6. ✅ **Farming steps**: task cards 3 × 2 with 12px row gaps, climate tags 11px, *Skip* as a text button; the step's
+   name is the frame's title; the footer says how many recommended tasks are done and why it matters. Water: four
+   cards in a row under the amount field.
+7. ✅ **Storage**: one row per store with three facts (cost a bag, bags lost, time) at 12px, and a *Costs / Details*
+   switch for spoilage and CO₂e; *Continue* is the only gold button, the others *Select*. **Harvest timing**: the
+   three choices are a radio group of cards, with one *Harvest* button. **Value addition**: three cards (a line, CO₂e,
+   cost) that are the tap target. **Select process** and **Harvest info**: 12 / 15 / 24 with one main button.
+8. ✅ **Outcome comparison**: the season's profit as the one hero number (24px); lessons as a list of three;
+   *TemoLima AI* as one question row below them, its answer in their place.
+9. ✅ **Rewards**: *Redeem* buttons 32px tall with 12px text (secondary, so no screen has six gold buttons); the play
+   goal as one bar above the grid, beside the farmer's name; the guide beside the frame, without a speech bubble.
 
-10. **Farm HUD**: labels from 9.5 to 10 uppercase; the right rail aligned to the same 8px grid as the left.
-11. **Six farms**: day headers and cells 12px; the sub-labels ("Seedlings", "Harvest time") 11px; row height 36.
-12. **Tractor business**, **Field rounds**, **Training**, **My Progress**, **Partners › Offers and Placements**:
-    tokens applied; tiles, tables and bars at 11–12px.
+Checked by `tests/ui-quality.spec.ts`: thirteen framed pop-ups with the navigation in the top bar, no ✕ outside the
+frame, no text under 10px and at most one gold button in view.
+
+**Phase 3: the farm and the full pages** ✅
+
+10. ✅ **Farm HUD**: round-button labels 10; both rails 12px from the edges, each on a 64px row step (left 66, 130,
+    194…; right 72, 136, 200, 264), the right rail's two columns 4px apart.
+11. ✅ **Six farms**: day headers, cells and farm names 12px; the sub-labels 11px in `--ink-2`; day cells 30px tall.
+    (Rows of 36 do not fit six farms in the panel; 30 + 3 does.)
+12. ✅ **Tractor business**, **Field rounds**, **Training**, **My Progress**, **Partners › Offers and Placements**, and
+    the **Loan calculator**: every size under 10px is now 10 (labels) or 11 (text), and 10–10.5px text is 11.
+    Training is re-laid out as four cards (title, two lines, when and where, price and *Book a seat*). My Progress ›
+    Modules puts the module's name on its own line under its status.
 
 **Already done**: *Partners › Partner with us* and *Shortlist* follow this plan (cards with a title, one line and a
 status; details on a tap; spacing 4 / 8 / 12 / 16; text 10px and up; solid text colours).
@@ -245,11 +261,8 @@ Before and after screenshots of every screen go with each phase, so each change 
 
 ---
 
-## 11. Open decisions
+## 11. Decisions
 
-- **Text floor.** 10 / 12 (as above) keeps today's layouts close to what they are. 11 / 13 reads better on small
-  phones but needs more screens split into steps.
-- **The Figma frames** (the wooden modal art) set fixed sizes for the older pop-ups. Phase 2 either keeps the frame
-  art and re-lays out what is inside it, or moves those pop-ups onto the page panel (layout B), which already looks
-  more modern.
-- **The guide character on pop-ups** stays beside the panel, or moves into the panel's header as a small portrait.
+- **Text floor**: 10 / 12 (labels / sentences), as above.
+- **The Figma frames**: kept. Phase 2 re-lays out what is inside them.
+- **The guide character on pop-ups**: beside the panel, never over a button (Shop, Rewards).

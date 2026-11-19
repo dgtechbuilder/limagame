@@ -57,7 +57,7 @@ export function MainMenu({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
         { label: 'Settings', note: 'Farm view, full screen', run: () => open({ kind: 'settings' }) },
       ];
   return (
-    <ModalShell frame="shop" x={178} y={28} title="Main menu" close={[633, 56]} onClose={() => dispatch({ type: 'close' })} isMenu>
+    <ModalShell frame="shop" x={178} y={28} title="Main menu" onClose={() => dispatch({ type: 'close' })} isMenu>
       <div className="panel" style={{ left: 213, top: 78, width: 446, height: 254, padding: '12px 18px' }}>
         <p className="section-title">
           {s.farmer?.name ?? 'Farmer'} · Level {s.level} <span style={{ fontWeight: 400, opacity: 0.75 }}>· {money(s.coins)} · {fmt(s.points)} points</span>

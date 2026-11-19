@@ -180,12 +180,13 @@ export function TractorYard({ stations, onOpen, look, name, top, corner }: { sta
           <g transform={`translate(${PADS[near.id].x},${PADS[near.id].y - 66})`}>
             <g
               data-play
+              data-pad-primary
               className={`ty-play${near.off ? ' is-off' : ''}`}
               role="button"
               tabIndex={0}
               aria-label={`Play ${near.label}`}
               onClick={() => onOpen(near.id)}
-              onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && onOpen(near.id)}
+              onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onOpen(near.id))}
             >
               <rect x={-40} y={-13} width={80} height={24} rx={12} />
               <text y={4} textAnchor="middle">
@@ -368,7 +369,7 @@ function StationArt({ st, near, onGo }: { st: StationInfo; near: boolean; onGo: 
       tabIndex={0}
       aria-label={`${st.label}${st.due ? `: ${st.due}` : ''}${st.off ? `: ${st.off}` : ''}${stars >= 0 ? `, best ${stars} of 3 stars` : ''}`}
       onClick={onGo}
-      onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && onGo()}
+      onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onGo())}
     >
       <rect x={-62} y={-96} width={124} height={108} fill="transparent" />
       <Prop id={st.id} />
