@@ -11,11 +11,14 @@ import { img } from '../assets';
 import { canSpeak, speak } from '../speech';
 import { setSoundOn, sfx } from '../sfx';
 import { COUNTRIES, countryOf, money } from '../money';
+import { activeFamily, captureInput, connectedPads, onPadPress, onPads, type PadInfo } from '../input/gamepad';
+import { FAMILY_NAME, padKey, padLabel, padSettings, type PadAction, type PadFamily, type PadMap, type PadSettings } from '../input/pad';
 import { clearSave, initialState, type Action, type GameState, type Settings, type SettingsTab } from '../state';
 
-/* Settings: a full page with four sections. Every control changes the game straight away and is kept on this device.
+/* Settings: a full page with five sections. Every control changes the game straight away and is kept on this device.
    Farmer: rename and change look. Game: character style, farm view, read aloud. Display: graphics, motion, full
-   screen. Help & data: about the game and its name, the intro, design review, and reset (which keeps these settings). */
+   screen. Controller: the controller connected, its button names, Confirm on the bottom or right, dead zone, rumble,
+   and setting up the buttons of a controller the browser does not know. Help & data: about the game and its name, the intro, design review, and reset (which keeps these settings). */
 
 type Props = { s: GameState; dispatch: Dispatch<Action>; tab?: SettingsTab };
 
@@ -23,6 +26,7 @@ const TABS: { id: SettingsTab; label: string; icon: string }[] = [
   { id: 'farmer', label: 'My farmer', icon: '☺' },
   { id: 'game', label: 'Game', icon: '✦' },
   { id: 'display', label: 'Display', icon: '☀' },
+  { id: 'controller', label: 'Controller', icon: '🎮' },
   { id: 'help', label: 'Help & data', icon: '?' },
 ];
 
@@ -91,6 +95,7 @@ export function SettingsPage({ s, dispatch, tab: startTab }: Props) {
           {tab === 'farmer' && <FarmerTab s={s} dispatch={dispatch} />}
           {tab === 'game' && <GameTab s={s} dispatch={dispatch} set={set} />}
           {tab === 'display' && <DisplayTab s={s} dispatch={dispatch} set={set} />}
+          {tab === 'controller' && <ControllerTab s={s} dispatch={dispatch} set={set} />}
           {tab === 'help' && <HelpTab s={s} dispatch={dispatch} />}
         </section>
       </div>
@@ -340,6 +345,208 @@ function DisplayTab({ s, dispatch, set }: Props & { set: (p: Partial<Settings>) 
             { id: 'on', label: 'On' },
           ]}
         />
+      </Row>
+    </div>
+  );
+}
+
+/* ---------------- Controller ---------------- */
+
+const SETUP_STEPS: { action: PadAction; what: string }[] = [
+  { action: 'confirm', what: 'Confirm (choose, press the button in focus)' },
+  { action: 'back', what: 'Back (close, go back)' },
+  { action: 'x', what: 'Hold and timing games, and the tractor' },
+  { action: 'y', what: 'Walk to the next task' },
+  { action: 'up', what: 'D-pad up' },
+  { action: 'down', what: 'D-pad down' },
+  { action: 'left', what: 'D-pad left' },
+  { action: 'right', what: 'D-pad right' },
+  { action: 'prev', what: 'Previous button (left bumper)' },
+  { action: 'next', what: 'Next button (right bumper)' },
+  { action: 'prevTab', what: 'Previous section (left trigger)' },
+  { action: 'nextTab', what: 'Next section (right trigger)' },
+  { action: 'start', what: 'Main menu (Start)' },
+  { action: 'select', what: 'Settings (Select)' },
+];
+
+/** The controls, as the player's controller names them. */
+type LegendKey = PadAction | 'stick' | 'rstick' | 'dpad';
+const PAD_LEGEND: { does: string; keys: LegendKey[] }[] = [
+    { does: 'Walk, drive and steer; move round a page', keys: ['stick', 'dpad'] },
+    { does: 'Choose, or the farm’s action', keys: ['confirm'] },
+    { does: 'Back, close', keys: ['back'] },
+    { does: 'Hold and timing games; tractor on/off', keys: ['x'] },
+    { does: 'Walk to the next task', keys: ['y'] },
+    { does: 'Previous / next button', keys: ['prev', 'next'] },
+    { does: 'Previous / next section', keys: ['prevTab', 'nextTab'] },
+    { does: 'Main menu', keys: ['start'] },
+    { does: 'Settings', keys: ['select'] },
+    { does: 'Scroll', keys: ['rstick'] },
+];
+
+function ControllerTab({ s, set }: Props & { set: (p: Partial<Settings>) => void }) {
+  const pad = padSettings(s.settings.pad);
+  const setPad = (patch: Partial<PadSettings>) => set({ pad: { ...pad, ...patch } });
+  const [pads, setPads] = useState<PadInfo[]>(() => connectedPads());
+  const [held, setHeld] = useState<Set<PadAction>>(() => new Set());
+  const [setup, setSetup] = useState<{ pad: PadInfo; step: number; map: PadMap } | null>(null);
+  useEffect(() => {
+    const a = onPads(() => setPads(connectedPads()));
+    const b = onPadPress(on => setHeld(on));
+    setPads(connectedPads());
+    return () => (a(), b());
+  }, []);
+  // Set up buttons: each press is the next action's button
+  useEffect(() => {
+    if (!setup) return;
+    if (setup.step >= SETUP_STEPS.length) {
+      setPad({ maps: { ...pad.maps, [padKey(setup.pad.id)]: setup.map } });
+      setSetup(null);
+      return;
+    }
+    return captureInput((b, from) => {
+      if (from.id !== setup.pad.id) return setSetup({ ...setup });
+      setSetup({ ...setup, step: setup.step + 1, map: { ...setup.map, [SETUP_STEPS[setup.step].action]: b } });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setup]);
+
+  const fam: PadFamily = pad.glyphs === 'auto' ? (activeFamily() ?? pads[0]?.family ?? 'xbox') : pad.glyphs;
+  const label = (k: LegendKey) => (k === 'stick' ? 'Left stick' : k === 'rstick' ? 'Right stick' : k === 'dpad' ? 'D-pad' : padLabel(k, fam, pad.swap));
+  const lit = (k: LegendKey) => (k === 'dpad' ? ['up', 'down', 'left', 'right'].some(d => held.has(d as PadAction)) : k !== 'stick' && k !== 'rstick' && held.has(k));
+  const first = pads[0];
+
+  if (setup && setup.step < SETUP_STEPS.length) {
+    const st = SETUP_STEPS[setup.step];
+    return (
+      <div className="set-rows pad-setup" aria-live="polite">
+        <Row title={`Set up buttons · ${setup.step + 1} of ${SETUP_STEPS.length}`} body={`On ${setup.pad.name}, press the button for:`} />
+        <p className="pad-ask">
+          <b>{st.what}</b>
+          <small>Usually {padLabel(st.action, setup.pad.family)} on this controller</small>
+        </p>
+        <div className="pad-setup-btns">
+          <button type="button" className="set-link" onClick={() => setSetup(null)}>
+            Cancel
+          </button>
+          <GoldButton font={10} height={28} style={{ width: 120 }} onClick={() => setSetup({ ...setup, step: setup.step + 1 })}>
+            Skip
+          </GoldButton>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="set-rows">
+      <Row
+        title="Controller"
+        body={
+          pads.length ? (
+            <span className="pad-list">
+              {pads.map(p => (
+                <span key={`${p.index}-${p.id}`}>
+                  <b>{p.name}</b> · {FAMILY_NAME[p.family]}
+                  {p.custom ? ' · your own buttons' : p.standard ? '' : ' · buttons guessed: set them up below if any are wrong'}
+                </span>
+              ))}
+            </span>
+          ) : (
+            'None connected. Plug one in or pair it by Bluetooth, then press any button. Xbox, PlayStation, Nintendo Switch and other controllers all work.'
+          )
+        }
+      >
+        <Seg
+          label="Use a controller"
+          value={pad.on ? 'on' : 'off'}
+          onChange={v => setPad({ on: v === 'on' })}
+          options={[
+            { id: 'off', label: 'Off' },
+            { id: 'on', label: 'On' },
+          ]}
+        />
+      </Row>
+      <Row title="Button names" body={pad.glyphs === 'auto' ? 'As printed on the controller you are using.' : `Always ${FAMILY_NAME[pad.glyphs]} names.`}>
+        <Seg
+          label="Button names"
+          value={pad.glyphs}
+          onChange={glyphs => setPad({ glyphs })}
+          options={[
+            { id: 'auto', label: 'Auto' },
+            { id: 'xbox', label: 'Xbox' },
+            { id: 'playstation', label: 'PlayStation' },
+            { id: 'nintendo', label: 'Nintendo' },
+          ]}
+        />
+      </Row>
+      <Row title="Confirm button" body={pad.swap ? 'The right-hand button confirms, the bottom one goes back (as on a Nintendo Switch).' : 'The bottom button confirms, the right-hand one goes back (as on Xbox and PlayStation).'}>
+        <Seg
+          label="Confirm button"
+          value={pad.swap ? 'right' : 'bottom'}
+          onChange={v => setPad({ swap: v === 'right' })}
+          options={[
+            { id: 'bottom', label: 'Bottom' },
+            { id: 'right', label: 'Right' },
+          ]}
+        />
+      </Row>
+      <Row title="Stick dead zone" body="How far a stick moves before it counts. Larger stops a worn stick drifting.">
+        <Seg
+          label="Stick dead zone"
+          value={pad.dead}
+          onChange={dead => setPad({ dead })}
+          options={[
+            { id: 'small', label: 'Small' },
+            { id: 'medium', label: 'Medium' },
+            { id: 'large', label: 'Large' },
+          ]}
+        />
+      </Row>
+      <Row title="Rumble" body={first && !pads.some(p => p.rumble) ? 'A short rumble when something is done. This controller or browser cannot rumble.' : 'A short rumble when something is done.'}>
+        <Seg
+          label="Rumble"
+          value={pad.rumble ? 'on' : 'off'}
+          onChange={v => setPad({ rumble: v === 'on' })}
+          options={[
+            { id: 'off', label: 'Off' },
+            { id: 'on', label: 'On' },
+          ]}
+        />
+      </Row>
+      <Row title="Buttons" body={pads.length ? 'Press a button: it lights up here.' : 'What each button does.'} />
+      <ul className="pad-legend" aria-label="Controller buttons">
+        {PAD_LEGEND.map(r => (
+          <li key={r.does}>
+            <span className="pad-keys">
+              {r.keys.map(k => (
+                <kbd key={k} className={`pad-key${lit(k) ? ' is-held' : ''}`} data-key={k}>
+                  {label(k)}
+                </kbd>
+              ))}
+            </span>
+            <span>{r.does}</span>
+          </li>
+        ))}
+      </ul>
+      <Row title="Set up buttons" body={first ? 'If a button does the wrong thing (common on unbranded or older controllers), press each one in turn.' : 'Connect a controller first.'}>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {first?.custom && (
+            <button
+              type="button"
+              className="set-link"
+              onClick={() => {
+                const maps = { ...pad.maps };
+                delete maps[padKey(first.id)];
+                setPad({ maps });
+              }}
+            >
+              Reset
+            </button>
+          )}
+          <GoldButton font={10} height={28} style={{ width: 120 }} onClick={() => first && setSetup({ pad: first, step: 0, map: {} })} ariaLabel="Set up buttons">
+            Set up
+          </GoldButton>
+        </div>
       </Row>
     </div>
   );
