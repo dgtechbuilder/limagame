@@ -70,6 +70,19 @@ export async function tapTask(page: Page, title: RegExp | string) {
   await card.click();
 }
 
+/** At a place's white square (a shed, the pond, the Train spot…): nothing opens by walking in, so press its button. */
+export async function optIn(page: Page) {
+  const btn = page.locator('.hud-place .is-enter');
+  await expect(btn).toBeVisible({ timeout: 60_000 });
+  await btn.click();
+}
+
+/** Tap a task card that points to a place, then opt in there once the farmer has walked to it. */
+export async function tapPlaceTask(page: Page, title: RegExp | string) {
+  await tapTask(page, title);
+  await optIn(page);
+}
+
 /** Open the first picture, then step through the rest with the guide line's button, and close the last. */
 export async function lookAtAll(page: Page, next: string) {
   await page.locator('.part-row .part-tile').first().click();

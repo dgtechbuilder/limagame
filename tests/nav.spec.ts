@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { boot, scenario } from './helpers';
+import { boot, scenario, optIn } from './helpers';
 
 /* Navigation: the main menu reaches every part of the game, and every screen has Back, Menu and Farm. */
 
@@ -55,6 +55,7 @@ test('the menu pauses a tractor drive and Farm closes it', async ({ page }) => {
   await boot(page);
   await scenario(page, 'tractor');
   await page.locator('.hud-task').click();
+  await optIn(page);
   // the Train spot opens the tractor screen on Hire
   await page.getByRole('dialog', { name: 'Tractor' }).getByRole('button', { name: 'Hire now', exact: true }).click();
   await expect(page.locator('.tc-side')).toBeVisible();

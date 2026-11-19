@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { boot, eventNames, scenario, state, tapTask, type Win } from './helpers';
+import { boot, eventNames, scenario, state, tapTask, type Win, tapPlaceTask, optIn } from './helpers';
 
 /* From Wakala Agent: the tractor drive before planting, on a farm whose plan says Tractor hire. */
 
@@ -7,7 +7,7 @@ test('hire the tractor: choose it and the implement, drive on autopilot, see the
   test.setTimeout(300_000);
   await boot(page);
   await scenario(page, 'tractor');
-  await tapTask(page, 'Hire the tractor');
+  await tapPlaceTask(page, 'Hire the tractor');
   // the Train spot opens the tractor screen on Hire
   await page.getByRole('dialog', { name: 'Tractor' }).getByRole('button', { name: 'Hire now', exact: true }).click();
   await expect(page.locator('.tc-side')).toContainText('Mama Achieng');
