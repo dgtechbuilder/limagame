@@ -34,7 +34,7 @@ export function farmIncome(s: GameState) {
   return Math.max(1, season / SEASON_MONTHS);
 }
 
-const FRAME = { x: 116, y: 32, close: [714, 46] as [number, number] };
+const FRAME = { x: 116, y: 32 };
 const PANEL = { left: 138, top: 72, width: 602, height: 270 };
 
 export function LoanModal({ s, dispatch, view = 'calc' }: Props) {
@@ -46,7 +46,7 @@ export function LoanModal({ s, dispatch, view = 'calc' }: Props) {
   const title = view === 'quote' ? 'Your loan quote' : 'Loan calculator';
 
   return (
-    <ModalShell frame="wide" x={FRAME.x} y={FRAME.y} title={title} close={FRAME.close} onClose={close}>
+    <ModalShell frame="wide" x={FRAME.x} y={FRAME.y} title={title} onClose={close}>
       <div className="panel loan" style={PANEL}>
         {view === 'quote' ? <Quote s={s} dispatch={dispatch} q={quote} /> : <Calculator ask={ask} set={set} voucher={voucher} onQuote={() => dispatch({ type: 'open', modal: { kind: 'loan', view: 'quote' } })} />}
       </div>

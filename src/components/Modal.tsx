@@ -3,6 +3,7 @@ import { img } from '../assets';
 import { CheckBadge } from './Icons';
 import { Img } from './ui';
 import { NavBar } from './Nav';
+import { CloseX } from './Success';
 
 const FRAMES = {
   /** 518 × 346 frame: Shop, Farming Steps, Storage, Value Addition, Select Process, Harvest Info */
@@ -20,8 +21,8 @@ export function ModalShell({
   x,
   y,
   title,
-  titleSize = 14,
-  close,
+  label,
+  titleSize = 15,
   onClose,
   isMenu,
   children,
@@ -30,9 +31,9 @@ export function ModalShell({
   x: number;
   y: number;
   title: string;
+  /** the dialog's accessible name, when it is not the title on the frame */
+  label?: string;
   titleSize?: number;
-  /** close button top-left, in stage coordinates */
-  close: [number, number];
   onClose: () => void;
   /** the main menu itself: it has no Menu button */
   isMenu?: boolean;
@@ -47,7 +48,7 @@ export function ModalShell({
   }, [onClose]);
 
   return (
-    <div className="abs" style={{ inset: 0 }} role="dialog" aria-modal="true" aria-label={title}>
+    <div className="abs" style={{ inset: 0 }} role="dialog" aria-modal="true" aria-label={label ?? title}>
       <div className="scrim" onClick={onClose} />
       <div className="modal-frame" style={{ left: x, top: y, width: f.w, height: f.h }}>
         <img className="frame-img" src={f.src} alt="" draggable={false} />
@@ -56,17 +57,10 @@ export function ModalShell({
       <div className="abs" style={{ inset: 0, pointerEvents: 'none', animation: 'pop 0.2s ease both' }}>
         <div style={{ pointerEvents: 'auto' }}>{children}</div>
       </div>
-      {/* Back, Menu and Farm on every screen */}
-      <NavBar onBack={onClose} hideMenu={isMenu} style={{ left: 8, top: 262 }} />
-      <button
-        type="button"
-        className="close-btn"
-        style={{ left: close[0], top: close[1], border: '1.5px solid #fff' }}
-        onClick={onClose}
-        aria-label="Close"
-      >
-        <img src={img.close} alt="" style={{ margin: -1.5 }} />
-      </button>
+      {/* Back, Menu and Farm in the top bar, top right, as on every page (docs/ui-spacing-plan.md §2): one place to
+          navigate, and the frame's own ✕ is gone */}
+      <NavBar horizontal onBack={onClose} hideMenu={isMenu} style={{ right: 62, top: 8 }} />
+      <CloseX className="page-x" onClick={onClose} />
     </div>
   );
 }
@@ -147,7 +141,7 @@ export function TextSidebar({
   label: string;
 }) {
   return (
-    <nav className="sidebar" aria-label={label} style={{ gap: 12, ...style }}>
+    <nav className="sidebar" aria-label={label} style={{ gap: 8, ...style }}>
       {items.map(it => {
         const on = it.id === active;
         return (
@@ -157,14 +151,14 @@ export function TextSidebar({
             onClick={() => onPick(it.id)}
             aria-current={on ? 'page' : undefined}
             style={{
-              width: 53,
-              height: 31,
-              borderRadius: 4,
+              width: 72,
+              height: 32,
+              borderRadius: 'var(--radius-md)',
               border: on ? '1px solid var(--select-ring)' : '1px solid transparent',
               background: on ? 'rgba(255,176,5,0.08)' : 'transparent',
               color: '#fff',
-              fontSize: 11,
-              fontWeight: 600,
+              fontSize: 12,
+              fontWeight: 700,
               whiteSpace: 'nowrap',
             }}
           >

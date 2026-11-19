@@ -896,7 +896,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         </span>
         <span className="hud-level">{s.level}</span>
       </div>
-      <button type="button" className="hud-round" style={{ left: 14, top: 66 }} onClick={() => dispatch({ type: 'open', modal: { kind: 'settings' } })} aria-label="Settings">
+      <button type="button" className="hud-round" style={{ left: 12, top: 66 }} onClick={() => dispatch({ type: 'open', modal: { kind: 'settings' } })} aria-label="Settings">
         <GearIcon />
         <span>SETTINGS</span>
       </button>

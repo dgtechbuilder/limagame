@@ -24,7 +24,7 @@ export function WelcomeModal({ s, dispatch }: Props) {
     dispatch({ type: 'open', modal: { kind: 'steps', step: 'landprep' } });
   };
   return (
-    <ModalShell frame="shop" x={178} y={28} title="How the farm works" close={[633, 56]} onClose={() => {
+    <ModalShell frame="shop" x={178} y={28} title="How the farm works" onClose={() => {
       if (!early) dispatch({ type: 'onboarded' });
       dispatch({ type: 'close' });
     }}>
