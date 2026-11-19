@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useMemo, useRef, useState, type Dispatch, type PointerEvent as RPointerEvent } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState, type Dispatch, type PointerEvent as RPointerEvent } from 'react';
 import { BasicsChip } from '../learn/Basics';
 import { img } from '../assets';
 import { FarmerPortrait } from '../first/art';
@@ -67,14 +67,16 @@ import { cannotDrive, hubOf, speedOf, type HubSection } from '../tractor/hub';
 import { GARDEN, GARDEN_NAMES, cropOf as gardenCropOf, gardenOf, stageOf, statusOf } from '../garden/model';
 import { ShedOptions } from '../plots/ShedOptions';
 import { FarmLoading } from './Loading';
+import { ActivityLoading } from '../components/ActivityLoading';
+import { lazyPage, prefetchActivities } from '../prefetch';
 
 // from Wakala Agent: the screens after a right call, at the shed and at the Hire spot, loaded when first opened
-const Prescribe = lazy(() => import('../care/Prescribe').then(m => ({ default: m.Prescribe })));
-const Spray = lazy(() => import('../care/Spray').then(m => ({ default: m.Spray })));
-const Tractor = lazy(() => import('../tractor/Tractor').then(m => ({ default: m.Tractor })));
-const PlotScreen = lazy(() => import('../plots/PlotBoard').then(m => ({ default: m.PlotScreen })));
-const TractorPick = lazy(() => import('../plots/TractorPick').then(m => ({ default: m.TractorPick })));
-const TractorHub = lazy(() => import('../tractor/TractorHub').then(m => ({ default: m.TractorHub })));
+const Prescribe = lazyPage(() => import('../care/Prescribe').then(m => m.Prescribe), 0);
+const Spray = lazyPage(() => import('../care/Spray').then(m => m.Spray), 0);
+const Tractor = lazyPage(() => import('../tractor/Tractor').then(m => m.Tractor), 0);
+const PlotScreen = lazyPage(() => import('../plots/PlotBoard').then(m => m.PlotScreen), 0);
+const TractorPick = lazyPage(() => import('../plots/TractorPick').then(m => m.TractorPick), 0);
+const TractorHub = lazyPage(() => import('../tractor/TractorHub').then(m => m.TractorHub), 0);
 
 /** Design review (?review=1): the farm world opens straight into one of these (GameState.worldDemo). */
 export type WorldDemo = 'check' | 'prescribe' | 'spray' | 'tractor' | 'tractor-summary' | 'rig' | 'board';
@@ -85,6 +87,16 @@ type Care = { kind: 'fix'; farm: number; day: number } | { kind: 'spray'; jobs: 
   | { kind: 'rig' }
   /** at a shed spot: every seed, fertilizer or sprayer to choose from */
   | { kind: 'options'; of: PlotKind };
+
+/** What the loading card says while a care screen's code is still on its way (usually it is already fetched). */
+const CARE_LOADING: Record<Care['kind'], string> = {
+  fix: 'Opening the fix…',
+  spray: 'Opening the sprayer…',
+  tractor: 'Starting the tractor…',
+  board: 'Opening the shed…',
+  rig: 'Opening the tractor…',
+  options: 'Opening the shed…',
+};
 
 /** The tractor-hire farm whose before-planting drive is still to do, or -1. */
 function farmToDrive(st: GameState) {
@@ -223,6 +235,8 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       if (!live) return;
       (window as unknown as { __limaWorld?: FarmWorld }).__limaWorld = w;
       setLoaded(true);
+      // every activity's code, fetched now while the player looks round, so opening one does not wait (src/prefetch.ts)
+      window.setTimeout(prefetchActivities, 800);
     });
     // start at the farmhouse door, or (in design review) beside the job at hand
     const tk = nextTask(sRef.current.field, sRef.current.trial, dayNumber(), sRef.current.coins);
@@ -1146,7 +1160,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
 
       {hub && (
         <div className="abs world-check" style={{ inset: 0 }}>
-          <Suspense fallback={null}>
+          <Suspense fallback={<ActivityLoading label="Opening the tractor yard…" />}>
             <TractorHub s={s} dispatch={dispatch} section={hub} onSection={setHub} hire={hireInfo(s)} onHire={startHire} onDrive={driveTractor} onClose={() => setHub(null)} />
           </Suspense>
         </div>
@@ -1191,7 +1205,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
 
       {care && t && (
         <div className="abs world-check" style={{ inset: 0 }}>
-          <Suspense fallback={null}>{careScreen(care, t)}</Suspense>
+          <Suspense fallback={<ActivityLoading label={CARE_LOADING[care.kind]} />}>{careScreen(care, t)}</Suspense>
         </div>
       )}
     </div>

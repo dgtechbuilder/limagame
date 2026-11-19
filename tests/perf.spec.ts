@@ -182,3 +182,33 @@ test('the tractor business and its drive minigame on a slow phone', async ({ pag
   expect(r.drive.maxGap).toBeLessThan(600);
   expect(r.longMs).toBeLessThan(r.drive.ms * 0.3);
 });
+
+test('activities are fetched ahead of time and open without a wait', async ({ page }) => {
+  test.setTimeout(120_000);
+  const want = ['PlotBoard', 'TractorHub', 'Spray', 'Trials', 'Power', 'Market'];
+  const got = new Set<string>();
+  page.on('requestfinished', q => want.forEach(n => q.url().includes(`/${n}`) && got.add(n)));
+  await page.goto('./?review=1&screen=' + encodeURIComponent('Plots · Farm world'));
+  await page.waitForFunction(() => !!(window as unknown as W).__limaWorld, null, { timeout: 60_000 });
+  // the farm's activities (the shed, the Train spot, the sprayer) and the rest come down in the background
+  await expect.poll(() => want.filter(n => !got.has(n)), { timeout: 30_000 }).toEqual([]);
+  await page.waitForTimeout(1000);
+  // the Train spot: its screen is drawn straight away, with no loading card in between
+  const r = await page.evaluate(async () => {
+    const t0 = performance.now();
+    let loader = false;
+    (window as unknown as W & { __limaWorld: { spawn: (x: number, z: number) => void } }).__limaWorld.spawn(-14.6, 6.4);
+    await new Promise<void>(res => {
+      const tick = () => {
+        if (document.querySelector('.act-loading')) loader = true;
+        if (document.querySelector('.world-check > :not(.act-loading)') || performance.now() - t0 > 10_000) return res();
+        requestAnimationFrame(tick);
+      };
+      tick();
+    });
+    return { ms: Math.round(performance.now() - t0), loader };
+  });
+  console.log(`PERF open-train ${JSON.stringify(r)}`);
+  expect(r.loader).toBe(false);
+  expect(r.ms).toBeLessThan(5000);
+});
