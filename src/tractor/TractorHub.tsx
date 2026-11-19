@@ -28,6 +28,10 @@ const SECTIONS: { id: HubSection; label: string; icon: string; does: string }[] 
   { id: 'drive', label: 'Drive', icon: '🚜', does: 'Hop on: pick a type and a tool, and work the plots from the seat.' },
 ];
 
+/** The tractor business sits in the tractor screen as its own module: its tab, straight under the yard, opens the
+    full Tractor business screen (src/business/Business.tsx) over the farm. */
+const BUSINESS_TAB = { id: 'business' as const, label: 'Tractor business', icon: '💼' };
+
 export function gameOf(section: HubSection, s: GameState, lesson: string): GameSpec | null {
   const h = hubOf(s.hub);
   switch (section) {
@@ -102,14 +106,23 @@ export function TractorHub({
                   : undefined,
     off: x.id === 'drive' ? (block ?? undefined) : undefined,
   }));
+  const openBusiness = () => {
+    onClose();
+    dispatch({ type: 'biz', open: true });
+  };
   const cost = section === 'service' ? Math.round(HUB.serviceCost * (1 - cut)) : section === 'repair' ? Math.round(HUB.repairCost * (1 - cut)) : section === 'refuel' && (farmFuel ?? 0) < HUB.tankL - h.fuel ? Math.round((HUB.tankL - h.fuel) * HUB.pumpPrice) : 0;
   return (
     <Page
       title="Tractor"
       icon="🚜"
-      tabs={SECTIONS.map(x => ({ id: x.id, label: x.label, icon: x.icon, badge: x.id === 'repair' && h.condition < HUB.worn ? 1 : x.id === 'refuel' && h.fuel < 10 ? 1 : x.id === 'hire' && hire.ready ? 1 : 0 }))}
-      tab={section}
-      onTab={onSection}
+      className="hub-page"
+      tabs={SECTIONS.flatMap(x => {
+        const tab = { id: x.id as HubSection | 'business', label: x.label, icon: x.icon, badge: x.id === 'repair' && h.condition < HUB.worn ? 1 : x.id === 'refuel' && h.fuel < 10 ? 1 : x.id === 'hire' && hire.ready ? 1 : 0 };
+        // the tractor business comes straight after the yard
+        return x.id === 'yard' ? [tab, BUSINESS_TAB] : [tab];
+      })}
+      tab={section as HubSection | 'business'}
+      onTab={id => (id === 'business' ? openBusiness() : onSection(id))}
       dispatch={dispatch}
       onClose={onClose}
     >
