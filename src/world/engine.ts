@@ -509,7 +509,7 @@ export class FarmWorld {
   private onKey = (e: KeyboardEvent) => {
     const k = e.key.toLowerCase();
     if (!['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) return;
-    if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement)?.tagName)) return;
     if (e.type === 'keydown') this.keys.add(k);
     else this.keys.delete(k);
     this.target = null;

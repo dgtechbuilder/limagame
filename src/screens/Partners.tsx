@@ -1,18 +1,18 @@
-import { useEffect, useRef, useState, type Dispatch } from 'react';
+import { useEffect, useRef, useState, type Dispatch, type FormEvent } from 'react';
 import { NavBar } from '../components/Nav';
 import { CloseX } from '../components/Success';
 import { BRANDS, REWARD_SPONSOR, SLOTS, activeBrands, brandOf, offerCode, type Brand, type BrandId } from '../partners/data';
 import { engagement } from '../partners/track';
 import { BrandMark } from '../partners/ui';
-import { AREAS, PARTNER_EMAIL, RULES, STATUS, WAYS, areaOf, shortlistText, wayOf, type AreaId, type WayToPartner } from '../partners/catalogue';
+import { AREAS, PARTNER_EMAIL, PARTNER_FORM_URL, RULES, WAYS, applicationText, areaOf, shortlistText, wayOf, type AreaId, type PartnerApplication, type WayToPartner } from '../partners/catalogue';
 import { REWARDS } from '../data';
 import type { Action, GameState, PartnersTab } from '../state';
 
 /* Partners: for players, the offers from the brands that sponsor the game (Get offer shows what it gives, then the
    player's code, kept in Messages, and a button to where it is used); for partners (and
    the team selling to them), every place in the game a brand can appear, who has it, and how often it was seen and
-   tapped on this device; and for partners still to sign, every way to partner with TemoLima (Partner with us), with a
-   shortlist to send. The brands and slots are set in src/partners/data.ts, the ways to partner in catalogue.ts.
+   tapped on this device; and for partners still to sign, every way to partner with TemoLima (Partner with us), with
+   an Open to partner form to apply and a shortlist to send. The brands and slots are set in src/partners/data.ts, the ways to partner in catalogue.ts.
    Opened from PARTNERS on the farm, the main menu, a billboard or sponsor line, or #/partners (also before the farm
    opens, for a partner visiting before they play). */
 
@@ -310,14 +310,6 @@ function Placements() {
 
 /* ---------------- Partner with us: every way to partner, for partners still to sign ---------------- */
 
-function StatusChip({ w }: { w: WayToPartner }) {
-  return (
-    <em className={`pj-status is-${w.status}`} title={STATUS[w.status].means}>
-      {STATUS[w.status].label}
-    </em>
-  );
-}
-
 /** Who holds the placements an option sells: a signed partner, or open. */
 function holder(w: WayToPartner): { brand?: Brand; open: number } {
   const slots = SLOTS.filter(x => w.slots?.includes(x.id));
@@ -327,16 +319,21 @@ function holder(w: WayToPartner): { brand?: Brand; open: number } {
 function Join({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
   const [area, setArea] = useState<AreaId | 'all'>('all');
   const [open, setOpen] = useState<string | null>(null);
+  // the Open to partner form: the category and way it starts on, or closed
+  const [apply, setApply] = useState<{ area?: AreaId; way?: string } | null>(null);
   const picks = s.partnerPicks ?? [];
   const shown = WAYS.filter(w => area === 'all' || w.area === area);
   const sheet = open ? wayOf(open) : undefined;
   return (
     <div className="pj-join">
-      <div className="ach-row-head">
+      <div className="ach-row-head pj-head">
         <p className="set-title">Ways to partner with TemoLima</p>
         <small className="pt-note">
-          {WAYS.length} ways · {WAYS.filter(w => w.status === 'now').length} in the game now
+          {WAYS.length} ways · {AREAS.length} categories
         </small>
+        <button type="button" className="ach-claim pj-open-btn" onClick={() => setApply({ area: area === 'all' ? undefined : area })}>
+          Open to partner
+        </button>
       </div>
       <div className="pj-areas" role="group" aria-label="Areas">
         {[{ id: 'all' as const, label: 'All', icon: '' }, ...AREAS].map(a => (
@@ -351,7 +348,7 @@ function Join({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
           const picked = picks.includes(w.id);
           const h = holder(w);
           return (
-            <button key={w.id} type="button" className={`pj-card${picked ? ' is-picked' : ''}`} onClick={() => setOpen(w.id)} aria-label={`${w.name}: ${STATUS[w.status].label}. ${picked ? 'On your shortlist. ' : ''}See details`}>
+            <button key={w.id} type="button" className={`pj-card${picked ? ' is-picked' : ''}`} onClick={() => setOpen(w.id)} aria-label={`${w.name}. ${picked ? 'On your shortlist. ' : ''}See details`}>
               <span className="pj-card-head">
                 <i aria-hidden="true">{w.icon}</i>
                 <b>{w.name}</b>
@@ -359,7 +356,7 @@ function Join({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
               </span>
               <span className="pj-pitch">{w.pitch}</span>
               <span className="pj-card-foot">
-                <StatusChip w={w} />
+                <em className="pj-cat">{areaOf(w.area).label}</em>
                 {h.brand ? <small>With {h.brand.name}</small> : h.open > 0 ? <small className="is-open">Open</small> : null}
               </span>
             </button>
@@ -371,13 +368,14 @@ function Join({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
           <li key={r}>{r}</li>
         ))}
       </ul>
-      {sheet && <WaySheet w={sheet} s={s} picked={picks.includes(sheet.id)} dispatch={dispatch} onClose={() => setOpen(null)} />}
+      {sheet && !apply && <WaySheet w={sheet} s={s} picked={picks.includes(sheet.id)} dispatch={dispatch} onApply={() => setApply({ area: sheet.area, way: sheet.id })} onClose={() => setOpen(null)} />}
+      {apply && <ApplyForm dispatch={dispatch} start={apply} onClose={() => setApply(null)} />}
     </div>
   );
 }
 
-/** One way to partner: where players meet it, what the partner gets, Interested, and the screen that shows it. */
-function WaySheet({ w, s, picked, dispatch, onClose }: { w: WayToPartner; s: GameState; picked: boolean; dispatch: Dispatch<Action>; onClose: () => void }) {
+/** One way to partner: where players meet it, what the partner gets, Open to partner, Interested, and the screen that shows it. */
+function WaySheet({ w, s, picked, dispatch, onApply, onClose }: { w: WayToPartner; s: GameState; picked: boolean; dispatch: Dispatch<Action>; onApply: () => void; onClose: () => void }) {
   const main = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -402,9 +400,7 @@ function WaySheet({ w, s, picked, dispatch, onClose }: { w: WayToPartner; s: Gam
             {w.icon}
           </span>
           <span>
-            <small>
-              {areaOf(w.area).label} · {STATUS[w.status].label}
-            </small>
+            <small>{areaOf(w.area).label}</small>
             <b>{w.name}</b>
           </span>
         </header>
@@ -424,7 +420,10 @@ function WaySheet({ w, s, picked, dispatch, onClose }: { w: WayToPartner; s: Gam
           </p>
         )}
         <div className="pt-sheet-actions">
-          <button ref={main} type="button" className={`ach-claim is-big pj-pick${picked ? ' is-on' : ''}`} aria-pressed={picked} onClick={() => dispatch({ type: 'partnerPick', id: w.id })}>
+          <button ref={main} type="button" className="ach-claim is-big" onClick={onApply}>
+            Open to partner
+          </button>
+          <button type="button" className={`ach-claim is-big pj-pick${picked ? ' is-on' : ''}`} aria-pressed={picked} onClick={() => dispatch({ type: 'partnerPick', id: w.id })}>
             {picked ? '✓ On my shortlist' : '+ Interested'}
           </button>
           {w.see && canGo && (
@@ -433,6 +432,241 @@ function WaySheet({ w, s, picked, dispatch, onClose }: { w: WayToPartner; s: Gam
             </button>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Open to partner: the application form ---------------- */
+
+type Draft = Omit<PartnerApplication, 't'>;
+type Field = 'org' | 'name' | 'role' | 'email' | 'phone' | 'country' | 'website';
+
+const FIELDS: { id: Field; label: string; type?: string; need?: boolean; auto?: string }[] = [
+  { id: 'org', label: 'Organisation', need: true, auto: 'organization' },
+  { id: 'name', label: 'Your name', need: true, auto: 'name' },
+  { id: 'role', label: 'Role', auto: 'organization-title' },
+  { id: 'email', label: 'Email', type: 'email', need: true, auto: 'email' },
+  { id: 'phone', label: 'Phone', type: 'tel', auto: 'tel' },
+  { id: 'country', label: 'Country', need: true, auto: 'country-name' },
+  { id: 'website', label: 'Website', type: 'url', auto: 'url' },
+];
+
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** What is missing or wrong in a draft, by field (empty when it can be sent). */
+function problems(d: Draft): Partial<Record<Field | 'message', string>> {
+  const out: Partial<Record<Field | 'message', string>> = {};
+  for (const f of FIELDS) if (f.need && !d[f.id].trim()) out[f.id] = 'Needed';
+  if (d.email.trim() && !EMAIL.test(d.email.trim())) out.email = 'Not an email address';
+  if (!d.message.trim()) out.message = 'Tell us a little about what you would like to do';
+  return out;
+}
+
+/** Open to partner: a partner's details, their category and ways to partner, and a message; then sent. */
+function ApplyForm({ dispatch, start, onClose }: { dispatch: Dispatch<Action>; start: { area?: AreaId; way?: string }; onClose: () => void }) {
+  const first = useRef<HTMLInputElement>(null);
+  const [d, setD] = useState<Draft>(() => ({
+    org: '',
+    name: '',
+    role: '',
+    email: '',
+    phone: '',
+    country: '',
+    website: '',
+    area: start.area ?? AREAS[0].id,
+    ways: start.way ? [start.way] : [],
+    message: '',
+  }));
+  const [tried, setTried] = useState(false);
+  const [sent, setSent] = useState<PartnerApplication | null>(null);
+  const [post, setPost] = useState<'sending' | 'sent' | 'failed' | null>(null);
+  const [copied, setCopied] = useState<'yes' | 'no' | null>(null);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.stopImmediatePropagation();
+      onClose();
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [onClose]);
+  useEffect(() => first.current?.focus(), []);
+  const bad = problems(d);
+  const set = (patch: Partial<Draft>) => setD(x => ({ ...x, ...patch }));
+  const ways = WAYS.filter(w => w.area === d.area);
+  const toggle = (id: string) => set({ ways: d.ways.includes(id) ? d.ways.filter(x => x !== id) : [...d.ways, id] });
+
+  const send = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setTried(true);
+    if (Object.keys(bad).length > 0) {
+      e.currentTarget.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+      return;
+    }
+    const trim = (v: string) => v.trim();
+    const app: PartnerApplication = {
+      t: Date.now(),
+      ...d,
+      org: trim(d.org),
+      name: trim(d.name),
+      role: trim(d.role),
+      email: trim(d.email),
+      phone: trim(d.phone),
+      country: trim(d.country),
+      website: trim(d.website),
+      message: trim(d.message),
+      // only the ways in the category picked
+      ways: d.ways.filter(id => wayOf(id)?.area === d.area),
+    };
+    dispatch({ type: 'partnerApply', app });
+    setSent(app);
+    if (!PARTNER_FORM_URL) return;
+    setPost('sending');
+    try {
+      const r = await fetch(PARTNER_FORM_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ ...app, category: areaOf(app.area).label, waysToPartner: app.ways.map(id => wayOf(id)?.name) }),
+      });
+      setPost(r.ok ? 'sent' : 'failed');
+    } catch {
+      setPost('failed');
+    }
+  };
+
+  if (sent) {
+    const text = applicationText(sent);
+    const copy = async () => {
+      try {
+        await navigator.clipboard.writeText(text);
+        setCopied('yes');
+      } catch {
+        setCopied('no');
+      }
+    };
+    return (
+      <div className="pt-sheet-wrap">
+        <div className="pt-sheet-scrim" onClick={onClose} />
+        <div className="pt-sheet pj-sheet pj-form is-sent" role="dialog" aria-modal="true" aria-label="Open to partner">
+          <CloseX className="pt-sheet-x" onClick={onClose} />
+          <header>
+            <span className="pj-sheet-icon" aria-hidden="true">
+              🤝
+            </span>
+            <span>
+              <small>{areaOf(sent.area).label}</small>
+              <b>Thank you, {sent.org}</b>
+            </span>
+          </header>
+          <p className="pj-sheet-pitch" role="status">
+            {post === 'sending'
+              ? 'Sending your application…'
+              : post === 'sent'
+                ? `Your application is with the TemoLima team. We will reply to ${sent.email}.`
+                : post === 'failed'
+                  ? 'It could not be sent just now. It is saved on this device: email or copy it below.'
+                  : PARTNER_EMAIL
+                    ? 'Your application is ready. Email it to the TemoLima team to send it.'
+                    : 'Your application is saved on this device. Copy it and send it to the TemoLima team.'}
+          </p>
+          <pre className="pj-summary">{text}</pre>
+          <div className="pt-sheet-actions">
+            {PARTNER_EMAIL && post !== 'sent' && (
+              <a className="ach-claim is-big pj-mail" href={`mailto:${PARTNER_EMAIL}?subject=${encodeURIComponent(`TemoLima partner application: ${sent.org}`)}&body=${encodeURIComponent(text)}`}>
+                Email it to the team
+              </a>
+            )}
+            <button type="button" className={PARTNER_EMAIL && post !== 'sent' ? 'set-link' : 'ach-claim is-big'} onClick={copy}>
+              Copy it
+            </button>
+            <button type="button" className="set-link" onClick={onClose}>
+              Done
+            </button>
+            {copied && <span className="pj-copied">{copied === 'yes' ? 'Copied.' : 'This browser would not copy it: select the text above.'}</span>}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const err = (id: Field | 'message') => (tried ? bad[id] : undefined);
+  return (
+    <div className="pt-sheet-wrap">
+      <div className="pt-sheet-scrim" onClick={onClose} />
+      <div className="pt-sheet pj-sheet pj-form" role="dialog" aria-modal="true" aria-label="Open to partner">
+        <CloseX className="pt-sheet-x" onClick={onClose} />
+        <header>
+          <span className="pj-sheet-icon" aria-hidden="true">
+            🤝
+          </span>
+          <span>
+            <small>Partner with TemoLima</small>
+            <b>Open to partner</b>
+          </span>
+        </header>
+        <form noValidate onSubmit={send}>
+          <div className="pj-fields">
+            {FIELDS.map((f, i) => (
+              <label key={f.id} className={`pj-field${err(f.id) ? ' is-bad' : ''}`}>
+                <span>
+                  {f.label}
+                  {f.need ? <i aria-hidden="true"> *</i> : <small> (optional)</small>}
+                </span>
+                <input
+                  ref={i === 0 ? first : undefined}
+                  type={f.type ?? 'text'}
+                  value={d[f.id]}
+                  autoComplete={f.auto}
+                  maxLength={f.id === 'website' ? 200 : 120}
+                  required={f.need}
+                  aria-invalid={err(f.id) ? true : undefined}
+                  onChange={e => set({ [f.id]: e.target.value } as Partial<Draft>)}
+                />
+                {err(f.id) && <em className="pj-err">{err(f.id)}</em>}
+              </label>
+            ))}
+            <label className="pj-field">
+              <span>
+                Partnership category<i aria-hidden="true"> *</i>
+              </span>
+              <select value={d.area} onChange={e => set({ area: e.target.value as AreaId })}>
+                {AREAS.map(a => (
+                  <option key={a.id} value={a.id}>
+                    {a.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <fieldset className="pj-ways">
+            <legend>
+              Ways to partner in {areaOf(d.area).label} <small>(optional)</small>
+            </legend>
+            {ways.map(w => (
+              <label key={w.id} className={`pj-way${d.ways.includes(w.id) ? ' is-on' : ''}`}>
+                <input type="checkbox" checked={d.ways.includes(w.id)} onChange={() => toggle(w.id)} />
+                <i aria-hidden="true">{w.icon}</i> {w.name}
+              </label>
+            ))}
+          </fieldset>
+          <label className={`pj-field is-wide${err('message') ? ' is-bad' : ''}`}>
+            <span>
+              About you and what you would like to do<i aria-hidden="true"> *</i>
+            </span>
+            <textarea value={d.message} rows={3} maxLength={2000} required aria-invalid={err('message') ? true : undefined} onChange={e => set({ message: e.target.value })} />
+            {err('message') && <em className="pj-err">{err('message')}</em>}
+          </label>
+          <div className="pt-sheet-actions">
+            <button type="submit" className="ach-claim is-big">
+              Send application
+            </button>
+            <button type="button" className="set-link" onClick={onClose}>
+              Cancel
+            </button>
+            {tried && Object.keys(bad).length > 0 && <span className="pj-err">Fill in the fields marked *</span>}
+          </div>
+        </form>
       </div>
     </div>
   );
@@ -475,9 +709,7 @@ function Shortlist({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }
             <i aria-hidden="true">{w.icon}</i>
             <span>
               <b>{w.name}</b>
-              <small>
-                {areaOf(w.area).label} · {STATUS[w.status].label}
-              </small>
+              <small>{areaOf(w.area).label}</small>
             </span>
             <button type="button" className="pj-remove" onClick={() => dispatch({ type: 'partnerPick', id: w.id })} aria-label={`Take ${w.name} off the shortlist`}>
               ✕

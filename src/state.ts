@@ -61,6 +61,7 @@ import { achClock, trackAchievements } from './achievements/track';
 import { achOf, achOfSave, initialAch, streakReward, type AchState } from './achievements/model';
 import { levelOf } from './progress/model';
 import { brandOf, offerCode, type BrandId } from './partners/data';
+import type { PartnerApplication } from './partners/catalogue';
 import { routeTo } from './route';
 import { DEFAULT_LOAN, type LoanAsk } from './finance/loan';
 import { bookingRef, courseDate, courseOf, dayText, type TrainingBooking } from './training/data';
@@ -297,6 +298,8 @@ export interface GameState {
   offers?: BrandId[];
   /** Partners › Partner with us: the ways a partner tapped Interested on (src/partners/catalogue.ts; missing in older saves) */
   partnerPicks?: string[];
+  /** Partners › Open to partner: the applications sent from this device (missing in older saves) */
+  partnerApps?: PartnerApplication[];
   /** money at risk: the button as last seen, and every problem dealt with (src/risk/model.ts; missing in older saves) */
   risk?: RiskState;
   /** water: the tank, the animals, the shared catchment, crop cover (src/water; missing in older saves) */
@@ -587,6 +590,8 @@ export type Action =
   | { type: 'partnerSave'; id: BrandId }
   /** Partners › Partner with us: tap Interested on a way to partner, or tap again to take it off the shortlist */
   | { type: 'partnerPick'; id: string }
+  /** Partners › Open to partner: a partner sends the application form */
+  | { type: 'partnerApply'; app: PartnerApplication }
   /** go to a web address (src/route.ts): the screen it names, if the player may go there now */
   | { type: 'route'; path: string }
   | RiskAction
@@ -1639,6 +1644,8 @@ function play(s: GameState, a: Action): GameState {
     case 'riskFixed':
     case 'riskTap':
       return { ...s, risk: riskReduce(s.risk, a) };
+    case 'partnerApply':
+      return { ...s, partnerApps: [...(s.partnerApps ?? []), a.app] };
     case 'partnerPick': {
       const picks = s.partnerPicks ?? [];
       return { ...s, partnerPicks: picks.includes(a.id) ? picks.filter(x => x !== a.id) : [...picks, a.id] };

@@ -2599,12 +2599,9 @@ button.card:active { transform: scale(0.98); }
 .pj-card-foot { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 4px; }
 .pj-card-foot small { font-size: 10px; font-weight: 600; color: #7d5440; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pj-card-foot small.is-open { color: #2e6b35; }
-.pj-status {
-  flex-shrink: 0; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-style: normal; font-weight: 700; white-space: nowrap;
-}
-.pj-status.is-now { background: #e3f2d6; color: #2e6b35; }
-.pj-status.is-build { background: #fdf0d2; color: #7a4f00; }
-.pj-status.is-new { background: #e6eefb; color: #2f5a9a; }
+.pj-cat { flex-shrink: 0; padding: 2px 8px; border-radius: 999px; background: #f3e4c8; color: #6b402b; font-size: 10px; font-style: normal; font-weight: 700; white-space: nowrap; }
+.pj-head { align-items: center; }
+.pj-head .pj-open-btn { margin-left: auto; height: 30px; padding: 0 16px; font-size: 11.5px; }
 .pj-rules { margin: 16px 0 0; padding-left: 16px; font-size: 11px; line-height: 1.5; color: #7d5440; }
 .pj-sheet { width: 380px; border-top: 6px solid var(--gold); }
 .pj-sheet-icon { display: grid; place-items: center; width: 38px; height: 38px; flex-shrink: 0; border-radius: 10px; background: #fff8ea; font-size: 20px; }
@@ -2624,6 +2621,38 @@ button.card:active { transform: scale(0.98); }
 .pj-remove { width: 32px; height: 32px; border-radius: 10px; border: 1px solid rgba(107, 64, 43, 0.2); background: #fff; color: var(--brown); font-size: 11px; }
 .pj-copied { font-size: 11px; color: #2e6b35; }
 .pj-text { width: 100%; height: 90px; margin-top: 8px; font: inherit; font-size: 11px; }
+
+/* Open to partner: the application form, in a sheet over the panel */
+.pj-form { width: 580px; gap: 8px; }
+.pj-form form { display: flex; flex-direction: column; gap: 8px; }
+.pj-fields { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.pj-field { display: flex; flex-direction: column; gap: 3px; min-width: 0; font-size: 10px; font-weight: 700; color: var(--brown); }
+.pj-field > span i { font-style: normal; color: #b4441c; }
+.pj-field > span small { font-weight: 500; opacity: 0.7; }
+.pj-field input, .pj-field select, .pj-field textarea {
+  width: 100%; min-width: 0; height: 32px; padding: 0 8px; border-radius: 8px; border: 1.5px solid #ecd2ac; background: #fff;
+  color: var(--brown); font: inherit; font-size: 11.5px; font-weight: 500;
+}
+.pj-field textarea { height: auto; min-height: 56px; padding: 6px 8px; resize: vertical; line-height: 1.4; }
+.pj-field input:focus, .pj-field select:focus, .pj-field textarea:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 2px rgba(238, 166, 96, 0.35); }
+.pj-field.is-bad input, .pj-field.is-bad textarea { border-color: #c2502a; }
+.pj-field:nth-child(7) { grid-column: span 2; }
+.pj-field:nth-child(8) { grid-column: span 2; }
+.pj-err { font-size: 10px; font-style: normal; font-weight: 700; color: #b4441c; }
+.pj-ways { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; padding: 0; border: 0; }
+.pj-ways legend { width: 100%; margin-bottom: 3px; padding: 0; font-size: 10px; font-weight: 700; color: var(--brown); }
+.pj-ways legend small { font-weight: 500; opacity: 0.7; }
+.pj-way {
+  display: inline-flex; align-items: center; gap: 4px; min-height: 28px; padding: 0 10px; border-radius: 999px;
+  border: 1px solid rgba(107, 64, 43, 0.2); background: #fff; color: var(--brown); font-size: 10.5px; font-weight: 600; cursor: pointer;
+}
+.pj-way input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.pj-way i { font-style: normal; }
+.pj-way.is-on { background: var(--brown); border-color: var(--brown); color: #fff; }
+.pj-way:focus-within { box-shadow: 0 0 0 2px var(--gold); }
+.pj-summary { margin: 0; padding: 10px 12px; max-height: 120px; overflow-y: auto; border-radius: 10px; background: #fff8ea; font: inherit; font-size: 10.5px; line-height: 1.45; white-space: pre-wrap; }
+a.ach-claim.pj-mail { display: inline-flex; align-items: center; text-decoration: none; }
+
 .partners-page .set-tab { white-space: nowrap; }
 .pj-card-foot { flex-wrap: wrap; row-gap: 4px; }
 .pj-card-foot small { overflow: visible; }
