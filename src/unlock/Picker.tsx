@@ -1,4 +1,5 @@
 import { money } from '../money';
+import { Info } from '../learn/Info';
 import { LockTag, OpenLine } from './Lock';
 import { isOpen, type UnlockHost } from './model';
 
@@ -12,6 +13,8 @@ export interface PickOption {
   does: string;
   /** short facts: "3 kW", "Room for 20 hens" */
   facts?: string[];
+  /** the farm word it is (learn/glossary.ts): an id or a name; its name by default */
+  term?: string;
   /** its price (null: no price shown) */
   price?: number | null;
 }
@@ -66,6 +69,7 @@ export function OptionPicker({
               <div key={o.id} className={`pg-card${current === o.id ? ' is-done' : ''}${open ? '' : ' is-gated'}`} data-option={o.id}>
                 <div className="pg-card-head">
                   <b>{o.name}</b>
+                  <Info term={o.term ?? o.name} />
                 </div>
                 <p>{o.does}</p>
                 {o.facts && o.facts.length > 0 && <p className="opt-facts">{o.facts.join(' · ')}</p>}

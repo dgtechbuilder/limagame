@@ -1,6 +1,7 @@
 import { useState, type Dispatch } from 'react';
+import { Info } from '../learn/Info';
 import { img } from '../assets';
-import { InfoDot, EditIcon } from '../components/Icons';
+import { EditIcon } from '../components/Icons';
 import { IconSidebar, ModalShell } from '../components/Modal';
 import { Cast } from '../art/Cast';
 import { ClimateTag } from '../climate/Tag';
@@ -16,6 +17,10 @@ import { brandOf, slotBrand, type SlotId } from '../partners/data';
 
 /** The partner slot each Shop section sells. */
 const SHOP_SLOT: Partial<Record<ShopTab, SlotId>> = { fertilizer: 'shop-fertilizer', tank: 'shop-tank', equipment: 'shop-equipment' };
+
+/** The farm word (learn/glossary.ts) behind a Shop item or a farming step, where its name alone does not say it. */
+const ITEM_TERM: Record<string, string> = { 'tank-s': 'tank', 'tank-m': 'tank', 'tank-l': 'tank', 'tank-xl': 'tank', 'tank-pan': 'waterPan', 'tank-tangi': 'tank', cultivator: 'handCultivator', 'w-1000': 'tank', 'w-5000': 'tank', 'w-10000': 'tank', 'w-20000': 'tank', storage: 'hermetic', timing: 'drying', reaping: 'sickle', protection: 'aflatoxin' };
+const STEP_TERM: Record<StepId, string> = { landprep: 'landPrep', planting: 'spacing', fertilizer: 'fertilizer', pesticides: 'pesticide', water: 'drip', harvest: 'drying' };
 
 /* ================================================================== */
 /* Shop (Figma: Food / Fertilizer / Water tanks / Equipments)          */
@@ -94,7 +99,7 @@ export function ShopModal({ s, tab, dispatch }: { s: GameState; tab: ShopTab; di
                       </span>
                     )}
                     <PriceChip price={item.price} width="100%" font={def.priceFont} />
-                    <span style={{ position: 'absolute', right: 2, top: 2 }}>{lock ? <span aria-hidden="true" style={{ fontSize: 10 }}>🔒</span> : <InfoDot size={10} />}</span>
+                    <span style={{ position: 'absolute', right: 2, top: 2 }}>{lock ? <span aria-hidden="true" style={{ fontSize: 10 }}>🔒</span> : <Info term={ITEM_TERM[item.id] ?? item.name} nested size={14} style={{ margin: 0 }} />}</span>
                   </button>
                 );
               })}
@@ -163,6 +168,7 @@ export function StepsModal({ s, step, dispatch }: { s: GameState; step: StepId; 
       <div className="panel" style={{ left: fx + 36, top: 78, width: 446, height: 254 }}>
         <p className="section-title" style={{ position: 'absolute', left: 0, right: 0, top: 2 }}>
           {def.title}
+          <Info term={STEP_TERM[step]} size={13} />
           <span style={{ fontWeight: 400, fontSize: 8, opacity: 0.8 }}> · {meta.purpose}</span>
         </p>
         {step === 'water' ? (
@@ -242,6 +248,7 @@ function TaskGrid({ s, step, status, dispatch }: { s: GameState; step: StepId; s
               {t.name}
             </span>
             {TASK_CLIMATE[t.id] && <ClimateTag short d={TASK_CLIMATE[t.id]} style={{ position: 'absolute', left: 0, right: 0, top: 2, justifyContent: 'center' }} />}
+            <Info term={ITEM_TERM[t.id] ?? t.name} nested size={14} className="info-corner" />
             <TaskChip s={s} taskId={t.id} price={t.price} done={done} status={status} width={110} />
           </button>
         );
@@ -285,6 +292,7 @@ function WaterBody({ s, status, dispatch }: { s: GameState; status: StepStatus; 
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ fontSize: 12, color: 'var(--brown-50)' }}>L/m^2</span>
+          <Info term="lpm2" size={14} />
           <EditIcon size={18} />
           <GoldButton font={10} style={{ width: 63, height: 27 }} onClick={save}>
             Save

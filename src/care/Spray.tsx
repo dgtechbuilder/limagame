@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Info } from '../learn/Info';
 import { NavBar } from '../components/Nav';
 import { img } from '../assets';
 import { FarmMap } from '../components/FarmMap';
@@ -89,6 +90,7 @@ export function Spray({ jobs, name, onDone, onLeave }: { jobs: { farm: number; h
                   {iconFor(k.label)}
                 </span>
                 <span>{k.label}</span>
+                <Info term={k.label} nested size={17} />
               </button>
             ))}
           </div>
@@ -107,6 +109,7 @@ export function Spray({ jobs, name, onDone, onLeave }: { jobs: { farm: number; h
                   {p.name}
                   <small className="care-kind">{p.kind}</small>
                 </span>
+                <Info term={p.name} nested size={17} />
               </button>
             ))}
           </div>
