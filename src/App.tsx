@@ -7,21 +7,23 @@ import { InfoModal, OutcomeModal, ProcessModal, RewardsModal, SaleModal, Storage
 import { FirstSession } from './first/FirstSession';
 import { FarmMap } from './components/FarmMap';
 import { FarmLoading } from './world/Loading';
+import { ActivityLoading } from './components/ActivityLoading';
+import { lazyPage, prefetchActivities } from './prefetch';
 import { img } from './assets';
 
 // the field rounds are loaded only when opened, so the first session stays as small as before
-const Rounds = lazy(() => import('./rounds/Rounds').then(m => ({ default: m.Rounds })));
-const Trials = lazy(() => import('./trials/Trials').then(m => ({ default: m.Trials })));
-const Business = lazy(() => import('./business/Business').then(m => ({ default: m.Business })));
+const Rounds = lazyPage(() => import('./rounds/Rounds').then(m => m.Rounds), 1);
+const Trials = lazyPage(() => import('./trials/Trials').then(m => m.Trials), 1);
+const Business = lazyPage(() => import('./business/Business').then(m => m.Business), 1);
 const World = lazy(() => import('./world/World').then(m => ({ default: m.World })));
 // the animals' and security pages are loaded when first opened
-const AnimalsPage = lazy(() => import('./livestock/Animals').then(m => ({ default: m.AnimalsPage })));
-const SecurityPage = lazy(() => import('./security/Security').then(m => ({ default: m.SecurityPage })));
-const WalletPage = lazy(() => import('./wallet/Wallet').then(m => ({ default: m.WalletPage })));
-const PowerPage = lazy(() => import('./power/Power').then(m => ({ default: m.PowerPage })));
-const TractorGamePage = lazy(() => import('./minifarm/MiniFarm').then(m => ({ default: m.TractorGamePage })));
-const MarketPage = lazy(() => import('./produce/Market').then(m => ({ default: m.MarketPage })));
-const GardenPage = lazy(() => import('./garden/Garden').then(m => ({ default: m.GardenPage })));
+const AnimalsPage = lazyPage(() => import('./livestock/Animals').then(m => m.AnimalsPage), 1);
+const SecurityPage = lazyPage(() => import('./security/Security').then(m => m.SecurityPage), 1);
+const WalletPage = lazyPage(() => import('./wallet/Wallet').then(m => m.WalletPage), 1);
+const PowerPage = lazyPage(() => import('./power/Power').then(m => m.PowerPage), 1);
+const TractorGamePage = lazyPage(() => import('./minifarm/MiniFarm').then(m => m.TractorGamePage), 1);
+const MarketPage = lazyPage(() => import('./produce/Market').then(m => m.MarketPage), 1);
+const GardenPage = lazyPage(() => import('./garden/Garden').then(m => m.GardenPage), 1);
 // design review (?review=1) only: its sample screens are computed when it is opened, never for players
 const ReviewPicker = lazy(() => import('./review/Review').then(m => ({ default: m.ReviewPicker })));
 import { WelcomeModal } from './screens/Meta';
@@ -165,7 +167,7 @@ export default function App() {
   useEffect(() => {
     if (review) return;
     const id = window.setTimeout(() => {
-      void import('./world/World');
+      void import('./world/World').then(() => window.setTimeout(prefetchActivities, 1500));
       const pic = new Image();
       pic.src = (window.devicePixelRatio || 1) > 1 ? img.bgWorld2x : img.bgWorld;
     }, 2000);
@@ -276,15 +278,15 @@ export default function App() {
               !s.roundsOpen && !s.trialsOpen && !s.bizOpen && <FarmScene s={s} dispatch={dispatch} />
             )}
             {s.roundsOpen ? (
-              <Suspense fallback={<FarmMap />}>
+              <Suspense fallback={<><FarmMap /><ActivityLoading full label="Opening the field rounds…" /></>}>
                 <Rounds s={s} dispatch={dispatch} />
               </Suspense>
             ) : s.trialsOpen ? (
-              <Suspense fallback={<FarmMap />}>
+              <Suspense fallback={<><FarmMap /><ActivityLoading full label="Opening Mission…" /></>}>
                 <Trials s={s} dispatch={dispatch} />
               </Suspense>
             ) : s.bizOpen ? (
-              <Suspense fallback={<FarmMap />}>
+              <Suspense fallback={<><FarmMap /><ActivityLoading full label="Opening the business…" /></>}>
                 <Business s={s} dispatch={dispatch} />
               </Suspense>
             ) : null}
@@ -298,37 +300,37 @@ export default function App() {
         {m?.kind === 'achievements' && <AchievementsPage s={s} dispatch={dispatch} tab={m.tab} />}
         {m?.kind === 'partners' && <PartnersPage s={s} dispatch={dispatch} tab={m.tab} brand={m.brand} />}
         {m?.kind === 'animals' && (
-          <Suspense fallback={null}>
+          <Suspense fallback={<ActivityLoading label="Opening the animals…" />}>
             <AnimalsPage s={s} dispatch={dispatch} tab={m.tab} />
           </Suspense>
         )}
         {m?.kind === 'security' && (
-          <Suspense fallback={null}>
+          <Suspense fallback={<ActivityLoading label="Opening security…" />}>
             <SecurityPage s={s} dispatch={dispatch} tab={m.tab} />
           </Suspense>
         )}
         {m?.kind === 'wallet' && (
-          <Suspense fallback={null}>
+          <Suspense fallback={<ActivityLoading label="Opening your wallet…" />}>
             <WalletPage s={s} dispatch={dispatch} tab={m.tab} />
           </Suspense>
         )}
         {m?.kind === 'power' && (
-          <Suspense fallback={null}>
+          <Suspense fallback={<ActivityLoading label="Opening the power yard…" />}>
             <PowerPage s={s} dispatch={dispatch} tab={m.tab} />
           </Suspense>
         )}
         {m?.kind === 'market' && (
-          <Suspense fallback={null}>
+          <Suspense fallback={<ActivityLoading label="Opening the market…" />}>
             <MarketPage s={s} dispatch={dispatch} />
           </Suspense>
         )}
         {m?.kind === 'tractorGame' && (
-          <Suspense fallback={null}>
+          <Suspense fallback={<ActivityLoading label="Opening the tractor game…" />}>
             <TractorGamePage dispatch={dispatch} />
           </Suspense>
         )}
         {m?.kind === 'garden' && (
-          <Suspense fallback={null}>
+          <Suspense fallback={<ActivityLoading label="Opening the garden…" />}>
             <GardenPage s={s} dispatch={dispatch} farm={m.farm} />
           </Suspense>
         )}
