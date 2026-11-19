@@ -63,6 +63,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [Achievements, the daily streak and certificates](#achievements-the-daily-streak-and-certificates)
 - [My Progress: certification levels and learning credits](#my-progress-certification-levels-and-learning-credits)
 - [Partners: billboards, branded products and offers](#partners-billboards-branded-products-and-offers)
+- [Farm words: info buttons and Farm basics](#farm-words-info-buttons-and-farm-basics)
 - [Character art: retro anime](#character-art-retro-anime)
 - [Design review mode](#design-review-mode)
 - [Saving, events and privacy](#saving-events-and-privacy)
@@ -178,6 +179,8 @@ src/
   minifarm/                the tractor game: sim.ts (the rules, no DOM), MiniFarm.tsx (the page and its canvas)
   components/Page.tsx      a page with sections down the left (Wallet, Power, Market, New farms, Tractor)
   training/data.ts         farmer training courses and bookings
+  learn/                   Farm words: glossary.ts (every word, the sections, the Farm basics lessons, termFor),
+                           Info.tsx (the ⓘ button and the card it opens), Glossary.tsx (the page), Basics.tsx
   farmSize.ts              how big the six farms are (4 acres, 20 plots) and FARM_SCALE
   fit.ts                   the 874 × 402 stage and how it fits the screen
   first/                   the first session (see below): Story.tsx the story so far, Update.tsx the farm update,
@@ -1620,6 +1623,41 @@ each. To sign a partner, add or edit its brand and put its id on the slots it bo
   partner keeps are under the list: fair play, no personal data, advice checked by an agronomist.
 - **Shortlist**: the ways tapped *Interested*, saved with the game (`partnerPicks`). *Copy the shortlist* puts it on
   the clipboard as text; set `VITE_PARTNER_EMAIL` at build time to add an *Email it to the TemoLima team* button.
+
+## Farm words: info buttons and Farm basics
+
+Many players have never farmed, so the game assumes nothing: a small blue **ⓘ** sits beside the name of almost every
+fertilizer, spray, pest, seed, tool, machine and farm idea. Tapping it opens that word's card on top of the screen
+(nothing is bought or chosen): **what it is**, **what it does**, **when and how** it is used, and a **take care**
+line where there is a risk (the spray kit, glyphosate on a growing crop, seed touching DAP…). Related words are links
+on the card, it can be read aloud, and *All farm words* opens the word's section.
+
+| Where | The ⓘ explains |
+| --- | --- |
+| Seed, fertilizer and sprayer sheds, the inputs board, the six farms' plan | every seed, fertilizer (DAP, CAN, manure…) and sprayer |
+| Shop and Farming steps | NPK, nitrogen, phosphorus, potassium, manure; tanks; hoe, spade, rake…; herbicides, fungicides, nematicides, insecticides |
+| Spraying | the spray kit (gloves, mask, boots) and each product (emamectin benzoate, lambda-cyhalothrin, mancozeb, glyphosate…) |
+| Choosing a fix | the fixes and the ways to do them (fungicide, neem spray, copper spray, urea, selective herbicide, mulch, drip line…) |
+| Tractor screens and the tractor business | each tractor type, each implement (disc plough, harrow, ridger, planter, spreader, boom sprayer…) |
+| Storage and value addition | hermetic bags, the cooperative warehouse, metal silo, cold storage, drying, processing, packaging |
+| Animals | Napier grass, layers mash, coop litter, acaricide, vaccinations, deworming, the diseases, zero-grazing |
+| Power | solar panels, inverters (pure and modified sine wave, MPPT, microinverters), lead-acid and lithium batteries, LED lights, generators, biogas, bunded tanks |
+
+**Farm words** (main menu, or `#/farm-words/…`) lists all of them by section, with a search box.
+
+**Farm basics** introduces the most basic words to a new player, in seven short lessons:
+
+1. *Three words every farmer uses* (fertilizer, pesticide, herbicide): in a box on the first session's farm update,
+   before the first check, with a *Learn more* button.
+2. From day 2, one lesson a morning: feeding the crop (DAP, CAN, NPK, manure), protecting it (insecticide, fungicide,
+   the spray kit, neem), weeds and herbicides, seeds and planting, tools and machines, water and the harvest. Each comes
+   in the morning news and as a chip under the task card on the farm, until it is read; the chip catches up one lesson
+   at a time if days are missed. All seven are on the Farm basics page.
+
+Every word is one entry in `src/learn/glossary.ts` (for an agronomist to review: rates are typical Kenyan smallholder
+advice, not a product label). An entry's `aka` names find it from any name in the game (`termFor`: the longest name in
+a text wins; a name in capitals, like CAN, only matches in capitals), so a new product or tool with a known name gets
+its ⓘ with no code change.
 
 ## Character art: retro anime
 

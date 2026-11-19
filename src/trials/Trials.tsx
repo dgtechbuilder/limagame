@@ -15,7 +15,8 @@ import { say } from '../first/data';
 import { GuideLine } from '../first/Review';
 import { dayNumber } from '../rounds/farms';
 import { PlotBoard, plotsLine } from '../plots/PlotBoard';
-import { OPTIONS, ROUTINE, seedOf } from '../plots/data';
+import { OPTIONS, ROUTINE, fertOf, seedOf, type FertId, type SeedId } from '../plots/data';
+import { Info } from '../learn/Info';
 import type { Action, GameState } from '../state';
 import {
   BUYING_STEPS,
@@ -70,6 +71,17 @@ const SHORT: Record<TrialHazard, string> = {
 };
 
 const STAGE_WORD = { young: 'Seedlings', grow: 'Growing', harvest: 'Harvest time' } as const;
+
+
+/** The farm word (learn/glossary.ts) behind a plan option, for its ⓘ. */
+function planTerm(key: string, id: string): string | null {
+  if (key === 'seed') return seedOf(id as SeedId).name;
+  if (key === 'fert') return fertOf(id as FertId).name;
+  if (key === 'land') return ({ slash: 'landPrep', hoe: 'hoe', ox: 'plough', tractor: 'tractor', mulch: 'mulch' } as Record<string, string>)[id] ?? null;
+  if (key === 'pest') return ({ scout: 'pesticide', spray: 'insecticide' } as Record<string, string>)[id] ?? null;
+  if (key === 'water') return 'lpm2';
+  return null;
+}
 
 export function Trials({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
   const name = s.farmer?.name ?? 'Farmer';
@@ -332,7 +344,10 @@ function Picker({ s, tr, farm, stepKey, dispatch, onClose }: { s: GameState; tr:
                   onClose();
                 }}
               >
-                <b>{op.label}</b>
+                <b>
+                  {op.label}
+                  <Info term={planTerm(stepKey, op.id)} nested size={14} />
+                </b>
                 <span>{op.does}</span>
                 <ClimateTag d={optionDelta(stepKey, op.id, tr.forecast, hasSolar(s))} />
                 <i>{op.cost ? `${money(op.cost)}` : 'Free'}</i>
