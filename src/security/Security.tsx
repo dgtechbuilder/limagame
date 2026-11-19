@@ -1,4 +1,5 @@
 import { useEffect, type Dispatch } from 'react';
+import { act } from '../onsite/model';
 import { NavBar } from '../components/Nav';
 import { CloseX } from '../components/Success';
 import { money } from '../money';
@@ -105,7 +106,7 @@ function Protect({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) 
             ) : owned ? (
               <span className="lv-done">✓ In place{m.nightly ? ` · ${money(m.nightly)}/night` : ''}</span>
             ) : (
-              <button type="button" className="lv-btn is-go" onClick={() => dispatch({ type: 'securityBuy', id: m.id })} aria-label={`${m.name}: ${m.price ? money(m.price) : 'free'}`}>
+              <button type="button" className="lv-btn is-go" onClick={() => act(s, dispatch, { type: 'securityBuy', id: m.id })} aria-label={`${m.name}: ${m.price ? money(m.price) : 'free'}`}>
                 {m.price ? `Buy · ${money(m.price)}` : 'Set up · free'}
                 {m.nightly ? ` + ${money(m.nightly)}/night` : ''}
               </button>

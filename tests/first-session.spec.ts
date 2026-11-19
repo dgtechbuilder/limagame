@@ -54,6 +54,17 @@ test('the story so far: sign for the farm, play last season, press =, turn over 
   await closeCheer(page, 'Congratulations!');
   await expect(card.locator('.story-sign')).toHaveText('Wanjiku', { timeout: 5000 });
   await expect(card).toContainText('Signed. This farm is yours, Wanjiku.');
+  // then the cows and hens that came with the farm get their morning care: Next waits for all three jobs
+  await expect(card.locator('.story-wait')).toHaveText('Care for your cows and hens to go on');
+  await expect(next).toHaveCount(0);
+  await page.getByRole('button', { name: 'Feed the cows', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Feed the cows: done' })).toBeVisible();
+  await expect(next).toHaveCount(0);
+  await page.getByRole('button', { name: 'Water the hens', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Water the hens: done' })).toBeVisible();
+  await page.getByRole('button', { name: 'Collect the eggs', exact: true }).click();
+  await expect(page.locator('.story-cheer-line')).toHaveText(/cows give milk and hens lay eggs/, { timeout: 5000 });
+  await closeCheer(page, 'Well done, Wanjiku!');
   await next.click();
 
   // page 2: the steps go in order; planting is done by hand (a bunch of seeds onto each bed), then the others have a
@@ -103,7 +114,7 @@ test('the story so far: sign for the farm, play last season, press =, turn over 
   await expect.poll(async () => (await state(page)).fs.phase).toBe('story');
   await page.getByRole('button', { name: 'Skip story', exact: true }).click();
   await expect.poll(async () => (await state(page)).fs.phase).toBe('walk1');
-  expect(await eventNames(page)).toEqual(expect.arrayContaining(['story_page', 'story_signed', 'story_step', 'story_sum', 'story_done', 'story_skipped']));
+  expect(await eventNames(page)).toEqual(expect.arrayContaining(['story_page', 'story_signed', 'story_care', 'story_step', 'story_sum', 'story_done', 'story_skipped']));
 });
 
 test('the farm update on arriving at the maize, and what each problem puts at stake', async ({ page }) => {

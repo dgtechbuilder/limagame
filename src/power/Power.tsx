@@ -1,4 +1,5 @@
 import { useState, type Dispatch } from 'react';
+import { act, jobWaiting } from '../onsite/model';
 import { Page, Tile } from '../components/Page';
 import { MiniGame, type GameSpec } from '../minigames/MiniGame';
 import { money } from '../money';
@@ -144,7 +145,9 @@ export function PowerPage({ s, dispatch, tab = 'build' }: { s: GameState; dispat
                     <small>Day {st.day}</small>
                   </div>
                   <p>{st.does}</p>
-                  {done ? (
+                  {!done && jobWaiting(s, `power:${st.id}`) ? (
+                    <span className="pg-status">🚶 On your jobs list: put it in at the {st.id === 'lights' ? 'light poles' : 'power yard'}</span>
+                  ) : done ? (
                     <span className="pg-status">
                       ✓ {partOptionOf(st.id, done.option)?.name ?? 'Done'} · day {done.day} · {Math.round(done.score * 100)}%
                     </span>
@@ -200,7 +203,7 @@ export function PowerPage({ s, dispatch, tab = 'build' }: { s: GameState; dispat
           doneLabel={playing === 'switchOn' ? 'Power on' : 'Finish the install'}
           onClose={() => setPlaying(null)}
           onDone={(score, data) => {
-            dispatch({ type: 'powerInstall', id: playing, score, loads: playing === 'switchOn' ? (data as LoadId[]) : undefined, option: option ?? undefined });
+            act(s, dispatch, { type: 'powerInstall', id: playing, score, loads: playing === 'switchOn' ? (data as LoadId[]) : undefined, option: option ?? undefined });
             setPlaying(null);
           }}
         />

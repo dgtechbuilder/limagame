@@ -239,7 +239,7 @@ export interface WorldEvents {
   arrived?: () => void;
 }
 
-export type Fx = 'dig' | 'clear' | 'mulch' | 'seed' | 'fert' | 'water' | 'spray' | 'weed' | 'drain' | 'harvest' | 'stone';
+export type Fx = 'dig' | 'clear' | 'mulch' | 'seed' | 'fert' | 'water' | 'spray' | 'weed' | 'drain' | 'harvest' | 'stone' | 'hay' | 'milk' | 'spark' | 'oil';
 
 interface Rect {
   x0: number;
@@ -273,6 +273,10 @@ export class FarmWorld {
   workScale = 1;
   private work = 0;
   private workFx: Fx | null = null;
+  /** the tool in hand for a job done by hand (src/onsite), while the work goes on */
+  private jobTool: string | null = null;
+  /** a part or a tool on the farmer's back, on the way to where it goes */
+  private crateOn = false;
   private lastHint = 0;
   private inPlace: Place | null = null;
   private atSign = -1;
@@ -302,8 +306,8 @@ export class FarmWorld {
   private badgeTex: Record<string, THREE.Texture> = {};
 
   // animals and helpers
-  private cows: { m: ReturnType<typeof makeQuadruped>; at: THREE.Vector2; to: THREE.Vector2; wait: number }[] = [];
-  private hens: { m: ReturnType<typeof makeChicken>; at: THREE.Vector2; to: THREE.Vector2; wait: number }[] = [];
+  private cows: { m: ReturnType<typeof makeQuadruped>; at: THREE.Vector2; to: THREE.Vector2; wait: number; hold?: number }[] = [];
+  private hens: { m: ReturnType<typeof makeChicken>; at: THREE.Vector2; to: THREE.Vector2; wait: number; hold?: number }[] = [];
   private goat = makeQuadruped('goat');
   private goatState = { farm: -1, at: new THREE.Vector2(), to: new THREE.Vector2(), leaving: 0 };
   private birds: ReturnType<typeof makeBird>[] = [];
@@ -775,6 +779,13 @@ export class FarmWorld {
       this.scene.add(g);
       this.pickups[p] = g;
     }
+    // the feed stores by the cow pen and the coop (src/onsite: the day's feeding starts here)
+    for (const [x, z] of [[-8.4, -12.4], [4.4, -18.8]] as const) {
+      const g = makePickup('seeds');
+      g.position.set(x, 0, z);
+      g.rotation.y = -0.3;
+      this.scene.add(g);
+    }
     // the tractor waits beside the hire spot
     this.tractor.position.set(TRACTOR_HOME.x, 0, TRACTOR_HOME.z);
     this.tractor.rotation.y = Math.PI / 2;
@@ -1200,6 +1211,10 @@ export class FarmWorld {
       drain: ['#7e4425', '#56b9e8'],
       harvest: ['#f2c230', '#e9d27a'],
       stone: ['#a7a7a0', '#8d8d86', '#c9b79a'],
+      hay: ['#e8c867', '#b8d46a', '#d4a94a'],
+      milk: ['#ffffff', '#f4f1e8'],
+      spark: ['#fff3a0', '#ffd23a', '#ffffff'],
+      oil: ['#3a2f22', '#6b5a3a'],
     };
     const c = new THREE.Color();
     for (let k = 0; k < n; k++) {
@@ -1586,6 +1601,7 @@ export class FarmWorld {
 
   /** The farmer is at work on a plot: keep the work animation going and throw a little soil or seed. */
   plotWorking(fx: Fx) {
+    this.jobTool = null;
     this.work = 0.45;
     this.workFx = fx;
     this.burst(fx, this.pos.x, this.pos.y, 2);
@@ -1670,12 +1686,60 @@ export class FarmWorld {
 
   /** The farmer is at work on a bush (with the sickle) or a rock (lifting it): face it, swing, throw leaves or grit. */
   tidyWorking(item: TidyItem) {
+    this.jobTool = null;
     this.work = 0.45;
     this.workFx = item.kind === 'bush' ? 'clear' : 'stone';
     const dx = item.x - this.pos.x;
     const dz = item.z - this.pos.y;
     if (Math.hypot(dx, dz) > 0.05) this.heading = Math.atan2(dx, dz);
     this.burst(this.workFx, item.x + (Math.random() - 0.5) * 0.6, item.z + (Math.random() - 0.5) * 0.6, 2);
+  }
+
+  /* ---------------- jobs done by hand (src/onsite: the button and the timer are World.tsx's) ---------------- */
+
+  /** At work on a job's spot: face the work, swing the tool, throw hay, sparks, water or milk at it. */
+  jobWorking(face: { x: number; z: number } | null, fx: Fx, tool: string | null) {
+    this.work = 0.45;
+    this.workFx = fx;
+    this.jobTool = tool ?? 'none';
+    const f = face ?? { x: this.pos.x, z: this.pos.y };
+    const dx = f.x - this.pos.x;
+    const dz = f.z - this.pos.y;
+    if (Math.hypot(dx, dz) > 0.05) this.heading = Math.atan2(dx, dz);
+    const bx = this.pos.x + (f.x - this.pos.x) * 0.6;
+    const bz = this.pos.y + (f.z - this.pos.y) * 0.6;
+    this.burst(fx, bx + (Math.random() - 0.5) * 0.4, bz + (Math.random() - 0.5) * 0.4, 2);
+  }
+
+  /** A job's spot is done: a little burst of what was worked. */
+  jobFinished(at: { x: number; z: number }, fx: Fx) {
+    this.burst(fx, at.x, at.z, 10);
+    this.dirty = true;
+  }
+
+  /** Carry a part or a tool on the back (to the first spot of a job that brings one). */
+  setCrate(on: boolean) {
+    if (on === this.crateOn) return;
+    this.crateOn = on;
+    this.dirty = true;
+  }
+
+  /** Where the tractor stands and which way it faces (jobs round the tractor are placed from it). */
+  tractorPose() {
+    return { x: this.tractor.position.x, z: this.tractor.position.z, ry: this.tractor.rotation.y };
+  }
+
+  /** The cows or the hens come over to a spot for a while (the trough at feeding, a cow to be milked). */
+  gather(group: 'cows' | 'hens', x: number, z: number, secs = 6) {
+    const herd = group === 'cows' ? this.cows : this.hens;
+    const shown = herd.filter(a => a.m.root.visible);
+    const n = group === 'cows' ? 1 + (Math.abs(x + 15) < 0.5 ? 1 : 0) : shown.length;
+    shown.slice(0, n).forEach((a, i) => {
+      const spread = group === 'cows' ? 0.9 : 0.55;
+      a.to.set(x + (i - (n - 1) / 2) * spread + (group === 'hens' ? (Math.random() - 0.5) * 0.6 : 0), z + (group === 'hens' ? (Math.random() - 0.5) * 0.6 : 0));
+      a.wait = 0;
+      a.hold = secs;
+    });
   }
 
   /* ---------------- the frame ---------------- */
@@ -2009,15 +2073,27 @@ export class FarmWorld {
     else F.armR.rotation.x = sw * 0.8;
     // what is in the hand and on the back
     const carry = this.view?.field.carry ?? null;
-    const tool = fx === 'dig' || fx === 'drain' || fx === 'mulch' ? 'hoe' : fx === 'clear' || fx === 'weed' ? 'sickle' : carry === 'water' ? 'can' : carry === 'sprayer' ? 'wand' : null;
+    const tool = fx && this.jobTool !== null ? this.jobTool : fx === 'dig' || fx === 'drain' || fx === 'mulch' ? 'hoe' : fx === 'clear' || fx === 'weed' ? 'sickle' : carry === 'water' ? 'can' : carry === 'sprayer' ? 'wand' : null;
     for (const [k, o] of Object.entries(F.tools)) o.visible = k === tool;
+    F.loads.crate.visible = this.crateOn && !carry;
     F.loads.seeds.visible = carry === 'seeds';
     F.loads.fertilizer.visible = carry === 'fertilizer';
     F.loads.sprayer.visible = carry === 'sprayer';
   }
 
   private animateAnimals(dt: number, time: number) {
-    const wander = (a: { m: { root: THREE.Object3D }; at: THREE.Vector2; to: THREE.Vector2; wait: number }, area: Rect, speed: number) => {
+    const wander = (a: { m: { root: THREE.Object3D }; at: THREE.Vector2; to: THREE.Vector2; wait: number; hold?: number }, area: Rect, speed: number) => {
+      // called over for a job (the trough, the milking spot): walk there and stay until the job is done
+      if (a.hold && a.hold > 0) {
+        a.hold -= dt;
+        const d = new THREE.Vector2().subVectors(a.to, a.at);
+        if (d.length() < 0.1) return 0;
+        d.normalize();
+        a.at.addScaledVector(d, speed * 1.6 * dt);
+        a.m.root.position.set(a.at.x, 0, a.at.y);
+        a.m.root.rotation.y = Math.atan2(d.x, d.y);
+        return 1;
+      }
       if (a.wait > 0) {
         a.wait -= dt;
         return 0;

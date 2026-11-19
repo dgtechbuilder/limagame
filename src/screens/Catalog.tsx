@@ -1,4 +1,5 @@
 import { useState, type Dispatch } from 'react';
+import { act } from '../onsite/model';
 import { img } from '../assets';
 import { InfoDot, EditIcon } from '../components/Icons';
 import { IconSidebar, ModalShell } from '../components/Modal';
@@ -79,7 +80,7 @@ export function ShopModal({ s, tab, dispatch }: { s: GameState; tab: ShopTab; di
                     onClick={() =>
                       item.stock
                         ? dispatch({ type: 'sell', id: item.id, price: item.price, name: item.name })
-                        : dispatch({ type: 'buy', id: item.id, price: item.price, name: item.name })
+                        : act(s, dispatch, { type: 'buy', id: item.id, price: item.price, name: item.name })
                     }
                     aria-label={item.stock ? `Sell ${item.name}, ${left} of ${item.stock[1]} bags left, ${money(item.price)} each` : `Buy ${item.name} for ${money(item.price)}${brand ? `, from partner ${brand.name}` : ''}${lock ? `. ${lock}` : ''}`}
                   >

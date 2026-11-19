@@ -1,4 +1,5 @@
 import { useState, type Dispatch } from 'react';
+import { act } from '../onsite/model';
 import { Page, Tile } from '../components/Page';
 import { MiniGame, type GameSpec } from '../minigames/MiniGame';
 import { money } from '../money';
@@ -196,7 +197,7 @@ export function TractorHub({
           spec={game}
           onClose={() => setPlaying(false)}
           onDone={score => {
-            dispatch({ type: 'tractorHub', section, score, id: section === 'learn' ? lesson : undefined, label: sec.label });
+            act(s, dispatch, { type: 'tractorHub', section, score, id: section === 'learn' ? lesson : undefined, label: sec.label });
             setPlaying(false);
             // back out to the yard, to see the stars on the station
             if (fromYard) onSection('yard');

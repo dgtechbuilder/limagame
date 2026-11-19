@@ -1,4 +1,5 @@
 import { useState, type Dispatch } from 'react';
+import { act } from '../onsite/model';
 import { Page, Tile } from '../components/Page';
 import { MiniGame, type GameSpec } from '../minigames/MiniGame';
 import { money } from '../money';
@@ -101,7 +102,7 @@ export function GardenPage({ s, dispatch, farm }: { s: GameState; dispatch: Disp
               <b>{f.watered >= day ? 'Watered today' : 'Needs water today'}</b>
               <small>{drip ? 'The solar drip waters it every night.' : `${cropOf(f.crop).water} L from the tank. A day without water costs ${GARDEN.dry}% of its health.`}</small>
             </span>
-            <button type="button" className="gold-btn" style={{ height: 30, padding: '0 14px', fontSize: 11 }} disabled={f.watered >= day} onClick={() => dispatch({ type: 'gardenWater', farm: tab })}>
+            <button type="button" className="gold-btn" style={{ height: 30, padding: '0 14px', fontSize: 11 }} disabled={f.watered >= day} onClick={() => act(s, dispatch, { type: 'gardenWater', farm: tab })}>
               Water
             </button>
           </div>

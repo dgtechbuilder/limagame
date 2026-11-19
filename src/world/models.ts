@@ -1016,8 +1016,8 @@ export interface Farmer {
   armR: THREE.Group;
   hand: THREE.Group;
   back: THREE.Group;
-  tools: Record<'hoe' | 'sickle' | 'can' | 'wand', THREE.Object3D>;
-  loads: Record<'seeds' | 'fertilizer' | 'sprayer', THREE.Object3D>;
+  tools: Record<'hoe' | 'sickle' | 'can' | 'wand' | 'hammer' | 'wrench' | 'bucket' | 'basket', THREE.Object3D>;
+  loads: Record<'seeds' | 'fertilizer' | 'sprayer' | 'crate', THREE.Object3D>;
   cobs: THREE.Group;
 }
 
@@ -1101,7 +1101,20 @@ export function makeFarmer(look: FarmerLook): Farmer {
   can.add(mesh(G.cyl6, lam('#3fa0e0'), at(0, -0.04, 0.38, { sx: 0.04, sy: 0.34, sz: 0.04, rx: 1.0 })));
   const wand = new THREE.Group();
   wand.add(mesh(G.cyl6, lam('#444'), at(0, 0, 0.3, { sx: 0.03, sy: 0.6, sz: 0.03, rx: 1.3 })));
-  const tools = { hoe, sickle, can, wand };
+  // for the jobs done by hand (src/onsite): building, fixing, feeding and milking, collecting eggs
+  const hammer = new THREE.Group();
+  hammer.add(mesh(G.cyl6, wood, at(0, 0, 0.18, { sx: 0.045, sy: 0.4, sz: 0.045, rx: 1.4 })));
+  hammer.add(mesh(G.box, lam('#5c6b73'), at(0, 0.02, 0.4, { sx: 0.1, sy: 0.1, sz: 0.24, rx: -0.17 })));
+  const wrench = new THREE.Group();
+  wrench.add(mesh(G.box, metal, at(0, 0, 0.22, { sx: 0.06, sy: 0.03, sz: 0.42 })));
+  wrench.add(mesh(new THREE.TorusGeometry(0.06, 0.022, 4, 10, Math.PI * 1.4), metal, at(0, 0, 0.45, { rx: Math.PI / 2 })));
+  const bucket = new THREE.Group();
+  bucket.add(mesh(new THREE.CylinderGeometry(0.16, 0.12, 0.26, 12), lam('#9aa3a8'), at(0, -0.18, 0.06)));
+  bucket.add(mesh(new THREE.TorusGeometry(0.15, 0.012, 4, 12, Math.PI), lam('#5c6b73'), at(0, -0.05, 0.06)));
+  const basket = new THREE.Group();
+  basket.add(mesh(new THREE.CylinderGeometry(0.18, 0.13, 0.16, 10), lam('#c9a05a'), at(0, -0.16, 0.08)));
+  for (const [x, z] of [[-0.06, 0.04], [0.05, 0.1], [0, 0.0]]) basket.add(mesh(G.sphere, lam('#f6efe0'), at(x, -0.06, 0.08 + z, { sx: 0.09, sy: 0.12, sz: 0.09 })));
+  const tools = { hoe, sickle, can, wand, hammer, wrench, bucket, basket };
   for (const t of Object.values(tools)) {
     t.visible = false;
     hand.add(t);
@@ -1124,7 +1137,13 @@ export function makeFarmer(look: FarmerLook): Farmer {
   tank.add(mesh(G.sphere, lam('#e0e0e0'), at(0, 0.3, -0.06, { s: 0.2 })));
   tank.visible = false;
   back.add(tank);
-  const loads = { seeds: sack('#d8bd8a'), fertilizer: sack('#f5f5f0', '#3aa856'), sprayer: tank };
+  // a part or a tool bought, carried to where it goes (src/onsite)
+  const crate = new THREE.Group();
+  crate.add(mesh(G.box, lam(C.woodPlank), at(0, 0, -0.12, { sx: 0.5, sy: 0.42, sz: 0.36 })));
+  crate.add(mesh(G.box, lam(C.woodDark), at(0, 0, -0.12, { sx: 0.52, sy: 0.08, sz: 0.38 })));
+  crate.visible = false;
+  back.add(crate);
+  const loads = { seeds: sack('#d8bd8a'), fertilizer: sack('#f5f5f0', '#3aa856'), sprayer: tank, crate };
   // the harvest, stacked on the back
   const cobs = new THREE.Group();
   cobs.position.set(0, 0.85, -0.42);

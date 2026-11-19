@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type Dispatch, type ReactNode } from 'react';
+import { act, jobWaiting } from '../onsite/model';
 import { MiniGame, type GameSpec } from '../minigames/MiniGame';
 import { NavBar } from '../components/Nav';
 import { CloseX } from '../components/Success';
@@ -195,8 +196,12 @@ function Today({ s, dispatch, go }: { s: GameState; dispatch: Dispatch<Action>; 
                       </span>
                     ) : !due && !noCoop ? (
                       <span className="lv-done is-later">Not yet</span>
+                    ) : jobWaiting(s, `care:${c.id}`) ? (
+                      <span className="lv-done is-later" aria-label={`${c.label}: on your jobs list`}>
+                        🚶 On your list
+                      </span>
                     ) : (
-                      <Btn tone="go" disabled={!open || noCoop} onClick={() => dispatch({ type: 'animalCare', id: c.id })} label={`${c.label}${cost ? ` for ${money(cost)}` : ''}`}>
+                      <Btn tone="go" disabled={!open || noCoop} onClick={() => act(s, dispatch, { type: 'animalCare', id: c.id })} label={`${c.label}${cost ? ` for ${money(cost)}` : ''}`}>
                         {c.id === 'milk' || c.id === 'eggs' ? 'Collect' : 'Do it'}
                         {cost ? ` · ${money(cost)}` : ''}
                       </Btn>
@@ -277,7 +282,7 @@ function Health({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
             {left > 2 ? (
               <span className="lv-done">✓ {left} days left</span>
             ) : (
-              <Btn tone="go" disabled={!open} onClick={() => dispatch({ type: 'animalPrevent', id: p.id })} label={`${p.label} for ${money(cost)}`}>
+              <Btn tone="go" disabled={!open} onClick={() => act(s, dispatch, { type: 'animalPrevent', id: p.id })} label={`${p.label} for ${money(cost)}`}>
                 {left ? 'Renew' : 'Do it'} · {money(cost)}
               </Btn>
             )}
@@ -446,7 +451,7 @@ function Coop({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
           doneLabel="Finish the coop"
           onClose={() => setBuilding(null)}
           onDone={() => {
-            dispatch({ type: 'coopBuild', id: building });
+            act(s, dispatch, { type: 'coopBuild', id: building });
             setBuilding(null);
           }}
         />
@@ -517,7 +522,7 @@ function Shed({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
           doneLabel="Finish the shed"
           onClose={() => setBuilding(null)}
           onDone={() => {
-            dispatch({ type: 'shedBuild', id: building });
+            act(s, dispatch, { type: 'shedBuild', id: building });
             setBuilding(null);
           }}
         />
@@ -550,10 +555,10 @@ function Herd({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
             </small>
           </span>
           <span className="lv-pair">
-            <Btn tone="quiet" disabled={r.n <= 0} onClick={() => dispatch({ type: 'herdBuy', group: r.g, n: -r.step })} label={`Sell ${r.step} ${r.g}`}>
+            <Btn tone="quiet" disabled={r.n <= 0} onClick={() => act(s, dispatch, { type: 'herdBuy', group: r.g, n: -r.step })} label={`Sell ${r.step} ${r.g}`}>
               Sell {r.step}
             </Btn>
-            <Btn tone="go" disabled={r.n >= r.max} onClick={() => dispatch({ type: 'herdBuy', group: r.g, n: r.step })} label={`Buy ${r.step} ${r.g} for ${money(r.price * r.step)}`}>
+            <Btn tone="go" disabled={r.n >= r.max} onClick={() => act(s, dispatch, { type: 'herdBuy', group: r.g, n: r.step })} label={`Buy ${r.step} ${r.g} for ${money(r.price * r.step)}`}>
               Buy {r.step} · {money(r.price * r.step)}
             </Btn>
           </span>

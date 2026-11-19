@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { boot, state, type Win } from './helpers';
+import { boot, doJobs, state, type Win } from './helpers';
 import { initialState, reducer, type GameState } from '../src/state';
 import { payClock } from '../src/climate/track';
 import { achClock } from '../src/achievements/track';
@@ -208,5 +208,9 @@ test('the new pages open by their addresses, and the TRACTOR button opens the tr
   const steps = ['Walk round: nobody near the tractor', 'Check the oil and the water', 'Check the tyres and the hitch pins', 'Sit down and put the belt on', 'Gear in neutral, PTO off', 'Start the engine'];
   for (const st of steps) await page.getByRole('button', { name: st, exact: true }).click();
   await page.getByRole('button', { name: 'Done', exact: true }).click();
+  // the walk-round itself is done on the farm: round the tractor, a check at each side (src/onsite)
+  await expect.poll(async () => (await state(page)).jobs?.[0]?.key).toBe('hub:safety');
+  expect((await state(page)).hub?.done?.safety ?? 0).toBe(0);
+  await doJobs(page);
   await expect.poll(async () => (await state(page)).hub?.done?.safety).toBe(1);
 });

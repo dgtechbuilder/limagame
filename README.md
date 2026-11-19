@@ -33,6 +33,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [The farm world](#the-farm-world)
   - [Scheduled care](#scheduled-care)
 - [The daily tidy-up](#the-daily-tidy-up)
+- [Jobs done by hand on the farm](#jobs-done-by-hand-on-the-farm)
 - [The six farms](#the-six-farms)
 - [From Wakala Agent](#from-wakala-agent)
 - [The tractor business](#the-tractor-business)
@@ -77,7 +78,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 | When | What happens |
 | --- | --- |
 | **0:00** | Names a farmer (or taps *Wanjiku*, *Otieno* or *Chebet*) and picks a look. No menus or text walls first. |
-| **0:05** | **The story so far**, three short pages: they bought this farm, last season's harvest results (they plant by hand, then watch the season fail and lose money), and this season they start by learning from each mistake. |
+| **0:05** | **The story so far**, three short pages: they bought this farm (and give its cows and hens their morning care), last season's harvest results (they plant by hand, then watch the season fail and lose money), and this season they start by learning from each mistake. |
 | **0:10** | Walks across their farm to the maize. The rest of the farm is under mist. |
 | **0:25** | Checks the maize by looking: spots the rows with fall armyworm and makes the right call. This is the moment the game is built around. |
 | **~2:00** | The whole farm opens. Their sukuma wiki needs the same kind of check, with fewer hints. |
@@ -87,7 +88,8 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 | **Every week** | **Six farms**: a different plan on each farm, one day of checks each real day (or all now), then the harvests compared. The plan that worked becomes their recipe for the next cycle. |
 | **Any time** | Plays seasons of maize on Farm Moja: six farming steps, harvest timing, storage, processing, selling, results, rewards. |
 | **Any time** | Opens **Climate** to see what their farming did to the climate, the water and the soil, and the climate credits it earned. |
-| **From day 2** | Looks after the **cows and hens** every day (feed, water, milk, eggs, cleaning), treats their diseases by their signs, and **keeps the farm safe from thieves** at night. |
+| **From day 2** | Looks after the **cows and hens** every day (feed, water, milk, eggs, cleaning), treats their diseases by their signs, and **keeps the farm safe from thieves** at night. The **Animal chores** chip walks the farmer to each chore at the pen or the coop, where it is done by hand. |
+| **Every job** | **Does the work on the farm**: buying the inverter, building the coop, servicing the tractor or feeding the hens closes the page and the farmer walks there, then works at each spot (round the tractor, every corner of the coop, each light pole) before it counts. See [Jobs done by hand on the farm](#jobs-done-by-hand-on-the-farm). |
 | **Days 1 to 7** | **Builds a solar power system**, one part a day, each with its own mini-game: panels, inverter, battery, lights, generator, diesel, then switches it on. It powers the pump, the milk cooler, the lights, the house and the workshop. |
 | **Day 1 · day 3** | **Upgrades the chicken coop** (day 1) and **the cow shed** (day 3), nail by nail. |
 | **From day 4** | Plants **Farms 7 and 8**: spinach, tomatoes, French beans, onions, watermelon or a fruit orchard. |
@@ -208,6 +210,8 @@ src/
                            a night's thefts, the harvest and store less theft), Security.tsx (the page)
   evidence/                the decision log, programme tags, "tried it on your own farm?": model.ts, Ask.tsx
   tidy/model.ts            the daily tidy-up: today's bushes and rocks, where they turn up, what they pay, the tidy streak
+  onsite/                  jobs done by hand on the 3D farm: spots.ts (where the farmer stands for each job), model.ts (each
+                           action's walk and work: jobFor, careJob, treatJob; act() for a page's button; the chores counts)
   risk/                    money at risk: config.ts (every number to tune), model.ts (the list, from the save), RiskHud.tsx (the button)
   tractor/                 from Wakala Agent: the tractor drive before planting: data.ts, sim.ts (no DOM), Tractor.tsx;
                            the tractor screen: hub.ts (training, condition, diesel), TractorHub.tsx
@@ -270,7 +274,12 @@ A new player never sees the farm screen first. Everything happens on their own f
    done*, then *Your first harvest: here is the financial result* above the sum.
    - *A farm of my own*: the farmer saved from a job in town and bought this farm. The signpost says FOR SALE and the
      title deed's owner line is blank: **Sign for my farm** writes the player's name onto the deed a letter at a
-     time, and the signpost becomes *Chebet's farm* with a SOLD sticker.
+     time, and the signpost becomes *Chebet's farm* with a SOLD sticker. Then the **two cows and four hens** that
+     came with the farm get their morning care: **Feed the cows**, **Water the hens** and **Collect the eggs**, each a
+     tap and a short timer (`STORY_CHORE_S`, 1.2 seconds) while the picture changes (hay in the feeder and the cow's
+     head down to eat, the hens pecking at a full drinker, eggs in the basket), then *Well done, Chebet! Fed and
+     watered every day, cows give milk and hens lay eggs*. Next waits for all three (*Care for your cows and hens to
+     go on*). Words: `animals` on the page in `STORY` (`src/first/data.ts`); event `story_care`.
    - *Last season's Harvest results*: last season, played a step at a time. **Plant the season** is done by hand:
      the picture shows a maize bed and a sukuma bed, with a bunch of maize seeds and a bunch of sukuma seeds in an
      open palm; the player taps the maize seeds, then the maize bed (the seed lands and shoots come up), then the
@@ -555,6 +564,46 @@ tune); the 3D pieces are `wildBush` and `rockPile` in `src/world/models.ts`, dra
   *Good neighbour* and *Pride of the village* for 3, 14 and 50 tidy days.
 - **Saved** as `tidy` in the game (today's date, the pieces cleared, tidy days, the streak). Saves from before have
   none, and start with today's tidy-up.
+
+## Jobs done by hand on the farm
+
+In the 3D farm, nearly every button that buys or does something becomes **a walk and the work by hand**
+(`src/onsite`). The page closes, the job takes the task card's place (blue, with its icon and *1/3*), a green arrow
+points at the spot and the farmer sets off there by themselves. At each spot a button shows under the farmer (*Bolt
+the frame down*, *Fix the left wheel*, *Scoop the dairy meal*); pressing it starts a short timer while the farmer
+works there with the right tool (hammer, spanner, bucket, basket, hoe, watering can) and throws hay, sparks, oil,
+water or milk at the work. Then the next spot, until the last. Walking away stops the timer, and the spot waits.
+
+**Nothing happens until the work is done.** The page's action is kept with the job (`then`) and runs when the last
+spot is finished: only then is the inverter paid for and standing in the power yard, the cows fed, the tractor's
+condition up. Each job also pays **+5 points** (+10 for building and installing). Before a job goes on the list its
+action is tried on a copy of the game, so a job that cannot be done now (no money, the panels before the inverter) is
+refused with the same reason, and nothing is added. **✕ Drop job** on the card takes it off the list: nothing was
+paid. Up to six jobs wait in turn (*2 more waiting*); the same job is never on the list twice. Jobs are saved with the
+game (`jobs`). In the classic farm view, and during the first session, the buttons act at once as before.
+
+| From | Job | Where the farmer works |
+| --- | --- | --- |
+| Animals · Today, or the **Animal chores** chip | feed, water, milk, clean the pen; feed, water, eggs, clean and shut the coop | the feed store by the pen gate, then over the fence at the trough (the cows come over), a cow brought to the fence to milk; the coop's feed bin, the run, the nest boxes, the door |
+| Animals · Health | tick spray, vaccines, deworming; and after a **right** fix (still chosen on the page, as a quiz), giving it | at the fence (the cows gather) or in the run (the hens gather); the leaking trough's valve |
+| Animals · Coop, Cow shed | building or upgrading (after the hammer mini-game) | round the coop: posts, walls, door; round the pen: posts, roof, gutters |
+| Animals · Herd | buying or selling animals | the farm gate, then the pen or the coop (and back) |
+| Power · Build | each part, after its mini-game | the panels' frame (three spots), the inverter on the hut wall and the cables, the batteries, **each of the four light poles**, the generator's slab, the diesel tank (stand it, fill it), the main switch |
+| Tractor screen | service, repair, refuel, the safety check (after their mini-games) | **round the tractor**, wherever it stands: engine, left wheel, hitch, right wheel; refuelling starts at the farm's diesel tank once there is one |
+| Security | padlocks, tap lock, ear tags, the dog's kennel, the security light, the fence and gate, the GPS tracker | the shed, the tank stand, the pen, by the house, a light pole, the gate and the fence, the tractor |
+| Farms 7 and 8 | watering (the farm's sign or its page) | across the beds with the can |
+| Shop | tanks, fertilizer, equipment | collect at the farm gate, then the tank stand or the shed |
+
+Choices, quizzes, settings, hiring someone and money matters (the market stall, crop cover, water bought) stay on
+their pages. A part or a tool bought rides on the farmer's back in a crate to its first spot. A job's spot is never
+inside a place that opens a page (the pen gate, the coop door, the Train spot…), and a place next to the job's spot
+stays quiet while the job is in hand. Every spot is in `src/onsite/spots.ts`, the steps of each job in
+`src/onsite/model.ts` (`jobFor`); the walk, the button and the timer are in `src/world/World.tsx`, the tools, the
+animals coming over and the bursts in `src/world/engine.ts` (`jobWorking`, `gather`, `tractorPose`, `setCrate`).
+
+**Animal chores, every day.** From day 2 a chip beside the tidy-up counts the day's care at the pen and the coop
+(*🐄 1/3 · 🐔 0/4*, by what is due today); tap it and the next chore goes on the list and the farmer walks to it. It
+turns green (*✓ Animals cared for*) when all are done. The Animals page marks a chore on the list *On your list*.
 
 ## The six farms
 
@@ -1729,6 +1778,7 @@ Some tests use no browser: they call the game's rules directly.
 | `phases.spec.ts`, `risk.spec.ts` | climate-smart row strategies and treatment choices; money at risk and the evidence log |
 | `achievements.spec.ts`, `progress.spec.ts`, `success.spec.ts` | badges, the streak and certificates; My Progress and partners; the success dialogs, training and the loan quote |
 | `frame.spec.ts` | every screen keeps its boxes and buttons inside the rounded frame |
+| `onsite.spec.ts` | jobs done by hand: nothing paid until the last spot, refusals and dropping, every spot clear of the places, a right fix given by hand, the chores chip at the pen, a service round the tractor |
 | `unlock.spec.ts` | options that open as you grow: two on day 1, three on day 2, five on day 3 or Level 3, across every buying decision, and the power yard's picker |
 
 They run on every pull request (`.github/workflows/tests.yml`), with one retry on CI; the report and screenshots are
