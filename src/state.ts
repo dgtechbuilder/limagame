@@ -64,6 +64,7 @@ import { brandOf, offerCode, type BrandId } from './partners/data';
 import type { PartnerApplication } from './partners/catalogue';
 import { routeTo } from './route';
 import { DEFAULT_LOAN, type LoanAsk } from './finance/loan';
+import type { SectionId } from './learn/glossary';
 import { bookingRef, courseDate, courseOf, dayText, type TrainingBooking } from './training/data';
 import type { SfxKind } from './sfx';
 import { money } from './money';
@@ -123,7 +124,9 @@ export type Modal =
   /** Farm 7 or Farm 8, the new farms (src/garden): farm 0 or 1 */
   | { kind: 'garden'; farm: number }
   /** the tractor game: plough the mini farm in 30 seconds, round rocks, trees and holes (src/minifarm) */
-  | { kind: 'tractorGame' };
+  | { kind: 'tractorGame' }
+  /** Farm words: what every fertilizer, spray, tool and machine is, and the Farm basics lessons (src/learn) */
+  | { kind: 'glossary'; tab?: GlossaryTab };
 
 /** The dialog after something worked: a sale, a training booked, a storage upgrade. It replaces the short message
     at the top of the screen for these, so the player cannot miss it (components/Success.tsx, screens/Success.tsx). */
@@ -156,7 +159,7 @@ export type Success =
   /** day 2: the animals come into the player's care, and the farm's safety is theirs to look after */
   | { kind: 'day2'; id: number }
   /** a morning with something new to build or open (the cow shed on day 3, the new farms on day 4, a power part) */
-  | { kind: 'morning'; id: number; day: number; lines: { icon: string; title: string; text: string; go: Modal }[] };
+  | { kind: 'morning'; id: number; day: number; lines: { icon: string; title: string; text: string; go: Modal; lesson?: number }[] };
 
 /** Player settings. They are kept on this device and survive Reset progress. */
 export interface Settings {
@@ -186,6 +189,8 @@ export type AnimalsTab = 'today' | 'health' | 'water' | 'coop' | 'shed' | 'herd'
 export type SecurityTab = 'protect' | 'risk' | 'reports';
 export type WalletTab = 'history' | 'climate' | 'summary';
 export type PowerTab = 'build' | 'today' | 'impact' | 'history';
+/** the Farm words page: the Farm basics lessons, or one section of words (src/learn/glossary.ts) */
+export type GlossaryTab = 'basics' | SectionId;
 export const DEFAULT_SETTINGS: Settings = { art: 'anime', graphics: 'auto', reduceMotion: false, voice: false, sound: true, upgradeNotes: true, country: '', night: 'auto' };
 
 /** Stage index: 0–5 = the farming step being worked on, 6 = harvested and selling, 7 = season sold. */
@@ -330,6 +335,8 @@ export interface GameState {
   garden?: Partial<GardenState>;
   /** the seed, fertilizer and sprayer last chosen at the shed: new farms start with them */
   prefs?: Partial<Record<PlotKind, string>>;
+  /** the Farm basics lessons read (their index in BASICS, src/learn/glossary.ts) */
+  basics?: number[];
   // season
   season: number;
   day: number;
@@ -519,6 +526,8 @@ export type Action =
   | { type: 'farm'; index: number }
   | { type: 'collect'; id: string; text: string; coins: number }
   | { type: 'toast'; text: string }
+  /** a Farm basics lesson read to the end (src/learn) */
+  | { type: 'basicsRead'; lesson: number }
   /** close the dialog after something worked */
   | { type: 'dismissSuccess' }
   /** the loan calculator's amounts */
@@ -928,6 +937,8 @@ function play(s: GameState, a: Action): GameState {
         ...gainXp(s, 0.03),
         toast: toast(a.text),
       };
+    case 'basicsRead':
+      return (s.basics ?? []).includes(a.lesson) ? s : { ...s, basics: [...(s.basics ?? []), a.lesson] };
     case 'toast':
       return { ...s, toast: toast(a.text) };
     case 'dismissSuccess':

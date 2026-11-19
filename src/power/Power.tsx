@@ -1,5 +1,7 @@
 import { useState, type Dispatch } from 'react';
 import { act, jobWaiting } from '../onsite/model';
+import { Info } from '../learn/Info';
+import { termFor } from '../learn/glossary';
 import { Page, Tile } from '../components/Page';
 import { MiniGame, type GameSpec } from '../minigames/MiniGame';
 import { money } from '../money';
@@ -23,6 +25,18 @@ const TABS: { id: PowerTab; label: string; icon: string }[] = [
 ];
 
 /** Each step's mini-game. */
+
+/** The farm word (learn/glossary.ts) behind each part of the power system, for its ⓘ. */
+const STEP_TERM: Record<string, string> = { panels: 'solar', inverter: 'inverter', battery: 'batteryBank', lights: 'led', generator: 'generator', fuel: 'diesel', switchOn: 'kw' };
+/** …and behind each option of a part: its own word where it has one (pure sine wave, MPPT, lithium…), else the part's. */
+function pickTerm(step: string, id: string, name: string): string {
+  if (step === 'panels') return 'solar';
+  if (step === 'generator') return id === 'biogas' ? 'biogas' : 'generator';
+  if (step === 'fuel') return id === 'bunded' ? 'bunded' : 'diesel';
+  if (step === 'lights') return 'led';
+  return termFor(name)?.id ?? STEP_TERM[step];
+}
+
 export function gameFor(id: StepId, s: GameState): GameSpec {
   switch (id) {
     case 'panels':
@@ -142,6 +156,7 @@ export function PowerPage({ s, dispatch, tab = 'build' }: { s: GameState; dispat
                   <div className="pg-card-head">
                     <i aria-hidden="true">{st.icon}</i>
                     <b>{st.name}</b>
+                    <Info term={STEP_TERM[st.id]} size={14} />
                     <small>Day {st.day}</small>
                   </div>
                   <p>{st.does}</p>
@@ -183,7 +198,7 @@ export function PowerPage({ s, dispatch, tab = 'build' }: { s: GameState; dispat
           kicker={`Power · day ${POWER_STEPS.find(x => x.id === picking)!.day}`}
           title={`${POWER_STEPS.find(x => x.id === picking)!.name}: choose one`}
           lead={PICK_LEAD[picking]}
-          options={POWER_STEPS.find(x => x.id === picking)!.options.map(o => ({ id: o.id, name: o.name, does: o.does, facts: factsOf(picking, o), price: o.price }))}
+          options={POWER_STEPS.find(x => x.id === picking)!.options.map(o => ({ id: o.id, name: o.name, does: o.does, facts: factsOf(picking, o), price: o.price, term: pickTerm(picking, o.id, o.name) }))}
           coins={s.coins}
           verb="Install"
           onClose={() => setPicking(null)}
