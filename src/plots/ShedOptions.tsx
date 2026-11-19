@@ -1,4 +1,5 @@
 import { LockTag, OpenLine } from '../unlock/Lock';
+import { Info } from '../learn/Info';
 import { isOpen } from '../unlock/model';
 import type { Dispatch } from 'react';
 import { money } from '../money';
@@ -36,6 +37,7 @@ export function ShedOptions({ s, of, dispatch, onClose }: { s: GameState; of: Pl
               <div className="pg-card-head">
                 <i aria-hidden="true" style={{ width: 12, height: 12, borderRadius: 4, background: o.color, display: 'inline-block' }} />
                 <b>{o.name}</b>
+                <Info term={o.name} />
               </div>
               <p>{o.does}</p>
               <p>

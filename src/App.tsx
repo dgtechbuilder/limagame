@@ -29,10 +29,14 @@ import { SettingsPage } from './screens/Settings';
 import { ClimatePage } from './screens/Climate';
 import { AchievementsPage } from './screens/Achievements';
 import { PartnersPage } from './screens/Partners';
+import { GlossaryPage } from './learn/Glossary';
+import { InfoLayer } from './learn/Info';
 
 import { ArtContext, VoiceContext } from './art/style';
 import { speak, stopSpeaking } from './speech';
 import { setSoundOn, sfx, warmSfx } from './sfx';
+import { rumble, setPadConfig, startPads, type PadInfo } from './input/gamepad';
+import { FAMILY_NAME, padSettings } from './input/pad';
 import { MainMenu } from './screens/MainMenu';
 import { LoanModal } from './screens/Loan';
 import { TrainingModal } from './screens/Training';
@@ -200,7 +204,23 @@ export default function App() {
   useLayoutEffect(() => setSoundOn(s.settings.sound !== false), [s.settings.sound]);
   useEffect(() => {
     if (s.sfx) sfx[s.sfx.kind]();
+    // and a short rumble on a controller that can
+    if (s.sfx) rumble(s.sfx.kind === 'flow' ? 'done' : 'tap');
   }, [s.sfx]);
+
+  // Game controllers (src/input/gamepad.ts): any controller plays the whole game; Settings → Controller sets it up
+  const pad = useMemo(() => padSettings(s.settings.pad), [s.settings.pad]);
+  useLayoutEffect(() => setPadConfig(pad), [pad]);
+  useEffect(() => {
+    const on = (e: Event) => {
+      const d = (e as CustomEvent<{ kind: 'connected' | 'disconnected'; pad: PadInfo }>).detail;
+      if (!live.current.settings.pad || live.current.settings.pad.on !== false)
+        dispatch({ type: 'toast', text: d.kind === 'connected' ? `${FAMILY_NAME[d.pad.family] === 'Other controller' ? 'Controller' : `${FAMILY_NAME[d.pad.family]} controller`} connected. Settings → Controller shows the buttons.` : 'Controller disconnected.' });
+    };
+    window.addEventListener('lima:pad', on);
+    startPads();
+    return () => window.removeEventListener('lima:pad', on);
+  }, [dispatch]);
   // the cues are made once, after the first tap (browsers start sound only after one)
   useEffect(() => {
     if (s.settings.sound === false) return;
@@ -344,6 +364,7 @@ export default function App() {
         {m?.kind === 'rewards' && <RewardsModal s={s} dispatch={dispatch} />}
         {m?.kind === 'loan' && <LoanModal s={s} dispatch={dispatch} view={m.view} />}
         {m?.kind === 'training' && <TrainingModal s={s} dispatch={dispatch} />}
+        {m?.kind === 'glossary' && <GlossaryPage key={m.tab ?? 'basics'} s={s} dispatch={dispatch} tab={m.tab} />}
 
         {/* the dialog after something worked: above every screen */}
         <SuccessLayer s={s} dispatch={dispatch} />
@@ -362,6 +383,8 @@ export default function App() {
             {s.toast.text}
           </div>
         )}
+        {/* a farm word's card, or a Farm basics lesson: above everything */}
+        <InfoLayer dispatch={dispatch} read={s.basics ?? []} />
       </div>
 
       {review && (

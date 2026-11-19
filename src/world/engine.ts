@@ -4,6 +4,7 @@
    this engine draws it and reports what the farmer did. */
 
 import * as THREE from 'three';
+import { padStick } from '../input/gamepad';
 import { RIDE_SPEED, TRACTOR_EDGE, type ImplId } from '../tractor/data';
 import { slotBrand, type SlotId } from '../partners/data';
 import { TIDY, type TidyItem } from '../tidy/model';
@@ -522,6 +523,8 @@ export class FarmWorld {
     if (e.type === 'keydown') this.keys.add(k);
     else this.keys.delete(k);
     this.target = null;
+    // the farm took the arrows (a controller's D-pad moves the focus on screens on top instead: input/gamepad.ts)
+    if (!this.view?.paused && !document.querySelector('[aria-modal="true"]')) e.preventDefault();
   };
 
   /* ---------------- building the farm ---------------- */
@@ -1837,6 +1840,14 @@ export class FarmWorld {
     if (this.keys.has('a') || this.keys.has('arrowleft')) dir.x -= 1;
     if (this.keys.has('d') || this.keys.has('arrowright')) dir.x += 1;
     if (this.joy.lengthSq() > 0.01) dir.copy(this.joy);
+    else if (!this.view?.paused) {
+      // a controller's left stick: an analogue walk (input/gamepad.ts)
+      const pad = padStick();
+      if (pad.x * pad.x + pad.y * pad.y > 0.0004) {
+        dir.set(pad.x, pad.y);
+        this.target = null;
+      }
+    }
     // how far the spot being walked to is: a step never goes past it (a long frame on a slow phone, or a fast
     // farmer, used to overshoot and swing back and forth across it)
     let reach = Infinity;

@@ -42,6 +42,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [Sound effects](#sound-effects)
 - [Money on screen](#money-on-screen)
 - [Settings](#settings)
+- [Game controllers](#game-controllers)
 - [Money at risk](#money-at-risk)
 - [Harvest estimate](#harvest-estimate)
 - [Climate-smart farming: row strategies and treatment choices](#climate-smart-farming-row-strategies-and-treatment-choices)
@@ -64,6 +65,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [Achievements, the daily streak and certificates](#achievements-the-daily-streak-and-certificates)
 - [My Progress: certification levels and learning credits](#my-progress-certification-levels-and-learning-credits)
 - [Partners: billboards, branded products and offers](#partners-billboards-branded-products-and-offers)
+- [Farm words: info buttons and Farm basics](#farm-words-info-buttons-and-farm-basics)
 - [Character art: retro anime](#character-art-retro-anime)
 - [Design review mode](#design-review-mode)
 - [Saving, events and privacy](#saving-events-and-privacy)
@@ -147,6 +149,9 @@ src/
   speech.ts                Read aloud: the phone's own voice (speechSynthesis)
   assets.ts                image paths (art exported from Figma into public/assets)
   styles.css               design tokens (colours, gold button, panels) and component styles
+  input/
+    gamepad.ts             game controllers, live: read every frame, turned into keys, focus moves and presses
+    pad.ts                 game controllers, pure: which make, button names, standard and unmapped layouts
   components/
     Nav.tsx                Back / Menu / Farm buttons shared by every screen (NavBar, NavContext)
     FarmMap.tsx            the Figma farm map: the ground of the whole game (1× and 2×)
@@ -179,6 +184,8 @@ src/
   minifarm/                the tractor game: sim.ts (the rules, no DOM), MiniFarm.tsx (the page and its canvas)
   components/Page.tsx      a page with sections down the left (Wallet, Power, Market, New farms, Tractor)
   training/data.ts         farmer training courses and bookings
+  learn/                   Farm words: glossary.ts (every word, the sections, the Farm basics lessons, termFor),
+                           Info.tsx (the ⓘ button and the card it opens), Glossary.tsx (the page), Basics.tsx
   farmSize.ts              how big the six farms are (4 acres, 20 plots) and FARM_SCALE
   fit.ts                   the 874 × 402 stage and how it fits the screen
   first/                   the first session (see below): Story.tsx the story so far, Update.tsx the farm update,
@@ -1003,18 +1010,45 @@ README says *coins*, it means this money. Points, litres, km, acres and days are
 ## Settings
 
 *Settings* (the **SETTINGS** button on the farm, the main menu, or the top bar in the first session) is a full page with
-four sections. Every control works at once and is saved on the device; *Reset progress* keeps them.
+five sections. Every control works at once and is saved on the device; *Reset progress* keeps them.
 
 | Section | Controls |
 | --- | --- |
 | **My farmer** | rename the farmer; change the look (the farm, the rounds and the HUD all follow) |
 | **Game** | *Character style*: Retro anime or Original · *Farm view*: 3D farm or Classic · *Read aloud*: speaks the guide's lines and the game's messages with the phone's voice (a Kenyan English voice when the phone has one), with a Test button · *Sound effects*: on or off, with a button to hear each one · *Upgrade messages*: the dialog after a storage upgrade, on or off |
 | **Display** | *Graphics*: Auto (shadows and a picture sized to the phone, lighter by itself if it slows down; see [Performance](#performance-on-low-cost-phones)), High (always shadows, the sharpest picture), Low (no shadows, 1× resolution) · *Reduce motion*: ends every animation and transition at once · *Full screen* |
+| **Controller** | the controllers connected, by name and make · *Use a controller*: on or off · *Button names*: Auto (as printed on the controller in use), Xbox, PlayStation or Nintendo · *Confirm button*: Bottom (Xbox, PlayStation) or Right (Nintendo style) · *Stick dead zone*: Small, Medium or Large · *Rumble* · a chart of every button, lit while held · *Set up buttons*: press each button in turn, for a controller the browser does not know (see [Game controllers](#game-controllers)) |
 | **Help & data** | How the farm works · Page addresses (what the address after the `#` does, with this page's) · Design review · Reset progress (asks twice) |
 
 The settings live in `GameState.settings` (`src/state.ts`); each section has its own address (`#/settings/display`).
 The 3D farm is rebuilt when the character style or the
 graphics change. `tests/settings.spec.ts` plays every section.
+
+## Game controllers
+
+Any controller the browser sees plays the whole game: Xbox, PlayStation (DualShock, DualSense), Nintendo Switch
+(Pro Controller, Joy-Con) and other makes (8BitDo, Logitech, PowerA, unbranded USB pads), by USB or Bluetooth.
+`src/input/gamepad.ts` reads them every frame and turns them into what the game already understands, so every screen
+works without code of its own:
+
+| Controller | Does |
+| --- | --- |
+| Left stick, D-pad | walk (the left stick walks the 3D farm at analogue speed), drive, steer, change lanes; on menus and pages, move the focus to the nearest button that way |
+| A / ✕ (Confirm) | press the button in focus, or the farm's action button underfoot (Clear, Plant, Check, Play); Enter for the timing and hold games |
+| B / ○ (Back) | Back / close (Escape) |
+| X / □ | Space for the hold and timing games; the tractor button on the farm |
+| Y / △ | walk to the next task |
+| LB / RB (L1 / R1) | the previous / next button, one by one |
+| LT / RT (L2 / R2) | the page's previous / next section |
+| Menu / Options / + | the main menu |
+| View / Create / − | Settings |
+| Right stick | scroll |
+
+The make is told from the USB vendor (Sony, Nintendo, Microsoft) or the name, and Settings → Controller shows its own
+button names. Controllers the browser maps to the standard layout share one set of button numbers; unmapped ones (some
+older or unbranded pads, some browsers) are read with a best guess, including a D-pad reported as a hat axis, and the
+player can set up each button in Settings → Controller (kept per controller model). `src/input/pad.ts` holds the
+mapping; `tests/controller.spec.ts` plays it with pretend Xbox, PlayStation, Nintendo and unbranded controllers.
 
 ## Money at risk
 
@@ -1647,6 +1681,41 @@ each. To sign a partner, add or edit its brand and put its id on the slots it bo
   partner keeps are under the list: fair play, no personal data, advice checked by an agronomist.
 - **Shortlist**: the ways tapped *Interested*, saved with the game (`partnerPicks`). *Copy the shortlist* puts it on
   the clipboard as text; set `VITE_PARTNER_EMAIL` at build time to add an *Email it to the TemoLima team* button.
+
+## Farm words: info buttons and Farm basics
+
+Many players have never farmed, so the game assumes nothing: a small blue **ⓘ** sits beside the name of almost every
+fertilizer, spray, pest, seed, tool, machine and farm idea. Tapping it opens that word's card on top of the screen
+(nothing is bought or chosen): **what it is**, **what it does**, **when and how** it is used, and a **take care**
+line where there is a risk (the spray kit, glyphosate on a growing crop, seed touching DAP…). Related words are links
+on the card, it can be read aloud, and *All farm words* opens the word's section.
+
+| Where | The ⓘ explains |
+| --- | --- |
+| Seed, fertilizer and sprayer sheds, the inputs board, the six farms' plan | every seed, fertilizer (DAP, CAN, manure…) and sprayer |
+| Shop and Farming steps | NPK, nitrogen, phosphorus, potassium, manure; tanks; hoe, spade, rake…; herbicides, fungicides, nematicides, insecticides |
+| Spraying | the spray kit (gloves, mask, boots) and each product (emamectin benzoate, lambda-cyhalothrin, mancozeb, glyphosate…) |
+| Choosing a fix | the fixes and the ways to do them (fungicide, neem spray, copper spray, urea, selective herbicide, mulch, drip line…) |
+| Tractor screens and the tractor business | each tractor type, each implement (disc plough, harrow, ridger, planter, spreader, boom sprayer…) |
+| Storage and value addition | hermetic bags, the cooperative warehouse, metal silo, cold storage, drying, processing, packaging |
+| Animals | Napier grass, layers mash, coop litter, acaricide, vaccinations, deworming, the diseases, zero-grazing |
+| Power | solar panels, inverters (pure and modified sine wave, MPPT, microinverters), lead-acid and lithium batteries, LED lights, generators, biogas, bunded tanks |
+
+**Farm words** (main menu, or `#/farm-words/…`) lists all of them by section, with a search box.
+
+**Farm basics** introduces the most basic words to a new player, in seven short lessons:
+
+1. *Three words every farmer uses* (fertilizer, pesticide, herbicide): in a box on the first session's farm update,
+   before the first check, with a *Learn more* button.
+2. From day 2, one lesson a morning: feeding the crop (DAP, CAN, NPK, manure), protecting it (insecticide, fungicide,
+   the spray kit, neem), weeds and herbicides, seeds and planting, tools and machines, water and the harvest. Each comes
+   in the morning news and as a chip under the task card on the farm, until it is read; the chip catches up one lesson
+   at a time if days are missed. All seven are on the Farm basics page.
+
+Every word is one entry in `src/learn/glossary.ts` (for an agronomist to review: rates are typical Kenyan smallholder
+advice, not a product label). An entry's `aka` names find it from any name in the game (`termFor`: the longest name in
+a text wins; a name in capitals, like CAN, only matches in capitals), so a new product or tool with a known name gets
+its ⓘ with no code change.
 
 ## Character art: retro anime
 

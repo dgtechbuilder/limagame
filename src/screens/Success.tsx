@@ -1,4 +1,5 @@
 import type { Dispatch, ReactNode } from 'react';
+import { openLesson } from '../learn/Info';
 import { SuccessCard } from '../components/Success';
 import { Coin, Img, Stars, fmt } from '../components/ui';
 import { PROCESSES, SHOP_TABS, STORAGE_OPTIONS } from '../data';
@@ -245,7 +246,7 @@ function Morning({ x, s, dispatch, done }: Each<'morning'>) {
       rows={x.lines.length > 1 ? x.lines.map(l => [`${l.icon} ${l.title}`, l.text] as [string, string]) : []}
       actions={[
         { label: 'Later', plain: true, onClick: done },
-        ...x.lines.slice(0, 2).map(l => ({ label: l.title, onClick: () => dispatch({ type: 'open', modal: l.go }) })),
+        ...x.lines.slice(0, 2).map(l => ({ label: l.lesson !== undefined ? 'Read today’s farm basics' : l.title, onClick: () => (l.lesson !== undefined ? (done(), openLesson(l.lesson)) : dispatch({ type: 'open', modal: l.go })) })),
       ]}
       onClose={done}
       label={`Day ${x.day}: ${x.lines.map(l => l.title).join(', ')}`}

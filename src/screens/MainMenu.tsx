@@ -25,6 +25,7 @@ export function MainMenu({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
     ? [
         { label: 'Back to the game', note: 'Carry on where you were', run: () => dispatch({ type: 'close' }) },
         { label: 'How the farm works', note: 'A quick guide', run: () => open({ kind: 'welcome' }) },
+        { label: 'Farm words', note: 'What fertilizer, pesticides and herbicides are', run: () => open({ kind: 'glossary', tab: 'basics' }) },
         { label: 'Settings', note: 'Full screen, reset', run: () => open({ kind: 'settings' }) },
       ]
     : [
@@ -49,6 +50,7 @@ export function MainMenu({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
         { label: 'Climate', note: 'Emissions, water, soil, credits', run: () => open({ kind: 'climate' }) },
         { label: 'Rewards', note: 'Points for real discounts', run: () => open({ kind: 'rewards' }) },
         { label: 'Partners & offers', note: 'Offers, and ways to partner with TemoLima', run: () => open({ kind: 'partners', tab: 'offers' }) },
+        { label: 'Farm words', note: 'Farm basics, and every fertilizer, spray and tool', run: () => open({ kind: 'glossary', tab: 'basics' }) },
         { label: 'Training', note: (s.trainings ?? []).length ? `${(s.trainings ?? []).length} booked · book a course` : 'Book a farmer course', run: () => open({ kind: 'training' }) },
         { label: 'Loan calculator', note: 'What a farm loan costs', run: () => open({ kind: 'loan', view: 'calc' }) },
         { label: 'Farming steps', note: 'The classic maize season', run: () => open({ kind: 'steps', step: 'landprep' }) },

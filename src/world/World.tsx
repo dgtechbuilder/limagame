@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, type Dispatch, type PointerEvent as RPointerEvent } from 'react';
+import { BasicsChip } from '../learn/Basics';
 import { img } from '../assets';
 import { FarmerPortrait } from '../first/art';
 import { LOOKS } from '../first/data';
@@ -908,6 +909,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       </button>
       <button
         type="button"
+        data-pad-x
         className={`hud-round hud-tractor${anchors.riding ? ' is-on' : ''}`}
         onClick={toggleRide}
         aria-pressed={anchors.riding}
@@ -984,7 +986,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       </button>
 
       {/* what to do next: tap it to walk there */}
-      <button type="button" className="hud-task" onClick={goToTask} aria-label={`Next: ${task.title}. Tap to walk there.`}>
+      <button type="button" data-pad-y className="hud-task" onClick={goToTask} aria-label={`Next: ${task.title}. Tap to walk there.`}>
         <span className="hud-task-icon">
           <TaskGlyph icon={task.icon} />
           {(task.coins !== undefined || task.points) && (
@@ -999,6 +1001,8 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
           {task.note && <i>{task.note}</i>}
         </span>
       </button>
+      {/* the first days: today's Farm basics lesson, until it is read */}
+      <BasicsChip day={lifeOf(s.life).day} read={s.basics ?? []} />
 
       {/* the day, and what the farmer carries */}
       <div className="hud-status">
@@ -1056,6 +1060,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       {!working && !tidying && !anchors.plot && anchors.tidy && tidyOn && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
         <button
           type="button"
+          data-pad-primary
           className={`hud-plot is-tidy is-${anchors.tidy.kind}`}
           style={{ left: Math.min(STAGE_W - 90, Math.max(90, anchors.farmer.x)), top: Math.min(STAGE_H - 60, anchors.farmer.y + 70) }}
           onClick={() => startTidy(anchors.tidy!)}
@@ -1071,6 +1076,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       {!working && !tidying && anchors.plot && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
         <button
           type="button"
+          data-pad-primary
           className={`hud-plot is-${anchors.plot.job}`}
           style={{ left: Math.min(STAGE_W - 90, Math.max(90, anchors.farmer.x)), top: Math.min(STAGE_H - 60, anchors.farmer.y + 70) }}
           onClick={() => startPlot(anchors.plot!)}
@@ -1087,7 +1093,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       {/* a place's white square (Train, Seeds, Sell, Sleep…): a button opts into its activity; walking in starts nothing */}
       {!working && !tidying && !anchors.plot && !anchors.riding && placeBtn && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
         <div className="hud-place" style={{ left: Math.min(STAGE_W - 150, Math.max(150, anchors.farmer.x)), top: Math.min(STAGE_H - 60, anchors.farmer.y + 70) }}>
-          <button type="button" className={`hud-plot is-enter is-${anchors.place}`} onClick={enterPlace} aria-label={placeBtn.aria}>
+          <button type="button" data-pad-primary className={`hud-plot is-enter is-${anchors.place}`} onClick={enterPlace} aria-label={placeBtn.aria}>
             {placeBtn.icon ? <TaskGlyph icon={placeBtn.icon} /> : <span className="hud-place-emoji" aria-hidden>{placeBtn.emoji}</span>}
             <span>
               <b>{placeBtn.label}</b>
@@ -1110,7 +1116,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         </div>
       )}
       {gardenBtn && anchors.garden && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
-        <button type="button" className="hud-check" style={{ left: anchors.garden.x, top: anchors.garden.y }} disabled={gardenBtn.disabled} onClick={gardenBtn.run}>
+        <button type="button" data-pad-primary className="hud-check" style={{ left: anchors.garden.x, top: anchors.garden.y }} disabled={gardenBtn.disabled} onClick={gardenBtn.run}>
           {gardenBtn.label}
         </button>
       )}
@@ -1131,7 +1137,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         </p>
       )}
       {showCheck && anchors.sign?.visible && (
-        <button type="button" className="hud-check" style={{ left: anchors.sign.x, top: anchors.sign.y }} disabled={wait > 0} onClick={() => openCheck(signFarm)}>
+        <button type="button" data-pad-primary className="hud-check" style={{ left: anchors.sign.x, top: anchors.sign.y }} disabled={wait > 0} onClick={() => openCheck(signFarm)}>
           {wait > 0 ? `Look again in ${wait}s` : `Check ${farmName(signFarm)}`}
         </button>
       )}

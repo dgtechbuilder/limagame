@@ -11,11 +11,11 @@ const openSettings = async (page: Page) => {
 const section = async (page: Page, name: string) => page$(page).getByRole('button', { name, exact: true }).click();
 const choose = (page: Page, group: string, option: string) => page$(page).getByRole('radiogroup', { name: group }).getByRole('radio', { name: option, exact: true }).click();
 
-test('Settings: four sections with Back, Menu and Farm; Back returns to the farm', async ({ page }) => {
+test('Settings: five sections with Back, Menu and Farm; Back returns to the farm', async ({ page }) => {
   await boot(page);
   await scenario(page, 'tractor');
   await openSettings(page);
-  for (const s of ['My farmer', 'Game', 'Display', 'Help & data']) await expect(page$(page).getByRole('button', { name: s, exact: true })).toBeVisible();
+  for (const s of ['My farmer', 'Game', 'Display', 'Controller', 'Help & data']) await expect(page$(page).getByRole('button', { name: s, exact: true })).toBeVisible();
   for (const nav of ['Back', 'Main menu', 'Back to my farm']) await expect(page$(page).getByRole('button', { name: nav, exact: true })).toBeVisible();
   await page$(page).getByRole('button', { name: 'Back', exact: true }).click();
   await expect(page$(page)).toBeHidden();
