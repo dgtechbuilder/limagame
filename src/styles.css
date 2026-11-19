@@ -3282,6 +3282,22 @@ a.ach-claim.pj-mail { display: inline-flex; align-items: center; text-decoration
 .risk-amount i.is-loss { color: #b8281c; }
 .harvest-go { display: block; margin: 10px 0 0 auto; }
 
+/* ---------------- an activity opening (components/ActivityLoading.tsx): a card with a spinning wheel ---------------- */
+.act-loading { z-index: 30; display: grid; place-items: center; background: rgba(12, 20, 8, 0.35); animation: act-in 0.12s ease both; }
+.act-loading.is-full { background: rgba(12, 20, 8, 0.45); }
+.act-loading-card {
+  display: flex; align-items: center; gap: 12px; padding: 12px 22px; border-radius: 16px;
+  background: rgba(255, 255, 255, 0.95); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25); color: var(--ink);
+  animation: pop 0.18s ease both;
+}
+.act-loading-card b { font-size: 15px; font-weight: 800; }
+.act-loading-wheel {
+  width: 26px; height: 26px; border-radius: 50%; border: 4px solid #dfe8cf; border-top-color: #6fb52c; border-right-color: #ffae00;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes act-in { from { opacity: 0; } }
+.reduce-motion .act-loading-wheel { animation-duration: 1.6s; }
+
 /* ======================================================================================================== */
 /* Pop-ups on the wooden frames (docs/ui-spacing-plan.md, Phase 2): Shop, Farming steps, Storage, Harvest     */
 /* timing, Value addition, Select process, Harvest info, Sale, Season results, Rewards. The frame art stays;   */
