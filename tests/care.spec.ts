@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { boot, eventNames, lookAndCall, scenario, state, tapTask, workFarm, type Win } from './helpers';
+import { boot, eventNames, lookAndCall, scenario, state, tapTask, workFarm, type Win, tapPlaceTask, optIn } from './helpers';
 
 /* From Wakala Agent, in the farm world: the fix after a right call, the work by hand, follow-up care, a missed
    follow-up, and the safety kit before spraying. */
@@ -70,7 +70,7 @@ test('a spray job: the safety kit, then the product', async ({ page }) => {
   await boot(page);
   const c = await scenario(page, 'spray');
   expect(c.hazard).toBe('armyworm');
-  await tapTask(page, 'Get the sprayer');
+  await tapPlaceTask(page, 'Get the sprayer');
   for (const piece of ['Gloves', 'Face mask', 'Boots']) await page.locator('.care-opt', { hasText: piece }).click();
   const products = await page.evaluate(h => (window as unknown as Win).__lima.products(h), c.hazard);
   const wrong = products.find(p => !p.right)!;
@@ -102,7 +102,10 @@ test('a spray job: the safety kit, then the product', async ({ page }) => {
   expect((await state(page)).field.carry).toBe('sprayer');
   await workFarm(page, 0, async () => !!(await state(page)).trial.checks[`0:${c.day}`]?.treated, 120);
   expect(await eventNames(page)).toEqual(expect.arrayContaining(['kit_on', 'product']));
-  // walking to a shed on purpose still hands over its load
+  // walking to a shed only shows its button: the load is handed over once the player opts in
   await page.evaluate(p => (window as unknown as Win).__limaWorld!.walkTo(p.x, p.z), sheds['shed-fertilizer']);
+  await expect(page.locator('.hud-place .is-enter')).toContainText('Pick up fertilizer');
+  expect((await state(page)).field.carry).not.toBe('fertilizer');
+  await optIn(page);
   await expect(page.locator('.hud-hint')).toHaveText('Picked up: fertilizer bag');
 });

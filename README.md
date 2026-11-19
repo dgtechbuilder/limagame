@@ -604,8 +604,8 @@ game (`jobs`). In the classic farm view, and during the first session, the butto
 
 Choices, quizzes, settings, hiring someone and money matters (the market stall, crop cover, water bought) stay on
 their pages. A part or a tool bought rides on the farmer's back in a crate to its first spot. A job's spot is never
-inside a place that opens a page (the pen gate, the coop door, the Train spot…), and a place next to the job's spot
-stays quiet while the job is in hand. Every spot is in `src/onsite/spots.ts`, the steps of each job in
+inside a place's white square (the pen gate, the coop door, the Train spot…), so a job's button and a place's
+button never stand on the same spot; at a job's spot the job's button takes the place of the others. Every spot is in `src/onsite/spots.ts`, the steps of each job in
 `src/onsite/model.ts` (`jobFor`); the walk, the button and the timer are in `src/world/World.tsx`, the tools, the
 animals coming over and the bursts in `src/world/engine.ts` (`jobWorking`, `gather`, `tractorPose`, `setCrate`).
 

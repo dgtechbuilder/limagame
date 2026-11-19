@@ -4,7 +4,7 @@ import { initialState, reducer, type GameState } from '../src/state';
 import { COMMON_PLAN, harvestFarm, routineApplies, suggestPlans, newTrial, type Trial } from '../src/trials/model';
 import { wakalaCase } from '../src/trials/samples';
 import { FULL, nextTask, routineLeft } from '../src/world/field';
-import { boot, scenario, state, tapTask, workFarm, type Win } from './helpers';
+import { boot, scenario, state, tapTask, workFarm, type Win, tapPlaceTask, optIn } from './helpers';
 
 /* Scheduled care after planting (plots/data.ts ROUTINE): every farm is weeded on day 2 or 3, maize is sprayed against
    stalk borer on day 3 or 4, and a DAP + CAN farm gets its CAN top-dress on day 4 or 5. By hand or from the tractor
@@ -106,7 +106,7 @@ test('in the farm world: weed by hand, spray against stalk borer with the kit, t
   expect((await state(page)).points).toBe(p0 + 40);
 
   // the stalk-borer spray: the safety kit, then the product for stem borers
-  await tapTask(page, 'Get the sprayer');
+  await tapPlaceTask(page, 'Get the sprayer');
   for (const piece of ['Gloves', 'Face mask', 'Boots']) await page.locator('.care-opt', { hasText: piece }).click();
   await expect(page.locator('.guide-text')).toContainText('stalk borer');
   const products = await page.evaluate(() => (window as unknown as Win).__lima.products('borer'));
@@ -128,7 +128,7 @@ test('in the farm world: weed by hand, spray against stalk borer with the kit, t
     l.dispatch({ type: 'dismissSuccess' });
     for (const farm of [0, 1]) l.dispatch({ type: 'trialCheck', farm, day: 4, right: true, tries: 1 });
   });
-  await tapTask(page, 'Get fertilizer');
+  await tapPlaceTask(page, 'Get fertilizer');
   await expect.poll(async () => (await state(page)).field.carry, { timeout: 60_000 }).toBe('fertilizer');
   await expect(page.locator('.hud-task')).toContainText('Top-dress Farm 1');
   await workFarm(page, 0, async () => ((await state(page)).trial.routine as string[]).includes('0:topdress'), 120);
