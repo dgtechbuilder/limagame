@@ -951,7 +951,7 @@ button.card:active { transform: scale(0.98); }
 .hud-round:active > svg, .hud-round:active > img { transform: scale(0.94); }
 .hud-mission { right: 12px; top: 72px; }
 .hud-mission > svg { background: radial-gradient(circle at 50% 35%, #fff8e6, #f0dcb4); padding: 5px 8px; }
-.hud-shop { right: 12px; top: 136px; }
+.hud-shop { right: 12px; top: 134px; }
 
 /* top right: coins and points */
 .hud-pills { position: absolute; right: 30px; top: 10px; z-index: 5; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
@@ -1031,7 +1031,7 @@ button.card:active { transform: scale(0.98); }
 .hud-plot.is-tidy.is-bush { background: linear-gradient(#7fd35a, #2f9b14); }
 .hud-plot.is-tidy.is-rock { background: linear-gradient(#b9b9b0, #7d7d75); }
 .hud-tidy {
-  position: absolute; right: 30px; bottom: 14px; z-index: 5; display: flex; flex-direction: column; gap: 3px;
+  position: absolute; right: 80px; bottom: 14px; z-index: 5; display: flex; flex-direction: column; gap: 3px;
   padding: 5px 10px 6px; border-radius: 12px; text-align: left; color: #5b3418;
   background: #fff4dd; box-shadow: 0 0 0 2.5px #c9824a, 0 4px 10px rgba(0, 0, 0, 0.25);
   animation: pop 0.25s ease both, tidy-nudge 3s ease-in-out 1s infinite;
@@ -1464,7 +1464,7 @@ button.card:active { transform: scale(0.98); }
 .cl-log-text small { display: block; font-size: 9px; opacity: 0.8; margin-top: 1px; }
 
 /* the CLIMATE button on the farm, beside MISSION */
-.hud-climate { right: 72px; top: 72px; }
+.hud-climate { right: 12px; top: 258px; }
 .hud-climate > svg { background: radial-gradient(circle at 50% 35%, #8fdc6a, #2f8a3c); }
 .hud-badge {
   position: absolute; top: -3px; right: -2px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 100px;
@@ -2300,9 +2300,9 @@ button.card:active { transform: scale(0.98); }
 /* My Progress: the PROGRESS button, the journey and the modules       */
 /* ================================================================== */
 
-.hud-progress { right: 72px; top: 136px; }
+.hud-progress { right: 12px; top: 320px; }
 /* PARTNERS on the farm: left of WATER, under PROGRESS */
-.hud-partners { right: 72px; top: 200px; }
+.hud-partners { left: 12px; top: 258px; }
 .hud-partners > svg { background: radial-gradient(circle at 50% 35%, #fff8e6, #f0dcb4); }
 .hud-progress > svg { padding: 3px; background: radial-gradient(circle at 50% 35%, #fff8e6, #f0dcb4); }
 .hud-progress .hud-badge { right: -6px; font-size: 10px; }
@@ -2515,7 +2515,7 @@ button.card:active { transform: scale(0.98); }
 .care-way.is-on { border-color: var(--gold, #ffb005); background: #fff1cf; box-shadow: 0 0 0 2px rgba(255, 176, 5, 0.35); }
 
 /* ---------------- water (src/water) ---------------- */
-.hud-water { right: 12px; top: 200px; }
+.hud-water { right: 12px; top: 196px; }
 .hud-water-tank {
   position: relative; width: 34px; height: 40px; border-radius: 9px 9px 7px 7px; overflow: hidden; background: #e8f1f5;
   box-shadow: 0 0 0 2.5px #fff3d6, inset 0 0 0 2px #3d6e86, 0 3px 6px rgba(0, 0, 0, 0.3);
