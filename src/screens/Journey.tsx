@@ -1,4 +1,5 @@
 import { lockShort, lockText } from '../unlock/model';
+import { Info } from '../learn/Info';
 import { useState, type CSSProperties, type Dispatch, type ReactNode } from 'react';
 import { FarmerPortrait } from '../first/art';
 import { LOOKS } from '../first/data';
@@ -171,6 +172,7 @@ export function StorageModal({ s, dispatch }: Props) {
                     </span>
                     <span className="pp-name" style={on ? { textDecoration: 'underline', textDecorationColor: 'var(--select-ring)', textDecorationThickness: 2, textUnderlineOffset: 3 } : undefined}>
                       {o.name}
+                      <Info term={({ home: 'homeStore', coop: 'warehouse' } as Record<string, string>)[o.id] ?? o.id} size={14} style={{ margin: '0 0 0 4px', verticalAlign: -2 }} />
                     </span>
                     <b>{details ? o.spoilage : o.costPerBag ? <><Coin size={14} /> {money(o.costPerBag)}</> : 'Free'}</b>
                     <b>{details ? co2(o.id) : `≈ ${q.lost}${q.stolen ? ` +${q.stolen}` : ''}`}</b>
@@ -319,6 +321,7 @@ export function ValueModal({ s, dispatch }: Props) {
                   }}
                   aria-label={`Select ${p.name}`}
                 >
+                  <Info term={p.id} nested size={14} className="info-corner" />
                   <span className="pp-row">
                     <Img src={p.icon} w={30} h={28} alt="" style={{ flexShrink: 0 }} />
                     <span className="pp-name" style={{ fontSize: 'var(--text-subhead)' }}>{p.name}</span>

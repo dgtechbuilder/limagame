@@ -3085,6 +3085,115 @@ a.ach-claim.pj-mail { display: inline-flex; align-items: center; text-decoration
 .ev-ask-row button { transition: transform 0.12s; }
 .ev-ask-row button:hover { transform: translateY(-1px); border-color: var(--gold); }
 
+/* ================================================================== */
+/* Farm words: the ⓘ buttons, a word's card, Farm basics (src/learn)  */
+/* ================================================================== */
+.info-btn {
+  display: inline-grid; place-items: center; flex-shrink: 0; vertical-align: middle; margin-left: 4px; padding: 0;
+  border-radius: 100px; border: 1.5px solid #fff; background: #2f7fc1; color: #fff; cursor: pointer;
+  font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-weight: 700; line-height: 1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); transition: transform 0.12s, background 0.12s;
+}
+.info-btn:hover, .info-btn:focus-visible { background: #1f66a3; transform: scale(1.12); outline: none; }
+.info-btn.is-light { background: #fff; color: #2f7fc1; border-color: #2f7fc1; }
+/* a bigger invisible tap target than the dot */
+.info-btn { position: relative; }
+.info-btn::after { content: ''; position: absolute; inset: -6px; border-radius: 100px; }
+.info-named { display: inline-flex; align-items: center; gap: 0; }
+.info-corner { position: absolute; right: 4px; top: 4px; z-index: 2; margin: 0; }
+
+.info-layer { position: absolute; inset: 0; z-index: 200; display: grid; place-items: center; color: var(--ink); }
+.info-card {
+  position: relative; width: 540px; max-height: 380px; padding: 10px 16px 12px; border-radius: 16px; overflow: hidden;
+  background: var(--cream); box-shadow: 0 0 0 4px #7fb6e0, 0 0 0 7px #2f6f9f, 0 10px 24px rgba(0, 0, 0, 0.35);
+  display: flex; flex-direction: column; gap: 6px; animation: pop 0.2s ease both;
+}
+.info-card.is-lesson { width: 600px; overflow-y: auto; }
+.info-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+.info-head { display: flex; align-items: center; gap: 10px; padding-right: 32px; }
+.info-icon { width: 40px; height: 40px; flex-shrink: 0; border-radius: 12px; display: grid; place-items: center; background: #fff8ea; box-shadow: inset 0 0 0 2px var(--brown-20); font-size: 22px; }
+.info-title { display: flex; flex-direction: column; min-width: 0; }
+.info-title small { font-size: var(--text-label); font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #2f6f9f; }
+.info-title b { font-size: var(--text-title); line-height: 1.15; }
+.info-rows { margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.info-rows > div { display: grid; grid-template-columns: 92px 1fr; gap: 8px; padding: 4px 8px; border-radius: 10px; background: #fff8ea; }
+.info-rows dt { font-size: var(--text-caption); font-weight: 800; color: var(--brown); }
+.info-rows dd { margin: 0; font-size: var(--text-body-sm); line-height: 1.35; }
+.info-rows > div.is-care { background: #fff1d6; box-shadow: inset 3px 0 0 #e08a1e; }
+.info-rows > div.is-care dt { color: #b0560a; }
+.info-see { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 5px; font-size: var(--text-caption); }
+.info-see > span { font-weight: 700; opacity: 0.75; margin-right: 2px; }
+.info-chip { padding: 3px 9px; border-radius: 100px; background: #e3f0fa; border: 1px solid #9cc4e4; color: #1f4f78; font-size: var(--text-caption); font-weight: 600; }
+.info-chip:hover { background: #d0e6f7; }
+.info-foot { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.info-foot .mg-plain { height: 30px; font-size: var(--text-caption); }
+.info-ok { height: 32px; min-width: 96px; padding: 0 16px; font-size: 13px; }
+.info-lead { margin: 0; font-size: var(--text-body-sm); line-height: 1.4; }
+.info-lesson { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.info-lesson.n3 { grid-template-columns: repeat(3, 1fr); }
+.info-word {
+  width: 100%; height: 100%; display: grid; grid-template-columns: 30px 1fr; grid-template-rows: auto 1fr auto; column-gap: 8px; row-gap: 1px;
+  padding: 7px 10px; border-radius: 12px; background: #fff8ea; border: 1.5px solid var(--brown-20); text-align: left; color: var(--ink);
+}
+.info-word:hover { border-color: #2f7fc1; box-shadow: 0 2px 0 #9cc4e4; }
+.info-word-icon { grid-row: 1 / 4; font-size: 22px; line-height: 30px; text-align: center; }
+.info-word b { font-size: var(--text-body); }
+.info-word span { font-size: var(--text-caption); line-height: 1.35; }
+.info-word em { font-style: normal; font-size: var(--text-caption); font-weight: 700; color: #2f6f9f; }
+
+/* the Farm words page */
+.gl-top { display: flex; gap: 8px; margin-bottom: 6px; }
+.gl-search { flex: 1; height: 32px; padding: 0 12px; border-radius: 10px; border: 1.5px solid var(--brown-20); background: #fff; font: inherit; font-size: var(--text-body-sm); color: var(--ink); }
+.gl-search:focus { outline: none; border-color: var(--gold); }
+.gl-words { margin: 6px 0 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.gl-word { width: 100%; height: 100%; display: flex; gap: 8px; padding: 7px 10px; border-radius: 12px; background: #fff8ea; border: 1.5px solid var(--brown-20); text-align: left; color: var(--ink); }
+.gl-word:hover { border-color: #2f7fc1; }
+.gl-word-icon { font-size: 20px; line-height: 1.2; }
+.gl-word-text { display: flex; flex-direction: column; min-width: 0; }
+.gl-word-text b { font-size: var(--text-body-sm); }
+.gl-word-text small { font-size: var(--text-label); font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: #2f6f9f; }
+.gl-word-text span { font-size: var(--text-caption); line-height: 1.35; opacity: 0.85; }
+.gl-lessons { margin: 6px 0 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.gl-lesson { width: 100%; height: 100%; display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; background: #fff8ea; border: 1.5px solid var(--brown-20); text-align: left; color: var(--ink); }
+.gl-lesson:hover { border-color: var(--gold); }
+.gl-lesson.is-read { border-color: rgba(46, 139, 71, 0.55); background: #f1f8e8; }
+.gl-lesson-icon { font-size: 24px; }
+.gl-lesson-text { display: flex; flex-direction: column; min-width: 0; }
+.gl-lesson-text small { font-size: var(--text-label); font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--green-text); }
+.gl-lesson-text b { font-size: var(--text-body-sm); }
+.gl-lesson-text span { font-size: var(--text-caption); opacity: 0.8; }
+/* ten sections: shorter tabs so they fit down the left */
+.gl-page .set-tabs { gap: 1px; padding: 12px 10px; overflow-y: auto; }
+.gl-page .set-heading { margin-bottom: 4px; }
+.gl-page .set-tab { height: 26px; flex-shrink: 0; font-size: 11.5px; white-space: nowrap; padding: 0 8px; }
+
+/* Farm basics on the farm update (first session) and on the farm (the first days) */
+.basics-box { margin: 6px 0 0; padding: 5px 8px; border-radius: 12px; background: #eaf3fb; box-shadow: inset 0 0 0 1.5px #9cc4e4; }
+.basics-box > p { margin: 0 0 4px; font-size: var(--text-caption); font-weight: 700; color: #1f4f78; display: flex; align-items: center; gap: 6px; }
+.basics-box ul { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.basics-box li { font-size: var(--text-caption); line-height: 1.3; display: flex; flex-direction: column; padding: 3px 6px; border-radius: 8px; background: #fff; }
+.basics-box li b { display: flex; align-items: center; white-space: nowrap; }
+.basics-more { margin-left: auto; padding: 1px 8px; border-radius: 100px; background: #2f7fc1; color: #fff; font-size: var(--text-label); font-weight: 700; }
+.hud-basics {
+  position: absolute; left: 50%; top: 70px; z-index: 6; transform: translateX(-50%); display: flex; align-items: center; gap: 8px;
+  max-width: 330px; padding: 5px 12px 5px 6px; border-radius: 100px; background: rgba(31, 79, 120, 0.9); color: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  font-size: var(--text-caption); font-weight: 600; text-align: left; animation: rise 0.3s ease both;
+}
+.hud-basics i { font-style: normal; width: 24px; height: 24px; border-radius: 100px; display: grid; place-items: center; background: #fff; font-size: 14px; }
+.hud-basics small { display: block; font-size: var(--text-label); text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.8; }
+.hud-basics:hover { background: rgba(31, 79, 120, 1); }
+.pb-opts li { position: relative; }
+.pb-opts li .pb-info { position: absolute; left: 6px; bottom: 6px; margin: 0; }
+.tp-card, .tp-tool { position: relative; }
+.tc-card { position: relative; }
+.care-opt .info-btn { margin-left: auto; }
+.care-opt small + .info-btn { margin-left: 6px; }
+.care-opt.is-wrong .info-btn { text-decoration: none; }
+/* the farm update: room for the Farm basics box */
+.update-card .story-text p { margin-bottom: 4px; }
+.update-card .update-crops { margin-top: 4px; gap: 4px; }
+.update-card .update-crops li { padding-top: 0; padding-bottom: 0; }
+.update-card .update-crops li svg { height: 34px; }
 /* ---------------- harvest estimate (src/risk/harvest.ts): beside the farmer's portrait, styled like the task card ---------------- */
 .hud-harvest {
   position: absolute; left: 84px; top: 8px; z-index: 5; display: flex; align-items: center; gap: 8px;

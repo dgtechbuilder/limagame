@@ -1,4 +1,5 @@
 import { useState, type Dispatch } from 'react';
+import { Info } from '../learn/Info';
 import { img } from '../assets';
 import { IconSidebar, ModalShell } from '../components/Modal';
 import { Cast } from '../art/Cast';
@@ -15,6 +16,10 @@ import { brandOf, slotBrand, type SlotId } from '../partners/data';
 
 /** The partner slot each Shop section sells. */
 const SHOP_SLOT: Partial<Record<ShopTab, SlotId>> = { fertilizer: 'shop-fertilizer', tank: 'shop-tank', equipment: 'shop-equipment' };
+
+/** The farm word (learn/glossary.ts) behind a Shop item or a farming step, where its name alone does not say it. */
+const ITEM_TERM: Record<string, string> = { 'tank-s': 'tank', 'tank-m': 'tank', 'tank-l': 'tank', 'tank-xl': 'tank', 'tank-pan': 'waterPan', 'tank-tangi': 'tank', cultivator: 'handCultivator', 'w-1000': 'tank', 'w-5000': 'tank', 'w-10000': 'tank', 'w-20000': 'tank', storage: 'hermetic', timing: 'drying', reaping: 'sickle', protection: 'aflatoxin' };
+const STEP_TERM: Record<StepId, string> = { landprep: 'landPrep', planting: 'spacing', fertilizer: 'fertilizer', pesticides: 'pesticide', water: 'drip', harvest: 'drying' };
 
 /* ================================================================== */
 /* Shop (Figma: Food / Fertilizer / Water tanks / Equipments)          */
@@ -73,7 +78,7 @@ export function ShopModal({ s, tab, dispatch }: { s: GameState; tab: ShopTab; di
                   </span>
                 </span>
                 <PriceChip price={item.price} />
-                {lock && <span className="pp-corner" aria-hidden="true">🔒</span>}
+                {lock ? <span className="pp-corner" aria-hidden="true">🔒</span> : <Info term={ITEM_TERM[item.id] ?? item.name} nested size={14} className="info-corner" />}
               </button>
             );
           })}
@@ -153,8 +158,11 @@ export function StepsModal({ s, step, dispatch }: { s: GameState; step: StepId; 
                   ? `Finished this season · ${Math.round((s.stepScores[step] ?? 0) * 100)}% of the recommended work`
                   : `Locked · finish ${current.label} first`}
             </b>
-            <span className="pp-sub" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <span className="pp-sub" style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+              <Info term={STEP_TERM[step]} size={14} style={{ margin: 0, flexShrink: 0 }} />
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {status === 'locked' ? 'You can look around to plan ahead.' : status === 'current' ? `${done < meta.need ? 'Fewer means a weaker crop' : 'Your crop is in good shape'}. ${meta.purpose}.` : `${meta.purpose}.`}
+              </span>
             </span>
           </span>
           {status === 'current' &&
@@ -216,6 +224,7 @@ function TaskCard({ s, step, t, status, onDo, label, water, tall }: { s: GameSta
       <span style={{ alignSelf: 'stretch' }}>
         <TaskChip s={s} taskId={t.id} price={t.price} done={done} status={status} />
       </span>
+      <Info term={ITEM_TERM[t.id] ?? t.name} nested size={14} className="info-corner" />
     </button>
   );
 }
@@ -267,6 +276,7 @@ function WaterBody({ s, status, dispatch }: { s: GameState; status: StepStatus; 
           <Img src={img.waterInput} w={20} h={21} />
           <input id="water-amount" inputMode="numeric" placeholder="Litres per m²" value={amount} onChange={e => setAmount(e.target.value)} style={{ flex: 1, minWidth: 0, fontSize: 12 }} />
           <span className="pp-cap">L/m²</span>
+          <Info term="lpm2" size={14} style={{ margin: 0 }} />
         </span>
         <button type="submit" className="pp-btn">Save</button>
       </form>
