@@ -39,6 +39,9 @@ import {
 } from '../progress/model';
 import { slotBrand } from '../partners/data';
 import { BrandMark, SponsorLine } from '../partners/ui';
+import { HenIcon, ShieldIcon } from '../livestock/HudButtons';
+import { animalsBadge, careOpen, lifeOf } from '../livestock/model';
+import { activeMeasures, securityOf, theftOpen } from '../security/model';
 
 /* My Progress (the achievements page): the journey of certification levels over the first days and weeks, the
    learning modules and their credits, today's streak and reward, every badge by part of the game, and the
@@ -91,6 +94,7 @@ export function AchievementsPage({ s, dispatch, tab: startTab }: Props) {
               {t.id === 'certificates' && a.certs.length > 0 && <small className="ach-count">{a.certs.length}</small>}
             </button>
           ))}
+          <FarmLinks s={s} dispatch={dispatch} />
           <p className="set-foot">
             {totalCredits(p)} credits · {won} of {ACHIEVEMENTS.length} badges
           </p>
@@ -108,6 +112,42 @@ export function AchievementsPage({ s, dispatch, tab: startTab }: Props) {
       <p className="set-title-bar">
         <span aria-hidden="true">🎓</span> My Progress · <b>{TABS.find(t => t.id === tab)!.label}</b>
       </p>
+    </div>
+  );
+}
+
+/* ---------------- the farm's animals and security ---------------- */
+
+/** Animals and Security live in My Progress (they used to be buttons on the farm): each opens its own page, with the
+    same badge the farm button had: the animals' jobs and problems waiting, a ! after a theft or a predator. */
+function FarmLinks({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
+  const n = animalsBadge(s);
+  const sick = lifeOf(s.life).issues.length > 0;
+  const sec = securityOf(s.security);
+  const fresh = sec.reports[0]?.events.some(e => e.kind === 'theft' || e.kind === 'predator') ?? false;
+  const measures = activeMeasures(s).length;
+  return (
+    <div className="ach-farm" role="group" aria-label="The farm">
+      <button
+        type="button"
+        className={`ach-farm-btn is-animals${sick ? ' is-sick' : ''}`}
+        onClick={() => dispatch({ type: 'open', modal: { kind: 'animals', tab: sick ? 'health' : 'today' } })}
+        aria-label={careOpen(s) ? `Animals: ${n ? `${n} thing${n === 1 ? '' : 's'} to do` : 'all cared for today'}` : 'Animals: in your care from day 2'}
+      >
+        <HenIcon />
+        Animals
+        {n > 0 && <b className="ach-dot">{n}</b>}
+      </button>
+      <button
+        type="button"
+        className={`ach-farm-btn is-security${fresh ? ' is-alert' : ''}`}
+        onClick={() => dispatch({ type: 'open', modal: { kind: 'security', tab: fresh ? 'reports' : 'protect' } })}
+        aria-label={`Security: ${measures} measure${measures === 1 ? '' : 's'} in place${fresh ? ', a theft last night' : ''}${theftOpen(s) ? '' : ' (thieves from day 2)'}`}
+      >
+        <ShieldIcon />
+        Security
+        {fresh && <b className="ach-dot">!</b>}
+      </button>
     </div>
   );
 }

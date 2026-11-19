@@ -721,7 +721,7 @@ see [Tests](#tests).
 ## The tractor business
 
 Built to Hello Tractor's game brief (*Tractor Wars: from Booking Agent to Tractor Owner*): **Tractor business** in
-the main menu, or **BUSINESS** on the farm (under TRACTOR); address `#/tractor-business`. The player is a **Booking
+the main menu, or the **Tractor business** tab in the tractor screen (TRACTOR on the farm); address `#/tractor-business`. The player is a **Booking
 Agent** in the **Narok hub territory**, with no land and no machine: they scout farms, book mechanised work on the
 hub's tractor (or pass it to a partner), drive the tractor at every stop, and build a book of business dense and
 reliable enough to be financed into a tractor of their own. Code: `src/business/model.ts` (every rule and number, no
@@ -1180,7 +1180,7 @@ The farm's **2 cows and 4 hens** (the herd the water model already counts) come 
 fast clock (the first cycle) or with a calendar day; the first night brings a **Day 2** dialog: *Your animals*, with
 **Build the chicken coop**. Before then the Animals page shows what is coming and nothing can be done.
 
-- **Where:** **ANIMALS** on the farm's HUD (a badge counts the jobs waiting and the problems showing), the main menu,
+- **Where:** **Animals** in My Progress (PROGRESS on the farm; a badge counts the jobs waiting and the problems showing), the main menu,
   or walking to the **Cows** spot at the pen gate or the **Hens** spot at the coop in the 3D farm. The classic farm has
   the same buttons.
 - **Today:** the day's jobs. Cows: *Feed* (napier, hay and dairy meal, paid a cow), *Fill the trough* (needs 50 L a cow
@@ -1222,7 +1222,7 @@ measures multiply, so together they never cut more than 95%). It reaches across 
 | Water from the tank | over 1,500 L in it; 2.5× in a dry season | 800–1,500 L |
 | Diesel | once the tractor business is open | KSh 1,500–3,000 of fuel |
 
-What a farmer can do (**SECURITY** on the HUD, or the main menu): hire a **night watchman** (paid each night; he does
+What a farmer can do (**Security** in My Progress, or the main menu): hire a **night watchman** (paid each night; he does
 not come if he cannot be paid), keep a **guard dog**, put up a **fence and a locked gate**, **padlocks** on the shed and
 store, a **solar security light**, **brand and ear-tag the cows** (a stolen cow is often found again), **join the
 community watch** (Nyumba Kumi: thefts reported together are found more often), take payments on **mobile money**, a
@@ -1375,7 +1375,7 @@ the table gives the default ones:
 | 6 | Diesel tank (200 L, filled with 120 L) | hold to pour, let go at the line |
 | 7 | Switch on | switch on what it powers without overloading it |
 
-A part put in well (its score) works better. **POWER** on the HUD (left), the main menu, or the yard's gate opens the
+A part put in well (its score) works better. The main menu, the day's build task on the farm, or the yard's gate opens the
 page (`#/power/build`): *Build*, *Today* (sun, need, battery, diesel; switch each load on or off; buy diesel),
 *Impact*, *History*. Each morning of days 1–7 says what goes in today, and a chip on the HUD (bottom left) takes the
 player there.
@@ -1598,6 +1598,9 @@ The first days and weeks of play laid out as a learning journey, behind the **PR
 (3D farm: under Climate; classic farm: under the farm's name). The button shows the certification level in a ring
 that fills toward the next level, the streak, and a red dot while a reward waits. Everything a designer might tune
 is in `src/progress/model.ts`; the page is `src/screens/Achievements.tsx`.
+The page's left side also holds **Animals** and **Security** (they left the farm's HUD), each with the badge its old
+button had. Beside the money at the top right of the farm, a small **Day X/30** button counts the day out of the
+full farming period (`FARM_PERIOD_DAYS` in `src/livestock/model.ts`) and opens the journey.
 
 - **Modules** (8), one for each part of the game plus *Courses*: Farm Moja, Field rounds, Six farms, Tractor,
   Tractor business, Climate, Every day, Courses. Every badge won pays **learning credits** into its module

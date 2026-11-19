@@ -59,8 +59,7 @@ import { EvidenceAsk } from '../evidence/Ask';
 import type { RiskItem } from '../risk/model';
 import { achClock } from '../achievements/track';
 import { TIDY, TIDY_TOTAL, tidyCount, tidyLeft, tidyStreak, type TidyItem } from '../tidy/model';
-import { AnimalsButton, SecurityButton } from '../livestock/HudButtons';
-import { careOpen, coopOpen, lifeOf, shedOpen } from '../livestock/model';
+import { FARM_PERIOD_DAYS, careOpen, coopOpen, lifeOf, shedOpen } from '../livestock/model';
 import { tankOf } from '../water/model';
 import { LIFE, coopOption, shedOption } from '../livestock/config';
 import { lightsLit, nextStep, powerOf, powerOn } from '../power/model';
@@ -918,15 +917,6 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         <TractorBtnIcon />
         <span>{anchors.riding ? 'GET OFF' : 'TRACTOR'}</span>
       </button>
-      <button type="button" className="hud-round hud-biz" onClick={() => dispatch({ type: 'biz', open: true })} aria-label="Tractor business: serve farms, plan routes, work with partners">
-        <BizIcon />
-        <span>BUSINESS</span>
-      </button>
-      <button type="button" className={`hud-round hud-power${powerOn(s) ? ' is-on' : ''}`} onClick={() => dispatch({ type: 'open', modal: { kind: 'power', tab: powerOn(s) ? 'today' : 'build' } })} aria-label={powerOn(s) ? 'Power: the system is on' : 'Power: build the solar power system'}>
-        <PowerIcon />
-        <span>POWER</span>
-        {!powerOn(s) && build?.power && <i className="hud-badge" aria-hidden="true">!</i>}
-      </button>
       {build && !anchors.riding && (
         <button type="button" className="hud-build" onClick={() => dispatch({ type: 'open', modal: build.go })} aria-label={`Today: ${build.title}`}>
           <i aria-hidden="true">{build.icon}</i>
@@ -942,8 +932,16 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         </button>
       )}
 
-      {/* coins and points */}
+      {/* coins and points, and the day of the farming period beside the money */}
       <div className="hud-pills">
+        <button
+          type="button"
+          className={`hud-day${farmDay >= FARM_PERIOD_DAYS ? ' is-done' : ''}`}
+          onClick={() => dispatch({ type: 'open', modal: { kind: 'achievements', tab: 'journey' } })}
+          aria-label={`Day ${Math.min(farmDay, FARM_PERIOD_DAYS)} of the ${FARM_PERIOD_DAYS}-day farming period`}
+        >
+          Day&nbsp;<b>{Math.min(farmDay, FARM_PERIOD_DAYS)}</b>/{FARM_PERIOD_DAYS}
+        </button>
         <span className="hud-pill" title={`Money (${currency().name})`}>
           <img src={img.cash} alt="" width={26} height={26} />
           <b>
@@ -978,8 +976,6 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         <PartnersIcon />
         <span>PARTNERS</span>
       </button>
-      <AnimalsButton s={s} dispatch={dispatch} />
-      <SecurityButton s={s} dispatch={dispatch} />
       <button type="button" className="hud-round hud-shop" onClick={() => dispatch({ type: 'open', modal: { kind: 'shop', tab: 'food' } })} aria-label="Shop">
         <img src={img.cart} alt="" width={30} height={30} />
         <span>SHOP</span>
@@ -1315,14 +1311,6 @@ function placeButton(p: Place, carry: GameState['field']['carry']): { label: str
 
 const SHED_WORD: Record<PlotKind, string> = { seed: 'Seeds', fert: 'Fertilizer', sprayer: 'Sprayer' };
 
-function PowerIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width={26} height={26} aria-hidden="true">
-      <path d="M13.5 2L5 13.5h5.5L9 22l9.5-12.5H13z" fill="#fff" stroke="#8a5a10" strokeWidth={1} strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 /** The daily tidy-up's pieces: a scruffy bush, a rock. */
 function TidyGlyph({ kind }: { kind: 'bush' | 'rock' }) {
   return kind === 'bush' ? (
@@ -1336,20 +1324,6 @@ function TidyGlyph({ kind }: { kind: 'bush' | 'rock' }) {
     <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden="true">
       <path d="M3 19l3-8 6-4 7 3 3 9z" fill="#a7a7a0" stroke="#6f6f68" strokeWidth={1.2} strokeLinejoin="round" />
       <path d="M8 12l4-2 4 2" stroke="#d4d4cc" strokeWidth={1.4} fill="none" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-/** The tractor business: a tractor beside a map pin. */
-function BizIcon() {
-  return (
-    <svg viewBox="-14 -14 28 28" width={30} height={30} aria-hidden="true">
-      <path d="M3,-11 C-1,-11 -3,-8 -3,-5 C-3,-1 3,4 3,4 C3,4 9,-1 9,-5 C9,-8 7,-11 3,-11 Z" fill="#c0392b" stroke="#fff" strokeWidth={1.4} />
-      <circle cx={3} cy={-5.5} r={2.2} fill="#fff" />
-      <rect x={-11} y={1} width={11} height={6} rx={1.5} fill="#2b7fb8" />
-      <rect x={-6} y={-3} width={5} height={5} rx={1} fill="#2b7fb8" />
-      <circle cx={-8} cy={8} r={3.6} fill="#333" />
-      <circle cx={-1} cy={8.5} r={2.6} fill="#333" />
     </svg>
   );
 }

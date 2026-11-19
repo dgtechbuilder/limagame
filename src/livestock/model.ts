@@ -45,6 +45,9 @@ export interface LifeEvent {
   tip?: string;
 }
 
+/** The full farming period, in farm days: the HUD counts the day out of this (Day 5/30). */
+export const FARM_PERIOD_DAYS = 30;
+
 export interface LifeState {
   /** the farm day: 1 the day the farm opened; a night slept on the fast clock, or a calendar day, adds one */
   day: number;
