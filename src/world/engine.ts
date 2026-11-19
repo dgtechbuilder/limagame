@@ -48,8 +48,10 @@ import {
   at,
   badgeTexture,
   billboardTexture,
+  type Billboard,
   liveryTexture,
   makeBillboard,
+  whenBrandFontReady,
   board,
   bush,
   forest,
@@ -148,12 +150,17 @@ export const LAMPS: { x: number; z: number }[] = [
 ];
 export const TRACTOR_BOARD = { x: -17.4, z: 8.6 };
 
-/** The partner billboards in the yard, either side of the farmhouse path (src/partners/data.ts sets the brand on each);
-    they face the camera. */
-export const BILLBOARDS: { slot: SlotId; x: number; z: number }[] = [
-  { slot: 'world-billboard-west', x: -7.6, z: -14.9 },
-  { slot: 'world-billboard-east', x: 12.6, z: -14.6 },
+/** The partner billboards across the farm (src/partners/data.ts sets the brand on each): two in the yard either side of
+    the farmhouse path, one by the seed shed and one between Farm 8 and the mini forest. Each stands on one steel pole
+    and is turned a little (ry) toward the path the farmer walks. */
+export const BILLBOARDS: { slot: SlotId; x: number; z: number; ry: number }[] = [
+  { slot: 'world-billboard-west', x: -7.6, z: -14.9, ry: 0.14 },
+  { slot: 'world-billboard-east', x: 12.6, z: -14.6, ry: -0.14 },
+  { slot: 'world-billboard-shed', x: -19.0, z: -7.8, ry: 0.2 },
+  { slot: 'world-billboard-forest', x: 12.4, z: 12.2, ry: -0.2 },
 ];
+/** How often a sweep of light crosses a billboard (seconds), and how long it takes. */
+const SWEEP = { every: 7, takes: 1.1 };
 
 /** The tractor partner's name on the bonnet, if one has the slot. */
 function tractorLivery() {
@@ -316,6 +323,8 @@ export class FarmWorld {
   private pNext = 0;
 
   private obstacles: { x: number; z: number; r: number }[] = [];
+  /** the partner billboards: their face, sweep of light and lamp lenses (lit at night) */
+  private billboards: (Billboard & { tex: ReturnType<typeof billboardTexture> })[] = [];
   private rects: Rect[] = [];
 
 
@@ -541,16 +550,20 @@ export class FarmWorld {
     smooth.push(...place(shed(), at(-18.6, 0, 0, { ry: Math.PI / 2 })));
     smooth.push(...place(stall(), at(0, 0, 15.6, { ry: Math.PI })));
     smooth.push(...place(board(), at(4.4, 0, -12.4)));
-    // partner billboards (a slot with no partner has no billboard)
+    // partner billboards (a slot with no partner has no billboard): one pole each, the only thing that blocks
     for (const bb of BILLBOARDS) {
       const brand = slotBrand(bb.slot);
       if (!brand) continue;
-      const g = makeBillboard(billboardTexture(brand));
-      g.position.set(bb.x, 0, bb.z);
-      g.scale.setScalar(1.3);
-      this.scene.add(g);
-      this.obstacles.push({ x: bb.x - 1.6, z: bb.z, r: 0.35 }, { x: bb.x + 1.6, z: bb.z, r: 0.35 });
+      const tex = billboardTexture(brand);
+      const b = makeBillboard(tex);
+      b.group.position.set(bb.x, 0, bb.z);
+      b.group.rotation.y = bb.ry;
+      b.group.scale.setScalar(1.3);
+      this.scene.add(b.group);
+      this.billboards.push({ ...b, tex });
+      this.obstacles.push({ x: bb.x, z: bb.z, r: 0.45 });
     }
+    whenBrandFontReady(() => this.billboards.forEach(b => b.tex.redraw()));
     smooth.push(...place(pond(), at(18.4, 0, 0)));
     smooth.push(...place(trough(), at(-15, 0, -13.6)));
     // the chicken coop is built by the player from day 2 (buildCoops: a pile of timber until then)
@@ -898,6 +911,11 @@ export class FarmWorld {
     const glow = n && this.lit;
     this.lampLights.forEach(l => (l.intensity = glow ? 9 : 0));
     this.bulbs.forEach(b => ((b.material as THREE.MeshBasicMaterial).color.set(glow ? '#fff3b0' : '#8a8a7a')));
+    // the billboards are lit all night by their own lamps; the face dims a touch so it reads as lit, not pasted on
+    this.billboards.forEach(b => {
+      b.lenses.color.set(n ? '#fff1b8' : '#9aa0a8');
+      b.face.color.set(n ? '#f2ecdc' : '#ffffff');
+    });
     this.windows.forEach(w => {
       w.visible = n;
       (w.material as THREE.MeshBasicMaterial).color.set(this.powerKey.includes('switchOn') ? '#fff0b8' : '#e8a24a');
@@ -1706,6 +1724,16 @@ export class FarmWorld {
     }
   };
   private lastDraw = 0;
+
+  /** Now and then a band of light slides across each billboard's face (each a little after the last). */
+  private sweepBillboards(time: number) {
+    this.billboards.forEach((b, i) => {
+      const t = (time + i * 1.7) % SWEEP.every;
+      const on = t < SWEEP.takes;
+      b.sweep.visible = on;
+      if (on) (b.sweep.material as THREE.MeshBasicMaterial).map!.offset.x = 1 - (t / SWEEP.takes) * 2;
+    });
+  }
   /** something moves this frame (the farmer, the tractor, dust, a tap ring): draw every frame */
   private busy = true;
   private shadowTick = 0;
@@ -1721,6 +1749,7 @@ export class FarmWorld {
     this.animateAnimals(dt, time);
     this.animateHire(dt);
     this.animateParticles(dt);
+    this.sweepBillboards(time);
     if (this.dirty) {
       this.dirty = false;
       this.drawField();

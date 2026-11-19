@@ -371,41 +371,231 @@ export function signTexture(n: number) {
   });
 }
 
-/** A partner's billboard face: the brand's colours, its mark, name and tagline, and a small PARTNER tag. */
-export function billboardTexture(b: { name: string; tagline: string; color: string; accent: string; mark: string }) {
-  return canvasTex(512, 256, g => {
-    g.fillStyle = b.color;
-    g.fillRect(0, 0, 512, 256);
-    g.fillStyle = b.accent;
-    g.fillRect(0, 214, 512, 42);
-    // the mark in a round badge
-    g.fillStyle = 'rgba(255,255,255,0.18)';
-    g.beginPath();
-    g.arc(92, 106, 66, 0, Math.PI * 2);
-    g.fill();
+/** A colour mixed toward white (amt > 0) or black (amt < 0). */
+function shade(hex: string, amt: number) {
+  const c = new THREE.Color(hex);
+  return '#' + c.lerp(new THREE.Color(amt > 0 ? '#ffffff' : '#000000'), Math.abs(amt)).getHexString();
+}
+
+/** A rounded rectangle path on a 2D canvas. */
+function rr(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  g.beginPath();
+  g.moveTo(x + r, y);
+  g.arcTo(x + w, y, x + w, y + h, r);
+  g.arcTo(x + w, y + h, x, y + h, r);
+  g.arcTo(x, y + h, x, y, r);
+  g.arcTo(x, y, x + w, y, r);
+  g.closePath();
+}
+
+/** Text shrunk until it fits a width. */
+function fit(g: CanvasRenderingContext2D, text: string, weight: number, size: number, min: number, width: number) {
+  g.font = `${weight} ${size}px Poppins, Arial, sans-serif`;
+  while (g.measureText(text).width > width && size > min) g.font = `${weight} ${(size -= 2)}px Poppins, Arial, sans-serif`;
+  return size;
+}
+
+/** Calls back once Poppins is ready (canvas text drawn before it loads falls back to Arial, so faces are redrawn). */
+export function whenBrandFontReady(cb: () => void) {
+  const f = typeof document !== 'undefined' ? document.fonts : undefined;
+  if (!f) return;
+  Promise.all([f.load('700 40px Poppins'), f.load('600 40px Poppins')]).then(l => l.some(x => x.length) && cb(), () => {});
+}
+
+export type BillboardBrand = { name: string; tagline: string; color: string; accent: string; mark: string; category?: string; offer?: { title: string } };
+
+/** A partner's billboard face (2:1): the brand's colours in a deep gradient with a sheen, its mark in a ringed
+    medallion, the category, name and tagline, the offer in a pill, and a dark bar along the foot ("Official
+    partner" and "Tap for the offer"). `redraw()` paints it again (once the brand font has loaded). */
+export function billboardTexture(b: BillboardBrand) {
+  const W = 1024;
+  const H = 512;
+  const cv = document.createElement('canvas');
+  cv.width = W;
+  cv.height = H;
+  const g = cv.getContext('2d')!;
+  const draw = () => {
+    g.clearRect(0, 0, W, H);
+    // the ground: a diagonal gradient from a lighter to a deeper brand colour
+    const bg = g.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, shade(b.color, 0.16));
+    bg.addColorStop(0.55, b.color);
+    bg.addColorStop(1, shade(b.color, -0.38));
+    g.fillStyle = bg;
+    g.fillRect(0, 0, W, H);
+    // fine diagonal pinstripes
+    g.save();
+    g.globalAlpha = 0.06;
+    g.strokeStyle = '#ffffff';
+    g.lineWidth = 2;
+    for (let x = -H; x < W; x += 22) {
+      g.beginPath();
+      g.moveTo(x, H);
+      g.lineTo(x + H, 0);
+      g.stroke();
+    }
+    g.restore();
+    // a soft glow behind the medallion and a large faint ring to the right
+    const glow = g.createRadialGradient(196, 214, 20, 196, 214, 300);
+    glow.addColorStop(0, 'rgba(255,255,255,0.28)');
+    glow.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = glow;
+    g.fillRect(0, 0, W, H);
+    g.save();
+    g.globalAlpha = 0.08;
     g.strokeStyle = b.accent;
-    g.lineWidth = 8;
+    g.lineWidth = 46;
+    g.beginPath();
+    g.arc(W + 40, -30, 330, 0, Math.PI * 2);
     g.stroke();
-    g.font = '72px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+    g.restore();
+
+    // the medallion: a white disc ringed in the accent, the mark inside
+    const mx = 196;
+    const my = 214;
+    g.save();
+    g.shadowColor = 'rgba(0,0,0,0.35)';
+    g.shadowBlur = 24;
+    g.shadowOffsetY = 8;
+    g.fillStyle = b.accent;
+    g.beginPath();
+    g.arc(mx, my, 132, 0, Math.PI * 2);
+    g.fill();
+    g.restore();
+    const disc = g.createLinearGradient(0, my - 118, 0, my + 118);
+    disc.addColorStop(0, '#ffffff');
+    disc.addColorStop(1, shade(b.accent, 0.55));
+    g.fillStyle = disc;
+    g.beginPath();
+    g.arc(mx, my, 116, 0, Math.PI * 2);
+    g.fill();
+    g.strokeStyle = shade(b.color, -0.1);
+    g.lineWidth = 5;
+    g.beginPath();
+    g.arc(mx, my, 104, 0, Math.PI * 2);
+    g.stroke();
+    g.font = '128px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
     g.textAlign = 'center';
     g.textBaseline = 'middle';
-    g.fillText(b.mark, 92, 110);
-    // the name and tagline, shrunk to fit
-    g.textAlign = 'left';
-    g.fillStyle = '#ffffff';
-    let size = 54;
-    g.font = `bold ${size}px Poppins, Arial, sans-serif`;
-    while (g.measureText(b.name).width > 330 && size > 26) g.font = `bold ${(size -= 2)}px Poppins, Arial, sans-serif`;
-    g.fillText(b.name, 172, 88);
-    size = 28;
-    g.font = `600 ${size}px Poppins, Arial, sans-serif`;
-    while (g.measureText(b.tagline).width > 320 && size > 16) g.font = `600 ${(size -= 1)}px Poppins, Arial, sans-serif`;
-    g.fillStyle = 'rgba(255,255,255,0.9)';
-    g.fillText(b.tagline, 174, 146);
     g.fillStyle = b.color;
-    g.font = 'bold 22px Poppins, Arial, sans-serif';
-    g.fillText('PARTNER · TAP FOR THE OFFER', 24, 236);
+    g.fillText(b.mark, mx, my + 8);
+
+    // the words: category, name, tagline, then the offer in a pill
+    const tx = 372;
+    const tw = W - tx - 54;
+    g.textAlign = 'left';
+    g.textBaseline = 'alphabetic';
+    if (b.category) {
+      g.font = '700 30px Poppins, Arial, sans-serif';
+      g.fillStyle = b.accent;
+      const cat = b.category.toUpperCase().split('').join(String.fromCharCode(8202));
+      g.fillText(cat, tx, 104);
+      const cw = g.measureText(cat).width;
+      g.fillRect(tx + cw + 16, 93, Math.min(120, tw - cw - 16), 4);
+    }
+    g.save();
+    g.shadowColor = 'rgba(0,0,0,0.35)';
+    g.shadowBlur = 10;
+    g.shadowOffsetY = 4;
+    g.fillStyle = '#ffffff';
+    fit(g, b.name, 700, 100, 52, tw);
+    g.fillText(b.name, tx - 4, 200);
+    g.restore();
+    g.fillStyle = 'rgba(255,255,255,0.92)';
+    fit(g, b.tagline, 600, 40, 24, tw);
+    g.fillText(b.tagline, tx, 256);
+    if (b.offer) {
+      const label = b.offer.title;
+      const size = fit(g, label, 700, 34, 20, tw - 92);
+      const pw = Math.min(tw, g.measureText(label).width + 92);
+      const py = 296;
+      g.save();
+      g.shadowColor = 'rgba(0,0,0,0.3)';
+      g.shadowBlur = 12;
+      g.shadowOffsetY = 5;
+      const pill = g.createLinearGradient(0, py, 0, py + 70);
+      pill.addColorStop(0, shade(b.accent, 0.25));
+      pill.addColorStop(1, b.accent);
+      g.fillStyle = pill;
+      rr(g, tx, py, pw, 70, 35);
+      g.fill();
+      g.restore();
+      g.fillStyle = shade(b.color, -0.45);
+      g.textBaseline = 'middle';
+      g.fillText(label, tx + 30, py + 36 + size * 0.02);
+      g.font = '700 38px Poppins, Arial, sans-serif';
+      g.fillText('›', tx + pw - 44, py + 33);
+      g.textBaseline = 'alphabetic';
+    }
+
+    // the foot: a dark bar, "Official partner" and "Tap for the offer"
+    g.fillStyle = 'rgba(8,10,14,0.55)';
+    g.fillRect(0, H - 72, W, 72);
+    g.fillStyle = b.accent;
+    g.fillRect(0, H - 72, W, 4);
+    g.font = '700 26px Poppins, Arial, sans-serif';
+    g.fillStyle = '#e9c46a';
+    g.textBaseline = 'middle';
+    g.fillText('★  OFFICIAL TEMOLIMA PARTNER', 44, H - 34);
+    g.textAlign = 'right';
+    g.fillStyle = '#ffffff';
+    g.fillText('TAP FOR THE OFFER  ›', W - 44, H - 34);
+    g.textAlign = 'left';
+
+    // a gloss over the top half, and a thin inner line in the accent
+    const gloss = g.createLinearGradient(0, 0, 0, H * 0.55);
+    gloss.addColorStop(0, 'rgba(255,255,255,0.18)');
+    gloss.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gloss;
+    g.fillRect(0, 0, W, H * 0.55);
+    g.strokeStyle = 'rgba(255,255,255,0.22)';
+    g.lineWidth = 3;
+    rr(g, 14, 14, W - 28, H - 28 - 72, 10);
+    g.stroke();
+  };
+  draw();
+  const t = new THREE.CanvasTexture(cv);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return Object.assign(t, {
+    redraw() {
+      draw();
+      t.needsUpdate = true;
+    },
   });
+}
+
+/** The plaque on top of a billboard: "Partner" in gold on dark. */
+function plaqueTexture() {
+  return canvasTex(256, 64, g => {
+    const bg = g.createLinearGradient(0, 0, 0, 64);
+    bg.addColorStop(0, '#2a2e36');
+    bg.addColorStop(1, '#121418');
+    g.fillStyle = bg;
+    g.fillRect(0, 0, 256, 64);
+    g.strokeStyle = '#e2b955';
+    g.lineWidth = 4;
+    g.strokeRect(5, 5, 246, 54);
+    g.fillStyle = '#f1cf73';
+    g.font = '700 26px Poppins, Arial, sans-serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText('★ PARTNER ★', 128, 34);
+  });
+}
+
+/** A soft diagonal band of light (transparent at the edges), slid across a billboard face now and then. */
+let sweepTex: THREE.Texture | null = null;
+function sweepTexture() {
+  return (sweepTex ??= canvasTex(256, 64, g => {
+    const gr = g.createLinearGradient(88, 0, 168, 0);
+    gr.addColorStop(0, 'rgba(255,255,255,0)');
+    gr.addColorStop(0.5, 'rgba(255,255,255,0.55)');
+    gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr;
+    g.setTransform(1, 0, -0.5, 1, 16, 0);
+    g.fillRect(0, 0, 256, 64);
+  }));
 }
 
 /** A partner's name for the side of the tractor's bonnet. */
@@ -425,19 +615,92 @@ export function liveryTexture(name: string, color: string, accent: string, h = 8
   });
 }
 
-/** A billboard: two posts, a frame and a face (the face's material is the partner's texture). */
-export function makeBillboard(face: THREE.Texture) {
+/** The steel of a partner billboard, built at the origin facing +z: a concrete footing, a gunmetal monopole and
+    braces, and the head (tilted back a little toward the camera above): the dark cabinet, a gold frame, a catwalk with
+    a rail and three lamps, and the plaque's mount. The face, plaque and lamp lenses are separate (see makeBillboard). */
+export const BILLBOARD_HEAD = { y: 1.62, tilt: -0.2, faceY: 0.86, faceW: 3.1, faceH: 1.55 };
+function billboardSteel(): Part[] {
+  const gun = '#3a3f48';
+  const dark = '#22252b';
+  const gold = '#d4a843';
+  const goldHi = '#f0cd6e';
+  const H = BILLBOARD_HEAD;
+  const out: Part[] = [
+    { geo: G.cyl, color: '#bdb8aa', m: at(0, 0.1, 0, { sx: 0.7, sy: 0.2, sz: 0.7 }) },
+    { geo: G.cyl, color: '#a29d90', m: at(0, 0.21, 0, { sx: 0.5, sy: 0.04, sz: 0.5 }) },
+    { geo: G.cyl, color: gun, m: at(0, 0.9, 0, { sx: 0.22, sy: 1.4, sz: 0.22 }) },
+    { geo: G.cyl, color: dark, m: at(0, 0.3, 0, { sx: 0.3, sy: 0.14, sz: 0.3 }) },
+    { geo: G.cyl, color: dark, m: at(0, 1.5, 0, { sx: 0.28, sy: 0.12, sz: 0.28 }) },
+    // braces from the pole out to the ends of the yoke
+    { geo: G.box, color: gun, m: at(-0.55, 1.42, -0.06, { rz: -0.55, sx: 1.2, sy: 0.07, sz: 0.07 }) },
+    { geo: G.box, color: gun, m: at(0.55, 1.42, -0.06, { rz: 0.55, sx: 1.2, sy: 0.07, sz: 0.07 }) },
+  ];
+  const head: Part[] = [
+    // the yoke the head sits on
+    { geo: G.box, color: dark, m: at(0, 0, -0.06, { sx: 2.4, sy: 0.12, sz: 0.12 }) },
+    // the cabinet, and a gold frame round the face
+    { geo: G.box, color: dark, m: at(0, H.faceY, -0.06, { sx: 3.42, sy: 1.86, sz: 0.16 }) },
+    { geo: G.box, color: goldHi, m: at(0, H.faceY + 0.9, 0.04, { sx: 3.42, sy: 0.07, sz: 0.06 }) },
+    { geo: G.box, color: gold, m: at(0, H.faceY - 0.9, 0.04, { sx: 3.42, sy: 0.07, sz: 0.06 }) },
+    { geo: G.box, color: gold, m: at(-1.675, H.faceY, 0.04, { sx: 0.07, sy: 1.86, sz: 0.06 }) },
+    { geo: G.box, color: gold, m: at(1.675, H.faceY, 0.04, { sx: 0.07, sy: 1.86, sz: 0.06 }) },
+    // the plaque's mount on top
+    { geo: G.box, color: gold, m: at(0, H.faceY + 1.07, -0.02, { sx: 1.04, sy: 0.3, sz: 0.08 }) },
+    // the catwalk and its rail
+    { geo: G.box, color: '#4a505a', m: at(0, 0.02, 0.2, { sx: 3.2, sy: 0.04, sz: 0.36 }) },
+    { geo: G.box, color: gun, m: at(0, 0.24, 0.37, { sx: 3.2, sy: 0.03, sz: 0.03 }) },
+  ];
+  for (const x of [-1.58, -0.79, 0, 0.79, 1.58]) head.push({ geo: G.box, color: gun, m: at(x, 0.13, 0.37, { sx: 0.03, sy: 0.22, sz: 0.03 }) });
+  // three lamps on arms, leaning in to light the face
+  for (const x of [-1.05, 0, 1.05]) {
+    head.push({ geo: G.box, color: gun, m: at(x, 0.08, 0.5, { sx: 0.04, sy: 0.04, sz: 0.3 }) });
+    head.push({ geo: G.box, color: dark, m: at(x, 0.12, 0.66, { rx: -0.7, sx: 0.24, sy: 0.1, sz: 0.14 }) });
+  }
+  out.push(...place(head, at(0, H.y, 0, { rx: H.tilt })));
+  return out;
+}
+
+export type Billboard = { group: THREE.Group; face: THREE.MeshBasicMaterial; sweep: THREE.Mesh; lenses: THREE.MeshBasicMaterial };
+
+/** A partner billboard: the steel (one merged mesh), and the face (the partner's texture), the plaque, the lamp
+    lenses and a sweep of light, on a head tilted back toward the camera. */
+export function makeBillboard(face: THREE.Texture): Billboard {
   const g = new THREE.Group();
-  const wood = lam('#6e4a2a');
-  for (const x of [-1.25, 1.25]) g.add(mesh(G.box, wood, at(x, 1.1, 0, { sx: 0.16, sy: 2.2, sz: 0.16 })));
-  g.add(mesh(G.box, lam('#3a2a1c'), at(0, 2.35, -0.02, { sx: 3.3, sy: 1.75, sz: 0.12 })));
-  const plane = new THREE.Mesh(new THREE.PlaneGeometry(3.1, 1.55), new THREE.MeshBasicMaterial({ map: face }));
-  plane.position.set(0, 2.35, 0.05);
-  g.add(plane);
-  g.traverse(o => {
-    if ((o as THREE.Mesh).isMesh && o !== plane) (o as THREE.Mesh).castShadow = true;
-  });
-  return g;
+  const steel = new THREE.Mesh(merge(billboardSteel()), vcMaterial(false));
+  steel.castShadow = true;
+  g.add(steel);
+  const H = BILLBOARD_HEAD;
+  const head = new THREE.Group();
+  head.position.y = H.y;
+  head.rotation.x = H.tilt;
+  g.add(head);
+  const faceMat = new THREE.MeshBasicMaterial({ map: face });
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(H.faceW, H.faceH), faceMat);
+  plane.position.set(0, H.faceY, 0.025);
+  head.add(plane);
+  const sweep = new THREE.Mesh(
+    new THREE.PlaneGeometry(H.faceW, H.faceH),
+    new THREE.MeshBasicMaterial({ map: sweepTexture().clone(), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }),
+  );
+  const st = (sweep.material as THREE.MeshBasicMaterial).map!;
+  st.wrapS = THREE.ClampToEdgeWrapping;
+  st.offset.x = 1;
+  st.needsUpdate = true;
+  sweep.position.set(0, H.faceY, 0.032);
+  sweep.visible = false;
+  head.add(sweep);
+  const plaque = new THREE.Mesh(new THREE.PlaneGeometry(0.94, 0.235), new THREE.MeshBasicMaterial({ map: plaqueTexture() }));
+  plaque.position.set(0, H.faceY + 1.07, 0.025);
+  head.add(plaque);
+  const lenses = new THREE.MeshBasicMaterial({ color: '#9aa0a8' });
+  for (const x of [-1.05, 0, 1.05]) {
+    const l = new THREE.Mesh(G.box, lenses);
+    l.position.set(x, 0.165, 0.69);
+    l.rotation.x = -0.7;
+    l.scale.set(0.2, 0.02, 0.1);
+    head.add(l);
+  }
+  return { group: g, face: faceMat, sweep, lenses };
 }
 
 /* ---------------- scenery pieces (built at the origin) ---------------- */

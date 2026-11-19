@@ -1570,7 +1570,7 @@ each. To sign a partner, add or edit its brand and put its id on the slots it bo
 
 | Slot | Where | Brand now |
 | --- | --- | --- |
-| Billboards (2) | 3D farm, in the yard either side of the farmhouse path; walk up to one and a *See offer* tag appears | Rutuba Gold, Kinga Cover |
+| Billboards (4) | 3D farm: two in the yard either side of the farmhouse path, one by the seed shed, one between Farm 8 and the mini forest; walk up to one and a *See offer* tag appears | Rutuba Gold, Kinga Cover, Shina Seeds, Tangi Tanks |
 | Tractor livery | 3D farm: the partner's name on the bonnet and both sides of the tractor | Hello Tractor |
 | Market stall awning | 3D farm | *Available* |
 | Roadside sign | Classic farm: each partner in turn, every 6 seconds (or one brand, if it buys the slot) | All partners |
@@ -1584,6 +1584,15 @@ each. To sign a partner, add or edit its brand and put its id on the slots it bo
 | Crop cover | Climate › Shocks | Kinga Cover |
 | Progress sponsor | The PROGRESS button | Ujuzi Agri Academy |
 
+- **The billboards** (`BILLBOARDS` in `src/world/engine.ts`, built by `makeBillboard` and `billboardTexture` in
+  `src/world/models.ts`) are premium roadside boards: one gunmetal pole on a concrete footing, a dark cabinet in a
+  gold frame with a *★ Partner ★* plaque on top, a catwalk with a rail and three lamps, and the head tilted back a
+  little so the face reads from the farm camera. The face is the brand's colours in a deep gradient with a sheen:
+  its mark in a ringed medallion, the category, name and tagline, the offer in a pill (*10% off Rutuba Gold NPK*),
+  and a foot bar (*Official TemoLima partner* · *Tap for the offer*). Every few seconds a band of light sweeps across
+  each face; at night the lamps glow and the boards stay lit. Each board is turned a little toward the path, and
+  only its pole blocks the farmer. The *See offer* tag over a board is dark glass with a gold rim and chip. The face
+  is redrawn once the Poppins font has loaded.
 - **Sample brands.** Hello Tractor is the game's tractor partner. Every other brand (Rutuba Gold, Shina Seeds,
   Tangi Tanks, PesaShamba, Kinga Cover, JuaPower Solar, Ujuzi Agri Academy) is made up for the game
   (`sample: true`) and stands in until a real partner signs; no real company is named or implied.
