@@ -1479,7 +1479,8 @@ function BillboardTag({ bill, dispatch }: { bill: NonNullable<Anchors['bill']>; 
       onClick={() => openOffer(dispatch, bill.slot, b.id)}
       aria-label={`${b.name} billboard: see the offer`}
     >
-      <BrandMark b={b} size={16} />
+      <BrandMark b={b} size={18} />
+      <i>Partner</i>
       <b>{b.name}</b>
       <span>See offer ›</span>
     </button>
