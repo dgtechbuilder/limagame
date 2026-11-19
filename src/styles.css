@@ -3081,3 +3081,42 @@ a.ach-claim.pj-mail { display: inline-flex; align-items: center; text-decoration
 .ev-ask-row button i { font-style: normal; }
 .ev-ask-row button { transition: transform 0.12s; }
 .ev-ask-row button:hover { transform: translateY(-1px); border-color: var(--gold); }
+
+/* ---------------- harvest estimate (src/risk/harvest.ts): beside the farmer's portrait, styled like the task card ---------------- */
+.hud-harvest {
+  position: absolute; left: 84px; top: 8px; z-index: 5; display: flex; align-items: center; gap: 8px;
+  max-width: 196px; height: 54px; padding: 4px 12px 4px 4px; border-radius: 12px; text-align: left;
+  background: #fff4dd; box-shadow: 0 0 0 3px #c9824a, 0 4px 10px rgba(0, 0, 0, 0.25); color: #5b3418;
+  animation: pop 0.25s ease both;
+}
+.hud-harvest:active { transform: scale(0.97); }
+.hud-harvest-icon {
+  flex-shrink: 0; width: 46px; height: 46px; border-radius: 9px; display: grid; place-items: center;
+  background: #f1d7a8; box-shadow: inset 0 0 0 2px #d9a76a;
+}
+.hud-harvest-icon img { object-fit: contain; }
+.hud-harvest-text { display: flex; flex-direction: column; line-height: 1.1; min-width: 0; }
+.hud-harvest-text i { font-style: normal; font-size: 9.5px; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; opacity: 0.75; white-space: nowrap; }
+.hud-harvest-text b { font-size: 16px; font-weight: 900; color: #2f7d12; white-space: nowrap; }
+.hud-harvest-risk { font-size: 10px; font-weight: 800; color: #2f7d12; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hud-harvest.is-risky .hud-harvest-risk { color: #c0392b; }
+@media (prefers-reduced-motion: reduce) { .hud-harvest { animation: none; } }
+.reduce-motion .hud-harvest { animation: none; }
+
+.harvest-sheet .risk-kicker { color: #2f7d12; }
+.harvest-split { display: flex; gap: 6px; margin: 0 0 10px; }
+.harvest-split span {
+  flex: 1; display: flex; flex-direction: column; gap: 1px; padding: 6px 9px; border-radius: 10px; background: #eefbe8; box-shadow: 0 0 0 2px #bfe3ad;
+}
+.harvest-split small { font-size: 9.5px; font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase; color: #8a6a4d; }
+.harvest-split b { font-size: 15px; font-weight: 900; color: #2f7d12; }
+.harvest-split span.is-loss { background: #fff1ee; box-shadow: 0 0 0 2px #f0b9b1; }
+.harvest-split span.is-loss b { color: #b8281c; }
+.harvest-split.is-clear span.is-loss { background: #eefbe8; box-shadow: 0 0 0 2px #bfe3ad; }
+.harvest-split.is-clear span.is-loss b { color: #2f7d12; }
+.harvest-list li {
+  display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 11px; background: #fff; box-shadow: 0 0 0 2px #ecc9a6;
+}
+.risk-amount b.is-income { color: #2f7d12; }
+.risk-amount i.is-loss { color: #b8281c; }
+.harvest-go { display: block; margin: 10px 0 0 auto; }
