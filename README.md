@@ -598,9 +598,9 @@ game (`jobs`). In the classic farm view, and during the first session, the butto
 | Animals · Herd | buying or selling animals | the farm gate, then the pen or the coop (and back) |
 | Power · Build | each part, after its mini-game | the panels' frame (three spots), the inverter on the hut wall and the cables, the batteries, **each of the four light poles**, the generator's slab, the diesel tank (stand it, fill it), the main switch |
 | Tractor screen | service, repair, refuel, the safety check (after their mini-games) | **round the tractor**, wherever it stands: engine, left wheel, hitch, right wheel; refuelling starts at the farm's diesel tank once there is one |
-| Security | padlocks, tap lock, ear tags, the dog's kennel, the security light, the fence and gate, the GPS tracker | the shed, the tank stand, the pen, by the house, a light pole, the gate and the fence, the tractor |
+| Security | padlocks, tap lock, ear tags, the dog's kennel, the security light, the fence and gate, the GPS tracker | the shed, the water tank by the pond, the pen, by the house, a light pole, the gate and the fence, the tractor |
 | Farms 7 and 8 | watering (the farm's sign or its page) | across the beds with the can |
-| Shop | tanks, fertilizer, equipment | collect at the farm gate, then the tank stand or the shed |
+| Shop | tanks, fertilizer, equipment | collect at the farm gate, then the water tank by the pond or the shed |
 
 Choices, quizzes, settings, hiring someone and money matters (the market stall, crop cover, water bought) stay on
 their pages. A part or a tool bought rides on the farmer's back in a crate to its first spot. A job's spot is never

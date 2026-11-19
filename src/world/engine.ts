@@ -77,11 +77,13 @@ import {
   pestTile,
   place,
   pond,
+  waterTank,
   puddleTile,
   rock,
   rockPile,
   roundRect,
   shed,
+  sharpText,
   signTexture,
   stall,
   tree,
@@ -133,6 +135,8 @@ function phoneLike() {
 const TRACTOR_HOME = { x: -17.4, z: 6.4 };
 /** The mini forest: 10 acres of idle land, bottom right of the farm, below the pond (the pond is at x 18.4, z 0). */
 export const FOREST = { x0: 15.0, z0: 5.0, x1: 21.8, z1: 16.4, sign: { x: 13.8, z: 5.4 } };
+/** The water tank on its stand beside the pond (between the pond and the mini forest). */
+export const WATER_TANK = { x: 19.8, z: 3.9 };
 /** The power yard (src/power), top right of the farm above the pond: solar panels, the power hut (inverter and
     batteries), the generator and the diesel tank. */
 export const POWER_YARD = { x0: 14.8, z0: -18.4, x1: 21.8, z1: -5.0 };
@@ -572,6 +576,8 @@ export class FarmWorld {
     }
     whenBrandFontReady(() => this.billboards.forEach(b => b.tex.redraw()));
     smooth.push(...place(pond(), at(18.4, 0, 0)));
+    // the water tank on its stand at the pond's lower-right edge, above the mini forest, its pump pipe running down into the pond
+    smooth.push(...place(waterTank(1.6), at(WATER_TANK.x, 0, WATER_TANK.z)));
     smooth.push(...place(trough(), at(-15, 0, -13.6)));
     // the chicken coop is built by the player from day 2 (buildCoops: a pile of timber until then)
     // fences: the yard, and the cow pen
@@ -607,7 +613,7 @@ export class FarmWorld {
       const post = new THREE.Mesh(G.cyl6, new THREE.MeshLambertMaterial({ color: '#8b5a2b' }));
       post.scale.set(0.14, 1.3, 0.14);
       post.position.set(FOREST.sign.x, 0.65, FOREST.sign.z);
-      const face = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.2), new THREE.MeshLambertMaterial({ map: forestSignTexture() }));
+      const face = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.2), sharpText(new THREE.MeshLambertMaterial({ map: forestSignTexture() })));
       face.position.set(FOREST.sign.x, 1.55, FOREST.sign.z + 0.1);
       face.rotation.x = -0.55;
       post.castShadow = true;
@@ -665,6 +671,7 @@ export class FarmWorld {
       { x0: -21.6, x1: -11.7, z0: -20.6, z1: -11.3 },
       { x0: 6.9, x1: 9.5, z0: -19.4, z1: -17.4 },
     );
+    this.obstacles.push({ x: WATER_TANK.x, z: WATER_TANK.z, r: 1.1 });
     this.obstacles.push({ x: 18.4, z: 0, r: 3.2 }, { x: 4.4, z: -12.4, r: 0.6 });
 
     // interaction spots
@@ -762,7 +769,7 @@ export class FarmWorld {
       ['power', 'Power', 'bolt', 1.9],
     ];
     for (const [p, label, glyph, size] of zones) {
-      const mat = new THREE.MeshBasicMaterial({ map: zoneTexture(label, glyphs[glyph]), transparent: true, depthWrite: false });
+      const mat = sharpText(new THREE.MeshBasicMaterial({ map: zoneTexture(label, glyphs[glyph]), transparent: true, depthWrite: false }));
       const zm = new THREE.Mesh(new THREE.PlaneGeometry(size, size).rotateX(-Math.PI / 2), mat);
       zm.position.set(PLACES[p].x, 0.03, PLACES[p].z);
       zm.renderOrder = 2;
@@ -961,7 +968,7 @@ export class FarmWorld {
       const post = new THREE.Mesh(G.cyl6, new THREE.MeshLambertMaterial({ color: '#8b5a2b' }));
       post.scale.set(0.12, 1.0, 0.12);
       post.position.set(sg.x, 0.5, sg.z);
-      const face = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.75, 0.08), new THREE.MeshLambertMaterial({ map: signTexture(i + 7) }));
+      const face = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.75, 0.08), sharpText(new THREE.MeshLambertMaterial({ map: signTexture(i + 7) })));
       face.position.set(sg.x, 1.15, sg.z);
       this.scene.add(post, face);
       this.obstacles.push({ x: sg.x, z: sg.z, r: 0.15 });
@@ -1061,7 +1068,7 @@ export class FarmWorld {
         new THREE.MeshLambertMaterial({ color: '#2fb3cf' }),
         new THREE.MeshLambertMaterial({ color: '#2fb3cf' }),
         new THREE.MeshLambertMaterial({ color: '#2fb3cf' }),
-        new THREE.MeshLambertMaterial({ map: signTexture(f + 1) }),
+        sharpText(new THREE.MeshLambertMaterial({ map: signTexture(f + 1) })),
         new THREE.MeshLambertMaterial({ color: '#2fb3cf' }),
       ]);
       face.position.y = 1.15;

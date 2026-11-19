@@ -63,10 +63,11 @@ export const TRACTOR_SPOTS = {
   back: { x: 0, z: -2.4 },
 };
 
-/** The sheds' store (tools and bags go in here), the farm gate (deliveries), the tank stand by the house, the house. */
+/** The sheds' store (tools and bags go in here), the farm gate (deliveries), the water tank by the pond, the dog's kennel. */
 export const STORE = at(-16.0, -3.6, -17.0, -2.8);
 export const DELIVERY = at(3.4, 15.6, 3.4, 17.0);
-export const TANK_SITE = at(4.4, -15.4, 4.4, -16.8);
+/** beside the water tank on its stand by the pond (world/engine.ts WATER_TANK at 19.8, 3.9) */
+export const TANK_SITE = at(18.0, 4.3, 19.8, 3.9);
 export const KENNEL = at(-4.8, -15.0, -4.8, -16.2);
 export const FENCE_SPOTS: Spot[] = [at(-3.2, 16.4, -3.2, 17.6), at(3.2, 16.4, 3.2, 17.6), at(21.0, -2.0, 22.4, -2.0)];
 
