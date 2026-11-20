@@ -83,10 +83,10 @@ test('once Kenya is picked, no screen shows US dollars', async ({ page }) => {
   await page.evaluate(() => (window.location.hash = '/tractor-business'));
   await page.getByRole('dialog', { name: 'Welcome to the Narok hub' }).getByRole('button', { name: /^Let.s go$/ }).click();
   for (const tab of ['Today', 'Hub', 'Calendar', 'Partners', 'Fleet']) {
-    await page.getByRole('tab', { name: tab }).click();
+    await page.getByRole('button', { name: tab, exact: true }).click();
     expect(await dollars(page), tab).toEqual([]);
   }
-  await page.getByRole('tab', { name: 'Partners' }).click();
+  await page.getByRole('button', { name: 'Partners', exact: true }).click();
   await expect(page.locator('.biz-card', { hasText: 'County Roads Office' })).toContainText('KSh 120,000');
 });
 
