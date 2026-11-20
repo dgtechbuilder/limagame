@@ -170,7 +170,7 @@ export async function playLastSeason(page: Page) {
   }
   await expect(page.locator('.story-sum-title')).toHaveText('Your first harvest: here is the financial result');
   await page.getByRole('button', { name: 'Equals: see how the season went' }).click();
-  await expect(page.locator('.story-sum .is-lost')).toContainText(money(23500));
+  await expect(page.locator('.story-sum .is-lost')).toContainText(money(5900));
 }
 
 /** The story's page 3: turn over each mistake to see what to do instead. */

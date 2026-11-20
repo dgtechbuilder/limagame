@@ -52,6 +52,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [The evidence layer](#the-evidence-layer)
 - [Climate tracking](#climate-tracking)
 - [The wallet](#the-wallet)
+- [Money: savings, investments and profit](#money-savings-investments-and-profit)
 - [The power system](#the-power-system)
 - [Night mode](#night-mode)
 - [The tractor screen](#the-tractor-screen)
@@ -288,8 +289,8 @@ A new player never sees the farm screen first. Everything happens on their own f
      open palm; the player taps the maize seeds, then the maize bed (the seed lands and shoots come up), then the
      same with the sukuma seeds. **Weed the farm** and **Harvest** each run a short timer (`STORY_STEP_S`, 2 seconds,
      a ring in the button) while the picture changes: ragged maize with a real armyworm photo (credited) and dry
-     sukuma wiki, then stubble and one small sack. The sum fills in as it goes (Spent KSh 380,000 − Earned ?), and
-     **=** reveals the loss, counting up to KSh 235,000.
+     sukuma wiki, then stubble and one small sack. The sum fills in as it goes (Spent KSh 95,000 − Earned ?), and
+     **=** reveals the loss, counting up to KSh 59,000 (10 bags sold at KSh 3,600, on a 4-acre farm).
    - *What went wrong*: three mistakes, each crossed out; tap one to turn it over and see the practical fix, and its
      line is ticked in the farmer's notebook: walk every bed **every 2 days** and treat pests the same day (the maize
      check); feel the soil every 2 days and water at the roots when it is dry a finger deep, checking again after
@@ -303,14 +304,14 @@ A new player never sees the farm screen first. Everything happens on their own f
    The first tap or drag moves the farmer; a pulsing ring shows where to tap. The farmer walks quickly (156 stage
    px a second, three times the first version's pace): about 4 seconds.
    - **The farm update** (on arriving, before the first check): *week 7 of the season*. The farm has been running for
-     7 weeks and has cost KSh 214,000 in seed, fertilizer and labour; at this rate the harvest brings back about
-     KSh 60,000, a loss of KSh 154,000 (a bar chart shows it). The maize (*some rows look ragged*) has KSh 100,000 at
-     stake and the sukuma wiki (*the back rows look dull*) KSh 50,000: catching both turns most of the loss around.
+     7 weeks and has cost KSh 54,000 in seed, fertilizer and labour; at this rate the harvest brings back about
+     KSh 15,000, a loss of KSh 39,000 (a bar chart shows it). The maize (*some rows look ragged*) has KSh 25,000 at
+     stake and the sukuma wiki (*the back rows look dull*) KSh 12,500: catching both turns most of the loss around.
      **Check my maize** opens the check. Words and numbers: `FARM_UPDATE` in `src/first/data.ts`; event
      `farm_update_shown`.
    - **What is at stake, on every check**: a red line at the top left while the player reads the crop, *This problem
-     will cost you about KSh 100,000 of harvest if it is left alone* (KSh 50,000 on the sukuma wiki: `atStake` on each
-     shamba), which turns green once it is caught: *Caught in time: about KSh 100,000 of harvest saved*.
+     will cost you about KSh 25,000 of harvest if it is left alone* (KSh 12,500 on the sukuma wiki: `atStake` on each
+     shamba), which turns green once it is caught: *Caught in time: about KSh 25,000 of harvest saved*.
 4. **First check (the aha moment)** — four steps, the template for every check in TemoLima:
    - **Look** at four pictures (the crop, pests & disease, soil & water, layout). Tap to zoom; the next one glows.
    - **Spot** the rows that look wrong in the field.
@@ -696,7 +697,9 @@ tractor ploughing KSh 3,000 and harrowing KSh 1,500 an acre ([Beyond Forest](htt
 hand ploughing 24 person-days an acre at KSh 400 a day ([FarmBiz Africa](https://farmbizafrica.com/tractors-services-increase-farmer-earnings-lower-production-costs/)).
 **Estimates**, labelled as such in the game: ridging, planting, spraying and harvesting hire; hand-work days for
 everything but ploughing; diesel per acre for each implement; 2.68 kg of CO₂ a litre. One farm is 4 acres. The
-summary shows these costs in the player's currency, from the shilling sources at KSh 129 to the US dollar.
+summary shows these costs in the player's currency, from the shilling sources at KSh 129 to the US dollar. The figures
+are kept in real shillings and shown with `kshReal()` (`src/money.ts`), so diesel reads KSh 228 a litre, not ten
+times that.
 
 **Rewards.** A drive pays 1.5 coins per score point and 50 points per star above the farm's best this cycle, as in
 Wakala. *Try again* is allowed until the player is done with the drive, but a retry pays coins only for the score
@@ -835,11 +838,22 @@ ownership, PAYG), **Wekeza** (the farmer's answer to advice) and **Gitonga** (th
 Their pictures are cropped below the head and never rotated, on palette colours (`src/business/cast/*.webp`, 2–5 KB
 each).
 
-**Numbers.** The business keeps its own account in shillings (it starts with KSh 200,000 on screen). Hire per acre,
-diesel and hand-work days are Wakala's figures (`tractor/data.ts` `MONEY`, `IMPL`), with their sources, shown at
-10 times like every value in the game (see *Money on screen*); the trailer's and the combine's hire, road speed
-(20 km/h) and diesel, work rates, the driver's KSh 10,000 a day, the hub's and the partner's shares, the shop's
-prices, the SER thresholds, the acceptance chances and the PAYG prices are **game estimates**, marked in the code.
+**Numbers.** The business keeps its own account in stored money like the rest of the game (it starts with
+KSh 200,000). Diesel (KSh 228 a litre), hand labour (KSh 400 a day) and the market hire an acre are Wakala's real
+shilling figures (`tractor/data.ts` `MONEY`, `IMPL`), turned into stored money with `fromKsh()`; before, they were
+added as if they were stored money, so every cost showed 10 times too large (diesel at KSh 2,280 a litre, the driver
+at KSh 10,000 a day) and most days lost money.
+
+**What the farmer pays, and the 90% rule.** Farmers pay the business **10 times the market hire**
+(`FARMER_PAY_X`: ploughing KSh 30,000 an acre against the market's KSh 3,000), but only a route at least **90%
+efficient** keeps it (`PAY_EFFICIENCY`; the efficiency is the day's *Efficiency score*: the shortest way round's km
+against the route's). Under 90 the farmers waited while the tractor took the long way round, and they pay back hire
+(`refund`) until the day earns only *efficiency × its costs* (diesel, driver, the hub's share): the day is always a
+loss, and a deeper one the worse the route. The planner shows the refund as soon as a slow route is drawn, and the
+day's result has a *Paid back* line and a red note. The PAYG instalment is taken from the hire kept. The trailer's
+and the combine's hire, road speed (20 km/h) and diesel, work rates, the driver's KSh 1,000 a day, the hub's and the
+partner's shares, the shop's prices, the SER thresholds, the acceptance chances and the PAYG prices are **game
+estimates**, marked in the code.
 Saves from before the brief gain the new fields (`bizOf`).
 
 ## Plots and inputs
@@ -960,6 +974,7 @@ reload without losing their place, bookmark a page, and use the browser's **Back
 | `#/kakuma/about` · `#/kakuma/foods` · `#/kakuma/food-and-life` · `#/kakuma/donate` | The Kakuma special event: about the camp, the foods grown there, food and life, donate (open before the farm too) |
 | `#/animals/today` · `health` · `water` · `coop` · `herd` | Animals, by section |
 | `#/security/protect` · `risks` · `night-reports` | Security, by section |
+| `#/money/overview` · `savings` · `investments` · `profit` | Money: what the farmer is worth, savings, investments, profit by part of the farm |
 | `#/market` · `#/market/restaurant` · `nutrition` · `sales` | The market stall, the restaurant, nutrition, every sale (`#/restaurant` and `#/nutrition` work too) |
 
 **The player's session decides where an address can go.** The game's saved state stays the one source of
@@ -996,6 +1011,22 @@ it is a single buffer source, and the audio context sleeps between cues, so soun
 Settings → Game → *Sound effects* turns them off.
 
 ## Money on screen
+
+**The money audit (November 2026).** Every screen with money was checked in shillings and in dollars:
+
+| Where | What was wrong | Now |
+| --- | --- | --- |
+| The story (*Last season*), the farm update, the stake on each check | Real shillings shown 10 times over: KSh 380,000 spent on one farm's season | Stored money: KSh 95,000 spent, KSh 36,000 earned (10 bags at KSh 3,600), KSh 59,000 lost; the update's KSh 54,000 spent and KSh 37,500 at stake add up to breaking even |
+| The tractor drive's real-world costs and *Sources* | Diesel KSh 2,280 a litre, hand labour KSh 4,000 a day ("shown at 10 times") | KSh 228 a litre, KSh 400 a day (`kshReal`) |
+| The tractor business | Hire, diesel and the driver 10 times over, so most days lost money | Real costs, the farmer pays 10 times the hire, under 90% route efficiency is a loss (see *The tractor business*) |
+| Farm Moja's shop and farming steps | Every item KSh 400 (the design file's placeholder) | Real prices for an acre: clearing KSh 3,000, tilling KSh 3,500, certified seed KSh 3,000, a 50 kg bag of NPK KSh 3,500, DAP KSh 3,800, 10,000 L of water KSh 11,000 (as a bowser), reaping KSh 3,000; a 1,000 L tank KSh 12,000 |
+| Farm Moja's harvest and sale | 90 to 180 bags an acre at KSh 240 a bag (profit KSh 192 a bag) | 18 to 36 bags an acre, as the six farms; KSh 3,000 at the gate, KSh 3,800 at market, less KSh 250 a bag transport and storage; hermetic bags KSh 250 a bag; milling costs KSh 6,000 and adds 35% |
+| Tractor sources note, outside Kenya | Said prices were "in Kenyan shillings, as the sources give them" while showing 10 times | Each figure in the player's currency, converted from the source's shillings |
+
+Checked and left as they were: the six farms (KSh 3,600 a top-grade bag, about KSh 19,000 an acre of inputs), the
+market stall and restaurant, livestock (a cow KSh 80,000, milk KSh 50 a litre), water, power, security, the loan
+calculator (its sums are right), Kakuma's gifts and the climate payments (paid in dollars, shown in the player's
+currency). Saves keep their money; a save still on the old maize prices takes the new ones.
 
 All money is shown in the **player's own currency** (`money()` in `src/money.ts`): balances, prices, costs,
 profits, rewards, loans, training, the tractor summary's real-world costs and the climate payments. The currency
@@ -1362,6 +1393,36 @@ is missed and nothing counted twice: the wallet's entries always add up to the c
 **Fixed with it**: at midnight the *Good morning* dialogs (day 2, a night's news) used to open on top of whatever page
 was up, the Climate page included, and block it. A morning's news now waits until the player is back on the farm
 (`MORNING_KINDS` in `src/state.ts`; opening or closing a page keeps it).
+
+## Money: savings, investments and profit
+
+**Money** in the main menu (or *Savings and profit ›* under the Wallet) opens the farmer's finances
+(`src/finance/model.ts` for every rule and rate, `src/finance/Finance.tsx` for the page; address `#/money/overview`):
+
+- **Overview**: the wallet, savings, investments and what the farmer is worth in all; the farm's profit all time and
+  over the last 7 farm days; what savings earned; the tractor business's own account. A few lines say what the numbers
+  mean: the best earner, the part of the farm losing money, too little saved, the savings goal.
+- **Savings**: a **SACCO savings** account at 6% a year: put money in and take it out any time. A **savings goal**
+  (a name and an amount) shows a progress bar and how much a day reaches it in 10 farm days. A chart shows the
+  balance day by day.
+- **Investments**: a **money market fund** (10% a year, out any time), a **91-day Treasury bill** (13% a year, locked
+  for 13 farm days and paid back into the wallet on its day; out early returns only what went in) and **agribusiness
+  shares** (15% a year on average, but the price moves up to 4% a day either way, the same for every player on a given
+  day, and selling costs 1.5%). What each holds, what it is worth now and its gain or loss.
+- **Profit**: every part of the farm (crops and the six farms, the market stall and restaurant, animals, the tractor,
+  climate payments, power and security, rewards and gifts) with money in, money out, profit and margin, all time, plus
+  what savings earned; profit farm day by farm day (a chart of the last 14 days, up green, down red); and the six
+  farms' profit each cycle.
+
+**Time.** Interest and returns settle when a farm day ends (`settle`, called after every action by `trackFinance` in
+`src/state.ts`). A farm day counts as **one week** of interest, so a yearly rate is paid a 52nd a day. Money put away
+for the first time earns from that day on. Rates are game figures in the range of Kenyan products in 2026, for
+learning, not advice.
+
+**Not spending.** Moving money into savings or an investment (and back) is written in the Wallet as *Savings &
+investments* (`savings` kind), and profit tracking leaves it out: it is still the farmer's money. What it earns is
+counted in `earned`. The Wallet also keeps money in and out by farm day (`days`, the last 60 farm days) for the
+day-by-day profit.
 
 ## The power system
 
@@ -1881,6 +1942,7 @@ Some tests use no browser: they call the game's rules directly.
 | `plots.spec.ts` | the first planting period (Clear and Plant a row at a time); one set of inputs per farm and the results by input |
 | `care.spec.ts` | a world check with a wrong then right fix and the work by hand; a follow-up done and one missed; a spray job with the safety kit and product, walking past the fertilizer shed |
 | `routine.spec.ts` | scheduled care: what a miss costs, its days, by hand (weeding, the stalk-borer spray, the top-dress) and the cultivator from the seat |
+| `finance.spec.ts` | savings in and out and their interest; a money market fund, a Treasury bill paid back on its day (or out early), shares that fall as well as rise; profit by part of the farm and by day; the tractor business's 10× hire and its 90% rule; the story's and the maize's prices adding up |
 | `tractor-ride.spec.ts`, `tractor-sim.spec.ts`, `tractor.spec.ts` | the tractor's type and tool, fuel and the bonus; the hired tractor; the before-planting drive, on autopilot and steered |
 | `business.spec.ts` | the tractor business: routes, Campbell, SER, counted acres, PAYG, and a day played through the screen |
 | `climate.spec.ts` | the climate ledger: tasks, planting, diesel, selling, credits |
