@@ -126,7 +126,7 @@ test('seed, fertilizer, the farm plan, water, the Shop, storage and security are
   // the 20,000 L tank is for day 3; partners' products are never locked
   s = act(s, { type: 'buy', id: 'tank-xl', price: 18000, name: '20,000 L' });
   expect(s.inventory).not.toContain('tank-xl');
-  s = act(s, { type: 'buy', id: 'tank-tangi', price: 5000, name: 'Tangi 5,000 L' });
+  s = act(s, { type: 'buy', id: 'tank-tangi', price: 5000, name: 'Lima Tanks 5,000 L' });
   expect(s.inventory).toContain('tank-tangi');
   // on day 3 everything is open
   s = act({ ...s, life: { ...lifeOf(s.life), day: 3 } }, { type: 'buy', id: 'tank-xl', price: 18000, name: '20,000 L' }, { type: 'trialPlan', farm: 1, key: 'land', value: 'tractor' }, { type: 'securityBuy', id: 'fence' });

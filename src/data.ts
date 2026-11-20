@@ -17,7 +17,7 @@ export interface ShopItem {
   stock?: [number, number];
   /** a partner's branded product (src/partners/data.ts): shown with the brand's name and colours */
   partner?: BrandId;
-  /** the plain item a branded product does the job of (Rutuba Gold NPK is used for the NPK task) */
+  /** the plain item a branded product does the job of (Lima NPK is used for the NPK task) */
   standsIn?: string;
 }
 
@@ -75,7 +75,7 @@ export const SHOP_TABS: ShopTabDef[] = [
       { id: 'phosphorus', name: 'Phosphorus', icon: asset('fert-phosphorus.png'), iconSize: [31, 23], price: 40 },
       { id: 'potassium', name: 'Potassium', icon: asset('fert-potassium.png'), iconSize: [31, 23], price: 40 },
       // the fertilizer partner's product: an NPK at the partner's 10% off
-      { id: 'rutuba-npk', name: 'Rutuba Gold NPK', icon: asset('fert-npk.png'), iconSize: [31, 23], price: 36, partner: 'rutuba', standsIn: 'npk' },
+      { id: 'rutuba-npk', name: 'Lima NPK', icon: asset('fert-npk.png'), iconSize: [31, 23], price: 36, partner: 'rutuba', standsIn: 'npk' },
     ],
   },
   {
@@ -96,7 +96,7 @@ export const SHOP_TABS: ShopTabDef[] = [
       { id: 'tank-xl', name: '20,000 L', icon: asset('tank-large.png'), iconSize: [34, 35], price: 18000 },
       { id: 'tank-pan', name: 'Water pan', icon: asset('tank-large.png'), iconSize: [38, 30], price: 24000 },
       // the water partner's tank: a medium tank with a gutter kit
-      { id: 'tank-tangi', name: 'Tangi 5,000 L', icon: asset('tank-medium.png'), iconSize: [24, 35], price: 5000, partner: 'tangi' },
+      { id: 'tank-tangi', name: 'Lima Tanks 5,000 L', icon: asset('tank-medium.png'), iconSize: [24, 35], price: 5000, partner: 'tangi' },
     ],
   },
   {
@@ -405,7 +405,7 @@ export function shopIndex(id: string): number {
   return plain.findIndex(i => i.id === id);
 }
 
-/** Branded products and the plain item each does the job of (a task that uses NPK takes Rutuba Gold NPK too). */
+/** Branded products and the plain item each does the job of (a task that uses NPK takes Lima NPK too). */
 export const STANDS_IN: Record<string, string> = Object.fromEntries(
   SHOP_TABS.flatMap(t => t.items)
     .filter(i => i.standsIn)

@@ -170,7 +170,7 @@ test('See it in the game opens the screen a way to partner is about', async ({ p
   await type(page, '#/partners/partner-with-us');
   await dialog(page).locator('.pj-card', { hasText: 'Fertilizer brand' }).click();
   const sheet = page.getByRole('dialog', { name: 'Fertilizer brand' });
-  await expect(sheet.getByText(/Held today by Rutuba Gold/)).toBeVisible();
+  await expect(sheet.getByText(/Held today by Lima Fertilizer/)).toBeVisible();
   await sheet.getByRole('button', { name: 'Open the fertilizer shop ›' }).click();
   await expect.poll(() => hash(page)).toBe('#/shop/fertilizer');
 });
