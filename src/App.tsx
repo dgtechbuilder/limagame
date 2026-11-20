@@ -23,6 +23,7 @@ const WalletPage = lazyPage(() => import('./wallet/Wallet').then(m => m.WalletPa
 const PowerPage = lazyPage(() => import('./power/Power').then(m => m.PowerPage), 1);
 const TractorGamePage = lazyPage(() => import('./minifarm/MiniFarm').then(m => m.TractorGamePage), 1);
 const MarketPage = lazyPage(() => import('./produce/Market').then(m => m.MarketPage), 1);
+const EventsPage = lazyPage(() => import('./events/Events').then(m => m.EventsPage), 1);
 const GardenPage = lazyPage(() => import('./garden/Garden').then(m => m.GardenPage), 1);
 // design review (?review=1) only: its sample screens are computed when it is opened, never for players
 const ReviewPicker = lazy(() => import('./review/Review').then(m => ({ default: m.ReviewPicker })));
@@ -352,6 +353,11 @@ export default function App() {
         {m?.kind === 'garden' && (
           <Suspense fallback={<ActivityLoading label="Opening the garden…" />}>
             <GardenPage s={s} dispatch={dispatch} farm={m.farm} />
+          </Suspense>
+        )}
+        {m?.kind === 'events' && (
+          <Suspense fallback={<ActivityLoading label="Opening special events…" />}>
+            <EventsPage s={s} dispatch={dispatch} tab={m.tab} region={m.region} />
           </Suspense>
         )}
         {m?.kind === 'shop' && <ShopModal s={s} tab={m.tab} dispatch={dispatch} />}
