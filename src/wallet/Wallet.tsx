@@ -22,7 +22,14 @@ export function WalletPage({ s, dispatch, tab = 'history' }: { s: GameState; dis
   const setTab = (t: WalletTab) => dispatch({ type: 'open', modal: { kind: 'wallet', tab: t } });
   const w = walletOf(s.wallet);
   return (
-    <Page title="Wallet" icon="👛" tabs={TABS} tab={tab} onTab={setTab} dispatch={dispatch} foot={<>In your wallet now: <b>{money(s.coins)}</b></>}>
+    <Page title="Wallet" icon="👛" tabs={TABS} tab={tab} onTab={setTab} dispatch={dispatch} foot={
+        <>
+          In your wallet now: <b>{money(s.coins)}</b>{' '}
+          <button type="button" className="set-link" onClick={() => dispatch({ type: 'open', modal: { kind: 'finance', tab: 'overview' } })}>
+            Savings and profit ›
+          </button>
+        </>
+      }>
       {tab === 'history' && <History s={s} />}
       {tab === 'climate' && <Climate s={s} />}
       {tab === 'summary' && (

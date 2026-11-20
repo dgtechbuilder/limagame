@@ -22,10 +22,11 @@ const EPRA = { name: 'Techish, 14 Oct 2026: EPRA Nairobi caps, 15 Oct to 14 Nov 
 const BEYOND = { name: 'Beyond Forest, 2026: ploughing cost per acre in Kenya', url: 'https://www.beyondforest.org/post/ploughing-cost-per-acre-in-kenya-2026-guide-virgin-vs-uncultivated-land-explained' };
 const FARMBIZ = { name: 'FarmBiz Africa: tractor services and farmer earnings', url: 'https://farmbizafrica.com/tractors-services-increase-farmer-earnings-lower-production-costs/' };
 
-/** Copied from Wakala Agent's README (4 Nov 2026). */
+/** Copied from Wakala Agent's README (4 Nov 2026). Values are real Kenyan shillings, as the sources give them: turn them
+    into stored money with fromKsh() (src/money.ts) before showing or paying them. */
 export const MONEY = {
   diesel: { value: 228, unit: 'KSh a litre', what: 'Diesel, Nairobi pump price cap', source: EPRA },
-  wage: { value: 400, unit: 'KSh a person-day', what: 'Hand labour ({money:300} to {money:500} a day, shown at 10 times; the game uses {money:400})', source: FARMBIZ },
+  wage: { value: 400, unit: 'KSh a person-day', what: 'Hand labour ({money:30} to {money:50} a day; the game uses {money:40})', source: FARMBIZ },
   ploughHire: { value: 3000, unit: 'KSh an acre', what: 'Tractor ploughing hire', source: BEYOND },
   harrowHire: { value: 1500, unit: 'KSh an acre', what: 'Tractor harrowing hire', source: BEYOND },
   ridgeHire: { value: 2000, unit: 'KSh an acre', what: 'Tractor ridging hire', estimate: true },

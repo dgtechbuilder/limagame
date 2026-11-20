@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type PointerEvent as RPointerEvent, type R
 import { img } from '../assets';
 import { FarmMap } from '../components/FarmMap';
 import { fmt } from '../components/ui';
-import { KSH_PER_USD, currency, money, withMoney } from '../money';
+import { KSH_PER_USD, currency, kshReal, money, withMoney } from '../money';
 import { SPEAKER } from '../care/voice';
 import { track } from '../first/track';
 import { farmName } from '../trials/model';
@@ -30,8 +30,8 @@ const STEPS: [Phase, string][] = [
 /** canvas pixels per game pixel: sharp on phones and when the stage is scaled up */
 const K = 2;
 
-/** shillings on screen: 10 times the stored value (src/money.ts), rounded to the nearest 100 */
-const ksh = (n: number) => money(Math.abs(n));
+/** A cost kept in real shillings (the drive's by-hand and by-tractor costs, MONEY), in the player's currency. */
+const ksh = (n: number) => kshReal(Math.abs(n));
 const acresText = `${FARM_ACRES} acres`;
 
 export interface TractorProps {
@@ -633,7 +633,7 @@ function Sources({ figures, onClose }: { figures: MoneyFigure[]; onClose: () => 
           .filter(f => !seen.has(f) && seen.add(f))
           .map(f => (
             <li key={f.what}>
-              <b>{withMoney(f.what)}:</b> {f.unit.startsWith('KSh') ? `${money(f.value)} ${f.unit.slice(4)}` : `${fmt(f.value)} ${f.unit}`}.{' '}
+              <b>{withMoney(f.what)}:</b> {f.unit.startsWith('KSh') ? `${kshReal(f.value)} ${f.unit.slice(4)}` : `${fmt(f.value)} ${f.unit}`}.{' '}
               {f.source ? (
                 <a href={f.source.url} target="_blank" rel="noreferrer">
                   {f.source.name}
