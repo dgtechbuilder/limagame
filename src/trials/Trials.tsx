@@ -16,6 +16,9 @@ import { GuideLine } from '../first/Review';
 import { dayNumber } from '../rounds/farms';
 import { PlotBoard, plotsLine } from '../plots/PlotBoard';
 import { OPTIONS, ROUTINE, fertOf, seedOf, type FertId, type SeedId } from '../plots/data';
+import { NutriChips, NutriTotal } from '../nutrition/Nutri';
+import { nutritionOf } from '../nutrition/data';
+import { MARKET } from '../produce/model';
 import { Info } from '../learn/Info';
 import type { Action, GameState } from '../state';
 import {
@@ -241,6 +244,7 @@ function PlanBoard({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) 
                     {seedOf(r.seed).label}
                   </span>
                 ))}
+                <NutriChips food={foodOf(tr, i)} max={2} compact />
               </button>
             ))}
           </Row>
@@ -419,6 +423,7 @@ function Growing({ s, tr, dispatch, t, inWorld }: Props & { s: GameState; tr: Tr
                   <>
                     <b>{farmName(i)}</b>
                     <small>{tests}</small>
+                    <NutriChips food={foodOf(tr, i)} max={3} compact label={`${farmName(i)} grows ${CROP_WORDS[cropOf(tr, i)].name}:`} />
                   </>
                 }
               >
@@ -531,6 +536,14 @@ function Compare({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) {
               {money(r.profit)}
             </div>
           ))}
+          <div className="tr-label" title="What each farm's harvest gives the people who eat it: a day's need for this many adults">
+            Feeds
+          </div>
+          {results.map((r, i) => (
+            <div key={i} className="tr-val tr-small">
+              <NutriTotal total={nutritionOf(harvestFood(tr, i, r))} top={2} compact prefix={`${farmName(i)}'s harvest feeds`} />
+            </div>
+          ))}
           {results.some(r => r.care?.length) && (
             <Row label="Care">
               {results.map((r, i) => {
@@ -604,6 +617,11 @@ function Compare({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) {
 }
 
 const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
+
+/** The food a farm grows, for its nutrition markers. */
+const foodOf = (tr: Trial, farm: number) => (cropOf(tr, farm) === 'kale' ? 'sukuma' : 'maize') as 'sukuma' | 'maize';
+/** A farm's harvest as kg of food: its bags, and the beans grown between its maize rows. */
+const harvestFood = (tr: Trial, farm: number, r: { bags: number; beans: number }) => ({ [foodOf(tr, farm)]: r.bags * MARKET.bagKg, ...(r.beans > 0 ? { drybeans: r.beans * MARKET.bagKg } : {}) });
 
 /** The crops of a cycle, for its tag: "Maize" or "Maize & sukuma wiki". */
 const cropsLine = (tr: Trial) => cap([...new Set(tr.plans.map((_, i) => CROP_WORDS[cropOf(tr, i)].name))].join(' & '));

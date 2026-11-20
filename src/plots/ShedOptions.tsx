@@ -5,7 +5,8 @@ import type { Dispatch } from 'react';
 import { money } from '../money';
 import type { Action, GameState } from '../state';
 import { plotsOf } from '../trials/model';
-import { KIND_WORDS, OPTIONS, plotCost, type PlotKind } from './data';
+import { KIND_WORDS, OPTIONS, plotCost, type PlotKind, type SeedOption } from './data';
+import { NutriChips } from '../nutrition/Nutri';
 
 /* At a shed spot (Seeds, Fertilizer, Sprayer): the button under the farmer opens every choice of that input. The one
    picked goes on every farm that can still take it (not yet sown, spread or sprayed), is kept for the next planting,
@@ -43,6 +44,12 @@ export function ShedOptions({ s, of, dispatch, onClose }: { s: GameState; of: Pl
               <p>
                 <b>Best for:</b> {o.bestFor}
               </p>
+              {of === 'seed' && (
+                <>
+                  <NutriChips food="maize" max={2} label="Maize" />
+                  {(o as SeedOption).beans && <NutriChips food="drybeans" max={2} label="Beans" />}
+                </>
+              )}
               {isOpen(s, i) ? <button
                 type="button"
                 className="gold-btn"

@@ -74,7 +74,7 @@ test('every screen keeps its boxes and buttons inside the stage’s rounded fram
   expect(await outside(page), 'tractor business').toEqual([]);
   // an offer's sheet on the Partners page
   await page.evaluate(() => (window.location.hash = '/partners/offers'));
-  await page.getByRole('button', { name: 'Get the Rutuba Gold offer' }).click();
+  await page.getByRole('button', { name: 'Get the Lima Fertilizer offer' }).click();
   await page.waitForTimeout(400);
   expect(await outside(page), 'offer sheet').toEqual([]);
 });

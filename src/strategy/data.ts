@@ -72,7 +72,7 @@ export const DIMENSIONS: Dimension[] = [
       AS_PLANNED('The fertilizer in the farm plan, nothing more.'),
       { id: 'organic', label: 'Organic compost', does: 'Compost and manure dug into the row: little cash, more work, the soil keeps improving.', cost: 100, labour: 3, ret: 0.2, co2: 4, stored: 30, soil: 3, smart: true },
       { id: 'dap', label: 'DAP', does: 'A bag of DAP at planting: cheap (often subsidised), quick, but it does nothing for the soil.', cost: 280, labour: 0.5, ret: 0.15, co2: 22, soil: -1, pollution: 1 },
-      { id: 'npk', label: 'Rutuba Gold NPK', does: 'A branded NPK blend: a little dearer than DAP, a little more potassium.', cost: 320, labour: 0.5, ret: 0.16, co2: 22, soil: -0.5, pollution: 1 },
+      { id: 'npk', label: 'Lima NPK', does: 'A branded NPK blend: a little dearer than DAP, a little more potassium.', cost: 320, labour: 0.5, ret: 0.16, co2: 22, soil: -0.5, pollution: 1 },
       { id: 'microdose', label: 'Micro-dosing', does: 'A bottle-cap of fertilizer in each planting hole: a third of the bag, the same yield in a dry season.', cost: 110, labour: 1.5, ret: { dry: 0.3, normal: 0.18, wet: 0.12 }, co2: 8, soil: 0, smart: true },
     ],
   },

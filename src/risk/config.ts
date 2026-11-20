@@ -24,7 +24,7 @@ export const RISK = {
     normal: { drought: 0.1, flood: 0.05, hail: 0.06 },
     wet: { drought: 0.02, flood: 0.3, hail: 0.08 },
   },
-  /** Share of the shock exposure crop cover takes away (a player with cover: the Kinga Cover offer, for now). */
+  /** Share of the shock exposure crop cover takes away (a player with cover: the Lima Insurance offer, for now). */
   coverCut: 0.7,
 } as const;
 

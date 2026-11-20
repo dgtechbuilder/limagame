@@ -412,7 +412,8 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
   useEffect(() => {
     if (!job || overlay || pageOpen || walkedFor.current === jobKey) return;
     walkedFor.current = jobKey;
-    goToJob(job.done === 0);
+    // the message that put the job on the list already says where to walk
+    goToJob(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobKey, overlay, pageOpen]);
   // a job added from the tractor screen or a care screen closes it, so the walk can start
@@ -675,6 +676,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     }
     if (p === 'hire') return setHub(hireInfo(st).ready ? 'hire' : 'yard');
     if (p === 'market') return onMarket();
+    if (p === 'restaurant') return dispatch({ type: 'open', modal: { kind: 'market', tab: 'restaurant' } });
     if (p === 'house') {
       const tk = nextTask(st.field, tr, dayNumber(), st.coins);
       if (tk.icon !== 'sleep') return say(tr?.phase === 'growing' ? `Not yet: ${tk.title.toLowerCase()} first` : 'Home sweet home');
@@ -1511,6 +1513,8 @@ function placeButton(p: Place, carry: GameState['field']['carry']): { label: str
       return { label: 'Start training', sub: 'Tractor yard', aria: 'Start training at the tractor yard', icon: 'tractor' };
     case 'market':
       return { label: 'Open the market', sub: 'Sell your harvest', aria: 'Open the market', icon: 'corn' };
+    case 'restaurant':
+      return { label: 'Open the restaurant', sub: 'Cook meals from your harvest', aria: 'Open the restaurant', emoji: '🍲' };
     case 'house':
       return { label: 'Go to sleep', sub: 'End the day', aria: 'Go to sleep', icon: 'sleep' };
     case 'mission':

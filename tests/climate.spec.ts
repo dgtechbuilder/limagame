@@ -157,7 +157,9 @@ test('Land & pay and Farm areas: the six farms plot by plot, every area, and the
   // the water credits are paid at midnight too (src/water): the tank's day
   const water = s.ledger.entries.filter((e: { type: string }) => e.type === 'water').reduce((n: number, e: { coins: number }) => n + e.coins, 0);
   expect(water).toBeGreaterThan(0);
-  expect(s.coins).toBeCloseTo(960 + p.coins + water, 6);
+  // and the market stall's evening sale (the daily sales cycle, src/produce)
+  const stall = (s.produce?.sales ?? []).filter((x: { auto?: boolean }) => x.auto).reduce((n: number, x: { earned: number }) => n + x.earned, 0);
+  expect(s.coins).toBeCloseTo(960 + p.coins + water + stall, 6);
   expect(s.climate.pay.day).toBe('2026-11-16');
   await expect(dialog(page).getByText(`+${money(p.coins)}`, { exact: true })).toBeVisible();
 

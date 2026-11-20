@@ -908,6 +908,46 @@ export function stall(): Part[] {
   return out;
 }
 
+/** The mini restaurant beside the market stall: a small kiosk with a green roof, a serving counter with a cooking pot
+    and plates, and a bench for customers in front. Centred at the origin, its counter toward +z. */
+export function restaurant(): Part[] {
+  const wood = '#8b5a2b';
+  const out: Part[] = [
+    // the floor and the back wall
+    { geo: G.box, color: '#c9a77a', m: at(0, 0.04, 0, { sx: 2.3, sy: 0.08, sz: 1.7 }) },
+    { geo: G.box, color: '#f2d29b', m: at(0, 1.1, -0.72, { sx: 2.2, sy: 2.2, sz: 0.12 }) },
+    { geo: G.box, color: '#f2d29b', m: at(-1.06, 1.1, -0.1, { sx: 0.1, sy: 2.2, sz: 1.3 }) },
+    { geo: G.box, color: '#f2d29b', m: at(1.06, 1.1, -0.1, { sx: 0.1, sy: 2.2, sz: 1.3 }) },
+    // the roof under a green and yellow striped awning, sloping to the front
+    // the counter
+    { geo: G.box, color: wood, m: at(0, 0.5, 0.55, { sx: 2.1, sy: 1.0, sz: 0.35 }) },
+    { geo: G.box, color: C.woodPlank, m: at(0, 1.03, 0.58, { sx: 2.25, sy: 0.08, sz: 0.5 }) },
+    // a cooking pot and plates on the counter
+    { geo: G.cyl, color: '#5a5f66', m: at(-0.6, 1.2, 0.55, { sx: 0.36, sy: 0.26, sz: 0.36 }) },
+    { geo: G.cyl, color: '#f4f1e8', m: at(-0.6, 1.34, 0.55, { sx: 0.3, sy: 0.02, sz: 0.3 }) },
+    // the menu board on the back wall
+    { geo: G.box, color: '#2b3a2f', m: at(0, 1.6, -0.64, { sx: 1.1, sy: 0.6, sz: 0.04 }) },
+    { geo: G.box, color: '#e9e3c9', m: at(0, 1.72, -0.61, { sx: 0.8, sy: 0.05, sz: 0.02 }) },
+    { geo: G.box, color: '#e9e3c9', m: at(-0.1, 1.56, -0.61, { sx: 0.6, sy: 0.05, sz: 0.02 }) },
+    { geo: G.box, color: '#e9e3c9', m: at(0.05, 1.42, -0.61, { sx: 0.7, sy: 0.05, sz: 0.02 }) },
+    // a bench in front for customers
+    { geo: G.box, color: C.woodPlank, m: at(0, 0.42, 1.3, { sx: 1.6, sy: 0.08, sz: 0.34 }) },
+  ];
+  for (const x of [0.15, 0.55]) {
+    out.push({ geo: G.cyl, color: '#ffffff', m: at(x, 1.09, 0.6, { sx: 0.3, sy: 0.03, sz: 0.3 }) });
+    out.push({ geo: G.sphere, color: x < 0.3 ? '#f3ead2' : '#3f8a2a', m: at(x, 1.13, 0.6, { sx: 0.16, sy: 0.07, sz: 0.16 }) });
+  }
+  for (const x of [-0.7, 0.7]) out.push({ geo: G.box, color: wood, m: at(x, 0.2, 1.3, { sx: 0.1, sy: 0.4, sz: 0.3 }) });
+  // corner posts holding the roof at the front
+  for (const x of [-1.2, 1.2]) out.push({ geo: G.cyl6, color: wood, m: at(x, 1.15, 0.85, { sx: 0.12, sy: 2.3, sz: 0.12 }) });
+  for (let i = 0; i < 5; i++) out.push({ geo: G.box, color: i % 2 ? '#ffd23f' : '#2f9a4a', m: at(-1.08 + i * 0.54, 2.35, 0.05, { sx: 0.54, sy: 0.12, sz: 2.1, rx: 0.16 }) });
+  // a round sign on the roof with a steaming bowl
+  out.push({ geo: G.cyl6, color: wood, m: at(0, 2.75, -0.5, { sx: 0.08, sy: 0.7, sz: 0.08 }) });
+  out.push({ geo: G.cyl, color: '#fff6dc', m: at(0, 3.25, -0.5, { sx: 0.7, sy: 0.08, sz: 0.7, rx: Math.PI / 2 }) });
+  out.push({ geo: G.sphere, color: '#d9432f', m: at(0, 3.18, -0.43, { sx: 0.26, sy: 0.14, sz: 0.06 }) });
+  return out;
+}
+
 export function board(): Part[] {
   return [
     { geo: G.cyl6, color: '#8b5a2b', m: at(-0.8, 0.9, 0, { sx: 0.14, sy: 1.8, sz: 0.14 }) },
@@ -1554,6 +1594,10 @@ export function gardenTile(crop: string, stage: number): Part[] {
     } else if (crop === 'onions') {
       for (let i = 0; i < 3; i++) p.push({ geo: G.cone4, color: '#5aa83a', m: at(Math.cos(i * 2.1) * 0.03, 0.22 * g, Math.sin(i * 2.1) * 0.03, { sx: 0.04, sy: 0.45 * g, sz: 0.04 }) });
       if (stage >= 2) p.push({ geo: G.sphere, color: '#b0628a', m: at(0, 0.05, 0, { s: 0.12 + stage * 0.02 }) });
+    } else if (crop === 'cabbage') {
+      // outer leaves spread on the ground, a round pale head in the middle once it forms
+      for (let i = 0; i < 5; i++) p.push({ geo: G.sphere, color: i % 2 ? '#6f9f43' : '#82b552', m: at(Math.sin(i * 1.26) * 0.1 * g, 0.05 * g, Math.cos(i * 1.26) * 0.1 * g, { sx: 0.2 * g, sy: 0.05, sz: 0.24 * g, ry: i * 1.26, rx: -0.35 }) });
+      if (stage >= 1) p.push({ geo: G.sphere, color: '#c3e08f', m: at(0, 0.08 + 0.03 * stage, 0, { s: 0.06 + 0.035 * stage }) });
     } else {
       // watermelon: vines along the ground, fruit at the end
       p.push({ geo: G.box, color: '#3c8a3a', m: at(0, 0.03, 0, { sx: 0.4 * g, sy: 0.04, sz: 0.1, ry: x * 9 }) });

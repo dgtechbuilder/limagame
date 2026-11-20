@@ -86,6 +86,7 @@ import {
   sharpText,
   signTexture,
   stall,
+  restaurant,
   tree,
   trough,
   vcMaterial,
@@ -184,6 +185,8 @@ export const PLACES: Record<Place, { x: number; z: number; r: number }> = {
   pond: { x: 13.6, z: 0, r: 1.1 },
   hire: { x: -14.6, z: 6.4, r: 1.2 },
   market: { x: 0, z: 12.9, r: 1.3 },
+  /** the mini restaurant beside the stall: meals from the store (src/produce/restaurant.ts) */
+  restaurant: { x: 3.35, z: 13.4, r: 0.95 },
   house: { x: 0, z: -15.2, r: 1.2 },
   /** the cow pen's gate and the chicken coop's door: the Animals page (src/livestock) */
   pen: { x: -10.7, z: -13.0, r: 1.0 },
@@ -560,6 +563,9 @@ export class FarmWorld {
     smooth.push(...place(house(), at(0, 0, -18.6)));
     smooth.push(...place(shed(), at(-18.6, 0, 0, { ry: Math.PI / 2 })));
     smooth.push(...place(stall(), at(0, 0, 15.6, { ry: Math.PI })));
+    // the mini restaurant beside the stall, its counter facing the lane
+    smooth.push(...place(restaurant(), at(3.5, 0, 15.75, { ry: Math.PI })));
+    this.obstacles.push({ x: 3.5, z: 15.9, r: 0.95 });
     smooth.push(...place(board(), at(4.4, 0, -12.4)));
     // partner billboards (a slot with no partner has no billboard): one pole each, the only thing that blocks
     for (const bb of BILLBOARDS) {
@@ -736,6 +742,25 @@ export class FarmWorld {
         g.lineTo(34, -12);
         g.fill();
       },
+      bowl: g => {
+        g.fillStyle = '#fff';
+        g.beginPath();
+        g.moveTo(-42, -6);
+        g.lineTo(42, -6);
+        g.quadraticCurveTo(40, 36, 0, 36);
+        g.quadraticCurveTo(-40, 36, -42, -6);
+        g.fill();
+        // steam
+        g.strokeStyle = '#fff';
+        g.lineWidth = 7;
+        g.lineCap = 'round';
+        for (const x of [-16, 0, 16]) {
+          g.beginPath();
+          g.moveTo(x, -16);
+          g.quadraticCurveTo(x + 9, -28, x, -40);
+          g.stroke();
+        }
+      },
       bag: g => {
         g.fillStyle = '#fff';
         g.beginPath();
@@ -758,6 +783,7 @@ export class FarmWorld {
     const zones: [Place, string, string, number][] = [
       ['hire', 'Train', 'tractor', 2.2],
       ['market', 'Sell', 'sell', 2.4],
+      ['restaurant', 'Eat', 'bowl', 1.6],
       ['house', 'Sleep', 'sleep', 2.2],
       ['mission', 'Plan', 'plan', 2.0],
       ['pond', 'Water', 'water', 1.9],

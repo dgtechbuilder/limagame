@@ -60,6 +60,8 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [The shed's options](#the-sheds-options)
 - [Options that open as you grow](#options-that-open-as-you-grow)
 - [The market stall](#the-market-stall)
+- [The restaurant](#the-restaurant)
+- [Nutrition](#nutrition)
 - [Farms 7 and 8](#farms-7-and-8)
 - [Mini-games](#mini-games)
 - [The tractor game: the mini farm](#the-tractor-game-the-mini-farm)
@@ -95,8 +97,8 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 | **Every job** | **Does the work on the farm**: buying the inverter, building the coop, servicing the tractor or feeding the hens closes the page and the farmer walks there, then works at each spot (round the tractor, every corner of the coop, each light pole) before it counts. See [Jobs done by hand on the farm](#jobs-done-by-hand-on-the-farm). |
 | **Days 1 to 7** | **Builds a solar power system**, one part a day, each with its own mini-game: panels, inverter, battery, lights, generator, diesel, then switches it on. It powers the pump, the milk cooler, the lights, the house and the workshop. |
 | **Day 1 · day 3** | **Upgrades the chicken coop** (day 1) and **the cow shed** (day 3), nail by nail. |
-| **From day 4** | Plants **Farms 7 and 8**: spinach, tomatoes, French beans, onions, watermelon or a fruit orchard. |
-| **Every day** | Sells up to **25 kg** of the store at the **market stall**; every payment in and out is kept in the **Wallet**. |
+| **From day 4** | Plants **Farms 7 and 8**: spinach, cabbage, tomatoes, French beans, onions, watermelon or a fruit orchard. |
+| **Every day** | The **market stall** sells **25 kg** of the store (maize, beans, sukuma wiki…): the farmer picks, or the day's sale is made for them each evening, with its profit. The **restaurant** beside it cooks the store into meals. Every crop shows its **nutrition**. Every payment in and out is kept in the **Wallet**. |
 | **Any time** | Taps **TRACTOR** to train, learn, check, service, repair, refuel, hire or drive the tractor (each a mini-game). |
 
 A wrong call is part of learning: the clue they missed is circled, and they try again on a second maize bed.
@@ -179,7 +181,8 @@ src/
   finance/loan.ts          the loan calculator (no coins change hands)
   wallet/                  every payment in and out: model.ts (trackWallet, addEntry), Wallet.tsx (the page)
   power/                   the solar power system: config.ts (every number), model.ts (a day of power), Power.tsx
-  produce/                 the store and the market stall (25 kg a day): model.ts, Market.tsx
+  produce/                 the store, the market stall (25 kg a day) and the restaurant: model.ts, restaurant.ts, Market.tsx
+  nutrition/               what each crop gives the people who eat it: data.ts (every number), Nutri.tsx (the markers)
   garden/                  Farms 7 and 8 (spinach, orchard…): model.ts, Garden.tsx
   systems/track.ts         the newer systems through the days: power, gutters, drip, wilting, tractor wear, morning news
   minigames/MiniGame.tsx   the mini-games: timing, hold-to-fill, tap the spots, wires, order, quiz, aim, steer, balance
@@ -1004,6 +1007,7 @@ reload without losing their place, bookmark a page, and use the browser's **Back
 | `#/partners/offers` · `#/partners/offers/<brand>` · `#/partners/placements` · `#/partners/partner-with-us` · `#/partners/shortlist` | Partners: offers (one brand's in view), placements, ways to partner, the shortlist (open before the farm too) |
 | `#/animals/today` · `health` · `water` · `coop` · `herd` | Animals, by section |
 | `#/security/protect` · `risks` · `night-reports` | Security, by section |
+| `#/market` · `#/market/restaurant` · `nutrition` · `sales` | The market stall, the restaurant, nutrition, every sale (`#/restaurant` and `#/nutrition` work too) |
 
 **The player's session decides where an address can go.** The game's saved state stays the one source of
 truth: the address always names the page on show, and a typed address goes through the same rules as a tap.
@@ -1128,8 +1132,8 @@ risk*). It makes the daily loop's stakes visible at a glance and gives a reason 
   planting period, and stays from then on.
 - **While you were away.** The button as last seen is saved; a player coming back on a later day to more at risk sees
   what grew (*KSh 3.5k at risk when you left, KSh 11k now*) and can open the list from there.
-- **Forecast shocks** (drought, flood, hail by the season's forecast, less what crop cover pays; cover is the Kinga
-  Cover offer for now) can be added to the total: off (`RISK.includeShocks`) until confirmed.
+- **Forecast shocks** (drought, flood, hail by the season's forecast, less what crop cover pays; cover is the Lima
+  Insurance offer for now) can be added to the total: off (`RISK.includeShocks`) until confirmed.
 - **Evidence** (for the evidence layer to come): every tap on the button and on a farm in its list is counted, and
   every problem dealt with is kept with when it was first on the button in front of the player and when it was fixed
   (`GameState.risk`, the last 100). Events: `risk_open`, `risk_row`, `risk_fixed` (with `msFromSeen`).
@@ -1171,7 +1175,7 @@ beside the portrait, clear of the task card, with the same numbers.
 Partners asked the game to teach climate-smart practices through real trade-offs. Two general systems do it.
 
 **Row strategies.** Each farm's 20 plots make 4 rows of 5, and **each row runs its own strategy**: one option on every
-dimension, grouped as *fertilizer* (as the plan, organic compost, DAP, Rutuba Gold NPK, micro-dosing), *tilling*
+dimension, grouped as *fertilizer* (as the plan, organic compost, DAP, Lima NPK, micro-dosing), *tilling*
 (minimum tillage, deep ploughing), *sowing* (seed, spacing, seedbed: zai pits, tied ridges), *planting* (timing,
 mulching), *planning* (crop, rotation, season) and *farming habits* (check frequency, watering time, fertilizer
 timing). Every option has a cost, labour (person-days, 24 family days a farm, the rest hired), a payoff (the return
@@ -1545,10 +1549,39 @@ five. Farms 7 and 8 open on day 4, when every crop is open.
 
 ## The market stall
 
-Some of every harvest goes into the **store**: 3% of each six-farm harvest (maize, sukuma wiki), and everything Farms 7
-and 8 grow. The **Sell** stall (when the six farms' harvest is not waiting to be sold) opens the market stall
-(`#/market`): up to **25 kg a day** in all, at a price a kg for each crop. Fresh produce wilts 4% a night in a store
-without the power system's cold room. `src/produce/model.ts`.
+Some of every harvest goes into the **store**: 3% of each six-farm harvest (maize, sukuma wiki), a quarter of the beans
+grown between the maize rows, and everything Farms 7 and 8 grow. The game starts with last season's harvest in it (60 kg
+maize, 20 kg dry beans, 12 kg sukuma wiki), so the stall sells from day 1. The **Sell** stall (when the six farms'
+harvest is not waiting to be sold) opens the market stall (`#/market`): up to **25 kg a day** in all, at a price a kg
+for each crop. Fresh produce wilts 4% a night in a store without the power system's cold room. `src/produce/model.ts`.
+
+**The daily sales cycle.** Every day the stall sells 25 kg. The farmer can choose what (*Sell today*); whatever of the
+day's 25 kg is left is sold for them when the day ends, a share of everything in the store, so a day's sale is a mix
+(say 15 kg maize, 5 kg beans, 5 kg sukuma wiki). The money goes into the wallet, the morning says what sold and its
+**profit** over what the food cost to grow (`PRODUCE[id].cost`), and *Sales* lists every day. *Daily selling* can be
+turned off on the page.
+
+## The restaurant
+
+A small kiosk with a green and yellow awning stands beside the Sell stall; its white square (**Eat**) opens the
+restaurant (`#/market/restaurant`, or *Restaurant* in the main menu). The farmer packages food from the store as
+meals: **ugali na sukuma wiki**, **githeri** (maize and beans), **ugali na spinach**, **ugali with beans and French
+beans**, **cabbage and bean stew**, **kachumbari**, **fruit salad** and **watermelon juice** (`src/produce/restaurant.ts`:
+the food in a plate, its price and the cooking: fuel, oil, salt, the cook). It serves up to **30 plates a day**. Each
+dish shows what a plate gives (energy, protein, fibre, iron, calcium, vitamins A and C, as a share of a day's need),
+what the batch earns and its profit, and how much more that is than selling the same food raw at the stall.
+
+## Nutrition
+
+Every crop the farm grows carries small **nutrition markers**: its food group (maize an *energy food*, beans a
+*body-building food*, leaves, vegetables and fruit *protective foods*) and what 100 g gives of an adult's daily need of
+the nutrients it is best for (maize: energy and fibre; dry beans: protein and iron; sukuma wiki: vitamins C and A and
+calcium; cabbage: vitamin C…). They are on the seeds at the shed and on Farms 7 and 8, on the six farms as they grow
+(Mission), on the store at the stall, and on every plate at the restaurant. At harvest the game says how many people
+the food feeds for a day (a Farm 7/8 harvest, and a *Feeds* row in the six farms' results). The **Nutrition** section
+of the market page (`#/market/nutrition`) puts every crop side by side, the best of each nutrient starred, with a
+crop's whole nutrition and what everything in the store would feed. The numbers (`src/nutrition/data.ts`) are rounded
+from the Kenya Food Composition Tables 2018 and USDA FoodData Central, for teaching; a nutritionist can review them there.
 
 ## Farms 7 and 8
 
@@ -1557,7 +1590,8 @@ day 4: `GARDEN.openDay`). At a farm's sign a button says what it needs: *Plant*,
 (`src/garden/model.ts`): **spinach** (cut every 2 days), **tomatoes**, **French beans**, **onions**, **watermelon** and a
 **fruit orchard** (avocado and mango: fruit every 3 days, and the trees store carbon). Planting is a mini-game (tap
 every planting hole), and so is the harvest (pick the ripe ones, leave the green ones). An unwatered day costs 15% of
-the crop's health, unless the solar drip is on. The harvest goes into the store for the market stall.
+the crop's health, unless the solar drip is on. The harvest goes into the store for the market stall, and the page says how
+many people it feeds. **Cabbage** grows here too, beside the sukuma wiki of the six farms, to compare their nutrition.
 
 ## Mini-games
 
@@ -1683,31 +1717,31 @@ each. To sign a partner, add or edit its brand and put its id on the slots it bo
 
 | Slot | Where | Brand now |
 | --- | --- | --- |
-| Billboards (4) | 3D farm: two in the yard either side of the farmhouse path, one by the seed shed, one between Farm 8 and the mini forest; walk up to one and a *See offer* tag appears | Rutuba Gold, Kinga Cover, Shina Seeds, Tangi Tanks |
+| Billboards (4) | 3D farm: two in the yard either side of the farmhouse path, one by the seed shed, one between Farm 8 and the mini forest; walk up to one and a *See offer* tag appears | Lima Fertilizer, Lima Insurance, Lima Seeds, Lima Tanks |
 | Tractor livery | 3D farm: the partner's name on the bonnet and both sides of the tractor | Hello Tractor |
 | Market stall awning | 3D farm | *Available* |
 | Roadside sign | Classic farm: each partner in turn, every 6 seconds (or one brand, if it buys the slot) | All partners |
-| Branded fertilizer | Shop › Buy Fertilizer: *Rutuba Gold NPK*, 10% under the plain NPK; it does the NPK task's job | Rutuba Gold |
-| Branded tank | Shop › Buy Tank: a 5,000 L tank | Tangi Tanks |
+| Branded fertilizer | Shop › Buy Fertilizer: *Lima NPK*, 10% under the plain NPK; it does the NPK task's job | Lima Fertilizer |
+| Branded tank | Shop › Buy Tank: a 5,000 L tank | Lima Tanks |
 | Branded tool | Shop › Buy Equipment | *Available* |
-| Voucher sponsors | Rewards & Discounts Hub: "with <brand>" on each voucher | Rutuba Gold, Shina Seeds, Hello Tractor, JuaPower Solar, PesaShamba |
-| Loan quotes | Loan calculator and quote | PesaShamba |
-| Courses | Training | Ujuzi Agri Academy |
-| Certification | My Progress: the journey, the modules and every certificate | Ujuzi Agri Academy |
-| Crop cover | Climate › Shocks | Kinga Cover |
-| Progress sponsor | The PROGRESS button | Ujuzi Agri Academy |
+| Voucher sponsors | Rewards & Discounts Hub: "with <brand>" on each voucher | Lima Fertilizer, Lima Seeds, Hello Tractor, Lima Solar, Lima Credit |
+| Loan quotes | Loan calculator and quote | Lima Credit |
+| Courses | Training | Lima Training |
+| Certification | My Progress: the journey, the modules and every certificate | Lima Training |
+| Crop cover | Climate › Shocks | Lima Insurance |
+| Progress sponsor | The PROGRESS button | Lima Training |
 
 - **The billboards** (`BILLBOARDS` in `src/world/engine.ts`, built by `makeBillboard` and `billboardTexture` in
   `src/world/models.ts`) are premium roadside boards: one gunmetal pole on a concrete footing, a dark cabinet in a
   gold frame with a *★ Partner ★* plaque on top, a catwalk with a rail and three lamps, and the head tilted back a
   little so the face reads from the farm camera. The face is the brand's colours in a deep gradient with a sheen:
-  its mark in a ringed medallion, the category, name and tagline, the offer in a pill (*10% off Rutuba Gold NPK*),
+  its mark in a ringed medallion, the category, name and tagline, the offer in a pill (*10% off Lima NPK*),
   and a foot bar (*Official TemoLima partner* · *Tap for the offer*). Every few seconds a band of light sweeps across
   each face; at night the lamps glow and the boards stay lit. Each board is turned a little toward the path, and
   only its pole blocks the farmer. The *See offer* tag over a board is dark glass with a gold rim and chip. The face
   is redrawn once the Poppins font has loaded.
-- **Sample brands.** Hello Tractor is the game's tractor partner. Every other brand (Rutuba Gold, Shina Seeds,
-  Tangi Tanks, PesaShamba, Kinga Cover, JuaPower Solar, Ujuzi Agri Academy) is made up for the game
+- **Sample brands.** Hello Tractor is the game's tractor partner. Every other brand (Lima Fertilizer, Lima Seeds,
+  Lima Tanks, Lima Credit, Lima Insurance, Lima Solar, Lima Training) is made up for the game
   (`sample: true`) and stands in until a real partner signs; no real company is named or implied.
 - **The Partners page** (Main menu → *Partners & offers*; every billboard, sign and "with <brand>" line opens it at
   that brand, with its offer open): *Offers* lists each brand's offer (and a *Visit* link for brands with a web
@@ -1878,6 +1912,7 @@ Some tests use no browser: they call the game's rules directly.
 | `achievements.spec.ts`, `progress.spec.ts`, `success.spec.ts` | badges, the streak and certificates; My Progress and partners; the success dialogs, training and the loan quote |
 | `frame.spec.ts` | every screen keeps its boxes and buttons inside the rounded frame |
 | `onsite.spec.ts` | jobs done by hand: nothing paid until the last spot, refusals and dropping, every spot clear of the places, a right fix given by hand, the chores chip at the pen, a service round the tractor |
+| `nutrition.spec.ts` | each crop's nutrition; the daily sales cycle (25 kg a day, a mix, its profit, turned off); the restaurant's plates; harvests that say how many they feed; the restaurant, nutrition table and markers in the browser |
 | `unlock.spec.ts` | options that open as you grow: two on day 1, three on day 2, five on day 3 or Level 3, across every buying decision, and the power yard's picker |
 
 They run on every pull request (`.github/workflows/tests.yml`), with one retry on CI; the report and screenshots are

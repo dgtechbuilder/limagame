@@ -124,12 +124,11 @@ test('PARTNERS on the farm opens Partners; a way to partner goes on the shortlis
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await boot(page);
   await scenario(page, 'tractor');
-  // left of WATER, under PROGRESS
+  // on the left, under TRACTOR
   const btn = page.locator('.hud-partners');
-  const [b, water, progress] = [await btn.boundingBox(), await page.locator('.hud-water').boundingBox(), await page.locator('.hud-progress').boundingBox()];
-  expect(Math.abs(b!.y - water!.y)).toBeLessThan(6);
-  expect(water!.x).toBeGreaterThan(b!.x + b!.width - 4);
-  expect(Math.abs(b!.x - progress!.x)).toBeLessThan(6);
+  const [b, tractor] = [await btn.boundingBox(), await page.locator('.hud-tractor').boundingBox()];
+  expect(Math.abs(b!.x - tractor!.x)).toBeLessThan(6);
+  expect(b!.y).toBeGreaterThan(tractor!.y + tractor!.height - 4);
   await btn.click();
   await expect(dialog(page)).toBeVisible();
   expect(await hash(page)).toBe('#/partners/offers');
@@ -171,7 +170,7 @@ test('See it in the game opens the screen a way to partner is about', async ({ p
   await type(page, '#/partners/partner-with-us');
   await dialog(page).locator('.pj-card', { hasText: 'Fertilizer brand' }).click();
   const sheet = page.getByRole('dialog', { name: 'Fertilizer brand' });
-  await expect(sheet.getByText(/Held today by Rutuba Gold/)).toBeVisible();
+  await expect(sheet.getByText(/Held today by Lima Fertilizer/)).toBeVisible();
   await sheet.getByRole('button', { name: 'Open the fertilizer shop ›' }).click();
   await expect.poll(() => hash(page)).toBe('#/shop/fertilizer');
 });
