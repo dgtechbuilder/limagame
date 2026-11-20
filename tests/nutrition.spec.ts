@@ -6,7 +6,7 @@ import { achClock } from '../src/achievements/track';
 import { MARKET, START_STORE, daySale, produceOf, profitOf } from '../src/produce/model';
 import { DISHES, RESTAURANT, dishOf, quote } from '../src/produce/restaurant';
 import { FOODS, nutritionOf, peopleDays, harvestLine } from '../src/nutrition/data';
-import { GARDEN, gardenOf } from '../src/garden/model';
+import { GREENHOUSE, greenhouseOf } from '../src/greenhouse/model';
 import { lifeOf, type LifeState } from '../src/livestock/model';
 import { walletOf } from '../src/wallet/model';
 import { newTrial, COMMON_PLAN } from '../src/trials/model';
@@ -28,10 +28,13 @@ test('every crop has its nutrition: maize is energy, beans protein, dark leaves 
   // dry beans have well over twice the protein of maize, and three times the iron
   expect(FOODS.drybeans.per100.protein).toBeGreaterThan(FOODS.maize.per100.protein * 2);
   expect(FOODS.drybeans.per100.iron).toBeGreaterThan(FOODS.maize.per100.iron * 3);
-  // maize is the energy food; sukuma wiki has far more vitamin A and calcium than cabbage
+  // maize is the energy food; sukuma wiki has far more vitamin A and calcium than cucumber; chillies and capsicum
+  // are the vitamin C crops of the greenhouse
   expect(FOODS.maize.per100.energy).toBeGreaterThan(FOODS.sukuma.per100.energy * 5);
-  expect(FOODS.sukuma.per100.vitA).toBeGreaterThan(FOODS.cabbage.per100.vitA * 20);
-  expect(FOODS.sukuma.per100.calcium).toBeGreaterThan(FOODS.cabbage.per100.calcium * 3);
+  expect(FOODS.sukuma.per100.vitA).toBeGreaterThan(FOODS.cucumber.per100.vitA * 20);
+  expect(FOODS.sukuma.per100.calcium).toBeGreaterThan(FOODS.cucumber.per100.calcium * 3);
+  expect(FOODS.chillies.strong[0]).toBe('vitC');
+  expect(FOODS.capsicum.per100.vitC).toBeGreaterThan(FOODS.tomatoes.per100.vitC * 5);
   expect(FOODS.maize.strong[0]).toBe('energy');
   expect(FOODS.drybeans.strong[0]).toBe('protein');
   // a kg of maize: 3,650 kcal, nearly two adults' energy for a day
@@ -83,7 +86,7 @@ test('the daily sales cycle: when a day ends the stall sells the day’s 25 kg, 
 
 test('the restaurant cooks the store into meals: more money than selling the food raw, 30 plates a day', () => {
   day = '2026-11-15';
-  let s = onDay(5, {}, { produce: { store: { maize: 10, drybeans: 3, tomatoes: 2, onions: 1 } } });
+  let s = onDay(5, {}, { produce: { store: { maize: 10, drybeans: 3, tomatoes: 2, capsicum: 1 } } });
   const coins = s.coins;
   s = act(s, { type: 'restaurantCook', dish: 'githeri', plates: 10 });
   let p = produceOf(s.produce);
@@ -103,19 +106,19 @@ test('the restaurant cooks the store into meals: more money than selling the foo
   expect(s.toast?.text).toMatch(/come back tomorrow/);
   // food the store does not have
   s = act({ ...s, life: { ...lifeOf(s.life), day: 6 } }, { type: 'restaurantCook', dish: 'juice', plates: 5 });
-  expect(s.toast?.text).toMatch(/Not enough in the store.*watermelon/);
+  expect(s.toast?.text).toMatch(/Not enough in the store.*strawberries/);
   expect(walletOf(s.wallet).entries.some(x => x.kind === 'produce')).toBe(true);
 });
 
-test('a new farm’s harvest says how many people it feeds; cabbage grows there too', () => {
-  let s = onDay(GARDEN.openDay);
-  s = act(s, { type: 'gardenPlant', farm: 1, crop: 'cabbage', score: 1 });
-  const f = gardenOf(s.garden).farms[1];
-  expect(f.crop).toBe('cabbage');
-  s = act({ ...s, life: { ...lifeOf(s.life), day: f.ready } }, { type: 'gardenWater', farm: 1 }, { type: 'gardenHarvest', farm: 1, score: 1 });
-  expect(s.toast?.text).toMatch(/kg of cabbage into the store · a day’s vitamin c for [\d,]+ people/);
-  expect(produceOf(s.produce).store.cabbage).toBeGreaterThan(100);
-  expect(gardenOf(s.garden).last).toMatchObject({ farm: 1, crop: 'cabbage', day: f.ready });
+test('a greenhouse pick says how many people it feeds', () => {
+  let s = onDay(GREENHOUSE.openDay);
+  s = act(s, { type: 'ghPlant', bed: 1, crop: 'capsicum', score: 1 });
+  const b = greenhouseOf(s.greenhouse).beds[1];
+  expect(b.crop).toBe('capsicum');
+  s = act({ ...s, life: { ...lifeOf(s.life), day: b.ready } }, { type: 'ghWater', bed: 1 }, { type: 'ghHarvest', bed: 1, score: 1 });
+  expect(s.toast?.text).toMatch(/kg of capsicum into the storehouse · a day’s vitamin c for [\d,]+ people/);
+  expect(produceOf(s.produce).store.capsicum).toBeGreaterThan(20);
+  expect(greenhouseOf(s.greenhouse).log[0]).toMatchObject({ bed: 1, crop: 'capsicum', day: b.ready });
 });
 
 test('the six farms’ harvest keeps maize, and the beans grown between the rows, in the store', () => {
@@ -129,7 +132,7 @@ test('the six farms’ harvest keeps maize, and the beans grown between the rows
 test('the restaurant beside the stall, the nutrition table and the markers on the seeds, in the browser', async ({ page }) => {
   await boot(page);
   await page.evaluate(() =>
-    (window as unknown as Win).__lima.jump({ view: 'world', coins: 50_000, life: { day: 5, date: null, started: 2 }, produce: { store: { maize: 40, drybeans: 12, sukuma: 10, tomatoes: 5, onions: 3 } } } as never),
+    (window as unknown as Win).__lima.jump({ view: 'world', coins: 50_000, life: { day: 5, date: null, started: 2 }, produce: { store: { maize: 40, drybeans: 12, sukuma: 10, tomatoes: 5, capsicum: 3 } } } as never),
   );
   await page.waitForFunction(() => !!(window as unknown as Win).__limaWorld);
   // walk to the restaurant beside the stall and open it
@@ -151,7 +154,7 @@ test('the restaurant beside the stall, the nutrition table and the markers on th
   await market.getByRole('button', { name: /Nutrition/ }).click();
   await expect(page).toHaveURL(/#\/market\/nutrition$/);
   const table = market.getByRole('table', { name: /Nutrition in 100 g/ });
-  await expect(table.getByRole('row')).toHaveCount(11);
+  await expect(table.getByRole('row')).toHaveCount(9);
   await table.getByRole('button', { name: /Dry beans/ }).click();
   await expect(market.locator('.nu-card').first()).toContainText('Dry beans');
   // the stall: the daily selling switch, and markers on every crop in the store
@@ -162,9 +165,9 @@ test('the restaurant beside the stall, the nutrition table and the markers on th
   // the sales: the restaurant's meals are there
   await market.getByRole('button', { name: 'Sales', exact: true }).click();
   await expect(market.getByRole('table', { name: /Meals sold/ })).toContainText('Githeri');
-  // the seeds on the new farms carry their markers
-  await page.evaluate(() => (window.location.hash = '#/new-farms/8'));
-  await expect(page.getByRole('dialog', { name: 'New farms' }).getByRole('note', { name: /Cabbage nutrition/ })).toBeVisible();
+  // the greenhouse's seedlings carry their markers
+  await page.evaluate(() => (window.location.hash = '#/greenhouse/bed-3'));
+  await expect(page.getByRole('dialog', { name: 'Greenhouse' }).getByRole('note', { name: /Cucumbers nutrition/ })).toBeVisible();
   // the addresses /restaurant and /nutrition open them too
   await page.evaluate(() => (window.location.hash = '#/nutrition'));
   await expect(page).toHaveURL(/#\/market\/nutrition$/);

@@ -24,7 +24,8 @@ const FinancePage = lazyPage(() => import('./finance/Finance').then(m => m.Finan
 const PowerPage = lazyPage(() => import('./power/Power').then(m => m.PowerPage), 1);
 const TractorGamePage = lazyPage(() => import('./minifarm/MiniFarm').then(m => m.TractorGamePage), 1);
 const MarketPage = lazyPage(() => import('./produce/Market').then(m => m.MarketPage), 1);
-const GardenPage = lazyPage(() => import('./garden/Garden').then(m => m.GardenPage), 1);
+const GreenhousePage = lazyPage(() => import('./greenhouse/Greenhouse').then(m => m.GreenhousePage), 1);
+const StorehousePage = lazyPage(() => import('./storehouse/Storehouse').then(m => m.StorehousePage), 1);
 const KakumaPage = lazyPage(() => import('./events/Kakuma').then(m => m.KakumaPage), 1);
 // design review (?review=1) only: its sample screens are computed when it is opened, never for players
 const ReviewPicker = lazy(() => import('./review/Review').then(m => ({ default: m.ReviewPicker })));
@@ -356,9 +357,14 @@ export default function App() {
             <TractorGamePage dispatch={dispatch} />
           </Suspense>
         )}
-        {m?.kind === 'garden' && (
-          <Suspense fallback={<ActivityLoading label="Opening the garden…" />}>
-            <GardenPage s={s} dispatch={dispatch} farm={m.farm} />
+        {m?.kind === 'greenhouse' && (
+          <Suspense fallback={<ActivityLoading label="Opening the greenhouse…" />}>
+            <GreenhousePage s={s} dispatch={dispatch} bed={m.bed} />
+          </Suspense>
+        )}
+        {m?.kind === 'storehouse' && (
+          <Suspense fallback={<ActivityLoading label="Opening the storehouse…" />}>
+            <StorehousePage s={s} dispatch={dispatch} tab={m.tab ?? 'store'} />
           </Suspense>
         )}
         {m?.kind === 'kakuma' && (

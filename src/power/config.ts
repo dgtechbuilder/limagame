@@ -7,7 +7,7 @@
 
    Once it is on, it runs every day: the panels make power by day, the battery keeps it for the night, the generator
    (with diesel) covers what is short. What it powers reaches the rest of the game: the water pump fills the tank and
-   drips the new farms, the milk cooler pays more for milk, the lights keep thieves off and the hens laying, the
+   drips the greenhouse, the milk cooler pays more for milk, the lights keep thieves off and the hens laying, the
    workshop makes tractor repairs cheaper, and the clean power counts for the climate. Money is stored money
    (src/money.ts: 1 = KSh 10); energy in kWh. */
 
@@ -139,7 +139,7 @@ export const POWER = {
   gridPrice: 2.5,
   /** what the system powers: kWh a day, and what it does for the farm */
   loads: {
-    pump: { kwh: 4, name: 'Water pump', does: 'Lifts pond water into the tank and drips the new farms' },
+    pump: { kwh: 4, name: 'Water pump', does: 'Lifts pond water into the tank and drips the greenhouse' },
     cooler: { kwh: 2.5, name: 'Milk cooler', does: 'Chilled milk fetches a better price at the dairy' },
     lights: { kwh: 1.5, name: 'Lights', does: 'Lights the yard at night: thieves keep away, hens lay more' },
     house: { kwh: 1.5, name: 'House', does: 'Lights, phone charging and a radio: no paraffin' },
@@ -151,7 +151,7 @@ export const POWER = {
   milkPremium: 0.2,
   eggBoost: 0.1,
   repairCut: 0.3,
-  /** drip irrigation on the new farms: they water themselves, with this share of the water */
+  /** drip irrigation in the greenhouse: its beds water themselves, with this share of the water */
   dripShare: 0.6,
   /** cooking: the share of the kitchen's emissions left with power in the house */
   cookingShare: 0.8,

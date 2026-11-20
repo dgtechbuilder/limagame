@@ -1,27 +1,49 @@
 /* The farm's store of produce, and the market stall. Some of every harvest (the six farms' maize, sukuma wiki and the
-   beans between the maize rows, and the new farms' spinach, cabbage, tomatoes, fruit…) goes into the store; each day
+   beans between the maize rows, and the greenhouse's tomatoes, capsicum, cucumbers, strawberries and chillies) goes
+   into the store (the storehouse, src/storehouse), where some of it can be made into sauce, jam, pickles or flour; each day
    the stall sells up to 25 kg of it, a day's price a kg. The farmer can choose what to sell; whatever of the day's
    25 kg is left is sold for them when the day ends (the daily sales cycle), so every day shows what the farm's
    harvests earn, and the profit over what the food cost to grow. The restaurant beside the stall (restaurant.ts)
    cooks some of the store into meals instead. No screens here (Market.tsx), so the saved game can use it. Money is
    stored money (src/money.ts: 1 = KSh 10). */
 
-export type ProduceId = 'maize' | 'drybeans' | 'sukuma' | 'cabbage' | 'spinach' | 'tomatoes' | 'beans' | 'onions' | 'fruit' | 'watermelon';
+export type ProduceId =
+  | 'maize'
+  | 'drybeans'
+  | 'sukuma'
+  | 'tomatoes'
+  | 'capsicum'
+  | 'cucumber'
+  | 'strawberries'
+  | 'chillies'
+  | 'sauce'
+  | 'jam'
+  | 'chillisauce'
+  | 'pickles'
+  | 'flour';
 
-/** price: a kg at the stall; cost: what a kg cost to grow (seed, fertilizer, water, labour), for the profit. */
-export const PRODUCE: Record<ProduceId, { name: string; icon: string; price: number; cost: number; fresh: boolean }> = {
+/** price: a kg at the stall; cost: what a kg cost to grow (seed, fertilizer, water, labour), for the profit; made: made
+    in the storehouse from a harvest (src/storehouse), its cost the food that went in and the making. */
+export const PRODUCE: Record<ProduceId, { name: string; icon: string; price: number; cost: number; fresh: boolean; made?: boolean }> = {
   maize: { name: 'Maize (dry grain)', icon: '🌽', price: 4.5, cost: 2.4, fresh: false },
   drybeans: { name: 'Dry beans', icon: '🫘', price: 12, cost: 6, fresh: false },
   sukuma: { name: 'Sukuma wiki', icon: '🥬', price: 4, cost: 1.6, fresh: true },
-  cabbage: { name: 'Cabbage', icon: '🥗', price: 3, cost: 1.2, fresh: true },
-  spinach: { name: 'Spinach', icon: '🥬', price: 5, cost: 2, fresh: true },
   tomatoes: { name: 'Tomatoes', icon: '🍅', price: 8, cost: 3.6, fresh: true },
-  beans: { name: 'French beans', icon: '🫛', price: 12, cost: 5.5, fresh: true },
-  onions: { name: 'Onions', icon: '🧅', price: 9, cost: 3.8, fresh: false },
-  fruit: { name: 'Avocados and mangoes', icon: '🥑', price: 10, cost: 4, fresh: true },
-  watermelon: { name: 'Watermelon', icon: '🍉', price: 4, cost: 1.5, fresh: true },
+  capsicum: { name: 'Capsicum', icon: '🫑', price: 12, cost: 5, fresh: true },
+  cucumber: { name: 'Cucumbers', icon: '🥒', price: 6, cost: 2.4, fresh: true },
+  strawberries: { name: 'Strawberries', icon: '🍓', price: 30, cost: 12, fresh: true },
+  chillies: { name: 'Chillies', icon: '🌶️', price: 20, cost: 8, fresh: true },
+  sauce: { name: 'Tomato sauce', icon: '🥫', price: 28, cost: 10.5, fresh: false, made: true },
+  jam: { name: 'Strawberry jam', icon: '🍯', price: 60, cost: 20, fresh: false, made: true },
+  chillisauce: { name: 'Chilli sauce', icon: '🌶️', price: 40, cost: 11.3, fresh: false, made: true },
+  pickles: { name: 'Cucumber pickles', icon: '🫙', price: 16, cost: 4.5, fresh: false, made: true },
+  flour: { name: 'Maize flour (unga)', icon: '🌾', price: 7, cost: 3.5, fresh: false, made: true },
 };
 export const PRODUCE_IDS = Object.keys(PRODUCE) as ProduceId[];
+/** What the farm grows (the rest is made from it in the storehouse). */
+export const CROP_IDS = PRODUCE_IDS.filter(id => !PRODUCE[id].made);
+/** A name for something in an old save that the farm no longer grows. */
+export const produceName = (id: string) => (PRODUCE as Record<string, { name: string } | undefined>)[id]?.name ?? id;
 
 export const MARKET = {
   /** kg the stall sells a day, in all */
@@ -36,6 +58,8 @@ export const MARKET = {
   coldPremium: 0.1,
   /** a fresh crop loses this share of its weight a day in the store without the cold room */
   wilt: 0.04,
+  /** the storehouse's shade and airflow (from the day it opens) halve that */
+  shadeWilt: 0.5,
   /** sales kept */
   keep: 60,
 };
@@ -97,7 +121,9 @@ export const newProduce = (): ProduceState => ({
 });
 export const produceOf = (p: Partial<ProduceState> | undefined): ProduceState => {
   const base = newProduce();
-  return { ...base, ...(p ?? {}), totals: { ...base.totals, ...(p?.totals ?? {}) }, kitchen: { ...base.kitchen, ...(p?.kitchen ?? {}) }, mealTotals: { ...base.mealTotals, ...(p?.mealTotals ?? {}) } };
+  // a save from before the greenhouse can hold crops the farm no longer grows (spinach, onions…): they are left out
+  const store = p?.store && Object.keys(p.store).some(k => !(k in PRODUCE)) ? (Object.fromEntries(Object.entries(p.store).filter(([k]) => k in PRODUCE)) as ProduceState['store']) : p?.store;
+  return { ...base, ...(p ?? {}), ...(store ? { store } : {}), totals: { ...base.totals, ...(p?.totals ?? {}) }, kitchen: { ...base.kitchen, ...(p?.kitchen ?? {}) }, mealTotals: { ...base.mealTotals, ...(p?.mealTotals ?? {}) } };
 };
 
 /** kg the stall can still sell today. */
@@ -193,11 +219,12 @@ export function daySale(p0: Partial<ProduceState> | undefined, day: number, date
   return record(p, store, sold, kg, earned, day, date, true);
 }
 
-/** A night in the store: fresh produce wilts without the cold room. */
-export function storeNight(p0: Partial<ProduceState> | undefined, cold: boolean): ProduceState {
+/** A night in the store: fresh produce wilts without the cold room (half as much in the storehouse's shade). */
+export function storeNight(p0: Partial<ProduceState> | undefined, cold: boolean, shaded = false): ProduceState {
   const p = produceOf(p0);
   if (cold) return p;
   const store = { ...p.store };
-  for (const id of PRODUCE_IDS) if (PRODUCE[id].fresh && store[id]) store[id] = Math.max(0, Math.round(store[id]! * (1 - MARKET.wilt) * 10) / 10);
+  const wilt = MARKET.wilt * (shaded ? MARKET.shadeWilt : 1);
+  for (const id of PRODUCE_IDS) if (PRODUCE[id].fresh && store[id]) store[id] = Math.max(0, Math.round(store[id]! * (1 - wilt) * 10) / 10);
   return { ...p, store };
 }

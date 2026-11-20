@@ -62,7 +62,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [The market stall](#the-market-stall)
 - [The restaurant](#the-restaurant)
 - [Nutrition](#nutrition)
-- [Farms 7 and 8](#farms-7-and-8)
+- [The greenhouse and the storehouse](#the-greenhouse-and-the-storehouse)
 - [Mini-games](#mini-games)
 - [The tractor game: the mini farm](#the-tractor-game-the-mini-farm)
 - [Achievements, the daily streak and certificates](#achievements-the-daily-streak-and-certificates)
@@ -97,7 +97,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 | **From day 2** | Looks after the **cows and hens** every day (feed, water, milk, eggs, cleaning), treats their diseases by their signs, and **keeps the farm safe from thieves** at night. |
 | **Days 1 to 7** | **Builds a solar power system**, one part a day, each with its own mini-game: panels, inverter, battery, lights, generator, diesel, then switches it on. It powers the pump, the milk cooler, the lights, the house and the workshop. |
 | **Day 1 · day 3** | **Upgrades the chicken coop** (day 1) and **the cow shed** (day 3), nail by nail. |
-| **From day 4** | Plants **Farms 7 and 8**: spinach, cabbage, tomatoes, French beans, onions, watermelon or a fruit orchard. |
+| **From day 4** | Plants the **greenhouse**'s four beds (tomatoes, capsicum, cucumbers, strawberries, chillies) and makes sauce, jam, pickles or flour in the **storehouse**. |
 | **Every day** | The **market stall** sells **25 kg** of the store (maize, beans, sukuma wiki…): the farmer picks, or the day's sale is made for them each evening, with its profit. The **restaurant** beside it cooks the store into meals. Every crop shows its **nutrition**. Every payment in and out is kept in the **Wallet**. |
 | **Any time** | Taps **TRACTOR** to train, learn, check, service, repair, refuel, hire or drive the tractor (each a mini-game). |
 
@@ -183,11 +183,12 @@ src/
   power/                   the solar power system: config.ts (every number), model.ts (a day of power), Power.tsx
   produce/                 the store, the market stall (25 kg a day) and the restaurant: model.ts, restaurant.ts, Market.tsx
   nutrition/               what each crop gives the people who eat it: data.ts (every number), Nutri.tsx (the markers)
-  garden/                  Farms 7 and 8 (spinach, orchard…): model.ts, Garden.tsx
+  greenhouse/              the greenhouse where Farm 7 was (four beds under glass): model.ts, Greenhouse.tsx
+  storehouse/              the storehouse where Farm 8 was (store, harvest, produce): model.ts, Storehouse.tsx
   systems/track.ts         the newer systems through the days: power, gutters, drip, wilting, tractor wear, morning news
   minigames/MiniGame.tsx   the mini-games: timing, hold-to-fill, tap the spots, wires, order, quiz, aim, steer, balance
   minifarm/                the tractor game: sim.ts (the rules, no DOM), MiniFarm.tsx (the page and its canvas)
-  components/Page.tsx      a page with sections down the left (Wallet, Power, Market, New farms, Tractor)
+  components/Page.tsx      a page with sections down the left (Wallet, Power, Market, Greenhouse, Storehouse, Tractor)
   training/data.ts         farmer training courses and bookings
   learn/                   Farm words: glossary.ts (every word, the sections, the Farm basics lessons, termFor),
                            Info.tsx (the ⓘ button and the card it opens), Glossary.tsx (the page), Basics.tsx
@@ -1451,8 +1452,8 @@ player there.
 the battery carries it into the night, the generator burns diesel for what is short. What it powers reaches the rest
 of the game:
 
-- **Water**: the solar pump lifts up to 600 L a day from the pond into the tank, and drips Farms 7 and 8 with 60% of the
-  water (they need no watering by hand).
+- **Water**: the solar pump lifts up to 600 L a day from the pond into the tank, and drips the greenhouse's beds with 60%
+  of the water (they need no watering by hand).
 - **Climate**: clean power counts as credits (0.7 kg CO₂ avoided a kWh), paid with the day's climate payment; the
   generator's diesel counts as emissions. Pumping and cooking count as solar (`hasSolar`).
 - **Profit**: chilled milk sells for 20% more (the milk cooler), lit coops lay 10% more eggs, the cold room keeps
@@ -1559,12 +1560,12 @@ Crop cover's plans set what it pays back, of which shocks, and its premium.
 
 Seeds already had six options; the sixth (close spacing, which shows why spacing matters) opens with the others on
 day 3. Security's ten measures are add-ons, not alternatives, so they open by the same rule rather than being cut to
-five. Farms 7 and 8 open on day 4, when every crop is open.
+five. The greenhouse and the storehouse open on day 4, when every crop is open.
 
 ## The market stall
 
 Some of every harvest goes into the **store**: 3% of each six-farm harvest (maize, sukuma wiki), a quarter of the beans
-grown between the maize rows, and everything Farms 7 and 8 grow. The game starts with last season's harvest in it (60 kg
+grown between the maize rows, and every pick from the greenhouse. The store lives in the **storehouse**. The game starts with last season's harvest in it (60 kg
 maize, 20 kg dry beans, 12 kg sukuma wiki), so the stall sells from day 1. The **Sell** stall (when the six farms'
 harvest is not waiting to be sold) opens the market stall (`#/market`): up to **25 kg a day** in all, at a price a kg
 for each crop. Fresh produce wilts 4% a night in a store without the power system's cold room. `src/produce/model.ts`.
@@ -1579,8 +1580,9 @@ turned off on the page.
 
 A small kiosk with a green and yellow awning stands beside the Sell stall; its white square (**Eat**) opens the
 restaurant (`#/market/restaurant`, or *Restaurant* in the main menu). The farmer packages food from the store as
-meals: **ugali na sukuma wiki**, **githeri** (maize and beans), **ugali na spinach**, **ugali with beans and French
-beans**, **cabbage and bean stew**, **kachumbari**, **fruit salad** and **watermelon juice** (`src/produce/restaurant.ts`:
+meals: **ugali na sukuma wiki**, **githeri** (maize and beans), **ugali and bean stew** (with the storehouse's flour
+and tomato sauce), **capsicum and tomato stew**, **kachumbari**, a **strawberry cup** and **strawberry and cucumber
+juice** (`src/produce/restaurant.ts`:
 the food in a plate, its price and the cooking: fuel, oil, salt, the cook). It serves up to **30 plates a day**. Each
 dish shows what a plate gives (energy, protein, fibre, iron, calcium, vitamins A and C, as a share of a day's need),
 what the batch earns and its profit, and how much more that is than selling the same food raw at the stall.
@@ -1590,22 +1592,46 @@ what the batch earns and its profit, and how much more that is than selling the 
 Every crop the farm grows carries small **nutrition markers**: its food group (maize an *energy food*, beans a
 *body-building food*, leaves, vegetables and fruit *protective foods*) and what 100 g gives of an adult's daily need of
 the nutrients it is best for (maize: energy and fibre; dry beans: protein and iron; sukuma wiki: vitamins C and A and
-calcium; cabbage: vitamin C…). They are on the seeds at the shed and on Farms 7 and 8, on the six farms as they grow
+calcium; capsicum and chillies: vitamin C…). They are on the seeds at the shed and in the greenhouse, on the six farms as they grow
 (Mission), on the store at the stall, and on every plate at the restaurant. At harvest the game says how many people
-the food feeds for a day (a Farm 7/8 harvest, and a *Feeds* row in the six farms' results). The **Nutrition** section
-of the market page (`#/market/nutrition`) puts every crop side by side, the best of each nutrient starred, with a
+the food feeds for a day (a greenhouse pick, and a *Feeds* row in the six farms' results). The **Nutrition** section
+of the market page (`#/market/nutrition`) puts every crop side by side (not what the storehouse makes from them), the best of each nutrient starred, with a
 crop's whole nutrition and what everything in the store would feed. The numbers (`src/nutrition/data.ts`) are rounded
 from the Kenya Food Composition Tables 2018 and USDA FoodData Central, for teaching; a nutritionist can review them there.
 
-## Farms 7 and 8
+## The greenhouse and the storehouse
 
-Two new farms, 4 × 3 tiles, at the bottom of the farm either side of the market path, open **after day 3** (from farm
-day 4: `GARDEN.openDay`). At a farm's sign a button says what it needs: *Plant*, *Water*, *Harvest*. Crops
-(`src/garden/model.ts`): **spinach** (cut every 2 days), **tomatoes**, **French beans**, **onions**, **watermelon** and a
-**fruit orchard** (avocado and mango: fruit every 3 days, and the trees store carbon). Planting is a mini-game (tap
-every planting hole), and so is the harvest (pick the ripe ones, leave the green ones). An unwatered day costs 15% of
-the crop's health, unless the solar drip is on. The harvest goes into the store for the market stall, and the page says how
-many people it feeds. **Cabbage** grows here too, beside the sukuma wiki of the six farms, to compare their nutrition.
+Farms 7 and 8 are gone. Where they stood, at the bottom of the farm either side of the market path, stand two
+see-through buildings that open **after day 3** (from farm day 4: `GREENHOUSE.openDay`). Each has a white square at
+its door (**Grow**, **Store**); its button opens the building's page.
+
+**The greenhouse** (`src/greenhouse`, `#/greenhouse/bed-1` to `bed-4`), left of the path: glass walls and a glass roof
+over **four raised beds**, each laid out for a different crop (bed 1 tomatoes, bed 2 capsicum, bed 3 cucumbers, bed 4
+strawberries), though any bed grows any of the five crops that do best under glass: **tomatoes**, **capsicum**,
+**cucumbers**, **strawberries** and **chillies**. The glass keeps off the rain, the cold nights and most pests, so a
+bed is picked again and again (every 2 or 3 days, 4 to 8 picks) until its plants are spent and it is planted again. No
+rain falls on it, so every bed is watered every day (*Water all* on the page), or the solar drip does it. An
+unwatered day costs 15% of a bed's health. Planting is a mini-game (tap every planting hole), and so is picking (the
+ripe ones, not the green ones). Badges over the beds on the farm show what each needs (plant, water, pick), and the
+button at the door says it too ("1 to pick · 2 to water"). Every pick goes into the store, and the page says how many
+people it feeds. The beds grow on the farm, through the glass, as the crops do.
+
+**The storehouse** (`src/storehouse`, `#/storehouse/store`, `/harvest`, `/produce`), right of the path, its door on
+the lane: a wooden plinth, glass walls and a clear roof, so its shelves show from the farm: a crate for every 15 kg of
+fresh produce, sacks for the dry grain and beans, jars of what it makes. Three sections:
+
+- **Store**: everything the farm keeps (the store the market stall sells from), what it is worth at the stall today,
+  and what will wilt tonight. Its shade and airflow halve the wilting (2% a night instead of 4%; `MARKET.shadeWilt`);
+  the cold room still stops it.
+- **Harvest**: the greenhouse's beds, with the ripe ones picked straight onto the shelves, and every pick brought in.
+- **Produce**: value addition. Up to **4 batches a day** of **tomato sauce** (10 kg tomatoes → 4 kg), **strawberry
+  jam** (5 kg → 4 kg), **chilli sauce** (3 kg → 3 kg), **cucumber pickles** (8 kg → 6 kg) or **maize flour** (20 kg →
+  16 kg), each a mini-game (the steps in order: wash, chop, cook down, fill the hot jars, seal and label…). A batch
+  costs a little for jars, sugar, vinegar or the mill; what it makes keeps for months and is worth more at the stall
+  than the food raw (`quoteMake`). Made food goes into the store and sells at the stall like the rest.
+
+A save from before keeps its money and its store; crops the farm no longer grows (spinach, onions…) are left out of the
+store, and the old addresses (`#/new-farms/7`, `/8`) open the greenhouse and the storehouse.
 
 ## Mini-games
 
@@ -1656,7 +1682,7 @@ Tests: `tests/minifarm-sim.spec.ts` (the rules) and `tests/minifarm.spec.ts` (th
 The first session (creating the farmer, the story, the walk to the maize, the checks) is played on a **picture of the
 3D farm itself**, taken from above on the first day (`public/assets/bg-world.webp` and `@2x`; `FarmWorld.setOverview`
 frames it). The walk routes, the beds, the mist and the labels are points of the 3D farm projected onto the picture
-(`src/first/Village.tsx`): the maize is Farm 1, the sukuma wiki Farm 2, the tomatoes Farm 8. To take the picture
+(`src/first/Village.tsx`): the maize is Farm 1, the sukuma wiki Farm 2, the tomatoes at the bottom right (the picture was taken before the storehouse stood there). To take the picture
 again, run the game with `?dev`, set up the first day and call `__limaWorld.setOverview({ x: -1, z: 1, h: 31, back: 19,
 capture: true })`.
 
@@ -1731,7 +1757,7 @@ each. To sign a partner, add or edit its brand and put its id on the slots it bo
 
 | Slot | Where | Brand now |
 | --- | --- | --- |
-| Billboards (4) | 3D farm: two in the yard either side of the farmhouse path, one by the seed shed, one between Farm 8 and the mini forest; walk up to one and a *See offer* tag appears | Lima Fertilizer, Lima Insurance, Lima Seeds, Lima Tanks |
+| Billboards (4) | 3D farm: two in the yard either side of the farmhouse path, one by the seed shed, one between the storehouse and the mini forest; walk up to one and a *See offer* tag appears | Lima Fertilizer, Lima Insurance, Lima Seeds, Lima Tanks |
 | Tractor livery | 3D farm: the partner's name on the bonnet and both sides of the tractor | Hello Tractor |
 | Market stall awning | 3D farm | *Available* |
 | Roadside sign | Classic farm: each partner in turn, every 6 seconds (or one brand, if it buys the slot) | All partners |

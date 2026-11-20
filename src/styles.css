@@ -2852,7 +2852,7 @@ a.ach-claim.pj-mail { display: inline-flex; align-items: center; text-decoration
 .mg-score b { font-size: 18px; }
 
 /* ================================================================== */
-/* Pages with sections: Wallet, Power, Market, the new farms, tractor   */
+/* Pages with sections: Wallet, Power, Market, greenhouse, storehouse  */
 /* ================================================================== */
 .pg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .pg-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px; }

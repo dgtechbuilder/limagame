@@ -1,5 +1,5 @@
 /* The mini restaurant beside the market stall: the farmer packages food from the store as meals (ugali na sukuma
-   wiki, githeri, fruit salad…), cooks a few plates and sells them to the stall's customers. A plate fetches more than
+   wiki, githeri, kachumbari, strawberries…), cooks a few plates and sells them to the stall's customers. A plate fetches more than
    its food would raw, after the cooking costs (fuel, oil, salt, labour), and every dish shows what a plate gives the
    person who eats it (src/nutrition). No screens here (Market.tsx), so the saved game can use it. Money is stored money
    (src/money.ts: 1 = KSh 10). */
@@ -7,7 +7,7 @@
 import { nutritionOf, type Nutrition } from '../nutrition/data';
 import { MARKET, PRODUCE, growCost, produceOf, rawValue, type MealSale, type ProduceId, type ProduceState } from './model';
 
-export type DishId = 'ugali-sukuma' | 'githeri' | 'ugali-spinach' | 'beans-ugali' | 'cabbage-beans' | 'kachumbari' | 'fruit-salad' | 'juice';
+export type DishId = 'ugali-sukuma' | 'githeri' | 'beans-ugali' | 'pepper-stew' | 'kachumbari' | 'strawberry-cup' | 'juice';
 
 export interface Dish {
   id: DishId;
@@ -24,14 +24,13 @@ export interface Dish {
 }
 
 export const DISHES: Dish[] = [
-  { id: 'ugali-sukuma', name: 'Ugali na sukuma wiki', icon: '🍽️', what: 'Maize ugali with fried sukuma wiki, tomato and onion: energy plus vitamins A and C.', plate: { maize: 0.2, sukuma: 0.15, tomatoes: 0.03, onions: 0.02 }, price: 9, cooking: 3 },
-  { id: 'githeri', name: 'Githeri', icon: '🍲', what: 'Maize and beans boiled together with tomato and onion: a complete protein in one pot.', plate: { maize: 0.15, drybeans: 0.1, tomatoes: 0.05, onions: 0.03 }, price: 10, cooking: 3 },
-  { id: 'ugali-spinach', name: 'Ugali na spinach', icon: '🥘', what: 'Ugali with spinach stewed in tomato: the most vitamin A and iron of any plate.', plate: { maize: 0.2, spinach: 0.15, tomatoes: 0.03, onions: 0.02 }, price: 9, cooking: 3 },
-  { id: 'beans-ugali', name: 'Ugali, beans and French beans', icon: '🫘', what: 'Ugali with bean stew and green French beans: protein, iron and fibre.', plate: { maize: 0.2, drybeans: 0.08, beans: 0.08, tomatoes: 0.03 }, price: 11, cooking: 3.5 },
-  { id: 'cabbage-beans', name: 'Cabbage and bean stew', icon: '🥗', what: 'Cabbage fried with beans, tomato and onion: cheap, filling and full of fibre.', plate: { cabbage: 0.15, drybeans: 0.08, tomatoes: 0.04, onions: 0.02 }, price: 8, cooking: 2.5 },
-  { id: 'kachumbari', name: 'Kachumbari', icon: '🍅', what: 'Fresh tomato and onion salad: vitamin C beside any meal.', plate: { tomatoes: 0.12, onions: 0.04 }, price: 4, cooking: 1 },
-  { id: 'fruit-salad', name: 'Fruit salad', icon: '🥑', what: 'Avocado, mango and watermelon in a cup: vitamins and healthy fat.', plate: { fruit: 0.15, watermelon: 0.15 }, price: 6, cooking: 1 },
-  { id: 'juice', name: 'Watermelon juice', icon: '🍉', what: 'A big cup of fresh watermelon juice.', plate: { watermelon: 0.35 }, price: 5, cooking: 1.5 },
+  { id: 'ugali-sukuma', name: 'Ugali na sukuma wiki', icon: '🍽️', what: 'Maize ugali with fried sukuma wiki, tomato and capsicum: energy plus vitamins A and C.', plate: { maize: 0.2, sukuma: 0.15, tomatoes: 0.03, capsicum: 0.02 }, price: 9, cooking: 3 },
+  { id: 'githeri', name: 'Githeri', icon: '🍲', what: 'Maize and beans boiled together with tomato and capsicum: a complete protein in one pot.', plate: { maize: 0.15, drybeans: 0.1, tomatoes: 0.05, capsicum: 0.03 }, price: 10, cooking: 3 },
+  { id: 'beans-ugali', name: 'Ugali and bean stew', icon: '🫘', what: 'Ugali from the storehouse’s flour with a bean stew in tomato sauce: protein, iron and fibre.', plate: { flour: 0.2, drybeans: 0.1, sauce: 0.03 }, price: 11, cooking: 2.5 },
+  { id: 'pepper-stew', name: 'Capsicum and tomato stew', icon: '🥘', what: 'Capsicum and tomatoes stewed with sukuma wiki and a little chilli, with ugali: the most vitamin C of any plate.', plate: { maize: 0.2, capsicum: 0.08, tomatoes: 0.06, sukuma: 0.05, chillies: 0.005 }, price: 10, cooking: 3 },
+  { id: 'kachumbari', name: 'Kachumbari', icon: '🍅', what: 'Fresh tomato, cucumber and chilli salad: vitamin C beside any meal.', plate: { tomatoes: 0.1, cucumber: 0.05, chillies: 0.01 }, price: 4, cooking: 1 },
+  { id: 'strawberry-cup', name: 'Strawberry cup', icon: '🍓', what: 'Fresh strawberries in a cup: most of a day’s vitamin C.', plate: { strawberries: 0.15 }, price: 6, cooking: 0.5 },
+  { id: 'juice', name: 'Strawberry and cucumber juice', icon: '🧃', what: 'A big cup of fresh strawberry juice, made longer with cucumber.', plate: { strawberries: 0.1, cucumber: 0.2 }, price: 6, cooking: 1 },
 ];
 export const dishOf = (id: DishId) => DISHES.find(d => d.id === id)!;
 
@@ -80,7 +79,7 @@ export function cook(p0: Partial<ProduceState> | undefined, id: DishId, plates: 
   if (left <= 0) return { error: `The restaurant has served its ${RESTAURANT.dailyPlates} plates today: come back tomorrow` };
   const n = Math.min(Math.floor(plates), left, platesInStore(p, d));
   if (n <= 0) {
-    const short = (Object.keys(d.plate) as ProduceId[]).filter(f => (p.store[f] ?? 0) < (d.plate[f] ?? 0)).map(f => PRODUCE[f].name.toLowerCase());
+    const short = (Object.keys(d.plate) as ProduceId[]).filter(f => (p.store[f] ?? 0) < (d.plate[f] ?? 0)).map(f => PRODUCE[f].name.toLowerCase().replace(/ \(.*\)/, ''));
     return { error: `Not enough in the store for ${d.name.toLowerCase()}: you need ${short.join(' and ')}` };
   }
   const q = quote(d, n, cold);
