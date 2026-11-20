@@ -1541,51 +1541,225 @@ export function zeroGrazing(): Part[] {
   return out;
 }
 
-/* ---------------- the new farms' crops (src/garden) ---------------- */
+/* ---------------- the greenhouse and the storehouse (src/greenhouse, src/storehouse) ---------------- */
 
-/** One tile of a new farm's crop at a stage (0 just planted … 3 ready). */
-export function gardenTile(crop: string, stage: number): Part[] {
+/** A name board over a building's door: a title and a line under it. */
+export function nameBoardTexture(title: string, sub: string, color: string) {
+  return textTex(256, 96, g => {
+    g.fillStyle = color;
+    g.fillRect(0, 0, 256, 96);
+    g.fillStyle = '#fffaf0';
+    g.fillRect(6, 6, 244, 84);
+    g.fillStyle = color;
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.font = 'bold 34px Poppins, Arial, sans-serif';
+    g.fillText(title, 128, 38);
+    g.fillStyle = '#5a4a3a';
+    g.font = 'bold 20px Poppins, Arial, sans-serif';
+    g.fillText(sub, 128, 72);
+  });
+}
+
+/** Glass: see-through panes, drawn after the solid things so the beds and shelves show through. */
+export const glassMaterial = (opacity = 0.24) =>
+  new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide });
+
+/** A gable end: a flat triangle in the y–z plane (base d wide, rise high), at x. */
+function gable(x: number, y: number, d: number, rise: number): THREE.BufferGeometry {
+  const sh = new THREE.Shape();
+  sh.moveTo(-d / 2, 0);
+  sh.lineTo(d / 2, 0);
+  sh.lineTo(0, rise);
+  sh.closePath();
+  return new THREE.ShapeGeometry(sh).rotateY(Math.PI / 2).translate(x, y, 0);
+}
+
+/** A glass building's frame and panes, built at the origin: w along x, d along z, walls h high, a gable roof rising
+    `rise` along x. `door`: the wall with the door (+x or -z) and where along it, left open. `plinth`: a solid low wall. */
+export function glassHouse(o: { w: number; d: number; h: number; rise: number; frame: string; glass: string; door: { side: 'x+' | 'z-'; at: number; width: number }; plinth?: { h: number; color: string } }) {
+  const { w, d, h, rise } = o;
+  const frame: Part[] = [];
+  const glass: Part[] = [];
+  const post = (x: number, z: number, hh = h) => frame.push({ geo: G.box, color: o.frame, m: at(x, hh / 2, z, { sx: 0.07, sy: hh, sz: 0.07 }) });
+  const p0 = o.plinth?.h ?? 0;
+  const inDoor = (side: 'x+' | 'z-', t: number) => o.door.side === side && Math.abs(t - o.door.at) < o.door.width / 2;
+  // walls: a pane between each pair of posts (about 1.25 apart), the door's gap left open
+  const along = (len: number) => {
+    const n = Math.max(2, Math.round(len / 1.25));
+    return Array.from({ length: n + 1 }, (_, i) => -len / 2 + (i * len) / n);
+  };
+  const xs = along(w);
+  const zs = along(d);
+  for (const x of xs) {
+    post(x, -d / 2);
+    post(x, d / 2);
+  }
+  for (const z of zs.slice(1, -1)) {
+    post(-w / 2, z);
+    post(w / 2, z);
+  }
+  const wallY = p0 + (h - p0) / 2;
+  const wallH = h - p0;
+  const pane = (cx: number, cz: number, len: number, alongX: boolean) =>
+    glass.push({ geo: G.box, color: o.glass, m: at(cx, wallY, cz, alongX ? { sx: len, sy: wallH, sz: 0.02 } : { sx: 0.02, sy: wallH, sz: len }) });
+  for (let i = 0; i < xs.length - 1; i++) {
+    const cx = (xs[i] + xs[i + 1]) / 2;
+    const len = xs[i + 1] - xs[i];
+    pane(cx, d / 2, len, true);
+    if (inDoor('z-', cx)) continue;
+    pane(cx, -d / 2, len, true);
+  }
+  for (let i = 0; i < zs.length - 1; i++) {
+    const cz = (zs[i] + zs[i + 1]) / 2;
+    const len = zs[i + 1] - zs[i];
+    pane(-w / 2, cz, len, false);
+    if (inDoor('x+', cz)) continue;
+    pane(w / 2, cz, len, false);
+  }
+  // the door: its frame, and the door itself swung open against the wall
+  const dw = o.door.width;
+  if (o.door.side === 'x+') {
+    post(w / 2, o.door.at - dw / 2, h);
+    post(w / 2, o.door.at + dw / 2, h);
+    frame.push({ geo: G.box, color: o.frame, m: at(w / 2 + 0.35, h * 0.45, o.door.at + dw / 2 + 0.02, { sx: 0.7, sy: h * 0.9, sz: 0.04 }) });
+    glass.push({ geo: G.box, color: o.glass, m: at(w / 2 + 0.35, h * 0.45, o.door.at + dw / 2 + 0.05, { sx: 0.6, sy: h * 0.8, sz: 0.02 }) });
+  } else {
+    post(o.door.at - dw / 2, -d / 2, h);
+    post(o.door.at + dw / 2, -d / 2, h);
+    frame.push({ geo: G.box, color: o.frame, m: at(o.door.at + dw / 2 + 0.02, h * 0.45, -d / 2 - 0.35, { sx: 0.04, sy: h * 0.9, sz: 0.7 }) });
+  }
+  // the plinth: a low solid wall, the door's gap left open
+  if (o.plinth) {
+    const pl = o.plinth;
+    const run = (x0: number, x1: number, z0: number, z1: number) => frame.push({ geo: G.box, color: pl.color, m: at((x0 + x1) / 2, pl.h / 2, (z0 + z1) / 2, { sx: Math.max(0.12, x1 - x0), sy: pl.h, sz: Math.max(0.12, z1 - z0) }) });
+    run(-w / 2, w / 2, d / 2, d / 2);
+    run(-w / 2, -w / 2, -d / 2, d / 2);
+    if (o.door.side === 'z-') {
+      run(-w / 2, o.door.at - dw / 2, -d / 2, -d / 2);
+      run(o.door.at + dw / 2, w / 2, -d / 2, -d / 2);
+      run(w / 2, w / 2, -d / 2, d / 2);
+    } else {
+      run(-w / 2, w / 2, -d / 2, -d / 2);
+      run(w / 2, w / 2, -d / 2, o.door.at - dw / 2);
+      run(w / 2, w / 2, o.door.at + dw / 2, d / 2);
+    }
+  }
+  // the eaves along the long sides, and the rails over the ends
+  frame.push({ geo: G.box, color: o.frame, m: at(0, h, -d / 2, { sx: w + 0.08, sy: 0.07, sz: 0.07 }) });
+  frame.push({ geo: G.box, color: o.frame, m: at(0, h, d / 2, { sx: w + 0.08, sy: 0.07, sz: 0.07 }) });
+  frame.push({ geo: G.box, color: o.frame, m: at(-w / 2, h, 0, { sx: 0.07, sy: 0.07, sz: d }) });
+  frame.push({ geo: G.box, color: o.frame, m: at(w / 2, h, 0, { sx: 0.07, sy: 0.07, sz: d }) });
+  // the roof: two sloped panes meeting at a ridge along x, a rafter over every post
+  const half = d / 2;
+  const slope = Math.hypot(half, rise);
+  const tilt = Math.atan2(rise, half);
+  frame.push({ geo: G.box, color: o.frame, m: at(0, h + rise, 0, { sx: w + 0.1, sy: 0.07, sz: 0.07 }) });
+  for (const x of xs) {
+    frame.push({ geo: G.box, color: o.frame, m: at(x, h + rise / 2, -half / 2, { sx: 0.06, sy: 0.06, sz: slope, rx: tilt }) });
+    frame.push({ geo: G.box, color: o.frame, m: at(x, h + rise / 2, half / 2, { sx: 0.06, sy: 0.06, sz: slope, rx: -tilt }) });
+  }
+  glass.push({ geo: G.box, color: o.glass, m: at(0, h + rise / 2, -half / 2, { sx: w, sy: 0.02, sz: slope, rx: tilt }) });
+  glass.push({ geo: G.box, color: o.glass, m: at(0, h + rise / 2, half / 2, { sx: w, sy: 0.02, sz: slope, rx: -tilt }) });
+  glass.push({ geo: gable(-w / 2, h, d, rise), color: o.glass });
+  glass.push({ geo: gable(w / 2, h, d, rise), color: o.glass });
+  return { frame, glass };
+}
+
+/** The greenhouse's raised bed: soil in a wooden edge, w × d. */
+export function raisedBed(w: number, d: number): Part[] {
+  return [
+    { geo: G.box, color: '#a8794c', m: at(0, 0.11, 0, { sx: w, sy: 0.22, sz: d }) },
+    { geo: G.box, color: C.soilDark, m: at(0, 0.2, 0, { sx: w - 0.12, sy: 0.06, sz: d - 0.12 }) },
+  ];
+}
+
+/** One plant of a greenhouse crop at a stage (0 just planted … 3 ready), standing on a bed's soil. */
+export function greenhousePlant(crop: string, stage: number, seed: number): Part[] {
   const g = 0.45 + 0.2 * stage;
   const out: Part[] = [];
-  const spots = [
-    [-0.25, -0.25],
-    [0.25, -0.25],
-    [-0.25, 0.25],
-    [0.25, 0.25],
-  ];
-  if (crop === 'orchard') {
-    const s = 0.35 + stage * 0.22;
-    out.push({ geo: G.cyl6, color: '#8b5a2b', m: at(0, 0.5 * s, 0, { sx: 0.12, sy: s, sz: 0.12 }) });
-    out.push({ geo: G.ico1, color: '#3f8a2a', m: at(0, 1.05 * s + 0.15, 0, { s: 0.9 * s }) });
-    out.push({ geo: G.ico, color: '#5fae3a', m: at(0.2 * s, 1.25 * s + 0.15, 0.15, { s: 0.5 * s }) });
-    if (stage === 3) for (let i = 0; i < 5; i++) out.push({ geo: G.sphere, color: i % 2 ? '#3a6b22' : '#f2a31b', m: at(Math.cos(i * 1.3) * 0.35, 0.95 * s, Math.sin(i * 1.3) * 0.35, { s: 0.14 }) });
+  const ripe = stage === 3;
+  const turn = seed * 1.7;
+  if (crop === 'tomatoes' || crop === 'cucumber') {
+    // a vine up its string: taller each stage
+    const tall = 0.25 + stage * 0.28;
+    const leaf = crop === 'tomatoes' ? '#4c8f2a' : '#5aa83a';
+    out.push({ geo: G.cyl6, color: '#5e8f2c', m: at(0, tall / 2, 0, { sx: 0.035, sy: tall, sz: 0.035 }) });
+    for (let i = 0; i < 2 + stage; i++) out.push({ geo: G.ico1, color: i % 2 ? leaf : '#3f7d22', m: at(Math.cos(turn + i * 2.3) * 0.08, 0.12 + (i * tall) / (2 + stage), Math.sin(turn + i * 2.3) * 0.08, { s: 0.16 + 0.03 * stage }) });
+    if (stage >= 2)
+      for (let i = 0; i < 3; i++) {
+        const y = 0.2 + i * 0.18;
+        if (crop === 'tomatoes') out.push({ geo: G.sphere, color: ripe ? '#e2382a' : '#9acd52', m: at(Math.cos(turn + i * 2.1) * 0.1, y, Math.sin(turn + i * 2.1) * 0.1, { s: 0.09 }) });
+        else out.push({ geo: G.cyl6, color: ripe ? '#2f7a32' : '#7cbf5a', m: at(Math.cos(turn + i * 2.1) * 0.1, y, Math.sin(turn + i * 2.1) * 0.1, { sx: 0.06, sy: ripe ? 0.2 : 0.12, sz: 0.06 }) });
+      }
     return out;
   }
-  for (const [x, z] of spots) {
-    const p: Part[] = [];
-    if (crop === 'spinach') {
-      for (let i = 0; i < 5; i++) p.push({ geo: G.sphere, color: i % 2 ? '#2f7d3a' : '#3f9a4a', m: at(Math.sin(i * 1.26) * 0.09 * g, 0.06 * g, Math.cos(i * 1.26) * 0.09 * g, { sx: 0.16 * g, sy: 0.05, sz: 0.26 * g, ry: i * 1.26, rx: -0.5 }) });
-    } else if (crop === 'tomatoes') {
-      p.push({ geo: G.cyl6, color: '#8b5a2b', m: at(0.08, 0.35 * g, 0, { sx: 0.03, sy: 0.7 * g, sz: 0.03 }) });
-      p.push({ geo: G.ico1, color: '#4c8f2a', m: at(0, 0.32 * g, 0, { s: 0.32 * g }) });
-      if (stage >= 2) for (let i = 0; i < 3; i++) p.push({ geo: G.sphere, color: stage === 3 ? '#e2382a' : '#9acd52', m: at(Math.cos(i * 2.1) * 0.12, 0.26 * g, Math.sin(i * 2.1) * 0.12, { s: 0.09 }) });
-    } else if (crop === 'beans') {
-      for (let i = 0; i < 3; i++) p.push({ geo: G.cone4, color: i % 2 ? '#6aa336' : '#4f8f2a', m: at(Math.cos(i * 2.1) * 0.06, 0.18 * g, Math.sin(i * 2.1) * 0.06, { sx: 0.14 * g, sy: 0.4 * g, sz: 0.06, ry: i * 2.1 }) });
-      if (stage === 3) p.push({ geo: G.cyl6, color: '#7cbf3a', m: at(0.08, 0.15, 0.05, { sx: 0.03, sy: 0.18, sz: 0.03, rz: 0.4 }) });
-    } else if (crop === 'onions') {
-      for (let i = 0; i < 3; i++) p.push({ geo: G.cone4, color: '#5aa83a', m: at(Math.cos(i * 2.1) * 0.03, 0.22 * g, Math.sin(i * 2.1) * 0.03, { sx: 0.04, sy: 0.45 * g, sz: 0.04 }) });
-      if (stage >= 2) p.push({ geo: G.sphere, color: '#b0628a', m: at(0, 0.05, 0, { s: 0.12 + stage * 0.02 }) });
-    } else if (crop === 'cabbage') {
-      // outer leaves spread on the ground, a round pale head in the middle once it forms
-      for (let i = 0; i < 5; i++) p.push({ geo: G.sphere, color: i % 2 ? '#6f9f43' : '#82b552', m: at(Math.sin(i * 1.26) * 0.1 * g, 0.05 * g, Math.cos(i * 1.26) * 0.1 * g, { sx: 0.2 * g, sy: 0.05, sz: 0.24 * g, ry: i * 1.26, rx: -0.35 }) });
-      if (stage >= 1) p.push({ geo: G.sphere, color: '#c3e08f', m: at(0, 0.08 + 0.03 * stage, 0, { s: 0.06 + 0.035 * stage }) });
-    } else {
-      // watermelon: vines along the ground, fruit at the end
-      p.push({ geo: G.box, color: '#3c8a3a', m: at(0, 0.03, 0, { sx: 0.4 * g, sy: 0.04, sz: 0.1, ry: x * 9 }) });
-      p.push({ geo: G.sphere, color: '#4f9a3a', m: at(0.06, 0.05, 0.06, { sx: 0.2 * g, sy: 0.06, sz: 0.2 * g }) });
-      if (stage >= 2) p.push({ geo: G.sphere, color: stage === 3 ? '#2f7a32' : '#7cbf5a', m: at(-0.05, 0.1, -0.05, { sx: 0.22, sy: 0.17, sz: 0.16 }) });
-    }
-    out.push(...place(p, at(x, 0.08, z, { ry: x * 7 + z * 3 })));
+  if (crop === 'strawberries') {
+    for (let i = 0; i < 5; i++) out.push({ geo: G.sphere, color: i % 2 ? '#3f8a2a' : '#4fa03a', m: at(Math.sin(i * 1.26) * 0.08 * g, 0.05, Math.cos(i * 1.26) * 0.08 * g, { sx: 0.13 * g, sy: 0.05, sz: 0.18 * g, ry: i * 1.26 }) });
+    if (stage >= 1) for (let i = 0; i < 2; i++) out.push({ geo: G.sphere, color: '#ffffff', m: at(Math.cos(turn + i * 3) * 0.1, 0.09, Math.sin(turn + i * 3) * 0.1, { s: 0.05 }) });
+    if (stage >= 2) for (let i = 0; i < 3; i++) out.push({ geo: G.cone6, color: ripe ? '#e0364a' : '#c8e08a', m: at(Math.cos(turn + i * 2.1) * 0.15, 0.06, Math.sin(turn + i * 2.1) * 0.15, { s: 0.08, rx: Math.PI }) });
+    return out;
   }
+  // capsicum and chillies: a bushy plant, the fruit hanging under the leaves
+  const leaf = crop === 'capsicum' ? '#3f9a3a' : '#4c8f2a';
+  out.push({ geo: G.cyl6, color: '#5e8f2c', m: at(0, 0.12 * g, 0, { sx: 0.04, sy: 0.24 * g, sz: 0.04 }) });
+  out.push({ geo: G.ico1, color: leaf, m: at(0, 0.3 * g, 0, { s: 0.34 * g }) });
+  out.push({ geo: G.ico, color: '#5fae3a', m: at(0.06, 0.4 * g, 0.04, { s: 0.2 * g }) });
+  if (stage >= 2)
+    for (let i = 0; i < 3; i++) {
+      const c = crop === 'capsicum' ? (ripe ? ['#e2382a', '#f2c230', '#3f9a3a'][i] : '#7cbf5a') : ripe ? '#d42a1e' : '#6aa336';
+      const geo = crop === 'capsicum' ? G.sphere : G.cone6;
+      const sz = crop === 'capsicum' ? { sx: 0.12, sy: 0.14, sz: 0.12 } : { sx: 0.04, sy: 0.14, sz: 0.04, rx: Math.PI };
+      out.push({ geo, color: c, m: at(Math.cos(turn + i * 2.1) * 0.15 * g, 0.2 * g, Math.sin(turn + i * 2.1) * 0.15 * g, sz) });
+    }
   return out;
+}
+
+/** The storehouse's shelves: a stepped rack w long (along x), a low tier in front (+z) and a high tier behind, so
+    what stands on both shows from above. */
+export const SHELF = { low: { y: 0.27, z: 0.13 }, high: { y: 0.57, z: -0.13 } };
+export function shelfUnit(w: number): Part[] {
+  const out: Part[] = [];
+  for (const x of [-w / 2, w / 2]) {
+    out.push({ geo: G.box, color: C.woodDark, m: at(x, SHELF.low.y / 2, SHELF.low.z + 0.1, { sx: 0.05, sy: SHELF.low.y, sz: 0.05 }) });
+    out.push({ geo: G.box, color: C.woodDark, m: at(x, SHELF.high.y / 2, SHELF.high.z - 0.1, { sx: 0.05, sy: SHELF.high.y, sz: 0.05 }) });
+  }
+  out.push({ geo: G.box, color: C.woodPlank, m: at(0, SHELF.low.y - 0.02, SHELF.low.z, { sx: w, sy: 0.04, sz: 0.26 }) });
+  out.push({ geo: G.box, color: C.woodPlank, m: at(0, SHELF.high.y - 0.02, SHELF.high.z, { sx: w, sy: 0.04, sz: 0.26 }) });
+  return out;
+}
+
+/** A crate of produce (on a shelf or the floor): its slats, and the produce heaped in it. */
+export function crate(fill: string): Part[] {
+  return [
+    { geo: G.box, color: '#c98a4a', m: at(0, 0.09, 0, { sx: 0.34, sy: 0.18, sz: 0.26 }) },
+    { geo: G.box, color: '#a8682e', m: at(0, 0.13, 0, { sx: 0.36, sy: 0.03, sz: 0.28 }) },
+    { geo: G.sphere, color: fill, m: at(0, 0.18, 0, { sx: 0.3, sy: 0.1, sz: 0.22 }) },
+  ];
+}
+
+/** A sack of grain or beans. */
+export const sack = (color: string): Part[] => [
+  { geo: G.sphere, color, m: at(0, 0.16, 0, { sx: 0.3, sy: 0.34, sz: 0.24 }) },
+  { geo: G.cyl6, color: '#8a6d3b', m: at(0, 0.34, 0, { sx: 0.08, sy: 0.06, sz: 0.08 }) },
+];
+
+/** A jar or bottle of what the storehouse makes: glass, the colour of what is inside, a lid. */
+export const jar = (fill: string, tall = false): Part[] => [
+  { geo: G.cyl, color: fill, m: at(0, tall ? 0.1 : 0.07, 0, { sx: 0.09, sy: tall ? 0.2 : 0.14, sz: 0.09 }) },
+  { geo: G.cyl, color: '#d9d9d9', m: at(0, tall ? 0.21 : 0.15, 0, { sx: tall ? 0.04 : 0.1, sy: 0.03, sz: tall ? 0.04 : 0.1 }) },
+];
+
+/** The storehouse's work table: a pot on a burner, jars waiting, a chopping board. */
+export function workTable(): Part[] {
+  return [
+    { geo: G.box, color: C.woodPlank, m: at(0, 0.5, 0, { sx: 1.2, sy: 0.06, sz: 0.6 }) },
+    ...[-0.55, 0.55].flatMap(x => [-0.25, 0.25].map(z => ({ geo: G.box, color: C.woodDark, m: at(x, 0.25, z, { sx: 0.05, sy: 0.5, sz: 0.05 }) }))),
+    { geo: G.cyl, color: '#4a4a4a', m: at(-0.3, 0.57, 0, { sx: 0.3, sy: 0.08, sz: 0.3 }) },
+    { geo: G.cyl, color: '#9aa3a8', m: at(-0.3, 0.7, 0, { sx: 0.32, sy: 0.22, sz: 0.32 }) },
+    { geo: G.cyl, color: '#c4302b', m: at(-0.3, 0.8, 0, { sx: 0.28, sy: 0.02, sz: 0.28 }) },
+    { geo: G.box, color: '#e8c99a', m: at(0.3, 0.55, 0.1, { sx: 0.34, sy: 0.03, sz: 0.24 }) },
+    ...place(jar('#c4302b'), at(0.3, 0.53, -0.15)),
+    ...place(jar('#e0364a'), at(0.45, 0.53, -0.15)),
+  ];
 }

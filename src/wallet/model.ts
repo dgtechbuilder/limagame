@@ -145,10 +145,12 @@ function describe(a: Action, prev: GameState, next: GameState): { kind: WalletKi
       return { kind: 'produce', label: 'Sold at the market stall' };
     case 'restaurantCook':
       return { kind: 'produce', label: 'Meals sold at the restaurant' };
-    case 'gardenPlant':
-    case 'gardenWater':
-    case 'gardenHarvest':
-      return { kind: 'farm', label: a.type === 'gardenPlant' ? `Planted Farm ${a.farm + 7}` : 'New farms' };
+    case 'ghPlant':
+    case 'ghWater':
+    case 'ghHarvest':
+      return { kind: 'farm', label: a.type === 'ghPlant' ? `Planted greenhouse bed ${a.bed + 1}` : 'Greenhouse' };
+    case 'storeMake':
+      return { kind: 'produce', label: 'Storehouse: jars, sugar and milling' };
     case 'kakumaGive':
       return { kind: 'giving', label: 'Gift to Kakuma, with WFP' };
     case 'loanAsk':

@@ -19,7 +19,7 @@ export const SPOTS = {
   lower: { poly: '312,137 317,107 378,107 376,137', cx: 346, cy: 122, label: [262, 118] as Pt },
   /** Farm 2: the farmer's sukuma wiki */
   sukuma: { poly: '418,170 419,107 481,107 484,170', cx: 450, cy: 137, label: [450, 96] as Pt },
-  /** the tomatoes on Farm 8: checked in the field rounds */
+  /** the tomatoes at the bottom right of the first day's picture (taken before the storehouse stood there): checked in the field rounds */
   tomato: { poly: '545,400 538,348 619,348 631,400', cx: 582, cy: 372, label: [582, 334] as Pt },
 };
 
@@ -245,7 +245,7 @@ export function Village({
 
   return (
     <div className="abs" style={{ inset: 0 }}>
-      <FarmMap world alt="Your farm, from above: the farmhouse, the six farms, the pond, the mini forest and Farms 7 and 8" />
+      <FarmMap world alt="Your farm, from above: the farmhouse, the six farms, the pond, the mini forest, the greenhouse and the storehouse" />
       <svg
         ref={svgRef}
         className="village"

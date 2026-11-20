@@ -12,7 +12,7 @@ import type { ProduceId } from '../produce/model';
 export type NutrientId = 'energy' | 'protein' | 'fibre' | 'iron' | 'calcium' | 'vitA' | 'vitC';
 
 export const NUTRIENTS: Record<NutrientId, { name: string; short: string; unit: string; icon: string; color: string; does: string }> = {
-  energy: { name: 'Energy', short: 'Energy', unit: 'kcal', icon: '⚡', color: '#e0a21b', does: 'Fuel for work, play and growing. Mostly from starch (maize) and fat (avocado).' },
+  energy: { name: 'Energy', short: 'Energy', unit: 'kcal', icon: '⚡', color: '#e0a21b', does: 'Fuel for work, play and growing. Mostly from starch: maize, and the flour milled from it.' },
   protein: { name: 'Protein', short: 'Protein', unit: 'g', icon: '💪', color: '#b4572e', does: 'Builds muscle and helps children grow. Beans are the farm’s richest source.' },
   fibre: { name: 'Fibre', short: 'Fibre', unit: 'g', icon: '🌾', color: '#8a6d3b', does: 'Keeps the gut healthy and makes a meal last longer.' },
   iron: { name: 'Iron', short: 'Iron', unit: 'mg', icon: '🩸', color: '#a8323a', does: 'Carries oxygen in the blood: too little makes people tired (anaemia).' },
@@ -63,47 +63,65 @@ export const FOODS: Record<ProduceId, Food> = {
     strong: ['vitC', 'vitA', 'calcium'],
     note: 'Little energy, but 100 g gives a whole day’s vitamin C, over half the vitamin A, and calcium for bones.',
   },
-  cabbage: {
-    group: 'leafy',
-    per100: { energy: 25, protein: 1.3, carbs: 3.3, fat: 0.1, fibre: 2.5, iron: 0.5, calcium: 40, vitA: 5, vitC: 37 },
-    strong: ['vitC', 'fibre'],
-    note: 'Pale leaves: half a day’s vitamin C, but far less vitamin A, calcium and iron than dark sukuma wiki or spinach.',
-  },
-  spinach: {
-    group: 'leafy',
-    per100: { energy: 23, protein: 2.9, carbs: 1.4, fat: 0.4, fibre: 2.2, iron: 2.7, calcium: 99, vitA: 469, vitC: 28 },
-    strong: ['vitA', 'iron', 'vitC'],
-    note: 'The most vitamin A on the farm, and as much iron as maize from a fraction of the calories.',
-  },
   tomatoes: {
     group: 'vegetable',
     per100: { energy: 18, protein: 0.9, carbs: 2.7, fat: 0.2, fibre: 1.2, iron: 0.3, calcium: 10, vitA: 42, vitC: 14 },
     strong: ['vitC', 'vitA'],
     note: 'Vitamin C and colour for every stew: the vitamin C helps the body take in iron from the beans and leaves.',
   },
-  beans: {
+  capsicum: {
     group: 'vegetable',
-    per100: { energy: 31, protein: 1.8, carbs: 4.3, fat: 0.2, fibre: 2.7, iron: 1, calcium: 37, vitA: 35, vitC: 12 },
-    strong: ['vitC', 'fibre', 'iron'],
-    note: 'Fresh green pods: a vegetable, not a protein food. Dry beans have thirteen times the protein.',
+    per100: { energy: 26, protein: 1, carbs: 6, fat: 0.3, fibre: 2.1, iron: 0.4, calcium: 7, vitA: 120, vitC: 110 },
+    strong: ['vitC', 'vitA', 'fibre'],
+    note: 'Sweet peppers: one and a half days’ vitamin C in 100 g, more than an orange, and vitamin A when they ripen red.',
   },
-  onions: {
+  cucumber: {
     group: 'vegetable',
-    per100: { energy: 40, protein: 1.1, carbs: 7.6, fat: 0.1, fibre: 1.7, iron: 0.2, calcium: 23, vitA: 0, vitC: 7.4 },
+    per100: { energy: 15, protein: 0.7, carbs: 3.6, fat: 0.1, fibre: 0.5, iron: 0.3, calcium: 16, vitA: 5, vitC: 2.8 },
+    strong: ['calcium', 'vitC'],
+    note: 'Mostly water: cool and crunchy, but little else a kg. Eat it beside foods that bring the vitamins.',
+  },
+  strawberries: {
+    group: 'fruit',
+    per100: { energy: 32, protein: 0.7, carbs: 7.7, fat: 0.3, fibre: 2, iron: 0.4, calcium: 16, vitA: 1, vitC: 59 },
     strong: ['vitC', 'fibre'],
-    note: 'Flavour more than nutrients: a little vitamin C, and they keep for weeks.',
+    note: 'Most of a day’s vitamin C in a handful: the farm’s most valuable fruit a kg, and it bruises easily.',
   },
-  fruit: {
-    group: 'fruit',
-    per100: { energy: 110, protein: 1.4, carbs: 10, fat: 7.6, fibre: 4.2, iron: 0.4, calcium: 12, vitA: 30, vitC: 23 },
-    strong: ['vitC', 'fibre', 'energy'],
-    note: 'Avocado brings healthy fat and energy, mango brings vitamins A and C.',
+  chillies: {
+    group: 'vegetable',
+    per100: { energy: 40, protein: 1.9, carbs: 8.8, fat: 0.4, fibre: 1.5, iron: 1, calcium: 14, vitA: 48, vitC: 144 },
+    strong: ['vitC', 'vitA', 'iron'],
+    note: 'Eaten a little at a time, but gram for gram the most vitamin C the farm grows.',
   },
-  watermelon: {
+  sauce: {
+    group: 'vegetable',
+    per100: { energy: 82, protein: 4.3, carbs: 19, fat: 0.5, fibre: 4.1, iron: 3, calcium: 36, vitA: 76, vitC: 22 },
+    strong: ['iron', 'vitA', 'fibre'],
+    note: 'Tomatoes cooked down: two and a half kg of fresh tomatoes in every kg, and it keeps for months in a sealed jar.',
+  },
+  jam: {
     group: 'fruit',
-    per100: { energy: 30, protein: 0.6, carbs: 7.2, fat: 0.2, fibre: 0.4, iron: 0.2, calcium: 7, vitA: 28, vitC: 8.1 },
+    per100: { energy: 250, protein: 0.4, carbs: 62, fat: 0.1, fibre: 1, iron: 0.5, calcium: 20, vitA: 0, vitC: 9 },
+    strong: ['energy', 'vitC'],
+    note: 'Strawberries cooked with sugar: it keeps, and sells high, but most of the vitamin C is lost and the sugar adds energy.',
+  },
+  chillisauce: {
+    group: 'vegetable',
+    per100: { energy: 30, protein: 1.5, carbs: 6, fat: 0.5, fibre: 1.4, iron: 0.8, calcium: 12, vitA: 40, vitC: 60 },
     strong: ['vitC', 'vitA'],
-    note: 'Mostly water: refreshing and sweet, with some vitamin C, but little else a kg.',
+    note: 'Chillies with vinegar and salt: a spoonful wakes up any plate, and the jar keeps for months.',
+  },
+  pickles: {
+    group: 'vegetable',
+    per100: { energy: 12, protein: 0.5, carbs: 2.3, fat: 0.2, fibre: 1.2, iron: 0.3, calcium: 44, vitA: 9, vitC: 1 },
+    strong: ['calcium', 'fibre'],
+    note: 'Cucumbers kept in vinegar and salt: they last for months instead of days.',
+  },
+  flour: {
+    group: 'staple',
+    per100: { energy: 360, protein: 8, carbs: 77, fat: 3, fibre: 4, iron: 2.4, calcium: 6, vitA: 0, vitC: 0 },
+    strong: ['energy', 'protein', 'fibre'],
+    note: 'Milled maize for ugali: ready to cook, so it sells for more than the grain. Sifted flour loses some fibre.',
   },
 };
 
