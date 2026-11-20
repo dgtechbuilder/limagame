@@ -2,7 +2,7 @@ import type { ShopTab, StepId } from './data';
 import { STORY } from './first/data';
 import { CHECK_DAYS, currentDay } from './trials/model';
 import { dayNumber } from './rounds/farms';
-import type { AchTab, Action, AnimalsTab, ClimateTab, FsPhase, GameState, GlossaryTab, KakumaTab, Modal, PartnersTab, PowerTab, SecurityTab, SettingsTab, WalletTab } from './state';
+import type { AchTab, Action, AnimalsTab, ClimateTab, FsPhase, GameState, GlossaryTab, KakumaTab, MarketTab, Modal, PartnersTab, PowerTab, SecurityTab, SettingsTab, WalletTab } from './state';
 import { BRANDS, type BrandId } from './partners/data';
 
 /* Web addresses: every screen has its own address after the # (…/limagame/#/settings/display), so a player can
@@ -23,6 +23,7 @@ const PARTNERS: Record<PartnersTab, string> = { offers: 'offers', placements: 'p
 const ANIMALS: Record<AnimalsTab, string> = { today: 'today', health: 'health', water: 'water', coop: 'coop', shed: 'cow-shed', herd: 'herd' };
 const WALLET: Record<WalletTab, string> = { history: 'history', climate: 'climate-payments', summary: 'summary' };
 const POWER_TABS: Record<PowerTab, string> = { build: 'build', today: 'today', impact: 'impact', history: 'history' };
+const MARKET_TABS: Record<MarketTab, string> = { sell: 'sell', restaurant: 'restaurant', nutrition: 'nutrition', sales: 'sales' };
 const SECURITY: Record<SecurityTab, string> = { protect: 'protect', risk: 'risks', reports: 'night-reports' };
 const GLOSSARY: Record<GlossaryTab, string> = { basics: 'basics', feed: 'fertilizer', protect: 'sprays', pests: 'pests', seed: 'seeds', tools: 'tools', machines: 'tractors', water: 'water-and-storage', animals: 'animals', power: 'power-and-climate' };
 const KAKUMA: Record<KakumaTab, string> = { about: 'about', foods: 'foods', life: 'food-and-life', donate: 'donate' };
@@ -42,7 +43,6 @@ const SIMPLE = {
   outcome: 'results',
   rewards: 'rewards',
   training: 'training',
-  market: 'market',
   tractorGame: 'tractor-game',
 } as const satisfies Partial<Record<Modal['kind'], string>>;
 
@@ -91,6 +91,8 @@ function modalPath(s: GameState, m: Modal): string {
       return `/wallet/${WALLET[m.tab ?? 'history']}`;
     case 'power':
       return `/power/${POWER_TABS[m.tab ?? 'build']}`;
+    case 'market':
+      return m.tab && m.tab !== 'sell' ? `/market/${MARKET_TABS[m.tab]}` : '/market';
     case 'garden':
       return `/new-farms/${m.farm + 7}`;
     case 'glossary':
@@ -175,6 +177,12 @@ function modalFor(s: GameState, parts: string[]): Modal | null | 'bad' {
     const t = tab(POWER_TABS);
     return t === 'bad' || parts.length > 2 ? 'bad' : { kind: 'power', tab: t ?? 'build' };
   }
+  if (first === 'market') {
+    const t = tab(MARKET_TABS);
+    return t === 'bad' || parts.length > 2 ? 'bad' : { kind: 'market', tab: t ?? 'sell' };
+  }
+  // the restaurant beside the stall, and what each crop is worth to eat
+  if ((first === 'restaurant' || first === 'nutrition') && parts.length === 1) return { kind: 'market', tab: first };
   if (first === 'farm-words') {
     const t = tab(GLOSSARY);
     return t === 'bad' || parts.length > 2 ? 'bad' : { kind: 'glossary', tab: t ?? 'basics' };

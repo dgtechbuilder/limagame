@@ -38,6 +38,8 @@ export function MainMenu({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
         { label: 'Wallet', note: 'Every payment in and out', run: () => open({ kind: 'wallet', tab: 'history' }) },
         { label: 'Power', note: 'Solar, battery, lights, generator', run: () => open({ kind: 'power', tab: 'build' }) },
         { label: 'Market stall', note: 'Sell 25 kg of your store a day', run: () => open({ kind: 'market' }) },
+        { label: 'Restaurant', note: 'Cook your harvest into meals', run: () => open({ kind: 'market', tab: 'restaurant' }) },
+        { label: 'Nutrition', note: 'What maize, beans and sukuma give', run: () => open({ kind: 'market', tab: 'nutrition' }) },
         { label: 'New farms', note: 'Farms 7 and 8: spinach, orchard…', run: () => open({ kind: 'garden', farm: 0 }) },
         { label: 'Animals', note: 'Cows, hens, the coop and the cow shed', run: () => open({ kind: 'animals' }) },
         { label: 'Security', note: 'Keep thieves off the farm', run: () => open({ kind: 'security' }) },

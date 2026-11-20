@@ -14,7 +14,7 @@ export const WALLET_KINDS: Record<WalletKind, { label: string; icon: string }> =
   climate: { label: 'Climate payments', icon: '🌍' },
   water: { label: 'Water', icon: '💧' },
   harvest: { label: 'Harvests', icon: '🌽' },
-  produce: { label: 'Market stall', icon: '🧺' },
+  produce: { label: 'Market stall and restaurant', icon: '🧺' },
   animals: { label: 'Animals', icon: '🐄' },
   power: { label: 'Power', icon: '⚡' },
   tractor: { label: 'Tractor', icon: '🚜' },
@@ -143,6 +143,8 @@ function describe(a: Action, prev: GameState, next: GameState): { kind: WalletKi
       return { kind: 'power', label: 'Diesel for the generator' };
     case 'produceSell':
       return { kind: 'produce', label: 'Sold at the market stall' };
+    case 'restaurantCook':
+      return { kind: 'produce', label: 'Meals sold at the restaurant' };
     case 'gardenPlant':
     case 'gardenWater':
     case 'gardenHarvest':
