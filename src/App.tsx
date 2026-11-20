@@ -20,6 +20,7 @@ const World = lazy(() => import('./world/World').then(m => ({ default: m.World }
 const AnimalsPage = lazyPage(() => import('./livestock/Animals').then(m => m.AnimalsPage), 1);
 const SecurityPage = lazyPage(() => import('./security/Security').then(m => m.SecurityPage), 1);
 const WalletPage = lazyPage(() => import('./wallet/Wallet').then(m => m.WalletPage), 1);
+const FinancePage = lazyPage(() => import('./finance/Finance').then(m => m.FinancePage), 1);
 const PowerPage = lazyPage(() => import('./power/Power').then(m => m.PowerPage), 1);
 const TractorGamePage = lazyPage(() => import('./minifarm/MiniFarm').then(m => m.TractorGamePage), 1);
 const MarketPage = lazyPage(() => import('./produce/Market').then(m => m.MarketPage), 1);
@@ -334,6 +335,11 @@ export default function App() {
         {m?.kind === 'wallet' && (
           <Suspense fallback={<ActivityLoading label="Opening your wallet…" />}>
             <WalletPage s={s} dispatch={dispatch} tab={m.tab} />
+          </Suspense>
+        )}
+        {m?.kind === 'finance' && (
+          <Suspense fallback={<ActivityLoading label="Opening your money…" />}>
+            <FinancePage s={s} dispatch={dispatch} tab={m.tab} />
           </Suspense>
         )}
         {m?.kind === 'power' && (

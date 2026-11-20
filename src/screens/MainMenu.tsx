@@ -36,6 +36,7 @@ export function MainMenu({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
         { label: 'Tractor game', note: 'Plough the mini farm in 30 seconds', run: () => open({ kind: 'tractorGame' }) },
         { label: 'Tractor business', note: 'Serve farms, plan routes, partners', run: () => dispatch({ type: 'biz', open: true }) },
         { label: 'Wallet', note: 'Every payment in and out', run: () => open({ kind: 'wallet', tab: 'history' }) },
+        { label: 'Money', note: 'Savings, investments, profit', run: () => open({ kind: 'finance', tab: 'overview' }) },
         { label: 'Power', note: 'Solar, battery, lights, generator', run: () => open({ kind: 'power', tab: 'build' }) },
         { label: 'Market stall', note: 'Sell 25 kg of your store a day', run: () => open({ kind: 'market' }) },
         { label: 'Restaurant', note: 'Cook your harvest into meals', run: () => open({ kind: 'market', tab: 'restaurant' }) },

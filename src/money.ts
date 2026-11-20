@@ -13,6 +13,11 @@ export const KSH_PER_USD = 129;
 /** US dollars a stored amount is worth. */
 export const USD_PER_UNIT = VALUE_X / KSH_PER_USD;
 
+/** Real Kenyan shillings (a figure as a source gives it, e.g. diesel at KSh 228 a litre) as a stored amount. Every
+    figure kept in real shillings must go through this before it is shown or added to stored money, or it shows 10
+    times too large. */
+export const fromKsh = (ksh: number) => ksh / VALUE_X;
+
 export interface Currency {
   /** ISO 4217 code, e.g. "KES" */
   code: string;
@@ -135,6 +140,9 @@ export const withMoney = (text: string) => text.replace(/\{money:(-?\d+(?:\.\d+)
 
 /** The same as money(): kept for screens that once showed shillings. */
 export const kshText = money;
+
+/** A figure kept in real Kenyan shillings, shown in the player's currency: kshReal(228) is "KSh 228" in Kenya. */
+export const kshReal = (ksh: number) => money(fromKsh(ksh));
 
 /** A money amount kept as short as it goes, for the at-risk button: "KSh 50k", "KSh 1.2M", "$388"; below a thousand
     as money() shows it. */

@@ -2,7 +2,7 @@ import type { ShopTab, StepId } from './data';
 import { STORY } from './first/data';
 import { CHECK_DAYS, currentDay } from './trials/model';
 import { dayNumber } from './rounds/farms';
-import type { AchTab, Action, AnimalsTab, ClimateTab, FsPhase, GameState, GlossaryTab, KakumaTab, MarketTab, Modal, StoreTab, PartnersTab, PowerTab, SecurityTab, SettingsTab, WalletTab } from './state';
+import type { AchTab, Action, AnimalsTab, ClimateTab, FsPhase, GameState, GlossaryTab, KakumaTab, MarketTab, Modal, StoreTab, PartnersTab, PowerTab, SecurityTab, SettingsTab, WalletTab, FinanceTab } from './state';
 import { BRANDS, type BrandId } from './partners/data';
 
 /* Web addresses: every screen has its own address after the # (…/limagame/#/settings/display), so a player can
@@ -22,6 +22,7 @@ const ACH: Record<AchTab, string> = { journey: 'journey', modules: 'modules', to
 const PARTNERS: Record<PartnersTab, string> = { offers: 'offers', placements: 'placements', join: 'partner-with-us', shortlist: 'shortlist' };
 const ANIMALS: Record<AnimalsTab, string> = { today: 'today', health: 'health', water: 'water', coop: 'coop', shed: 'cow-shed', herd: 'herd' };
 const WALLET: Record<WalletTab, string> = { history: 'history', climate: 'climate-payments', summary: 'summary' };
+const FINANCE: Record<FinanceTab, string> = { overview: 'overview', savings: 'savings', invest: 'investments', profit: 'profit' };
 const POWER_TABS: Record<PowerTab, string> = { build: 'build', today: 'today', impact: 'impact', history: 'history' };
 const MARKET_TABS: Record<MarketTab, string> = { sell: 'sell', restaurant: 'restaurant', nutrition: 'nutrition', sales: 'sales' };
 const STORE_TABS: Record<StoreTab, string> = { store: 'store', harvest: 'harvest', produce: 'produce' };
@@ -90,6 +91,8 @@ function modalPath(s: GameState, m: Modal): string {
       return `/security/${SECURITY[m.tab ?? 'protect']}`;
     case 'wallet':
       return `/wallet/${WALLET[m.tab ?? 'history']}`;
+    case 'finance':
+      return `/money/${FINANCE[m.tab ?? 'overview']}`;
     case 'power':
       return `/power/${POWER_TABS[m.tab ?? 'build']}`;
     case 'market':
@@ -175,6 +178,10 @@ function modalFor(s: GameState, parts: string[]): Modal | null | 'bad' {
   if (first === 'wallet') {
     const t = tab(WALLET);
     return t === 'bad' || parts.length > 2 ? 'bad' : { kind: 'wallet', tab: t ?? 'history' };
+  }
+  if (first === 'money') {
+    const t = tab(FINANCE);
+    return t === 'bad' || parts.length > 2 ? 'bad' : { kind: 'finance', tab: t ?? 'overview' };
   }
   if (first === 'power') {
     const t = tab(POWER_TABS);

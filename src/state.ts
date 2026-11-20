@@ -12,7 +12,8 @@ import { DIMENSIONS, ROWS_PER_FARM } from './strategy/data';
 import { riskReduce, type RiskAction, type RiskState } from './risk/model';
 import { LIFE, type CareId, type CoopId, type Group, type IssueId, type PreventId, type ShedId } from './livestock/config';
 import { buildCoop, buildShed, doCare, doPrevent, fixIssue, lifeOf, type LifeEvent, type LifeState } from './livestock/model';
-import { trackWallet, type WalletState } from './wallet/model';
+import { addEntry, trackWallet, type WalletState } from './wallet/model';
+import { PRODUCTS, depositBlock, financeOf, payoutOf, settle, type FinanceState, type Goal, type ProductId } from './finance/model';
 import { POWER, partOptionOf, stepOf, type LoadId, type StepId as PowerStepId } from './power/config';
 import { fuelTankL, loadsAvailable, powerOf, stepBlock, type PowerState } from './power/model';
 import { HUB, hubOf, levelOf as hubLevel, lessonOf, type HubSection, type HubState } from './tractor/hub';
@@ -121,6 +122,8 @@ export type Modal =
   | { kind: 'security'; tab?: SecurityTab }
   /** the farmer's wallet: every payment in and out (src/wallet) */
   | { kind: 'wallet'; tab?: WalletTab }
+  /** money: savings, investments and profit tracking (src/finance) */
+  | { kind: 'finance'; tab?: FinanceTab }
   /** the power system: building it over the first 7 days, today's energy, what it does for the farm (src/power) */
   | { kind: 'power'; tab?: PowerTab }
   /** the market stall: up to 25 kg of the store sold a day, the restaurant beside it, and what the food is worth to
@@ -199,6 +202,7 @@ export type PartnersTab = 'offers' | 'placements' | 'join' | 'shortlist';
 export type AnimalsTab = 'today' | 'health' | 'water' | 'coop' | 'shed' | 'herd';
 export type SecurityTab = 'protect' | 'risk' | 'reports';
 export type WalletTab = 'history' | 'climate' | 'summary';
+export type FinanceTab = 'overview' | 'savings' | 'invest' | 'profit';
 export type PowerTab = 'build' | 'today' | 'impact' | 'history';
 export type MarketTab = 'sell' | 'restaurant' | 'nutrition' | 'sales';
 export type StoreTab = 'store' | 'harvest' | 'produce';
@@ -337,6 +341,8 @@ export interface GameState {
   security?: Partial<SecurityState>;
   /** every payment in and out of the farmer's money (src/wallet; missing in older saves) */
   wallet?: Partial<WalletState>;
+  /** savings, investments and what they earned (src/finance; missing in older saves) */
+  finance?: Partial<FinanceState>;
   /** the power system (src/power) */
   power?: Partial<PowerState>;
   /** the farm's own tractor: training, condition, diesel (src/tractor/hub.ts) */
@@ -372,7 +378,9 @@ export interface GameState {
 
 const initialStock = Object.fromEntries(SHOP_TABS.find(t => t.id === 'food')!.items.map(i => [i.id, i.stock![0]]));
 
-export const DEFAULT_PRICES: Prices = { farmgate: 12, market: 24, transport: 24, storage: 24 };
+/** A 90 kg bag of maize (stored money: 1 = KSh 10): KSh 3,000 at the farm gate, KSh 3,800 at market; transport and
+    storage are entered per 10 bags (KSh 1,500 and KSh 1,000: KSh 150 and KSh 100 a bag). */
+export const DEFAULT_PRICES: Prices = { farmgate: 300, market: 380, transport: 150, storage: 100 };
 
 export const freshSeason = {
   day: 0,
@@ -467,7 +475,8 @@ const finalHealth = (s: GameState) =>
 export function expectedHarvest(s: GameState, choice: HarvestChoice) {
   const h = s.stage >= stepIndex('harvest') ? finalHealth(s) : (cropHealth(s) ?? 0);
   const fx = HARVEST_EFFECT[choice];
-  const bags = Math.round((90 + 90 * h) * fx.yieldFactor);
+  // 90 kg bags from Farm Moja's acre: 18 for a neglected crop, up to 36 for a healthy one (as the six farms: trials/model.ts)
+  const bags = Math.round((18 + 18 * h) * fx.yieldFactor);
   const quality = Math.max(1, Math.min(5, Math.round(1 + 4 * h) + fx.qualityShift));
   return { bags, quality, health: h };
 }
@@ -552,6 +561,11 @@ export type Action =
   | { type: 'bookTraining'; id: string }
   /** the Kakuma event: give money or a food gift bought with money (KAKUMA_GIFTS), or produce from the store */
   | { type: 'kakumaGive'; gift: string }
+  | { type: 'finDeposit'; amount: number }
+  | { type: 'finWithdraw'; amount: number }
+  | { type: 'finInvest'; product: Exclude<ProductId, 'savings'>; amount: number }
+  | { type: 'finSell'; id: number }
+  | { type: 'finGoal'; goal: Goal | null }
   | { type: 'kakumaGiveStore'; produce: ProduceId }
   /** the Kakuma pop-up on the farm: tucked into its round button, or open again */
   | { type: 'kakumaTuck'; tucked: boolean }
@@ -698,11 +712,30 @@ export function reducer(s: GameState, a: Action): GameState {
   if (next === s) return s;
   const kind = soundOf(s, next, a);
   // an action that finished something counts today as a day played (the streak)
-  const tracked = trackWallet(s, trackSystems(s, trackEvidence(s, trackAchievements(s, trackLife(s, trackWater(s, trackClimate(s, next, a), a), a), a, kind !== null), a), a), a);
+  const tracked = trackFinance(s, trackWallet(s, trackSystems(s, trackEvidence(s, trackAchievements(s, trackLife(s, trackWater(s, trackClimate(s, next, a), a), a), a, kind !== null), a), a), a));
   return kind ? { ...tracked, sfx: { id: ++sfxId, kind } } : tracked;
 }
 
 let sfxId = 0;
+
+/** When a farm day ends, the savings and investments earn their interest and returns for each day that passed, and a
+    Treasury bill whose day has come is paid back into the wallet (written in the wallet as savings, not income). */
+function trackFinance(prev: GameState, next: GameState): GameState {
+  if (!next.finance) return next;
+  const day = lifeOf(next.life).day;
+  // money put away for the first time starts earning from today, not from farm day 1
+  const f0 = financeOf(next.finance);
+  const f = prev.finance ? f0 : { ...f0, settled: Math.max(f0.settled, lifeOf(prev.life).day) };
+  if (f !== f0 && day <= f.settled) return { ...next, finance: f };
+  if (day <= f.settled) return next;
+  const { f: after, paid } = settle(f, day);
+  let out: GameState = { ...next, finance: after };
+  for (const p of paid) {
+    out = { ...out, coins: out.coins + p.amount };
+    out = addEntry(out, 'savings', p.label, p.amount, out.coins);
+  }
+  return out;
+}
 /** Flows: finishing one of these ends a whole piece of play. */
 const FLOWS = new Set<Action['type']>(['achClaimAll', 'completeSale', 'trialHarvest', 'bizRun', 'bizHireOut', 'bizContract', 'bizGraduate', 'tractorDone']);
 /** Actions: finishing one of these is one thing done. Some only count when they earned something (their message). */
@@ -1538,6 +1571,49 @@ function play(s: GameState, a: Action): GameState {
     }
     case 'tractorHub':
       return hubAction(s, a);
+    case 'finDeposit': {
+      const f = financeOf(s.finance);
+      const amount = Math.round(a.amount * 100) / 100;
+      const no = depositBlock('savings', amount, s.coins);
+      if (no) return { ...s, toast: toast(no === 'Not enough in your wallet' ? `You have ${money(s.coins)} in your wallet` : no.startsWith('The least') ? `The least you can save is ${money(PRODUCTS.savings.min)}` : no) };
+      return { ...s, coins: s.coins - amount, finance: { ...f, savings: f.savings + amount, log: [{ day: lifeOf(s.life).day, text: `Saved ${money(amount)}.` }, ...f.log].slice(0, 40) }, toast: toast(`${money(amount)} into your SACCO savings`) };
+    }
+    case 'finWithdraw': {
+      const f = financeOf(s.finance);
+      const amount = Math.min(f.savings, Math.round(a.amount * 100) / 100);
+      if (!(amount > 0)) return { ...s, toast: toast('Nothing in your savings to take out') };
+      return { ...s, coins: s.coins + amount, finance: { ...f, savings: Math.round((f.savings - amount) * 100) / 100, log: [{ day: lifeOf(s.life).day, text: `Took ${money(amount)} out of savings.` }, ...f.log].slice(0, 40) }, toast: toast(`${money(amount)} back in your wallet`) };
+    }
+    case 'finInvest': {
+      const f = financeOf(s.finance);
+      const p = PRODUCTS[a.product];
+      const amount = Math.round(a.amount * 100) / 100;
+      const no = depositBlock(a.product, amount, s.coins);
+      if (no) return { ...s, toast: toast(no === 'Not enough in your wallet' ? `You have ${money(s.coins)} in your wallet` : no.startsWith('The least') ? `The least for the ${p.name} is ${money(p.min)}` : no) };
+      const day = lifeOf(s.life).day;
+      const id = Math.max(0, ...f.holdings.map(h => h.id)) + 1;
+      const h = { id, product: a.product, principal: amount, value: amount, since: day, ...(p.lockDays ? { matures: day + p.lockDays } : {}) };
+      return { ...s, coins: s.coins - amount, finance: { ...f, holdings: [...f.holdings, h], log: [{ day, text: `Invested ${money(amount)}: ${p.name}.` }, ...f.log].slice(0, 40) }, ...gainXp(s, 0.01), toast: toast(`${money(amount)} invested: ${p.name}${p.lockDays ? `: paid back on farm day ${day + p.lockDays}` : ''}`) };
+    }
+    case 'finSell': {
+      const f = financeOf(s.finance);
+      const h = f.holdings.find(x => x.id === a.id);
+      if (!h) return s;
+      const day = lifeOf(s.life).day;
+      const out = payoutOf(h, day);
+      // what the holding earned is given up when a T-bill comes out early, and the fee is a cost
+      const lost = Math.round((h.value - out.pay) * 100) / 100;
+      const earnedBy = { ...f.earnedBy, [h.product]: Math.round(((f.earnedBy[h.product] ?? 0) - lost) * 100) / 100 };
+      const p = PRODUCTS[h.product];
+      return {
+        ...s,
+        coins: s.coins + out.pay,
+        finance: { ...f, holdings: f.holdings.filter(x => x.id !== h.id), earned: Math.round((f.earned - lost) * 100) / 100, earnedBy, log: [{ day, text: `Took ${money(out.pay)} out: ${p.name}${out.early ? ' early: the interest was lost' : ''}.` }, ...f.log].slice(0, 40) },
+        toast: toast(`${money(out.pay)} back in your wallet${out.early ? ' (out early: no interest)' : out.fee ? ` after a ${money(out.fee)} fee` : ''}`),
+      };
+    }
+    case 'finGoal':
+      return { ...s, finance: { ...financeOf(s.finance), goal: a.goal && a.goal.target > 0 ? { name: a.goal.name.trim().slice(0, 40) || 'My goal', target: Math.round(a.goal.target) } : null } };
     case 'kakumaGive': {
       const g = giftOf(a.gift);
       if (!g) return s;
@@ -1885,6 +1961,9 @@ function loadSaved(): GameState {
     const saved = JSON.parse(raw);
     // Saves from before the farm had one owner may carry a reminder about neighbours.
     if (typeof saved.note === 'string' && /Achieng|neighbour/i.test(saved.note)) saved.note = 'Check every bed often: open Rounds.';
+    // Saves from before the maize prices were real (a bag at KSh 240) take the new ones, unless the player typed their own.
+    const p = saved.prices;
+    if (p && p.farmgate === 12 && p.market === 24 && p.transport === 24 && p.storage === 24) saved.prices = DEFAULT_PRICES;
     return { ...initialState, ...saved, fromMenu: false, navSeq: 0, rideReq: 0, modal: null, plotSelected: false, toast: null, success: null, sfx: null, award: null, ach: achOfSave(saved.ach), roundsOpen: false, roundsView: null, roundsDemo: null, worldDemo: null, trialsOpen: false, bizOpen: false, roundsTrial: false, rounds: { ...initialState.rounds, ...(saved.rounds ?? {}) }, settings: { ...DEFAULT_SETTINGS, ...(saved.settings ?? {}) }, climate: { ...initialClimate, ...(saved.climate ?? {}) } };
   } catch {
     return initialState;

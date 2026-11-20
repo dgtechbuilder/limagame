@@ -101,7 +101,7 @@ test("the story's last season is told in the currency picked a step before", asy
   await page.locator('.story-step', { hasText: 'Plant the season' }).click();
   await plantByHand(page);
   await closeCheer(page, /^Well done/);
-  await expect(page.locator('.story-caption')).toHaveText('Seed, fertiliser and labour went in: KSh 380,000 spent.');
+  await expect(page.locator('.story-caption')).toHaveText('Seed, fertiliser and labour went in: KSh 95,000 spent.');
   expect(await dollars(page)).toEqual([]);
 });
 
