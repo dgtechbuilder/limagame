@@ -82,7 +82,7 @@ const T: Term[] = [
     does: 'Feeds the crop evenly when you do not know what the soil lacks.',
     use: 'At planting, or as a soil test advises.',
     care: 'A soil test shows which blend you really need, and saves money.',
-    aka: ['NPK', 'Balance NPK', 'balanced NPK', 'Rutuba Gold NPK'], see: ['nitrogen', 'phosphorus', 'potassium', 'soilTest'],
+    aka: ['NPK', 'Balance NPK', 'balanced NPK', 'Lima NPK'], see: ['nitrogen', 'phosphorus', 'potassium', 'soilTest'],
   },
   {
     id: 'nitrogen', name: 'Nitrogen (N)', section: 'feed', type: 'Plant nutrient', icon: '🍃',

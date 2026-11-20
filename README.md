@@ -1079,8 +1079,8 @@ risk*). It makes the daily loop's stakes visible at a glance and gives a reason 
   planting period, and stays from then on.
 - **While you were away.** The button as last seen is saved; a player coming back on a later day to more at risk sees
   what grew (*KSh 3.5k at risk when you left, KSh 11k now*) and can open the list from there.
-- **Forecast shocks** (drought, flood, hail by the season's forecast, less what crop cover pays; cover is the Kinga
-  Cover offer for now) can be added to the total: off (`RISK.includeShocks`) until confirmed.
+- **Forecast shocks** (drought, flood, hail by the season's forecast, less what crop cover pays; cover is the Lima
+  Insurance offer for now) can be added to the total: off (`RISK.includeShocks`) until confirmed.
 - **Evidence** (for the evidence layer to come): every tap on the button and on a farm in its list is counted, and
   every problem dealt with is kept with when it was first on the button in front of the player and when it was fixed
   (`GameState.risk`, the last 100). Events: `risk_open`, `risk_row`, `risk_fixed` (with `msFromSeen`).
@@ -1122,7 +1122,7 @@ beside the portrait, clear of the task card, with the same numbers.
 Partners asked the game to teach climate-smart practices through real trade-offs. Two general systems do it.
 
 **Row strategies.** Each farm's 20 plots make 4 rows of 5, and **each row runs its own strategy**: one option on every
-dimension, grouped as *fertilizer* (as the plan, organic compost, DAP, Rutuba Gold NPK, micro-dosing), *tilling*
+dimension, grouped as *fertilizer* (as the plan, organic compost, DAP, Lima NPK, micro-dosing), *tilling*
 (minimum tillage, deep ploughing), *sowing* (seed, spacing, seedbed: zai pits, tied ridges), *planting* (timing,
 mulching), *planning* (crop, rotation, season) and *farming habits* (check frequency, watering time, fertilizer
 timing). Every option has a cost, labour (person-days, 24 family days a farm, the rest hired), a payoff (the return
@@ -1634,31 +1634,31 @@ each. To sign a partner, add or edit its brand and put its id on the slots it bo
 
 | Slot | Where | Brand now |
 | --- | --- | --- |
-| Billboards (4) | 3D farm: two in the yard either side of the farmhouse path, one by the seed shed, one between Farm 8 and the mini forest; walk up to one and a *See offer* tag appears | Rutuba Gold, Kinga Cover, Shina Seeds, Tangi Tanks |
+| Billboards (4) | 3D farm: two in the yard either side of the farmhouse path, one by the seed shed, one between Farm 8 and the mini forest; walk up to one and a *See offer* tag appears | Lima Fertilizer, Lima Insurance, Lima Seeds, Lima Tanks |
 | Tractor livery | 3D farm: the partner's name on the bonnet and both sides of the tractor | Hello Tractor |
 | Market stall awning | 3D farm | *Available* |
 | Roadside sign | Classic farm: each partner in turn, every 6 seconds (or one brand, if it buys the slot) | All partners |
-| Branded fertilizer | Shop › Buy Fertilizer: *Rutuba Gold NPK*, 10% under the plain NPK; it does the NPK task's job | Rutuba Gold |
-| Branded tank | Shop › Buy Tank: a 5,000 L tank | Tangi Tanks |
+| Branded fertilizer | Shop › Buy Fertilizer: *Lima NPK*, 10% under the plain NPK; it does the NPK task's job | Lima Fertilizer |
+| Branded tank | Shop › Buy Tank: a 5,000 L tank | Lima Tanks |
 | Branded tool | Shop › Buy Equipment | *Available* |
-| Voucher sponsors | Rewards & Discounts Hub: "with <brand>" on each voucher | Rutuba Gold, Shina Seeds, Hello Tractor, JuaPower Solar, PesaShamba |
-| Loan quotes | Loan calculator and quote | PesaShamba |
-| Courses | Training | Ujuzi Agri Academy |
-| Certification | My Progress: the journey, the modules and every certificate | Ujuzi Agri Academy |
-| Crop cover | Climate › Shocks | Kinga Cover |
-| Progress sponsor | The PROGRESS button | Ujuzi Agri Academy |
+| Voucher sponsors | Rewards & Discounts Hub: "with <brand>" on each voucher | Lima Fertilizer, Lima Seeds, Hello Tractor, Lima Solar, Lima Credit |
+| Loan quotes | Loan calculator and quote | Lima Credit |
+| Courses | Training | Lima Training |
+| Certification | My Progress: the journey, the modules and every certificate | Lima Training |
+| Crop cover | Climate › Shocks | Lima Insurance |
+| Progress sponsor | The PROGRESS button | Lima Training |
 
 - **The billboards** (`BILLBOARDS` in `src/world/engine.ts`, built by `makeBillboard` and `billboardTexture` in
   `src/world/models.ts`) are premium roadside boards: one gunmetal pole on a concrete footing, a dark cabinet in a
   gold frame with a *★ Partner ★* plaque on top, a catwalk with a rail and three lamps, and the head tilted back a
   little so the face reads from the farm camera. The face is the brand's colours in a deep gradient with a sheen:
-  its mark in a ringed medallion, the category, name and tagline, the offer in a pill (*10% off Rutuba Gold NPK*),
+  its mark in a ringed medallion, the category, name and tagline, the offer in a pill (*10% off Lima NPK*),
   and a foot bar (*Official TemoLima partner* · *Tap for the offer*). Every few seconds a band of light sweeps across
   each face; at night the lamps glow and the boards stay lit. Each board is turned a little toward the path, and
   only its pole blocks the farmer. The *See offer* tag over a board is dark glass with a gold rim and chip. The face
   is redrawn once the Poppins font has loaded.
-- **Sample brands.** Hello Tractor is the game's tractor partner. Every other brand (Rutuba Gold, Shina Seeds,
-  Tangi Tanks, PesaShamba, Kinga Cover, JuaPower Solar, Ujuzi Agri Academy) is made up for the game
+- **Sample brands.** Hello Tractor is the game's tractor partner. Every other brand (Lima Fertilizer, Lima Seeds,
+  Lima Tanks, Lima Credit, Lima Insurance, Lima Solar, Lima Training) is made up for the game
   (`sample: true`) and stands in until a real partner signs; no real company is named or implied.
 - **The Partners page** (Main menu → *Partners & offers*; every billboard, sign and "with <brand>" line opens it at
   that brand, with its offer open): *Offers* lists each brand's offer (and a *Visit* link for brands with a web

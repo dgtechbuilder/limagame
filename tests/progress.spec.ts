@@ -91,7 +91,7 @@ test('a level opens on its day: credits alone do not unlock it early, and levels
 test('branded fertilizer does the NPK job, and a saved offer goes to Messages', () => {
   day = '2026-11-13';
   let s = farm({ stage: 2 });
-  s = reducer(s, { type: 'buy', id: 'rutuba-npk', price: 36, name: 'Rutuba Gold NPK' });
+  s = reducer(s, { type: 'buy', id: 'rutuba-npk', price: 36, name: 'Lima NPK' });
   expect(s.inventory).toContain('rutuba-npk');
   const coins = s.coins;
   s = reducer(s, { type: 'task', step: 'fertilizer', id: 'f-npk', price: 40, name: 'Balance NPK' });
@@ -99,10 +99,10 @@ test('branded fertilizer does the NPK job, and a saved offer goes to Messages', 
   expect(s.inventory).not.toContain('rutuba-npk');
   const o = reducer(s, { type: 'partnerSave', id: 'rutuba' });
   expect(o.offers).toEqual(['rutuba']);
-  expect(o.note).toContain('Rutuba Gold');
+  expect(o.note).toContain('Lima Fertilizer');
   // the code is the player's own, the same each time it is worked out, and kept in Messages
   const code = offerCode('rutuba', o.farmer?.name);
-  expect(code).toMatch(/^RUTU-[2-9A-HJKMNP-Z]{4}$/);
+  expect(code).toMatch(/^FERT-[2-9A-HJKMNP-Z]{4}$/);
   expect(offerCode('rutuba', o.farmer?.name)).toBe(code);
   expect(offerCode('rutuba', 'Someone else')).not.toBe(code);
   expect(o.note).toContain(code);
@@ -161,19 +161,19 @@ test('Get offer: the details, then the code, then Use it opens where the offer i
   await expect.poll(async () => (await state(page)).fs.phase).toBe('done');
   await page.evaluate(() => (window.location.hash = '/partners/offers'));
   const card = page.locator('.pt-card[data-brand="tangi"]');
-  await card.getByRole('button', { name: 'Get the Tangi Tanks offer' }).click();
-  const sheet = page.getByRole('dialog', { name: 'Tangi Tanks offer' });
+  await card.getByRole('button', { name: 'Get the Lima Tanks offer' }).click();
+  const sheet = page.getByRole('dialog', { name: 'Lima Tanks offer' });
   for (const line of brandOf('tangi')!.offer.get) await expect(sheet).toContainText(line);
   // Not now leaves it, and Escape closes only the sheet
   await sheet.getByRole('button', { name: 'Not now', exact: true }).click();
   await expect(sheet).toBeHidden();
-  await card.getByRole('button', { name: 'Get the Tangi Tanks offer' }).click();
+  await card.getByRole('button', { name: 'Get the Lima Tanks offer' }).click();
   await page.keyboard.press('Escape');
   await expect(sheet).toBeHidden();
   await expect(page.locator('.set-title-bar')).toContainText('Partners · Offers');
   expect((await state(page)).offers ?? []).toEqual([]);
   // taken: the code shows on the sheet and the card, and goes into Messages
-  await card.getByRole('button', { name: 'Get the Tangi Tanks offer' }).click();
+  await card.getByRole('button', { name: 'Get the Lima Tanks offer' }).click();
   await sheet.getByRole('button', { name: 'Get this offer', exact: true }).click();
   const s = await state(page);
   const code = offerCode('tangi', s.farmer?.name);
