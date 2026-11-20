@@ -11,17 +11,16 @@ const jump = (page: Page, s: Record<string, unknown>) => page.evaluate(x => (win
 const climate = async (page: Page) => (await state(page)).climate;
 const dialog = (page: Page) => page.getByRole('dialog', { name: 'Climate' });
 
-test('the CLIMATE button sits beside MISSION and opens the Climate page; Back, Menu and Farm work', async ({ page }) => {
+test('the CLIMATE button sits in the right column under MISSION and opens the Climate page; Back, Menu and Farm work', async ({ page }) => {
   await boot(page);
   await scenario(page, 'tractor');
   const btn = page.getByRole('button', { name: /^Climate:/ });
   const mission = page.getByRole('button', { name: /^Mission:/ });
   await expect(btn).toBeVisible();
-  // beside Mission: same row, just to its left
+  // the right column of five (Mission, Shop, Water, Climate, Progress): lined up with Mission, below it
   const [b, m] = [await btn.boundingBox(), await mission.boundingBox()];
-  expect(Math.abs(b!.y - m!.y)).toBeLessThan(4);
-  expect(m!.x - (b!.x + b!.width)).toBeLessThan(12);
-  expect(m!.x).toBeGreaterThan(b!.x);
+  expect(Math.abs(b!.x + b!.width - (m!.x + m!.width))).toBeLessThan(4);
+  expect(b!.y).toBeGreaterThan(m!.y + m!.height);
 
   await btn.click();
   await expect(dialog(page)).toBeVisible();

@@ -193,11 +193,15 @@ test('activities are fetched ahead of time and open without a wait', async ({ pa
   // the farm's activities (the shed, the Train spot, the sprayer) and the rest come down in the background
   await expect.poll(() => want.filter(n => !got.has(n)), { timeout: 30_000 }).toEqual([]);
   await page.waitForTimeout(1000);
-  // the Train spot: its screen is drawn straight away, with no loading card in between
-  const r = await page.evaluate(async () => {
+  // the Train spot: walking onto it offers a button (activities are opt-in); pressing it draws the screen straight
+  // away, with no loading card in between
+  await page.evaluate(() => (window as unknown as W & { __limaWorld: { spawn: (x: number, z: number) => void } }).__limaWorld.spawn(-14.6, 6.4));
+  const enter = page.locator('.hud-place .is-enter');
+  await expect(enter).toBeVisible({ timeout: 15_000 });
+  const r = await enter.evaluate(async (btn: HTMLElement) => {
     const t0 = performance.now();
     let loader = false;
-    (window as unknown as W & { __limaWorld: { spawn: (x: number, z: number) => void } }).__limaWorld.spawn(-14.6, 6.4);
+    btn.click();
     await new Promise<void>(res => {
       const tick = () => {
         if (document.querySelector('.act-loading')) loader = true;
