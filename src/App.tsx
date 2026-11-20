@@ -24,6 +24,7 @@ const PowerPage = lazyPage(() => import('./power/Power').then(m => m.PowerPage),
 const TractorGamePage = lazyPage(() => import('./minifarm/MiniFarm').then(m => m.TractorGamePage), 1);
 const MarketPage = lazyPage(() => import('./produce/Market').then(m => m.MarketPage), 1);
 const GardenPage = lazyPage(() => import('./garden/Garden').then(m => m.GardenPage), 1);
+const KakumaPage = lazyPage(() => import('./events/Kakuma').then(m => m.KakumaPage), 1);
 // design review (?review=1) only: its sample screens are computed when it is opened, never for players
 const ReviewPicker = lazy(() => import('./review/Review').then(m => ({ default: m.ReviewPicker })));
 import { WelcomeModal } from './screens/Meta';
@@ -352,6 +353,11 @@ export default function App() {
         {m?.kind === 'garden' && (
           <Suspense fallback={<ActivityLoading label="Opening the garden…" />}>
             <GardenPage s={s} dispatch={dispatch} farm={m.farm} />
+          </Suspense>
+        )}
+        {m?.kind === 'kakuma' && (
+          <Suspense fallback={<ActivityLoading label="Opening the Kakuma event…" />}>
+            <KakumaPage s={s} dispatch={dispatch} tab={m.tab} />
           </Suspense>
         )}
         {m?.kind === 'shop' && <ShopModal s={s} tab={m.tab} dispatch={dispatch} />}
