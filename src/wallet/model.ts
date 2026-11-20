@@ -8,7 +8,7 @@ import type { Action, GameState } from '../state';
 import { achClock } from '../achievements/track';
 import { lifeOf } from '../livestock/model';
 
-export type WalletKind = 'climate' | 'water' | 'harvest' | 'produce' | 'animals' | 'power' | 'tractor' | 'farm' | 'shop' | 'business' | 'reward' | 'security' | 'other';
+export type WalletKind = 'climate' | 'water' | 'harvest' | 'produce' | 'animals' | 'power' | 'tractor' | 'farm' | 'shop' | 'business' | 'reward' | 'security' | 'giving' | 'other';
 
 export const WALLET_KINDS: Record<WalletKind, { label: string; icon: string }> = {
   climate: { label: 'Climate payments', icon: '🌍' },
@@ -23,6 +23,7 @@ export const WALLET_KINDS: Record<WalletKind, { label: string; icon: string }> =
   business: { label: 'Tractor business', icon: '📍' },
   reward: { label: 'Rewards', icon: '🏅' },
   security: { label: 'Security', icon: '🔒' },
+  giving: { label: 'Giving', icon: '🤝' },
   other: { label: 'Other', icon: '•' },
 };
 
@@ -146,6 +147,8 @@ function describe(a: Action, prev: GameState, next: GameState): { kind: WalletKi
     case 'gardenWater':
     case 'gardenHarvest':
       return { kind: 'farm', label: a.type === 'gardenPlant' ? `Planted Farm ${a.farm + 7}` : 'New farms' };
+    case 'kakumaGive':
+      return { kind: 'giving', label: 'Gift to Kakuma, with WFP' };
     case 'loanAsk':
     case 'bookTraining':
       return { kind: 'other', label: 'Training booked' };

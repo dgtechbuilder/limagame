@@ -67,6 +67,7 @@ import { routeTo } from './route';
 import { DEFAULT_LOAN, type LoanAsk } from './finance/loan';
 import type { SectionId } from './learn/glossary';
 import { bookingRef, courseDate, courseOf, dayText, type TrainingBooking } from './training/data';
+import { GIFT_POINTS, KG_PER_MEAL, STORE_GIFT_KG, addGift, giftOf, kakumaOf, kakumaPhase, produceName, type KakumaState } from './events/model';
 import type { SfxKind } from './sfx';
 import { money } from './money';
 import { clearPiece, tidyFor, TIDY_TOTAL, type TidyState } from './tidy/model';
@@ -126,7 +127,9 @@ export type Modal =
   /** the tractor game: plough the mini farm in 30 seconds, round rocks, trees and holes (src/minifarm) */
   | { kind: 'tractorGame' }
   /** Farm words: what every fertilizer, spray, tool and machine is, and the Farm basics lessons (src/learn) */
-  | { kind: 'glossary'; tab?: GlossaryTab };
+  | { kind: 'glossary'; tab?: GlossaryTab }
+  /** the Kakuma special event with the World Food Programme: learn and give (src/events) */
+  | { kind: 'kakuma'; tab?: KakumaTab };
 
 /** The dialog after something worked: a sale, a training booked, a storage upgrade. It replaces the short message
     at the top of the screen for these, so the player cannot miss it (components/Success.tsx, screens/Success.tsx). */
@@ -193,6 +196,7 @@ export type WalletTab = 'history' | 'climate' | 'summary';
 export type PowerTab = 'build' | 'today' | 'impact' | 'history';
 /** the Farm words page: the Farm basics lessons, or one section of words (src/learn/glossary.ts) */
 export type GlossaryTab = 'basics' | SectionId;
+export type KakumaTab = 'about' | 'foods' | 'life' | 'donate';
 export const DEFAULT_SETTINGS: Settings = { art: 'anime', graphics: 'auto', reduceMotion: false, voice: false, sound: true, upgradeNotes: true, country: '', night: 'auto', pad: DEFAULT_PAD };
 
 /** Stage index: 0–5 = the farming step being worked on, 6 = harvested and selling, 7 = season sold. */
@@ -337,6 +341,8 @@ export interface GameState {
   prefs?: Partial<Record<PlotKind, string>>;
   /** the Farm basics lessons read (their index in BASICS, src/learn/glossary.ts) */
   basics?: number[];
+  /** the Kakuma special event: the gifts given, and whether its pop-up is tucked away (src/events; missing in older saves) */
+  kakuma?: Partial<KakumaState>;
   // season
   season: number;
   day: number;
@@ -534,6 +540,11 @@ export type Action =
   | { type: 'loanAsk'; ask: Partial<LoanAsk> }
   /** book a seat on a training course */
   | { type: 'bookTraining'; id: string }
+  /** the Kakuma event: give money or a food gift bought with money (KAKUMA_GIFTS), or produce from the store */
+  | { type: 'kakumaGive'; gift: string }
+  | { type: 'kakumaGiveStore'; produce: ProduceId }
+  /** the Kakuma pop-up on the farm: tucked into its round button, or open again */
+  | { type: 'kakumaTuck'; tucked: boolean }
   | { type: 'tick'; seconds: number }
   | { type: 'picker'; on: boolean }
   | { type: 'reset'; state: Partial<GameState> }
@@ -679,7 +690,7 @@ let sfxId = 0;
 /** Flows: finishing one of these ends a whole piece of play. */
 const FLOWS = new Set<Action['type']>(['achClaimAll', 'completeSale', 'trialHarvest', 'bizRun', 'bizHireOut', 'bizContract', 'bizGraduate', 'tractorDone']);
 /** Actions: finishing one of these is one thing done. Some only count when they earned something (their message). */
-const ACTIONS = new Set<Action['type']>(['achClaim', 'achDaily', 'levelClaim', 'partnerSave', 'buy', 'sell', 'bookTraining', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo', 'tidyClear', 'animalCare', 'animalPrevent', 'coopBuild', 'shedBuild', 'herdBuy', 'securityBuy', 'powerInstall', 'powerFuel', 'tractorHub', 'produceSell', 'gardenPlant', 'gardenWater', 'gardenHarvest', 'shedChoose']);
+const ACTIONS = new Set<Action['type']>(['achClaim', 'achDaily', 'levelClaim', 'partnerSave', 'buy', 'sell', 'bookTraining', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo', 'tidyClear', 'animalCare', 'animalPrevent', 'coopBuild', 'shedBuild', 'herdBuy', 'securityBuy', 'powerInstall', 'powerFuel', 'tractorHub', 'produceSell', 'gardenPlant', 'gardenWater', 'gardenHarvest', 'shedChoose', 'kakumaGive', 'kakumaGiveStore']);
 const EARNED = new Set<Action['type']>(['roundResult', 'trialCheck', 'fieldMark']);
 const FS_ORDER: FsPhase[] = ['create', 'story', 'walk1', 'update', 'review1', 'walkRetry', 'retry', 'walk2', 'review2', 'done'];
 
@@ -1511,6 +1522,29 @@ function play(s: GameState, a: Action): GameState {
     }
     case 'tractorHub':
       return hubAction(s, a);
+    case 'kakumaGive': {
+      const g = giftOf(a.gift);
+      if (!g) return s;
+      if (kakumaPhase() === 'over') return { ...s, toast: toast('The Kakuma event has ended: thank you for every gift') };
+      if (s.coins < g.price) return { ...s, toast: toast(`You need ${money(g.price)} for ${g.name.toLowerCase()}`) };
+      const pts = GIFT_POINTS * (kakumaPhase() === 'on' ? 2 : 1);
+      const kakuma = addGift(kakumaOf(s.kakuma), { t: Date.now(), date: today(), kind: g.kind, label: g.name, money: g.price, kg: 0, meals: g.meals });
+      return { ...s, coins: s.coins - g.price, points: s.points + pts, kakuma, ...gainXp(s, 0.02), toast: toast(`Thank you! ${g.name} is on its way to Kakuma with WFP · about ${g.meals} meals · +${pts} points`) };
+    }
+    case 'kakumaGiveStore': {
+      if (kakumaPhase() === 'over') return { ...s, toast: toast('The Kakuma event has ended: thank you for every gift') };
+      const p = s.produce ?? {};
+      const have = p.store?.[a.produce] ?? 0;
+      const kg = Math.round(Math.min(STORE_GIFT_KG, have) * 10) / 10;
+      if (kg <= 0) return { ...s, toast: toast(`No ${produceName(a.produce).toLowerCase()} in your store to give`) };
+      const meals = Math.round(kg / KG_PER_MEAL);
+      const pts = GIFT_POINTS * (kakumaPhase() === 'on' ? 2 : 1);
+      const kakuma = addGift(kakumaOf(s.kakuma), { t: Date.now(), date: today(), kind: 'store', label: `${kg} kg ${produceName(a.produce).toLowerCase()}`, money: 0, kg, meals });
+      const produce = { ...p, store: { ...(p.store ?? {}), [a.produce]: Math.round((have - kg) * 10) / 10 } };
+      return { ...s, produce, points: s.points + pts, kakuma, ...gainXp(s, 0.02), toast: toast(`Thank you! ${kg} kg of ${produceName(a.produce).toLowerCase()} for families in Kakuma · about ${meals} meals · +${pts} points`) };
+    }
+    case 'kakumaTuck':
+      return { ...s, kakuma: { ...kakumaOf(s.kakuma), tucked: a.tucked } };
     case 'produceSell': {
       const day = lifeOf(s.life).day;
       const r = sellProduce(s.produce, a.items, day, achClock.today(), coldRoom(s));

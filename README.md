@@ -66,6 +66,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [My Progress: certification levels and learning credits](#my-progress-certification-levels-and-learning-credits)
 - [Partners: billboards, branded products and offers](#partners-billboards-branded-products-and-offers)
 - [Farm words: info buttons and Farm basics](#farm-words-info-buttons-and-farm-basics)
+- [Special event: Kakuma, with the World Food Programme](#special-event-kakuma-with-the-world-food-programme)
 - [Character art: retro anime](#character-art-retro-anime)
 - [Design review mode](#design-review-mode)
 - [Saving, events and privacy](#saving-events-and-privacy)
@@ -953,6 +954,7 @@ reload without losing their place, bookmark a page, and use the browser's **Back
 | `#/loan-calculator` · `#/loan-calculator/quote` · `#/training` | The loan calculator and its quote, farmer training |
 | `#/progress/journey` · `modules` · `today` · `badges` · `certificates` | My Progress, by section (`#/achievements/…` still works) |
 | `#/partners/offers` · `#/partners/offers/<brand>` · `#/partners/placements` · `#/partners/partner-with-us` · `#/partners/shortlist` | Partners: offers (one brand's in view), placements, ways to partner, the shortlist (open before the farm too) |
+| `#/kakuma/about` · `#/kakuma/foods` · `#/kakuma/food-and-life` · `#/kakuma/donate` | The Kakuma special event: about the camp, the foods grown there, food and life, donate (open before the farm too) |
 | `#/animals/today` · `health` · `water` · `coop` · `herd` | Animals, by section |
 | `#/security/protect` · `risks` · `night-reports` | Security, by section |
 
@@ -1684,6 +1686,34 @@ each. To sign a partner, add or edit its brand and put its id on the slots it bo
   partner keeps are under the list: fair play, no personal data, advice checked by an agronomist.
 - **Shortlist**: the ways tapped *Interested*, saved with the game (`partnerPicks`). *Copy the shortlist* puts it on
   the clipboard as text; set `VITE_PARTNER_EMAIL` at build time to add an *Email it to the TemoLima team* button.
+
+## Special event: Kakuma, with the World Food Programme
+
+From **27 to 30 November** TemoLima runs a special event about **Kakuma refugee camp** in Turkana, north-west Kenya,
+in partnership with the **World Food Programme (WFP)**. Code: `src/events/model.ts` (dates, content, gifts) and
+`src/events/Kakuma.tsx` (the page and the pop-up).
+
+- **The pop-up.** A card on the farm's bottom left, under the left column of buttons, names the event, its dates and
+  the partner, counts down the days to it (*Starts in 7 days*), and turns green with *on now* on the event's days.
+  **Join the event** opens the event's page. The **×** tucks it into a round **KAKUMA** button under Partners, which
+  brings it back. While the card is out, the day and *Today* buttons move to its right. After 30 November the pop-up
+  and its button are gone.
+- **The page** (`#/kakuma/…`) has four sections:
+  - **About Kakuma**: where it is, when it opened, who lives there, the weather, and the Kalobeyei settlement.
+  - **Foods grown**: eight crops grown in Kakuma's kitchen gardens and shade nets (sukuma wiki, cowpeas, sorghum,
+    amaranth, okra, tomatoes and onions, moringa, green grams): why each grows there, what it does for the families
+    who eat or sell it, and what a player can take to their own farm.
+  - **Food and life**: how food gives refugees a semblance of normal life: cooking dishes from home, choosing their
+    own food with WFP's *Bamba Chakula* phone money, kitchen gardens, school meals, farming beside Turkana neighbours,
+    and why ration cuts make gifts matter.
+  - **Donate**: give **money** (three sizes), a **food gift** bought with money (a family food basket, a week of
+    school meals, a kitchen garden kit), or **10 kg of produce from the store** (src/produce). Each gift counts the
+    meals it stands for in the game and earns 10 points, 20 on the event's days; money given shows in the Wallet
+    under *Giving*. Gifts in the game move game money only: **Give at wfp.org** links to WFP's own page to give for
+    real.
+- **Saved** in `kakuma` (gifts, totals, whether the pop-up is tucked away). The dates are `KAKUMA_EVENT` in
+  `src/events/model.ts`; `kakumaClock` lets a test set the day.
+- **Tests:** `tests/kakuma.spec.ts`.
 
 ## Farm words: info buttons and Farm basics
 
