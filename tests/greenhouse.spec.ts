@@ -139,6 +139,8 @@ test('on the farm: the greenhouse door opens its beds, the storehouse door its s
     } as never),
   );
   await page.waitForFunction(() => !!(window as unknown as Win).__limaWorld);
+  // the walks are long: a quick farmer, as in the other farm tests (helpers.ts scenario), so a slow machine keeps up
+  await page.evaluate(() => ((window as unknown as Win).__limaWorld!.speedScale = 4));
   const walkTo = (p: string) =>
     page.evaluate(place => {
       const at = (window as unknown as Win).__lima.places[place];
