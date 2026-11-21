@@ -1801,6 +1801,13 @@ button.card:active { transform: scale(0.98); }
   background: rgba(40, 30, 20, 0.62); color: #fff; font-size: 9px; font-weight: 800; z-index: 5;
 }
 .awards-chip .awards-dot { left: auto; right: -3px; top: -3px; }
+.theft-dot {
+  position: absolute; bottom: 14px; left: -4px; min-width: 16px; height: 16px; padding: 0 3px; border-radius: 100px;
+  display: grid; place-items: center; background: #d9473a; color: #fff; font-size: 10px; font-weight: 800; font-style: normal;
+  box-shadow: 0 0 0 2px #fff; animation: awards-pulse 1.6s ease-in-out infinite;
+}
+.awards-chip .theft-dot { bottom: auto; top: -4px; left: -5px; }
+@media (prefers-reduced-motion: reduce) { .theft-dot { animation: none; } }
 
 .award-pop {
   position: absolute; left: 50%; top: 112px; translate: -50% 0; z-index: 49; pointer-events: none;

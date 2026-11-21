@@ -1230,6 +1230,12 @@ community watch** (Nyumba Kumi: thefts reported together are found more often), 
 itself, shut the coop every night, harvest on time, and store maize in the co-op warehouse. *Risks tonight* shows each
 target's chance before and after the measures, with the best next step; *Night reports* keeps the last 14 nights. A
 night with news opens a **morning dialog**: what was stolen or lost, its value, and what would have stopped it.
+The farm's lit lights already count as the solar security light, so Protect shows *Your farm lights do this* instead
+of selling it again. A guard dog whose food cannot be paid does not watch that night. A stolen thing found again
+names what found it (the community watch, the cow's brand and tag, or the tractor's GPS tracker). Crops and water
+stolen are priced (a share of that farm's expected harvest; water at a bowser's price a litre), so *lost* adds up.
+A cash theft never takes more than the farmer still has. While last night had a theft, the PROGRESS button on the
+farm shows a red **!**, since Security sits inside My Progress.
 
 Nights are seeded (`src/livestock/rand.ts`): the same farm, night and target always draw the same result, so a reload
 never re-rolls a night. `tests/livestock.spec.ts` plays all of this through the reducer and the two pages.

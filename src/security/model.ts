@@ -4,7 +4,8 @@
 
 import { SHOP_TABS } from '../data';
 import type { Biz } from '../business/model';
-import { CHECK_DAYS, type Trial } from '../trials/model';
+import { CHECK_DAYS, harvestFarm, type Trial } from '../trials/model';
+import { WATER } from '../water/config';
 import { tankOf, type TankState } from '../water/model';
 import { LIFE } from '../livestock/config';
 import { coopOption, shedOption } from '../livestock/config';
@@ -63,12 +64,16 @@ const EQUIPMENT = SHOP_TABS.find(t => t.id === 'equipment')!.items;
 export const toolsIn = (s: Pick<SecurityHost, 'inventory'>) => s.inventory.filter(id => EQUIPMENT.some(e => e.id === id));
 const toolOf = (id: string) => EQUIPMENT.find(e => e.id === id)!;
 
-/** The measures working tonight (a nightly one only when switched on). */
-export function activeMeasures(s: SecurityHost): MeasureId[] {
+/** The farm's lights stand in for the solar security light (src/power). */
+export const lightCovered = (s: SecurityHost) => lightsLit(s as Parameters<typeof lightsLit>[0]);
+
+/** The measures working tonight (a nightly one only when switched on). `off`: ones that are not working tonight
+    (a dog whose food could not be paid). */
+export function activeMeasures(s: SecurityHost, off: MeasureId[] = []): MeasureId[] {
   const sec = securityOf(s.security);
   // the power system's farm lights do what a security light does (src/power)
-  const lit = lightsLit(s as Parameters<typeof lightsLit>[0]);
-  return MEASURES.filter(m => (m.kind === 'once' ? sec.owned.includes(m.id) || (m.id === 'light' && lit) : sec.hired.includes(m.id))).map(m => m.id);
+  const lit = lightCovered(s);
+  return MEASURES.filter(m => !off.includes(m.id) && (m.kind === 'once' ? sec.owned.includes(m.id) || (m.id === 'light' && lit) : sec.hired.includes(m.id))).map(m => m.id);
 }
 export const hasMeasure = (s: SecurityHost, id: MeasureId) => activeMeasures(s).includes(id);
 
@@ -77,6 +82,15 @@ export function cutFor(target: Target, ids: MeasureId[]): number {
   const keep = ids.reduce((k, id) => k * (1 - (measureOf(id).cut[target] ?? 0)), 1);
   return Math.min(MAX_CUT, 1 - keep);
 }
+/** The measure most likely to have found a stolen thing again (for the morning's news). */
+export function finderOf(target: Target, ids: MeasureId[]): MeasureId | undefined {
+  return ids.filter(id => (measureOf(id).recover?.[target] ?? 0) > 0).sort((a, b) => (measureOf(b).recover?.[target] ?? 0) - (measureOf(a).recover?.[target] ?? 0))[0];
+}
+const FOUND: Partial<Record<MeasureId, string>> = {
+  tags: 'Her brand and ear tag were known at the market: she is back.',
+  gps: 'The GPS tracker showed where it went: it is back.',
+  watch: 'The community watch found it: it is back.',
+};
 /** The chance a stolen thing is found again. */
 export function recoverFor(target: Target, ids: MeasureId[]): number {
   return 1 - ids.reduce((k, id) => k * (1 - (measureOf(id).recover?.[target] ?? 0)), 1);
@@ -104,8 +118,8 @@ export interface Exposure {
 export type CycleDay = number;
 
 /** Every target, and its chance tonight. */
-export function exposure(s: SecurityHost, cycleDay: CycleDay): Exposure[] {
-  const ids = activeMeasures(s);
+export function exposure(s: SecurityHost, cycleDay: CycleDay, off: MeasureId[] = []): Exposure[] {
+  const ids = activeMeasures(s, off);
   const life = lifeOf(s.life);
   const tank = tankOf(s.tank);
   const herd = tank.herd;
@@ -138,8 +152,8 @@ export function exposure(s: SecurityHost, cycleDay: CycleDay): Exposure[] {
 }
 
 /** The strongest measure not yet in place against a target: the tip after a theft. */
-export function bestAgainst(s: SecurityHost, target: Target): string | undefined {
-  const ids = activeMeasures(s);
+export function bestAgainst(s: SecurityHost, target: Target, off: MeasureId[] = []): string | undefined {
+  const ids = activeMeasures(s, off);
   const best = MEASURES.filter(m => !ids.includes(m.id) && (m.cut[target] ?? 0) > 0 && (!m.needs || s.biz) && isOpen(s as UnlockHost, MEASURES.indexOf(m))).sort((a, b) => (b.cut[target] ?? 0) - (a.cut[target] ?? 0))[0];
   if (target === 'hens' || target === 'predators') {
     const l = lifeOf(s.life);
@@ -160,6 +174,9 @@ export const cropsTaken = (s: SecurityHost, cycle: number): number[] => {
   return c.cycle === cycle ? c.share : [];
 };
 
+/** What a litre stolen from the tank is worth: what a bowser's load costs a litre to put back. */
+const WATER_PER_L = WATER.transported.price / WATER.transported.litres;
+
 /** One night's thefts (and predators). Pays the night's watch first. */
 export function theftNight<S extends SecurityHost>(s: S, seed: string, cycleDay: CycleDay, date: string): { state: S; events: LifeEvent[]; paid: number } {
   if (!theftOpen(s)) return { state: s, events: [], paid: 0 };
@@ -168,6 +185,7 @@ export function theftNight<S extends SecurityHost>(s: S, seed: string, cycleDay:
   let coins = s.coins;
   // the night's watch is paid first: a watchman who cannot be paid does not come
   let paid = 0;
+  const off: MeasureId[] = [];
   for (const id of [...sec.owned, ...sec.hired]) {
     const m = measureOf(id);
     if (!m.nightly) continue;
@@ -178,10 +196,14 @@ export function theftNight<S extends SecurityHost>(s: S, seed: string, cycleDay:
     } else if (m.kind === 'nightly') {
       sec = { ...sec, hired: sec.hired.filter(x => x !== id) };
       events.push({ kind: 'cost', text: `There was no money to pay the ${m.name.toLowerCase()}: he did not come.` });
+    } else {
+      // a measure kept for good but fed each night (the dog): unfed, she does not watch tonight
+      off.push(id);
+      events.push({ kind: 'cost', text: `There was no money for the ${m.name.toLowerCase()}’s food: she went off to find her own and did not watch the farm.` });
     }
   }
   let next = { ...s, coins, security: sec } as S;
-  const ids = activeMeasures(next);
+  const ids = activeMeasures(next, off);
   let tank = tankOf(next.tank);
   const herd = { ...tank.herd };
   let inventory = next.inventory;
@@ -189,10 +211,10 @@ export function theftNight<S extends SecurityHost>(s: S, seed: string, cycleDay:
   let lost = 0;
   let recovered = 0;
   let thefts = 0;
-  for (const x of exposure(next, cycleDay)) {
+  for (const x of exposure(next, cycleDay, off)) {
     if (!x.at || x.chance <= 0 || x.target === 'store') continue;
     if (roll(`${seed}:theft:${x.target}`) >= x.chance) continue;
-    const tip = bestAgainst(next, x.target);
+    const tip = bestAgainst(next, x.target, off);
     const back = x.target !== 'predators' && x.target !== 'cash' && x.target !== 'water' && roll(`${seed}:back:${x.target}`) < recoverFor(x.target, ids);
     const take = (n: readonly [number, number]) => rollInt(`${seed}:take:${x.target}`, n[0], n[1]);
     let text = '';
@@ -207,7 +229,7 @@ export function theftNight<S extends SecurityHost>(s: S, seed: string, cycleDay:
           crops[farm] = Math.min(0.5, crops[farm] + pct / 100);
         }
         text = `Thieves cut ${pct}% of the cobs on Farm ${farm + 1} in the night.`;
-        value = 0;
+        value = Math.round((Math.max(0, harvestFarm(t, farm).income) * pct) / 100);
         break;
       }
       case 'hens':
@@ -237,17 +259,17 @@ export function theftNight<S extends SecurityHost>(s: S, seed: string, cycleDay:
       }
       case 'cash': {
         const pct = take(TAKES.cash);
-        value = Math.round((sec.cash * pct) / 100);
+        value = Math.min(next.coins, Math.round((sec.cash * pct) / 100));
         coins = next.coins - value;
         next = { ...next, coins };
-        text = `Thieves broke into the house and took ${value} of the sale’s cash.`;
+        text = `Thieves broke into the house and took ${pct}% of the sale’s cash.`;
         break;
       }
       case 'water': {
         const litres = Math.min(Math.round(tank.level), take(TAKES.water));
         tank = { ...tank, level: tank.level - litres };
         text = `${litres.toLocaleString('en-US')} L were drawn off the tank in the night.`;
-        value = 0;
+        value = Math.round(litres * WATER_PER_L);
         break;
       }
       case 'diesel': {
@@ -260,7 +282,8 @@ export function theftNight<S extends SecurityHost>(s: S, seed: string, cycleDay:
     thefts += 1;
     if (back) {
       recovered += value;
-      events.push({ kind: 'recovered', text: `${text} ${x.target === 'cows' ? 'Her brand and ear tag were known at the market: she is back.' : 'The community watch found it: it is back.'}` });
+      const finder = finderOf(x.target, ids);
+      events.push({ kind: 'recovered', text: `${text} ${(finder && FOUND[finder]) ?? 'It was found again: it is back.'}` });
     } else {
       lost += value;
       events.push({ kind: x.target === 'predators' ? 'predator' : 'theft', text, value: value || undefined, tip });

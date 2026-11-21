@@ -9,7 +9,7 @@ import { LIFE } from '../livestock/config';
 import { LockTag, OpenLine } from '../unlock/Lock';
 import { isOpen } from '../unlock/model';
 import { MEASURES, TARGETS, type Target } from './config';
-import { activeMeasures, bestAgainst, exposure, nightlyCost, securityOf, storeTheftShare, theftOpen } from './model';
+import { activeMeasures, bestAgainst, exposure, lightCovered, nightlyCost, securityOf, storeTheftShare, theftOpen } from './model';
 
 /* The Security page: keeping the farm safe from thieves (and the hens from predators). Protect (every measure, what
    it cuts and what it costs), Risks (what is out there tonight and its chance, before and after), and Night reports
@@ -77,11 +77,14 @@ export function SecurityPage({ s, dispatch, tab: startTab }: Props) {
 
 function Protect({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
   const sec = securityOf(s.security);
+  const lit = lightCovered(s);
   return (
     <div className="lv-measures">
       <OpenLine s={s} total={MEASURES.filter(m => !m.needs || s.biz).length} what="measures" />
       {MEASURES.filter(m => !m.needs || s.biz).map(m => {
-        const owned = sec.owned.includes(m.id);
+        // the farm's lights already do what the solar security light does (src/power): nothing to buy
+        const byLights = m.id === 'light' && lit && !sec.owned.includes(m.id);
+        const owned = sec.owned.includes(m.id) || byLights;
         const hired = sec.hired.includes(m.id);
         const cuts = (Object.entries(m.cut) as [Target, number][]).sort((a, b) => b[1] - a[1]);
         const at = MEASURES.indexOf(m);
@@ -102,6 +105,8 @@ function Protect({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) 
               <button type="button" className={`lv-btn ${hired ? 'is-quiet' : 'is-go'}`} onClick={() => dispatch({ type: 'securityHire', id: m.id, on: !hired })} aria-pressed={hired} aria-label={hired ? `Stop the ${m.name.toLowerCase()}` : `Hire a ${m.name.toLowerCase()} for ${money(m.nightly ?? 0)} a night`}>
                 {hired ? 'Stop' : 'Hire'} · {money(m.nightly ?? 0)}/night
               </button>
+            ) : byLights ? (
+              <span className="lv-done">✓ Your farm lights do this</span>
             ) : owned ? (
               <span className="lv-done">✓ In place{m.nightly ? ` · ${money(m.nightly)}/night` : ''}</span>
             ) : (
