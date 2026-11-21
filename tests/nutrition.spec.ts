@@ -135,6 +135,8 @@ test('the restaurant beside the stall, the nutrition table and the markers on th
     (window as unknown as Win).__lima.jump({ view: 'world', coins: 50_000, life: { day: 5, date: null, started: 2 }, produce: { store: { maize: 40, drybeans: 12, sukuma: 10, tomatoes: 5, capsicum: 3 } } } as never),
   );
   await page.waitForFunction(() => !!(window as unknown as Win).__limaWorld);
+  // a quick farmer, as in the other farm tests (helpers.ts scenario), so a slow machine keeps up with the walk
+  await page.evaluate(() => ((window as unknown as Win).__limaWorld!.speedScale = 4));
   // walk to the restaurant beside the stall and open it
   await page.evaluate(() => {
     const at = (window as unknown as Win).__lima.places.restaurant;
