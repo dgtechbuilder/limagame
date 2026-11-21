@@ -44,11 +44,28 @@ test('a page’s action waits for the work on the farm: nothing is paid until th
   const id = s.jobs![0].id;
   s = act(s, { type: 'jobStep', id });
   expect(s.jobs![0].done).toBe(1);
-  s = act(s, feed, { type: 'jobDone', id });
+  s = act(s, { type: 'jobDone', id });
   expect(s.jobs).toHaveLength(0);
   expect(careDoneToday(s, 'cowFeed')).toBe(true);
   expect(s.coins).toBeLessThan(50_000);
   expect(s.points).toBe(5);
+  expect(s.toast?.text).toMatch(/\+5 points for the work$/);
+});
+
+test('a job whose action can no longer be done stays at its last spot, with the reason and no points', () => {
+  let s = add(game(), { type: 'powerInstall', id: 'panels', score: 1 });
+  const id = s.jobs![0].id;
+  s = act(s, { type: 'jobStep', id }, { type: 'jobStep', id });
+  // the money went on something else while the farmer walked over
+  s = act({ ...s, coins: 10 }, { type: 'jobDone', id });
+  expect(s.jobs).toHaveLength(1);
+  expect(s.jobs![0].done).toBe(s.jobs![0].stops.length - 1);
+  expect(s.points).toBe(0);
+  expect(s.toast?.text).toMatch(/You need/);
+  // with the money back, the last spot finishes it
+  s = act({ ...s, coins: 50_000 }, { type: 'jobDone', id });
+  expect(s.jobs).toHaveLength(0);
+  expect(s.points).toBeGreaterThan(0);
 });
 
 test('a job that cannot be done now is refused with the reason; a dropped job costs nothing', () => {

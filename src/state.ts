@@ -716,6 +716,8 @@ const lowerFirst = (x: string) => x.charAt(0).toLowerCase() + x.slice(1);
 
 /** Every action, then the climate it changed (src/climate/track.ts), then the sound it earned. */
 export function reducer(s: GameState, a: Action): GameState {
+  // a job done by hand (src/onsite): its action runs now, as itself, so the wallet, climate and badges see it as usual
+  if (a.type === 'jobDone') return jobDone(s, a.id);
   const next = play(s, a);
   if (next === s) return s;
   const kind = soundOf(s, next, a);
@@ -775,6 +777,21 @@ function soundOf(s: GameState, next: GameState, a: Action): SfxKind | null {
 /** Something besides the message changed: the action worked. */
 function changedState(s: GameState, next: GameState) {
   return (Object.keys(next) as (keyof GameState)[]).some(k => k !== 'toast' && k !== 'sfx' && next[k] !== s[k]);
+}
+
+/** The last spot of a job is done: what the page asked for happens now. If it cannot (the money was spent meanwhile),
+    the job stays on the list at its last spot, with the reason, so it can be finished later; no points for it. */
+function jobDone(s: GameState, id: number): GameState {
+  const job = (s.jobs ?? []).find(j => j.id === id);
+  if (!job) return s;
+  const without = (st: GameState) => (st.jobs ?? []).filter(j => j.id !== id);
+  if (!job.then) return { ...s, jobs: without(s), points: s.points + job.points, toast: toast(`${job.title}: done · +${job.points} points`) };
+  const after = reducer(s, job.then);
+  if (!changedState(s, after)) {
+    const jobs = (s.jobs ?? []).map(j => (j.id === id ? { ...j, done: Math.max(0, j.stops.length - 1) } : j));
+    return { ...s, jobs, toast: after.toast && after.toast !== s.toast ? after.toast : toast(`${job.title}: not done yet`) };
+  }
+  return { ...after, jobs: without(after), points: after.points + job.points, toast: toast(`${after.toast && after.toast !== s.toast ? `${after.toast.text} · ` : `${job.title}: done · `}+${job.points} points for the work`) };
 }
 
 let jobSeq = 0;
@@ -1872,11 +1889,8 @@ function play(s: GameState, a: Action): GameState {
       if (!jobs.some(j => j.id === a.id)) return s;
       return { ...s, jobs: jobs.map(j => (j.id === a.id ? { ...j, done: Math.min(j.stops.length, j.done + 1) } : j)) };
     }
-    case 'jobDone': {
-      const job = (s.jobs ?? []).find(j => j.id === a.id);
-      if (!job) return s;
-      return { ...s, jobs: (s.jobs ?? []).filter(j => j.id !== a.id), points: s.points + job.points };
-    }
+    case 'jobDone':
+      return jobDone(s, a.id);
     case 'jobDrop': {
       const job = (s.jobs ?? []).find(j => j.id === a.id);
       if (!job) return s;

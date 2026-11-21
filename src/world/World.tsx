@@ -467,10 +467,9 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         say(`${st.button}: done · next: ${jb.stops[jb.done + 1].button.toLowerCase()}`);
         return;
       }
-      // the last spot: what the page asked for happens now (paid, installed, fed), then the job is off the list
-      if (jb.then) dispatch(jb.then);
+      // the last spot: what the page asked for happens now (paid, installed, fed) and the job comes off the list; if
+      // it cannot happen now, the job stays at this spot and the message says why (state.ts jobDone)
       dispatch({ type: 'jobDone', id: jb.id });
-      say(`${jb.title}: done · +${jb.points} points`);
     }, 120);
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
