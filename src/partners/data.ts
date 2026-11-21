@@ -5,8 +5,9 @@
    the inventory to sell. The game reads only these tables, so no screen needs changing to swap a brand.
 
    Hello Tractor is the game's tractor partner (the tractor business is built to its brief). Every other brand here is
-   a SAMPLE, made up for the game (sample: true), standing in until a real partner signs for its slot: no real
-   company is named or implied. */
+   a SAMPLE, a template made up for the game (sample: true), standing in until a real partner signs for its slot. Each
+   is named "Lima" plus its category (Lima Fertilizer, Lima Insurance...) so it reads as a template: no real company
+   is named or implied. */
 
 export type BrandId = 'hello-tractor' | 'rutuba' | 'shina' | 'tangi' | 'pesa' | 'kinga' | 'jua' | 'ujuzi';
 
@@ -53,18 +54,18 @@ export const BRANDS: Brand[] = [
   },
   {
     id: 'rutuba',
-    name: 'Rutuba Gold',
+    name: 'Lima Fertilizer',
     category: 'Fertilizer',
     tagline: 'Feed the soil, grow more maize',
     color: '#2f8a3c',
     accent: '#ffd23f',
     mark: '🌿',
-    offer: { title: '10% off Rutuba Gold NPK', line: 'In the Shop, with a planting guide in every bag', get: ['10% off Rutuba Gold NPK in the Shop', 'A planting guide with every bag: how much, and when to top-dress'], use: { label: 'Open the fertilizer shop', to: '/shop/fertilizer' } },
+    offer: { title: '10% off Lima NPK', line: 'In the Shop, with a planting guide in every bag', get: ['10% off Lima NPK in the Shop', 'A planting guide with every bag: how much, and when to top-dress'], use: { label: 'Open the fertilizer shop', to: '/shop/fertilizer' } },
     sample: true,
   },
   {
     id: 'shina',
-    name: 'Shina Seeds',
+    name: 'Lima Seeds',
     category: 'Seed',
     tagline: 'Certified seed for every season',
     color: '#b5651d',
@@ -75,18 +76,18 @@ export const BRANDS: Brand[] = [
   },
   {
     id: 'tangi',
-    name: 'Tangi Tanks',
+    name: 'Lima Tanks',
     category: 'Water',
     tagline: 'Store the rain, water all season',
     color: '#2a7fd0',
     accent: '#bfe7f2',
     mark: '💧',
-    offer: { title: 'Free gutter kit with a 5,000 L tank', line: 'With the Tangi tank in the Shop’s water-tank section', get: ['A gutter kit, free with a Tangi 5,000 L tank', 'Catch the rain off your roof and water through the dry weeks'], use: { label: 'Open the water-tank shop', to: '/shop/water-tanks' } },
+    offer: { title: 'Free gutter kit with a 5,000 L tank', line: 'With the Lima tank in the Shop’s water-tank section', get: ['A gutter kit, free with a Lima Tanks 5,000 L tank', 'Catch the rain off your roof and water through the dry weeks'], use: { label: 'Open the water-tank shop', to: '/shop/water-tanks' } },
     sample: true,
   },
   {
     id: 'pesa',
-    name: 'PesaShamba',
+    name: 'Lima Credit',
     category: 'Finance',
     tagline: 'Farm loans you can plan for',
     color: '#5b3fa0',
@@ -97,7 +98,7 @@ export const BRANDS: Brand[] = [
   },
   {
     id: 'kinga',
-    name: 'Kinga Cover',
+    name: 'Lima Insurance',
     category: 'Insurance',
     tagline: 'Crop cover for dry spells and floods',
     color: '#c0392b',
@@ -108,7 +109,7 @@ export const BRANDS: Brand[] = [
   },
   {
     id: 'jua',
-    name: 'JuaPower Solar',
+    name: 'Lima Solar',
     category: 'Solar',
     tagline: 'Pump water with the sun',
     color: '#e67e22',
@@ -119,24 +120,25 @@ export const BRANDS: Brand[] = [
   },
   {
     id: 'ujuzi',
-    name: 'Ujuzi Agri Academy',
+    name: 'Lima Training',
     category: 'Training',
     tagline: 'Learn by farming, get certified',
     color: '#1e5b78',
     accent: '#ffcf3f',
     mark: '🎓',
-    offer: { title: 'Your farming certificates', line: 'Earn certification levels in My Progress as you play', get: ['A certificate at each level you reach, co-signed by Ujuzi', 'Learning credits for every part of the game'], use: { label: 'Open My Progress', to: '/progress/journey' } },
+    offer: { title: 'Your farming certificates', line: 'Earn certification levels in My Progress as you play', get: ['A certificate at each level you reach, co-signed by Lima Training', 'Learning credits for every part of the game'], use: { label: 'Open My Progress', to: '/progress/journey' } },
     sample: true,
   },
 ];
 
 export const brandOf = (id: BrandId | null | undefined) => (id ? BRANDS.find(b => b.id === id) : undefined);
 
-/** The player's code for a brand's offer, e.g. "RUTU-7K3Q": the brand's first letters, then four from the farmer's
-    name, so it is the same each time it is shown and needs nothing more in the save. */
+/** The player's code for a brand's offer, e.g. "FERT-7K3Q": the brand's first letters (after "Lima", which every
+    sample brand shares), then four from the farmer's name, so it is the same each time it is shown and needs nothing
+    more in the save. */
 export function offerCode(id: BrandId, farmer = '') {
   const b = brandOf(id);
-  const head = (b?.name ?? id).replace(/[^A-Za-z]/g, '').slice(0, 4).toUpperCase();
+  const head = (b?.name ?? id).replace(/^Lima\s+/, '').replace(/[^A-Za-z]/g, '').slice(0, 4).toUpperCase();
   let h = 2166136261;
   for (const ch of `${id}:${farmer.trim().toLowerCase()}`) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
   const abc = '23456789ABCDEFGHJKMNPQRSTUVWXYZ'; // no 0/O, 1/I/L: easy to read out
@@ -182,11 +184,11 @@ export const SLOTS: Slot[] = [
   { id: 'world-billboard-west', surface: '3D farm', where: 'Billboard in the yard, west of the farmhouse path', format: 'Billboard: name, tagline, offer, tap for the offer', brand: 'rutuba' },
   { id: 'world-billboard-east', surface: '3D farm', where: 'Billboard in the yard, east of the coop', format: 'Billboard: name, tagline, offer, tap for the offer', brand: 'kinga' },
   { id: 'world-billboard-shed', surface: '3D farm', where: 'Billboard by the seed shed, west of the farms', format: 'Billboard: name, tagline, offer, tap for the offer', brand: 'shina' },
-  { id: 'world-billboard-forest', surface: '3D farm', where: 'Billboard between Farm 8 and the mini forest', format: 'Billboard: name, tagline, offer, tap for the offer', brand: 'tangi' },
+  { id: 'world-billboard-forest', surface: '3D farm', where: 'Billboard between the storehouse and the mini forest', format: 'Billboard: name, tagline, offer, tap for the offer', brand: 'tangi' },
   { id: 'world-tractor', surface: '3D farm', where: 'The farm’s tractor, both sides of the bonnet', format: 'Tractor livery and name on the tractor', brand: 'hello-tractor' },
   { id: 'world-stall', surface: '3D farm', where: 'The market stall’s awning, where harvests are sold', format: 'Awning branding', brand: null },
   { id: 'classic-billboard', surface: 'Classic farm', where: 'Roadside sign on the painted farm', format: 'Rotating sign: every partner in turn', brand: null },
-  { id: 'shop-fertilizer', surface: 'Shop', where: 'Shop › Buy Fertilizer', format: 'Branded product: Rutuba Gold NPK, used for the NPK task', brand: 'rutuba' },
+  { id: 'shop-fertilizer', surface: 'Shop', where: 'Shop › Buy Fertilizer', format: 'Branded product: Lima NPK, used for the NPK task', brand: 'rutuba' },
   { id: 'shop-tank', surface: 'Shop', where: 'Shop › Buy Tank', format: 'Branded product: a 5,000 L tank', brand: 'tangi' },
   { id: 'shop-equipment', surface: 'Shop', where: 'Shop › Buy Equipment', format: 'Branded product: a tool', brand: null },
   { id: 'rewards', surface: 'Rewards', where: 'Rewards & Discounts Hub vouchers', format: 'Voucher sponsor: name on the voucher card', brand: null },

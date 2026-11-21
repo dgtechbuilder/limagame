@@ -11,17 +11,16 @@ const jump = (page: Page, s: Record<string, unknown>) => page.evaluate(x => (win
 const climate = async (page: Page) => (await state(page)).climate;
 const dialog = (page: Page) => page.getByRole('dialog', { name: 'Climate' });
 
-test('the CLIMATE button sits beside MISSION and opens the Climate page; Back, Menu and Farm work', async ({ page }) => {
+test('the CLIMATE button sits in the column under MISSION and opens the Climate page; Back, Menu and Farm work', async ({ page }) => {
   await boot(page);
   await scenario(page, 'tractor');
   const btn = page.getByRole('button', { name: /^Climate:/ });
   const mission = page.getByRole('button', { name: /^Mission:/ });
   await expect(btn).toBeVisible();
-  // beside Mission: same row, just to its left
+  // in the right-hand column with Mission (#51): the same column, below it
   const [b, m] = [await btn.boundingBox(), await mission.boundingBox()];
-  expect(Math.abs(b!.y - m!.y)).toBeLessThan(4);
-  expect(m!.x - (b!.x + b!.width)).toBeLessThan(12);
-  expect(m!.x).toBeGreaterThan(b!.x);
+  expect(Math.abs(b!.x - m!.x)).toBeLessThan(4);
+  expect(b!.y).toBeGreaterThan(m!.y + m!.height);
 
   await btn.click();
   await expect(dialog(page)).toBeVisible();
@@ -41,7 +40,7 @@ test('the CLIMATE button sits beside MISSION and opens the Climate page; Back, M
 test('a Farm Moja task is tracked: manure stores carbon, earns credits and shows in Activity', async ({ page }) => {
   await boot(page);
   await jump(page, { view: 'classic', modal: { kind: 'steps', step: 'landprep' } });
-  await page.getByRole('button', { name: `Organic Manure, ${money(40)}` }).click();
+  await page.getByRole('button', { name: `Organic Manure, ${money(200)}` }).click();
   await expect.poll(async () => (await climate(page)).total.stored).toBe(40);
   const c = await climate(page);
   expect(c.total.co2).toBeCloseTo(6, 5);
@@ -49,7 +48,7 @@ test('a Farm Moja task is tracked: manure stores carbon, earns credits and shows
   expect(c.log[0].label).toContain('Organic Manure');
 
   // a chemical task pollutes
-  await page.getByRole('button', { name: `Herbicide, ${money(40)}` }).click();
+  await page.getByRole('button', { name: `Herbicide, ${money(150)}` }).click();
   await expect.poll(async () => (await climate(page)).total.pollution).toBe(8);
 
   await act(page, { type: 'open', modal: { kind: 'climate', tab: 'activity' } });
@@ -157,7 +156,9 @@ test('Land & pay and Farm areas: the six farms plot by plot, every area, and the
   // the water credits are paid at midnight too (src/water): the tank's day
   const water = s.ledger.entries.filter((e: { type: string }) => e.type === 'water').reduce((n: number, e: { coins: number }) => n + e.coins, 0);
   expect(water).toBeGreaterThan(0);
-  expect(s.coins).toBeCloseTo(960 + p.coins + water, 6);
+  // and the market stall's evening sale (the daily sales cycle, src/produce)
+  const stall = (s.produce?.sales ?? []).filter((x: { auto?: boolean }) => x.auto).reduce((n: number, x: { earned: number }) => n + x.earned, 0);
+  expect(s.coins).toBeCloseTo(960 + p.coins + water + stall, 6);
   expect(s.climate.pay.day).toBe('2026-11-16');
   await expect(dialog(page).getByText(`+${money(p.coins)}`, { exact: true })).toBeVisible();
 

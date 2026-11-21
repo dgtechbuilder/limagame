@@ -24,6 +24,7 @@ import {
   fulfilment,
   graduation,
   hireOf,
+  DRIVER_WAGE,
   inWindow,
   leaderboard,
   levelOf,
@@ -143,7 +144,7 @@ test('a day: at least three farms, a route through all of them, the efficiency s
     }, 0),
   );
   expect(top.shortfall).toBe(top.revenue - top.collected);
-  expect(top.profit).toBe(top.revenue - top.shortfall + top.commission - top.diesel - top.wage - top.hubFee);
+  expect(top.profit).toBe(top.revenue - top.shortfall + top.commission - top.diesel - top.wage - top.hubFee - top.refund);
   expect(top.missed).toBe(0);
   const { biz, result } = runDay(b, top);
   expect(biz.day).toBe(2);
@@ -445,7 +446,7 @@ test('levels, partners and the fleet open as the business grows', () => {
   // a day hired out to the county: the fee, less the driver and the hub's share of its own tractor
   const s4 = reducer({ ...s2, biz: { ...s2.biz!, partners: [...s2.biz!.partners, 'county'] } }, { type: 'bizHireOut' });
   expect(s4.biz!.day).toBe(s2.biz!.day + 1);
-  expect(s4.biz!.cash).toBe(s2.biz!.cash + 12000 - 1000 - 12000 * HUB_SHARE);
+  expect(s4.biz!.cash).toBe(s2.biz!.cash + 12000 - DRIVER_WAGE - 12000 * HUB_SHARE);
 });
 
 test('the tractor business screen: book farms, order the route, run the day', async ({ page }) => {
@@ -525,11 +526,12 @@ test('the tractor business screen: book farms, order the route, run the day', as
   await driver.click();
   await expect(page.locator('.biz-result')).toBeVisible({ timeout: 20_000 });
   await expect(page.locator('.biz-result')).toContainText('Day 1 done');
-  await expect(page.locator('.biz-eff')).toContainText('Efficiency score');
-  await expect(page.locator('.biz-eff')).toContainText(/most efficient route/);
+  await expect(page.locator('.biz-eff')).toContainText('Route score');
+  await expect(page.locator('.biz-eff')).toContainText(/The best route!|km longer than the best/);
   await expect(page.locator('.biz-eff .ht-ser')).toContainText('SER');
-  await expect(page.locator('.biz-sheet')).toContainText('Profit');
-  await expect(page.locator('.biz-result')).toContainText(/Fulfilment today \d+ of \d+; \+\d+ counted acres/);
+  // a route under 90% efficient is a loss: the farmers pay back hire (the sheet then says Loss)
+  await expect(page.locator('.biz-sheet')).toContainText(/Profit|Loss/);
+  await expect(page.locator('.biz-result')).toContainText(/Jobs done \d+ of \d+ · \+\d+ counted acres/);
   // the day is a whole flow: it ends with the fanfare
   expect(await page.evaluate(() => (window as unknown as Win).__lima.sfx().at(-1))).toBe('flow');
   const after = await state(page);
@@ -542,18 +544,18 @@ test('the tractor business screen: book farms, order the route, run the day', as
   await expect(page.locator('.biz-counted')).toContainText(String(Math.floor(after.biz.counted)));
 
   // the hub: demo plots and the leaderboard; the calendar
-  await page.getByRole('tab', { name: 'Hub' }).click();
+  await page.getByRole('button', { name: 'Hub', exact: true }).click();
   await page.getByRole('button', { name: 'Ask for a maize demo plot' }).click();
   await expect(page.getByRole('button', { name: 'Maize demo plot running' })).toBeVisible();
   await expect(page.locator('.ht-rank li.is-you')).toContainText('You');
-  await page.getByRole('tab', { name: 'Calendar' }).click();
+  await page.getByRole('button', { name: 'Calendar', exact: true }).click();
   await expect(page.locator('.ht-months thead th.is-now')).toHaveText('Feb');
 
   // partners and fleet
-  await page.getByRole('tab', { name: 'Partners' }).click();
+  await page.getByRole('button', { name: 'Partners', exact: true }).click();
   await expect(page.locator('.biz-card', { hasText: 'Kimani Tractor Hire' })).toContainText('Signed');
   await expect(page.locator('.biz-card', { hasText: 'Narok Farmers' })).toContainText('Opens at level 2');
-  await page.getByRole('tab', { name: 'Fleet' }).click();
+  await page.getByRole('button', { name: 'Fleet', exact: true }).click();
   await expect(page.locator('.biz-card', { hasText: 'Hub tractor' })).toContainText('Disc plough');
 
   // the business is saved; Back returns to the farm

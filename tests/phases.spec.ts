@@ -321,7 +321,7 @@ test('on screen: choose how to treat after the right fix, the water tank on the 
     L.dispatch({ type: 'bizIntro' });
     L.dispatch({ type: 'biz', open: true });
   });
-  await page.getByRole('tab', { name: 'My trend' }).click();
+  await page.getByRole('button', { name: 'My trend', exact: true }).click();
   await expect(page.locator('.biz-trend-empty, .biz-trend')).toBeVisible();
 });
 

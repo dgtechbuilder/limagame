@@ -17,7 +17,7 @@ export interface ShopItem {
   stock?: [number, number];
   /** a partner's branded product (src/partners/data.ts): shown with the brand's name and colours */
   partner?: BrandId;
-  /** the plain item a branded product does the job of (Rutuba Gold NPK is used for the NPK task) */
+  /** the plain item a branded product does the job of (Lima NPK is used for the NPK task) */
   standsIn?: string;
 }
 
@@ -48,12 +48,12 @@ export const SHOP_TABS: ShopTabDef[] = [
     priceFont: 8,
     nameFont: 11,
     items: [
-      { id: 'cassava', name: 'Cassava', icon: asset('food-cassava.png'), iconSize: [31, 23], price: 40, stock: [4, 4] },
-      { id: 'maize', name: 'Maize', icon: asset('food-maize.png'), iconSize: [31, 23], price: 40, stock: [3, 4] },
-      { id: 'carrot', name: 'Carrot', icon: asset('food-carrot.png'), iconSize: [31, 23], price: 40, stock: [1, 4] },
-      { id: 'potato', name: 'Potato', icon: asset('food-potato.png'), iconSize: [31, 23], price: 40, stock: [4, 4] },
-      { id: 'broccoli', name: 'Broccoli', icon: asset('food-broccoli.png'), iconSize: [31, 23], price: 40, stock: [3, 4] },
-      { id: 'spinach', name: 'Spinach', icon: asset('food-spinach.png'), iconSize: [31, 23], price: 40, stock: [1, 4] },
+      { id: 'cassava', name: 'Cassava', icon: asset('food-cassava.png'), iconSize: [31, 23], price: 200, stock: [4, 4] },
+      { id: 'maize', name: 'Maize', icon: asset('food-maize.png'), iconSize: [31, 23], price: 360, stock: [3, 4] },
+      { id: 'carrot', name: 'Carrot', icon: asset('food-carrot.png'), iconSize: [31, 23], price: 250, stock: [1, 4] },
+      { id: 'potato', name: 'Potato', icon: asset('food-potato.png'), iconSize: [31, 23], price: 220, stock: [4, 4] },
+      { id: 'broccoli', name: 'Broccoli', icon: asset('food-broccoli.png'), iconSize: [31, 23], price: 300, stock: [3, 4] },
+      { id: 'spinach', name: 'Spinach', icon: asset('food-spinach.png'), iconSize: [31, 23], price: 150, stock: [1, 4] },
     ],
   },
   {
@@ -69,13 +69,13 @@ export const SHOP_TABS: ShopTabDef[] = [
     nameFont: 8,
     items: [
       // simplest first: a balanced NPK and manure from day 1, single nutrients later (src/unlock/model.ts)
-      { id: 'npk', name: 'Balance NPK', icon: asset('fert-npk.png'), iconSize: [31, 23], price: 40 },
-      { id: 'manure', name: 'Organic Manure', icon: asset('fert-manure.png'), iconSize: [31, 23], price: 40 },
-      { id: 'nitrogen', name: 'Nitrogen', icon: asset('fert-nitrogen.png'), iconSize: [31, 23], price: 40 },
-      { id: 'phosphorus', name: 'Phosphorus', icon: asset('fert-phosphorus.png'), iconSize: [31, 23], price: 40 },
-      { id: 'potassium', name: 'Potassium', icon: asset('fert-potassium.png'), iconSize: [31, 23], price: 40 },
+      { id: 'npk', name: 'Balance NPK', icon: asset('fert-npk.png'), iconSize: [31, 23], price: 350 },
+      { id: 'manure', name: 'Organic Manure', icon: asset('fert-manure.png'), iconSize: [31, 23], price: 150 },
+      { id: 'nitrogen', name: 'Nitrogen', icon: asset('fert-nitrogen.png'), iconSize: [31, 23], price: 300 },
+      { id: 'phosphorus', name: 'Phosphorus', icon: asset('fert-phosphorus.png'), iconSize: [31, 23], price: 380 },
+      { id: 'potassium', name: 'Potassium', icon: asset('fert-potassium.png'), iconSize: [31, 23], price: 330 },
       // the fertilizer partner's product: an NPK at the partner's 10% off
-      { id: 'rutuba-npk', name: 'Rutuba Gold NPK', icon: asset('fert-npk.png'), iconSize: [31, 23], price: 36, partner: 'rutuba', standsIn: 'npk' },
+      { id: 'rutuba-npk', name: 'Lima NPK', icon: asset('fert-npk.png'), iconSize: [31, 23], price: 315, partner: 'rutuba', standsIn: 'npk' },
     ],
   },
   {
@@ -90,13 +90,13 @@ export const SHOP_TABS: ShopTabDef[] = [
     priceFont: 6,
     nameFont: 8,
     items: [
-      { id: 'tank-s', name: 'Small', icon: asset('tank-small.png'), iconSize: [24, 35], price: 2500 },
+      { id: 'tank-s', name: 'Small', icon: asset('tank-small.png'), iconSize: [24, 35], price: 1200 },
       { id: 'tank-m', name: 'Medium', icon: asset('tank-medium.png'), iconSize: [24, 35], price: 5000 },
       { id: 'tank-l', name: 'Large', icon: asset('tank-large.png'), iconSize: [30, 35], price: 10000 },
       { id: 'tank-xl', name: '20,000 L', icon: asset('tank-large.png'), iconSize: [34, 35], price: 18000 },
       { id: 'tank-pan', name: 'Water pan', icon: asset('tank-large.png'), iconSize: [38, 30], price: 24000 },
       // the water partner's tank: a medium tank with a gutter kit
-      { id: 'tank-tangi', name: 'Tangi 5,000 L', icon: asset('tank-medium.png'), iconSize: [24, 35], price: 5000, partner: 'tangi' },
+      { id: 'tank-tangi', name: 'Lima Tanks 5,000 L', icon: asset('tank-medium.png'), iconSize: [24, 35], price: 5000, partner: 'tangi' },
     ],
   },
   {
@@ -113,10 +113,10 @@ export const SHOP_TABS: ShopTabDef[] = [
     items: [
       { id: 'hoe', name: 'Hoe', icon: asset('eq-hoe.png'), iconSize: [38, 29], price: 50 },
       { id: 'spade', name: 'Spade', icon: asset('eq-spade.png'), iconSize: [18, 29], price: 100 },
-      { id: 'wheelbarrow', name: 'Wheel barrow', icon: asset('eq-wheelbarrow.png'), iconSize: [38, 29], price: 150 },
-      { id: 'rake', name: 'Rake', icon: asset('eq-rake.png'), iconSize: [38, 29], price: 200 },
+      { id: 'wheelbarrow', name: 'Wheel barrow', icon: asset('eq-wheelbarrow.png'), iconSize: [38, 29], price: 600 },
+      { id: 'rake', name: 'Rake', icon: asset('eq-rake.png'), iconSize: [38, 29], price: 80 },
       { id: 'cultivator', name: 'Cultivator', icon: asset('eq-cultivator.png'), iconSize: [26, 29], price: 250 },
-      { id: 'shears', name: 'Shears', icon: asset('eq-shears.png'), iconSize: [26, 29], price: 300 },
+      { id: 'shears', name: 'Shears', icon: asset('eq-shears.png'), iconSize: [26, 29], price: 150 },
     ],
   },
 ];
@@ -160,12 +160,12 @@ export const STEPS: StepDef[] = [
     columns: 3,
     nameFont: 11,
     tasks: [
-      { id: 'land-selection', name: 'Land Selection', icon: asset('lp-land-selection.png'), iconSize: [58, 43], price: 40 },
-      { id: 'clearing', name: 'Clearing', icon: asset('lp-clearing.png'), iconSize: [58, 43], price: 40 },
-      { id: 'tilling', name: 'Tilling', icon: asset('lp-tilling.png'), iconSize: [53, 44], price: 40 },
-      { id: 'leveling', name: 'Leveling', icon: asset('lp-leveling.png'), iconSize: [64, 44], price: 40 },
-      { id: 'lp-manure', name: 'Organic Manure', icon: asset('lp-manure.png'), iconSize: [58, 43], price: 40 },
-      { id: 'herbicide', name: 'Herbicide', icon: asset('lp-herbicide.png'), iconSize: [38, 38], price: 40 },
+      { id: 'land-selection', name: 'Land Selection', icon: asset('lp-land-selection.png'), iconSize: [58, 43], price: 150 },
+      { id: 'clearing', name: 'Clearing', icon: asset('lp-clearing.png'), iconSize: [58, 43], price: 300 },
+      { id: 'tilling', name: 'Tilling', icon: asset('lp-tilling.png'), iconSize: [53, 44], price: 350 },
+      { id: 'leveling', name: 'Leveling', icon: asset('lp-leveling.png'), iconSize: [64, 44], price: 150 },
+      { id: 'lp-manure', name: 'Organic Manure', icon: asset('lp-manure.png'), iconSize: [58, 43], price: 200 },
+      { id: 'herbicide', name: 'Herbicide', icon: asset('lp-herbicide.png'), iconSize: [38, 38], price: 150 },
     ],
   },
   {
@@ -179,10 +179,10 @@ export const STEPS: StepDef[] = [
     columns: 2,
     nameFont: 11,
     tasks: [
-      { id: 'seeding', name: 'Seeding', icon: asset('pl-seeding.png'), iconSize: [58, 43], price: 40 },
-      { id: 'intercropping', name: 'Intercropping', icon: asset('pl-intercropping.png'), iconSize: [68, 44], price: 40 },
-      { id: 'transplanting', name: 'Transplanting', icon: asset('pl-transplanting.png'), iconSize: [64, 44], price: 40 },
-      { id: 'pl-manure', name: 'Organic Manure', icon: asset('pl-manure.png'), iconSize: [58, 44], price: 40 },
+      { id: 'seeding', name: 'Seeding', icon: asset('pl-seeding.png'), iconSize: [58, 43], price: 300 },
+      { id: 'intercropping', name: 'Intercropping', icon: asset('pl-intercropping.png'), iconSize: [68, 44], price: 150 },
+      { id: 'transplanting', name: 'Transplanting', icon: asset('pl-transplanting.png'), iconSize: [64, 44], price: 50 },
+      { id: 'pl-manure', name: 'Organic Manure', icon: asset('pl-manure.png'), iconSize: [58, 44], price: 200 },
     ],
   },
   {
@@ -196,11 +196,11 @@ export const STEPS: StepDef[] = [
     columns: 3,
     nameFont: 10,
     tasks: [
-      { id: 'f-nitrogen', name: 'Nitrogen', icon: asset('fert-nitrogen.png'), iconSize: [41, 30], price: 40 },
-      { id: 'f-phosphorus', name: 'Phosphorus', icon: asset('fert-phosphorus.png'), iconSize: [41, 30], price: 40 },
-      { id: 'f-potassium', name: 'Potassium', icon: asset('fert-potassium.png'), iconSize: [41, 30], price: 40 },
-      { id: 'f-npk', name: 'Balance NPK', icon: asset('fert-npk.png'), iconSize: [41, 30], price: 40 },
-      { id: 'f-manure', name: 'Organic Manure', icon: asset('fert-manure.png'), iconSize: [41, 30], price: 40 },
+      { id: 'f-nitrogen', name: 'Nitrogen', icon: asset('fert-nitrogen.png'), iconSize: [41, 30], price: 300 },
+      { id: 'f-phosphorus', name: 'Phosphorus', icon: asset('fert-phosphorus.png'), iconSize: [41, 30], price: 380 },
+      { id: 'f-potassium', name: 'Potassium', icon: asset('fert-potassium.png'), iconSize: [41, 30], price: 330 },
+      { id: 'f-npk', name: 'Balance NPK', icon: asset('fert-npk.png'), iconSize: [41, 30], price: 350 },
+      { id: 'f-manure', name: 'Organic Manure', icon: asset('fert-manure.png'), iconSize: [41, 30], price: 150 },
     ],
   },
   {
@@ -214,10 +214,10 @@ export const STEPS: StepDef[] = [
     columns: 2,
     nameFont: 11,
     tasks: [
-      { id: 'herbicides', name: 'Herbicides', icon: asset('pe-herbicides.png'), iconSize: [40, 43], price: 40 },
-      { id: 'fungicides', name: 'Fungicides', icon: asset('pe-fungicides.png'), iconSize: [40, 43], price: 40 },
-      { id: 'nematicides', name: 'Nematicides', icon: asset('pe-nematicides.png'), iconSize: [40, 43], price: 40 },
-      { id: 'insecticides', name: 'Insecticides', icon: asset('pe-insecticides.png'), iconSize: [40, 43], price: 40 },
+      { id: 'herbicides', name: 'Herbicides', icon: asset('pe-herbicides.png'), iconSize: [40, 43], price: 150 },
+      { id: 'fungicides', name: 'Fungicides', icon: asset('pe-fungicides.png'), iconSize: [40, 43], price: 180 },
+      { id: 'nematicides', name: 'Nematicides', icon: asset('pe-nematicides.png'), iconSize: [40, 43], price: 200 },
+      { id: 'insecticides', name: 'Insecticides', icon: asset('pe-insecticides.png'), iconSize: [40, 43], price: 150 },
     ],
   },
   {
@@ -231,10 +231,10 @@ export const STEPS: StepDef[] = [
     columns: 2,
     nameFont: 10,
     tasks: [
-      { id: 'w-1000', name: '1,000 L', icon: asset('water-1.png'), iconSize: [40, 43], price: 40 },
-      { id: 'w-5000', name: '5,000 L', icon: asset('water-2.png'), iconSize: [48, 46], price: 40 },
-      { id: 'w-10000', name: '10,000 L', icon: asset('water-3.png'), iconSize: [59, 46], price: 40 },
-      { id: 'w-20000', name: '20,000 L', icon: asset('water-4.png'), iconSize: [66, 46], price: 40 },
+      { id: 'w-1000', name: '1,000 L', icon: asset('water-1.png'), iconSize: [40, 43], price: 120 },
+      { id: 'w-5000', name: '5,000 L', icon: asset('water-2.png'), iconSize: [48, 46], price: 550 },
+      { id: 'w-10000', name: '10,000 L', icon: asset('water-3.png'), iconSize: [59, 46], price: 1100 },
+      { id: 'w-20000', name: '20,000 L', icon: asset('water-4.png'), iconSize: [66, 46], price: 1900 },
     ],
   },
   {
@@ -248,12 +248,12 @@ export const STEPS: StepDef[] = [
     columns: 3,
     nameFont: 11,
     tasks: [
-      { id: 'protection', name: 'Harvest Protection', icon: asset('hv-protection.png'), iconSize: [40, 43], price: 40 },
-      { id: 'timing', name: 'Timing', icon: asset('hv-timing.png'), iconSize: [40, 43], price: 40 },
-      { id: 'reaping', name: 'Reaping', icon: asset('hv-reaping.png'), iconSize: [40, 43], price: 40 },
-      { id: 'sorting', name: 'Sorting', icon: asset('hv-sorting.png'), iconSize: [40, 43], price: 40 },
-      { id: 'packaging', name: 'Packaging', icon: asset('hv-packaging.png'), iconSize: [40, 43], price: 40 },
-      { id: 'storage', name: 'Storage', icon: asset('hv-storage.png'), iconSize: [40, 43], price: 40 },
+      { id: 'protection', name: 'Harvest Protection', icon: asset('hv-protection.png'), iconSize: [40, 43], price: 150 },
+      { id: 'timing', name: 'Timing', icon: asset('hv-timing.png'), iconSize: [40, 43], price: 50 },
+      { id: 'reaping', name: 'Reaping', icon: asset('hv-reaping.png'), iconSize: [40, 43], price: 300 },
+      { id: 'sorting', name: 'Sorting', icon: asset('hv-sorting.png'), iconSize: [40, 43], price: 100 },
+      { id: 'packaging', name: 'Packaging', icon: asset('hv-packaging.png'), iconSize: [40, 43], price: 120 },
+      { id: 'storage', name: 'Storage', icon: asset('hv-storage.png'), iconSize: [40, 43], price: 100 },
     ],
   },
 ];
@@ -278,10 +278,10 @@ export interface StorageOption {
 /** Simplest first: the first two from day 1, the third from day 2, the rest from day 3 or Level 3 (src/unlock/model.ts). */
 export const STORAGE_OPTIONS: StorageOption[] = [
   { id: 'home', name: 'Home Storage', icon: asset('storage-home.png'), iconSize: [40, 43], costPerBag: 0, spoilage: 'High', loss: 0.12, time: '3 days' },
-  { id: 'hermetic', name: 'Hermetic bags', icon: asset('storage-home.png'), iconSize: [34, 37], costPerBag: 1, spoilage: 'Low', loss: 0.03, time: '3 days' },
-  { id: 'coop', name: 'Cooperative warehouse', icon: asset('storage-coop.png'), iconSize: [54, 43], costPerBag: 2, spoilage: 'Medium', loss: 0.05, time: '2 days' },
-  { id: 'silo', name: 'Metal silo', icon: asset('storage-cold.png'), iconSize: [30, 38], costPerBag: 3, spoilage: 'Low', loss: 0.02, time: '3 days' },
-  { id: 'cold', name: 'Cold storage', icon: asset('storage-cold.png'), iconSize: [34, 43], costPerBag: 4, spoilage: 'Low', loss: 0.01, time: '1 day' },
+  { id: 'hermetic', name: 'Hermetic bags', icon: asset('storage-home.png'), iconSize: [34, 37], costPerBag: 25, spoilage: 'Low', loss: 0.03, time: '3 days' },
+  { id: 'coop', name: 'Cooperative warehouse', icon: asset('storage-coop.png'), iconSize: [54, 43], costPerBag: 10, spoilage: 'Medium', loss: 0.05, time: '2 days' },
+  { id: 'silo', name: 'Metal silo', icon: asset('storage-cold.png'), iconSize: [30, 38], costPerBag: 15, spoilage: 'Low', loss: 0.02, time: '3 days' },
+  { id: 'cold', name: 'Cold storage', icon: asset('storage-cold.png'), iconSize: [34, 43], costPerBag: 30, spoilage: 'Low', loss: 0.01, time: '1 day' },
 ];
 
 export interface ProcessOption {
@@ -297,9 +297,9 @@ export interface ProcessOption {
 }
 
 export const PROCESSES: ProcessOption[] = [
-  { id: 'drying', step: 1, name: 'Drying', blurb: 'Reduce moisture to prevent spoilage', icon: asset('va-drying.png'), iconSize: [37, 33], time: '2 hrs', cost: 10, profitIncrease: 25 },
-  { id: 'processing', step: 2, name: 'Processing', blurb: 'Turn grains into flour for higher value', icon: asset('va-processing.png'), iconSize: [37, 38], time: '4 hrs', cost: 10, profitIncrease: 65 },
-  { id: 'packaging', step: 3, name: 'Packaging', blurb: 'Attractive packaging builds trust', icon: asset('va-packaging.png'), iconSize: [37, 33], time: '2 hrs', cost: 10, profitIncrease: 40 },
+  { id: 'drying', step: 1, name: 'Drying', blurb: 'Reduce moisture to prevent spoilage', icon: asset('va-drying.png'), iconSize: [37, 33], time: '2 hrs', cost: 100, profitIncrease: 10 },
+  { id: 'processing', step: 2, name: 'Processing', blurb: 'Turn grains into flour for higher value', icon: asset('va-processing.png'), iconSize: [37, 38], time: '4 hrs', cost: 600, profitIncrease: 35 },
+  { id: 'packaging', step: 3, name: 'Packaging', blurb: 'Attractive packaging builds trust', icon: asset('va-packaging.png'), iconSize: [37, 33], time: '2 hrs', cost: 300, profitIncrease: 15 },
 ];
 
 export interface Reward {
@@ -331,9 +331,9 @@ export const HARVEST_CHOICES: {
   quality: number;
   note: string;
 }[] = [
-  { id: 'now', label: 'Harvest now', icon: asset('chest-now.png'), iconSize: [20, 25], yieldBags: 120, quality: 4, note: 'Good yield, average quality' },
-  { id: 'wait2', label: 'Wait 2 days', icon: asset('chest-2days.png'), iconSize: [34, 32], yieldBags: 150, quality: 5, note: 'Best yield, best quality' },
-  { id: 'week', label: 'Wait 1 week', icon: asset('chest-week.png'), iconSize: [35, 25], yieldBags: 135, quality: 3, note: 'High profit, risk of over-ripening' },
+  { id: 'now', label: 'Harvest now', icon: asset('chest-now.png'), iconSize: [20, 25], yieldBags: 31, quality: 4, note: 'Good yield, average quality' },
+  { id: 'wait2', label: 'Wait 2 days', icon: asset('chest-2days.png'), iconSize: [34, 32], yieldBags: 36, quality: 5, note: 'Best yield, best quality' },
+  { id: 'week', label: 'Wait 1 week', icon: asset('chest-week.png'), iconSize: [35, 25], yieldBags: 33, quality: 3, note: 'High profit, risk of over-ripening' },
 ];
 
 export const TIMELINE = [
@@ -405,7 +405,7 @@ export function shopIndex(id: string): number {
   return plain.findIndex(i => i.id === id);
 }
 
-/** Branded products and the plain item each does the job of (a task that uses NPK takes Rutuba Gold NPK too). */
+/** Branded products and the plain item each does the job of (a task that uses NPK takes Lima NPK too). */
 export const STANDS_IN: Record<string, string> = Object.fromEntries(
   SHOP_TABS.flatMap(t => t.items)
     .filter(i => i.standsIn)

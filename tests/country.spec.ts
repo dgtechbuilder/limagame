@@ -52,7 +52,7 @@ const SCREENS = [
   ...['welcome', 'sale', 'storage', 'harvest-timing', 'value-addition', 'process', 'farm-info', 'results', 'rewards', 'training'].map(t => `/${t}`),
   ...['history', 'climate-payments', 'summary'].map(t => `/wallet/${t}`),
   ...['build', 'today', 'impact', 'history'].map(t => `/power/${t}`),
-  '/market', '/new-farms/7', '/new-farms/8', '/animals/cow-shed',
+  '/market', '/greenhouse/bed-1', '/greenhouse/bed-4', '/storehouse/store', '/storehouse/harvest', '/storehouse/produce', '/animals/cow-shed',
 ];
 
 /** The page's words, with its labels and tool tips, and any US dollar amount in them. */
@@ -83,10 +83,10 @@ test('once Kenya is picked, no screen shows US dollars', async ({ page }) => {
   await page.evaluate(() => (window.location.hash = '/tractor-business'));
   await page.getByRole('dialog', { name: 'Welcome to the Narok hub' }).getByRole('button', { name: /^Let.s go$/ }).click();
   for (const tab of ['Today', 'Hub', 'Calendar', 'Partners', 'Fleet']) {
-    await page.getByRole('tab', { name: tab }).click();
+    await page.getByRole('button', { name: tab, exact: true }).click();
     expect(await dollars(page), tab).toEqual([]);
   }
-  await page.getByRole('tab', { name: 'Partners' }).click();
+  await page.getByRole('button', { name: 'Partners', exact: true }).click();
   await expect(page.locator('.biz-card', { hasText: 'County Roads Office' })).toContainText('KSh 120,000');
 });
 
@@ -101,7 +101,7 @@ test("the story's last season is told in the currency picked a step before", asy
   await page.locator('.story-step', { hasText: 'Plant the season' }).click();
   await plantByHand(page);
   await closeCheer(page, /^Well done/);
-  await expect(page.locator('.story-caption')).toHaveText('Seed, fertiliser and labour went in: KSh 380,000 spent.');
+  await expect(page.locator('.story-caption')).toHaveText('Seed, fertiliser and labour went in: KSh 95,000 spent.');
   expect(await dollars(page)).toEqual([]);
 });
 

@@ -20,10 +20,14 @@ const World = lazy(() => import('./world/World').then(m => ({ default: m.World }
 const AnimalsPage = lazyPage(() => import('./livestock/Animals').then(m => m.AnimalsPage), 1);
 const SecurityPage = lazyPage(() => import('./security/Security').then(m => m.SecurityPage), 1);
 const WalletPage = lazyPage(() => import('./wallet/Wallet').then(m => m.WalletPage), 1);
+const FinancePage = lazyPage(() => import('./finance/Finance').then(m => m.FinancePage), 1);
 const PowerPage = lazyPage(() => import('./power/Power').then(m => m.PowerPage), 1);
 const TractorGamePage = lazyPage(() => import('./minifarm/MiniFarm').then(m => m.TractorGamePage), 1);
 const MarketPage = lazyPage(() => import('./produce/Market').then(m => m.MarketPage), 1);
-const GardenPage = lazyPage(() => import('./garden/Garden').then(m => m.GardenPage), 1);
+const EventsPage = lazyPage(() => import('./events/Events').then(m => m.EventsPage), 1);
+const GreenhousePage = lazyPage(() => import('./greenhouse/Greenhouse').then(m => m.GreenhousePage), 1);
+const StorehousePage = lazyPage(() => import('./storehouse/Storehouse').then(m => m.StorehousePage), 1);
+const KakumaPage = lazyPage(() => import('./events/Kakuma').then(m => m.KakumaPage), 1);
 // design review (?review=1) only: its sample screens are computed when it is opened, never for players
 const ReviewPicker = lazy(() => import('./review/Review').then(m => ({ default: m.ReviewPicker })));
 import { WelcomeModal } from './screens/Meta';
@@ -334,6 +338,11 @@ export default function App() {
             <WalletPage s={s} dispatch={dispatch} tab={m.tab} />
           </Suspense>
         )}
+        {m?.kind === 'finance' && (
+          <Suspense fallback={<ActivityLoading label="Opening your money…" />}>
+            <FinancePage s={s} dispatch={dispatch} tab={m.tab} />
+          </Suspense>
+        )}
         {m?.kind === 'power' && (
           <Suspense fallback={<ActivityLoading label="Opening the power yard…" />}>
             <PowerPage s={s} dispatch={dispatch} tab={m.tab} />
@@ -349,9 +358,24 @@ export default function App() {
             <TractorGamePage dispatch={dispatch} />
           </Suspense>
         )}
-        {m?.kind === 'garden' && (
-          <Suspense fallback={<ActivityLoading label="Opening the garden…" />}>
-            <GardenPage s={s} dispatch={dispatch} farm={m.farm} />
+        {m?.kind === 'greenhouse' && (
+          <Suspense fallback={<ActivityLoading label="Opening the greenhouse…" />}>
+            <GreenhousePage s={s} dispatch={dispatch} bed={m.bed} />
+          </Suspense>
+        )}
+        {m?.kind === 'storehouse' && (
+          <Suspense fallback={<ActivityLoading label="Opening the storehouse…" />}>
+            <StorehousePage s={s} dispatch={dispatch} tab={m.tab ?? 'store'} />
+          </Suspense>
+        )}
+        {m?.kind === 'events' && (
+          <Suspense fallback={<ActivityLoading label="Opening special events…" />}>
+            <EventsPage s={s} dispatch={dispatch} tab={m.tab} region={m.region} />
+          </Suspense>
+        )}
+        {m?.kind === 'kakuma' && (
+          <Suspense fallback={<ActivityLoading label="Opening the Kakuma event…" />}>
+            <KakumaPage s={s} dispatch={dispatch} tab={m.tab} />
           </Suspense>
         )}
         {m?.kind === 'shop' && <ShopModal s={s} tab={m.tab} dispatch={dispatch} />}
