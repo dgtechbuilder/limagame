@@ -28,6 +28,7 @@ type Win = Window & {
   };
   __limaWorld?: {
     speedScale: number;
+    workScale: number;
     walkTo: (x: number, z: number) => void;
     spawn: (x: number, z: number) => void;
     nextTile: (farm: number) => { x: number; z: number };
@@ -61,6 +62,30 @@ export async function scenario(page: Page, kind: string) {
     w.speedScale = 4;
   });
   return info;
+}
+
+/** Do every job on the list by hand (src/onsite): the farmer walks to each spot by themselves; press its button and
+    wait for the timer, spot after spot, until the list is empty. */
+export async function doJobs(page: Page) {
+  await page.waitForFunction(() => !!(window as unknown as Win).__limaWorld);
+  await page.evaluate(() => {
+    const w = (window as unknown as Win).__limaWorld!;
+    w.speedScale = 4;
+    w.workScale = 0.3;
+  });
+  const at = () => page.evaluate(() => {
+    const j = (window as unknown as Win).__lima.state.jobs?.[0];
+    return j ? `${j.id}:${j.done}` : '';
+  });
+  for (let i = 0; i < 30; i++) {
+    const was = await at();
+    if (!was) return;
+    const btn = page.locator('.hud-plot.is-job');
+    await expect(btn).toBeVisible({ timeout: 30_000 });
+    await btn.click();
+    await expect.poll(at, { timeout: 15_000 }).not.toBe(was);
+  }
+  expect(await at()).toBe('');
 }
 
 /** Tap the task card, which walks the farmer to the next job (and opens a check on arrival at a sign). */
@@ -131,11 +156,21 @@ export async function workFarm(page: Page, farm: number, done: () => Promise<boo
   expect(await done()).toBe(true);
 }
 
-/** The story's page 1: sign for the farm (Next shows once signed). */
+/** The story's page 1: sign for the farm, then the cows' and hens' morning care (Next shows once all is done). */
 export async function signStory(page: Page) {
   await page.getByRole('button', { name: /Sign for my farm/ }).click();
   await expect(page.locator('.story-deed-done')).toBeVisible();
   await closeCheer(page, 'Congratulations!');
+  await careForAnimals(page);
+}
+
+/** The story's page 1, once signed: feed the cows, water the hens, collect the eggs (each a short timer), then the pop-up. */
+export async function careForAnimals(page: Page) {
+  for (const job of ['Feed the cows', 'Water the hens', 'Collect the eggs']) {
+    await page.getByRole('button', { name: job, exact: true }).click();
+    await expect(page.getByRole('button', { name: `${job}: done` })).toBeVisible({ timeout: 5000 });
+  }
+  await closeCheer(page, /^Well done/);
 }
 
 /** Each story action ends with a pop-up: check its title, then Continue. */

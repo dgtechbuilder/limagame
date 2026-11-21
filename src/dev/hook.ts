@@ -18,6 +18,7 @@ import { PLACES } from '../world/engine';
 import { PLOTS, signOf, tileCenter } from '../world/field';
 import { tidyItems } from '../tidy/model';
 import { achClock } from '../achievements/track';
+import { jobFor } from '../onsite/model';
 
 export function install(get: () => GameState, dispatch: Dispatch<Action>) {
   const jump = (state: Partial<GameState>) => dispatch({ type: 'reset', state: { ...initialState, ...REVIEW_BASE, ...state } });
@@ -55,6 +56,8 @@ export function install(get: () => GameState, dispatch: Dispatch<Action>) {
     plots: PLOTS,
     sign: signOf,
     tile: tileCenter,
+    /** the walk and the work on the farm for a page's action (src/onsite), or null */
+    jobFor: (a: Action) => jobFor(get(), a),
     /** today's bushes and rocks for the daily tidy-up (cleared or not) */
     tidy: () => tidyItems(achClock.today()),
     events,

@@ -69,6 +69,7 @@ import { BED_NAMES, GREENHOUSE, bedStage, ghNeeds, greenhouseOf } from '../green
 import { PRODUCE, PRODUCE_IDS, produceOf } from '../produce/model';
 import { ShedOptions } from '../plots/ShedOptions';
 import { FarmLoading } from './Loading';
+import { careJob, choresCount, choresLeft, jobsOf, type Job, type JobStop } from '../onsite/model';
 import { ActivityLoading } from '../components/ActivityLoading';
 import { lazyPage, prefetchActivities } from '../prefetch';
 
@@ -142,7 +143,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
   const [care, setCare] = useState<Care | null>(null);
   /** the tractor type and tool on the tractor now */
   const [rig, setRig] = useState<Rig | null>(null);
-  const [anchors, setAnchors] = useState<Anchors>({ farmer: { x: 437, y: 160 }, sign: null, riding: false, nearTractor: false, plot: null, tidy: null, place: null });
+  const [anchors, setAnchors] = useState<Anchors>({ farmer: { x: 437, y: 160 }, sign: null, riding: false, nearTractor: false, plot: null, tidy: null, place: null, job: false });
   /** the tractor screen (src/tractor/TractorHub.tsx), open at a section */
   const [hub, setHub] = useState<HubSection | null>(null);
   /** clearing or planting one plot: started at, and how long it takes (ms) */
@@ -254,7 +255,12 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     const tick = window.setInterval(() => {
       const f = w.farmerScreen();
       const sg = eng.current && atSignRef.current >= 0 ? signOf(atSignRef.current) : null;
-      const next = { farmer: f, sign: sg ? w.project(sg.x, 2.5, sg.z) : null, riding: w.isRiding(), nearTractor: w.nearTractor(), plot: w.plotJobHere(), bill: billboardNear(w), tidy: w.tidyHere(), place: w.placeHere() };
+      const jb = jobRef.current;
+      const jst = jb?.stops[jb.done];
+      const jp = jst ? stopPoint(jst, w) : null;
+      const me = w.farmerAt();
+      const jobNear = !!jp && !w.isRiding() && Math.hypot(me.x - jp.x, me.z - jp.z) < JOB_REACH;
+      const next = { farmer: f, sign: sg ? w.project(sg.x, 2.5, sg.z) : null, riding: w.isRiding(), nearTractor: w.nearTractor(), plot: w.plotJobHere(), bill: billboardNear(w), tidy: w.tidyHere(), place: w.placeHere(), job: jobNear };
       // the HUD follows the farmer: re-render only when something on it would move or change
       setAnchors(a => (sameAnchors(a, next) ? a : next));
     }, 120);
@@ -269,6 +275,10 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
   }, []);
   const atSignRef = useRef(-1);
   atSignRef.current = atSign;
+  /** the job being walked and done by hand (src/onsite): the first on the list, once the first session is done */
+  const job: Job | null = s.fs.phase === 'done' ? jobsOf(s)[0] ?? null : null;
+  const jobRef = useRef(job);
+  jobRef.current = job;
 
   const overlay = paused || !!checking || !!night || !!care || !!hub;
 
@@ -374,13 +384,121 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     say(`Walking to the ${i.kind}`);
   };
 
+  /* ---------------- jobs done by hand (src/onsite): walk to each spot, press its button, work while the timer runs ---------------- */
+
+  const jobKey = job ? `${job.id}:${job.done}` : '';
+  const jobStop = job ? job.stops[job.done] ?? null : null;
+  const pageOpen = !!(s.modal || s.roundsOpen || s.trialsOpen || s.bizOpen);
+  /** the job's spot being worked: started at, and how long it takes (ms) */
+  const [jobWork, setJobWork] = useState<{ key: string; start: number; ms: number } | null>(null);
+
+  /** Walk to the job's next spot (off the tractor first). */
+  function goToJob(first = false) {
+    const w = eng.current;
+    const jb = jobRef.current;
+    const st = jb?.stops[jb.done];
+    if (!w || !jb || !st) return;
+    if (w.isRiding()) w.dismount();
+    intent.current = null;
+    const p = stopPoint(st, w);
+    const at = w.farmerAt();
+    if (Math.hypot(at.x - p.x, at.z - p.z) < JOB_REACH) return;
+    w.walkTo(p.x, p.z);
+    if (first) say(`Walking to ${jb.where}`);
+  }
+  // a new job, or its next spot: the farmer sets off as soon as nothing is open on top
+  const walkedFor = useRef('');
+  useEffect(() => {
+    if (!job || overlay || pageOpen || walkedFor.current === jobKey) return;
+    walkedFor.current = jobKey;
+    // the message that put the job on the list already says where to walk
+    goToJob(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobKey, overlay, pageOpen]);
+  // a job added from the tractor screen or a care screen closes it, so the walk can start
+  const jobIds = jobsOf(s).map(j => j.id);
+  const seenJobs = useRef(new Set(jobIds));
+  useEffect(() => {
+    const fresh = jobIds.some(id => !seenJobs.current.has(id));
+    seenJobs.current = new Set(jobIds);
+    if (!fresh) return;
+    setHub(null);
+    setCare(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobIds.join()]);
+  // a part or a tool bought rides on the farmer's back to its first spot
+  useEffect(() => {
+    eng.current?.setCrate(!!job?.crate && job.done === 0);
+  }, [job?.crate, job?.done, job?.id]);
+
+  function startJobWork() {
+    const w = eng.current;
+    const jb = jobRef.current;
+    const st = jb?.stops[jb.done];
+    if (!w || !jb || !st || jobWork || working || tidying) return;
+    w.stopWalking();
+    if (st.gather) w.gather(st.gather.group, st.gather.x, st.gather.z, st.secs * w.workScale + 5);
+    setJobWork({ key: `${jb.id}:${jb.done}`, start: performance.now(), ms: st.secs * 1000 * w.workScale });
+  }
+  useEffect(() => {
+    if (!jobWork) return;
+    const id = window.setInterval(() => {
+      const w = eng.current;
+      const jb = jobRef.current;
+      if (!w) return;
+      const st = jb?.stops[jb.done];
+      if (!jb || !st || `${jb.id}:${jb.done}` !== jobWork.key) return setJobWork(null);
+      const p = stopPoint(st, w);
+      const me = w.farmerAt();
+      // walking away (or a screen opening on top) stops the work; the spot stays to do
+      if (overlay || Math.hypot(me.x - p.x, me.z - p.z) > JOB_REACH + 0.4) {
+        setJobWork(null);
+        if (!overlay) say('Stay at the spot until the timer is done');
+        return;
+      }
+      w.jobWorking(p.face, st.fx, st.tool);
+      if (performance.now() - jobWork.start < jobWork.ms) return;
+      setJobWork(null);
+      w.jobFinished(p.face ?? p, st.fx);
+      sfx.action();
+      const last = jb.done + 1 >= jb.stops.length;
+      if (!last) {
+        dispatch({ type: 'jobStep', id: jb.id });
+        say(`${st.button}: done · next: ${jb.stops[jb.done + 1].button.toLowerCase()}`);
+        return;
+      }
+      // the last spot: what the page asked for happens now (paid, installed, fed) and the job comes off the list; if
+      // it cannot happen now, the job stays at this spot and the message says why (state.ts jobDone)
+      dispatch({ type: 'jobDone', id: jb.id });
+    }, 120);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobWork, overlay]);
+
+  /** The animal chores chip: walk to the job in hand at the pen or the coop, or start the next chore of the day. */
+  const goToChores = () => {
+    const st = sRef.current;
+    const jb = jobRef.current;
+    if (jb?.key.startsWith('care:')) return goToJob(true);
+    const left = choresLeft(st);
+    if (!left.length) return say('The cows and hens are cared for today');
+    const waiting = jobsOf(st).find(j => j.key.startsWith('care:'));
+    if (waiting) return say(`${waiting.title} is on your jobs list: finish ${jb?.title.toLowerCase() ?? 'the job in hand'} first`);
+    dispatch({ type: 'jobAdd', job: { ...careJob(st, left[0]), then: { type: 'animalCare', id: left[0] } } });
+  };
+  const chores = s.fs.phase === 'done' ? choresCount(s) : null;
+  const choresDone = chores ? chores.cows.done + chores.hens.done : 0;
+  const choresAll = chores ? chores.cows.all + chores.hens.all : 0;
+
   useEffect(() => {
     const w = eng.current;
     if (!w) return;
     const target = task.target;
-    const arrowAt = 'place' in target ? PLACES[target.place] : target.at === 'sign' ? signOf(target.farm) : w.nextTile(target.farm);
+    // the job in hand points the arrow at its spot; otherwise the task card's target
+    const jp = jobStop ? stopPoint(jobStop, w) : null;
+    const arrowAt = jp ?? ('place' in target ? PLACES[target.place] : target.at === 'sign' ? signOf(target.farm) : w.nextTile(target.farm));
     w.setView({ trial: t, field: s.field, today, look, arrowAt: arrowAt ? { x: arrowAt.x, z: arrowAt.z } : null, focus: 'farm' in target ? target.farm : null, paused: overlay });
-  }, [t, s.field, today, look, task, overlay]);
+  }, [t, s.field, today, look, task, overlay, jobStop]);
 
   // the herd and the coop on the 3D farm follow the game: a stolen hen is gone, a built coop stands
   const herd = tankOf(s.tank).herd;
@@ -949,7 +1067,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         <TractorBtnIcon />
         <span>{anchors.riding ? 'GET OFF' : 'TRACTOR'}</span>
       </button>
-      {build && !anchors.riding && (
+      {build && !anchors.riding && !job && (
         <button type="button" className="hud-build" onClick={() => dispatch({ type: 'open', modal: build.go })} aria-label={`Today: ${build.title}`}>
           <i aria-hidden="true">{build.icon}</i>
           <span>
@@ -1015,7 +1133,32 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         <span>SHOP</span>
       </button>
 
-      {/* what to do next: tap it to walk there */}
+      {/* the job in hand (src/onsite): it takes the task card's place until it is done or dropped */}
+      {job && jobStop ? (
+        <div className="hud-task is-job" role="group" aria-label={`Job in hand: ${job.title}`}>
+          <button type="button" data-pad-y className="hud-job-go" onClick={() => (anchors.job ? startJobWork() : goToJob(true))} aria-label={`Job: ${job.title}. ${anchors.job ? jobStop.button : 'Tap to walk there.'}`}>
+            <span className="hud-task-icon">
+              <i className="hud-job-icon" aria-hidden="true">
+                {job.icon}
+              </i>
+              <small>
+                {job.done + 1}/{job.stops.length}
+              </small>
+            </span>
+            <span className="hud-task-text">
+              <b>{job.title}</b>
+              <i>
+                {anchors.job ? `Here: ${jobStop.button.toLowerCase()}` : `Walk to ${job.where}`}
+                {jobsOf(s).length > 1 ? ` · ${jobsOf(s).length - 1} more waiting` : ''}
+              </i>
+            </span>
+          </button>
+          <button type="button" className="hud-job-drop" onClick={() => (setJobWork(null), dispatch({ type: 'jobDrop', id: job.id }))} aria-label={`Drop the job: ${job.title}`} title="Drop this job">
+            ✕
+          </button>
+        </div>
+      ) : (
+      /* what to do next: tap it to walk there */
       <button type="button" data-pad-y className="hud-task" onClick={goToTask} aria-label={`Next: ${task.title}. Tap to walk there.`}>
         <span className="hud-task-icon">
           <TaskGlyph icon={task.icon} />
@@ -1031,6 +1174,29 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
           {task.note && <i>{task.note}</i>}
         </span>
       </button>
+      )}
+
+      {/* the cows' and hens' care, every day: tap to walk to the next chore at the pen or the coop */}
+      {chores && choresAll > 0 && (
+        <button
+          type="button"
+          className={`hud-tidy hud-chores${choresDone === choresAll ? ' is-done' : ''}`}
+          onClick={goToChores}
+          aria-label={choresDone === choresAll ? 'Animal chores done today' : `Animal chores: cows ${chores.cows.done} of ${chores.cows.all}, hens ${chores.hens.done} of ${chores.hens.all}. Tap to walk to the next one.`}
+        >
+          <span className="hud-tidy-head">
+            <b>{choresDone === choresAll ? '✓ Animals cared for' : 'Animal chores'}</b>
+          </span>
+          <span className="hud-tidy-row">
+            <span className={chores.cows.done === chores.cows.all ? 'is-full' : ''}>
+              🐄 {chores.cows.done}/{chores.cows.all}
+            </span>
+            <span className={chores.hens.done === chores.hens.all ? 'is-full' : ''}>
+              🐔 {chores.hens.done}/{chores.hens.all}
+            </span>
+          </span>
+        </button>
+      )}
       {/* the first days: today's Farm basics lesson, until it is read */}
       <BasicsChip day={lifeOf(s.life).day} read={s.basics ?? []} />
 
@@ -1087,7 +1253,28 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       {/* clearing and planting: the button on the plot under the farmer, then its timer */}
       {working && !overlay && <PlotTimer at={anchors.farmer} start={working.start} ms={working.ms} verb={working.job === 'prep' ? 'Clearing' : 'Planting'} what={rowName(working.row)} />}
       {tidying && !overlay && <PlotTimer at={anchors.farmer} start={tidying.start} ms={tidying.ms} verb={tidying.item.kind === 'bush' ? 'Clearing' : 'Moving'} what={`the ${tidying.item.kind}`} />}
-      {!working && !tidying && !anchors.plot && anchors.tidy && tidyOn && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
+      {jobWork && jobStop && !overlay && <PlotTimer at={anchors.farmer} start={jobWork.start} ms={jobWork.ms} verb={jobStop.doing} what="" />}
+      {!working && !tidying && !jobWork && job && jobStop && anchors.job && !overlay && !pageOpen && (
+        <button
+          type="button"
+          data-pad-primary
+          className="hud-plot is-job"
+          style={{ left: Math.min(STAGE_W - 90, Math.max(90, anchors.farmer.x)), top: Math.min(STAGE_H - 60, anchors.farmer.y + 70) }}
+          onClick={startJobWork}
+          aria-label={`${jobStop.button} (${jobStop.secs} seconds, step ${job.done + 1} of ${job.stops.length})`}
+        >
+          <i className="hud-job-icon" aria-hidden="true">
+            {job.icon}
+          </i>
+          <span>
+            <b>{jobStop.button}</b>
+            <i>
+              {job.title} · {job.done + 1} of {job.stops.length}
+            </i>
+          </span>
+        </button>
+      )}
+      {!working && !tidying && !jobWork && !anchors.job && !anchors.plot && anchors.tidy && tidyOn && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
         <button
           type="button"
           data-pad-primary
@@ -1103,7 +1290,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
           </span>
         </button>
       )}
-      {!working && !tidying && anchors.plot && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
+      {!working && !tidying && !jobWork && !anchors.job && anchors.plot && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
         <button
           type="button"
           data-pad-primary
@@ -1121,7 +1308,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       )}
 
       {/* a place's white square (Train, Seeds, Sell, Sleep…): a button opts into its activity; walking in starts nothing */}
-      {!working && !tidying && !anchors.plot && !anchors.riding && placeBtn && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
+      {!working && !tidying && !jobWork && !anchors.job && !anchors.plot && !anchors.riding && placeBtn && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
         <div className="hud-place" style={{ left: Math.min(STAGE_W - 150, Math.max(150, anchors.farmer.x)), top: Math.min(STAGE_H - 60, anchors.farmer.y + 70) }}>
           <button type="button" data-pad-primary className={`hud-plot is-enter is-${anchors.place}`} onClick={enterPlace} aria-label={placeBtn.aria}>
             {placeBtn.icon ? <TaskGlyph icon={placeBtn.icon} /> : <span className="hud-place-emoji" aria-hidden>{placeBtn.emoji}</span>}
@@ -1243,16 +1430,30 @@ type Anchors = {
   tidy?: TidyItem | null;
   /** the place the farmer stands in (a shed spot shows its options button) */
   place?: Place | null;
+  /** the farmer stands at the spot of the job in hand (src/onsite): its button shows */
+  job?: boolean;
 };
 const samePlot = (a: PlotHere | null, b: PlotHere | null) => a === b || (!!a && !!b && a.farm === b.farm && a.row === b.row && a.job === b.job);
 const near = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.abs(a.x - b.x) < 1 && Math.abs(a.y - b.y) < 1;
 function sameAnchors(a: Anchors, b: Anchors) {
   if (a.riding !== b.riding || a.nearTractor !== b.nearTractor || !near(a.farmer, b.farmer) || !samePlot(a.plot, b.plot)) return false;
   if (a.bill?.slot !== b.bill?.slot || (a.bill && b.bill && !near(a.bill, b.bill))) return false;
-  if (a.tidy?.id !== b.tidy?.id) return false;
+  if (a.tidy?.id !== b.tidy?.id || !!a.job !== !!b.job) return false;
   if (a.place !== b.place) return false;
   if (!a.sign || !b.sign) return a.sign === b.sign;
   return a.sign.visible === b.sign.visible && near(a.sign, b.sign);
+}
+
+/** How close the farmer must stand to a job's spot to work there. */
+const JOB_REACH = 1.0;
+
+/** A job's spot on the farm: around the tractor, its own frame is turned into farm points where it stands now. */
+function stopPoint(st: JobStop, w: FarmWorld): { x: number; z: number; face: { x: number; z: number } | null } {
+  if (st.anchor !== 'tractor') return { x: st.x, z: st.z, face: st.face ?? null };
+  const p = w.tractorPose();
+  const fx = Math.sin(p.ry);
+  const fz = Math.cos(p.ry);
+  return { x: p.x + fz * st.x + fx * st.z, z: p.z - fx * st.x + fz * st.z, face: { x: p.x, z: p.z } };
 }
 
 /** The partner billboard the farmer is close to (and that shows on screen): its offer tag goes over it. */

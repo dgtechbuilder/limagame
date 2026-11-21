@@ -78,6 +78,7 @@ import { GIFT_POINTS, KG_PER_MEAL, STORE_GIFT_KG, addGift, giftOf, kakumaOf, kak
 import type { SfxKind } from './sfx';
 import { money } from './money';
 import { clearPiece, tidyFor, TIDY_TOTAL, type TidyState } from './tidy/model';
+import { JOBS_MAX, onFarm, treatJob, type Job, type JobSpec } from './onsite/model';
 import { PAYG, SHOP, activitiesDone, bizOf, contractDay, demoSlots, farmerAccepts, graduation, hireOutDay, offersFor, partnerBlock, partnerOf, planDay, requestsFor, runDay, scanFarm, shopBlock, type Biz, type Bookings, type Crop, type Drives, type FleetItem, type PartnerId } from './business/model';
 import {
   GROWING_STEPS,
@@ -343,6 +344,8 @@ export interface GameState {
   evidence?: Partial<EvidenceState>;
   /** the daily tidy-up: today's bushes and rocks cleared, and the tidy streak (src/tidy/model.ts; missing in older saves) */
   tidy?: TidyState;
+  /** jobs waiting to be done by hand on the 3D farm: walk to each spot and work there (src/onsite; missing in older saves) */
+  jobs?: Job[];
   collectedDay: Record<string, string>; // milk/eggs → date last collected
   /** the cows and the hens: care, health, problems, the coop (src/livestock) */
   life?: Partial<LifeState>;
@@ -694,6 +697,11 @@ export type Action =
   | { type: 'storeMake'; recipe: RecipeId; batches: number; score: number }
   /** at the shed: a seed, fertilizer or sprayer chosen for every farm that can still take it, then picked up */
   | { type: 'shedChoose'; kind: PlotKind; id: string }
+  /** on the 3D farm: a page's action waits for the walk and the work by hand (src/onsite) */
+  | { type: 'jobAdd'; job: JobSpec }
+  | { type: 'jobStep'; id: number }
+  | { type: 'jobDone'; id: number }
+  | { type: 'jobDrop'; id: number }
   /** Events › Regions: a relief pack given to a region, paid from the game's money (src/events/regions.ts) */
   | { type: 'give'; region: string; pack: string }
   /** Events › Donate: the player opened an organisation's site (counted, src/events/orgs.ts) */
@@ -723,6 +731,8 @@ const lowerFirst = (x: string) => x.charAt(0).toLowerCase() + x.slice(1);
 
 /** Every action, then the climate it changed (src/climate/track.ts), then the sound it earned. */
 export function reducer(s: GameState, a: Action): GameState {
+  // a job done by hand (src/onsite): its action runs now, as itself, so the wallet, climate and badges see it as usual
+  if (a.type === 'jobDone') return jobDone(s, a.id);
   const next = play(s, a);
   if (next === s) return s;
   const kind = soundOf(s, next, a);
@@ -777,6 +787,33 @@ function soundOf(s: GameState, next: GameState, a: Action): SfxKind | null {
   if (a.type === 'animalFix') return lifeOf(next.life).issues.length < lifeOf(s.life).issues.length ? 'action' : null;
   if (EARNED.has(a.type)) return next.toast && next.toast !== s.toast && !/^(You need|That costs)/.test(next.toast.text) ? 'action' : null;
   return null;
+}
+
+/** Something besides the message changed: the action worked. */
+function changedState(s: GameState, next: GameState) {
+  return (Object.keys(next) as (keyof GameState)[]).some(k => k !== 'toast' && k !== 'sfx' && next[k] !== s[k]);
+}
+
+/** The last spot of a job is done: what the page asked for happens now. If it cannot (the money was spent meanwhile),
+    the job stays on the list at its last spot, with the reason, so it can be finished later; no points for it. */
+function jobDone(s: GameState, id: number): GameState {
+  const job = (s.jobs ?? []).find(j => j.id === id);
+  if (!job) return s;
+  const without = (st: GameState) => (st.jobs ?? []).filter(j => j.id !== id);
+  if (!job.then) return { ...s, jobs: without(s), points: s.points + job.points, toast: toast(`${job.title}: done · +${job.points} points`) };
+  const after = reducer(s, job.then);
+  if (!changedState(s, after)) {
+    const jobs = (s.jobs ?? []).map(j => (j.id === id ? { ...j, done: Math.max(0, j.stops.length - 1) } : j));
+    return { ...s, jobs, toast: after.toast && after.toast !== s.toast ? after.toast : toast(`${job.title}: not done yet`) };
+  }
+  return { ...after, jobs: without(after), points: after.points + job.points, toast: toast(`${after.toast && after.toast !== s.toast ? `${after.toast.text} · ` : `${job.title}: done · `}+${job.points} points for the work`) };
+}
+
+let jobSeq = 0;
+/** A job goes on the list, and the page closes so the farmer can walk to it. */
+function addJob(s: GameState, spec: JobSpec): GameState {
+  const id = Date.now() * 10 + (jobSeq++ % 10);
+  return { ...s, jobs: [...(s.jobs ?? []), { ...spec, id, done: 0 }], modal: null, fromMenu: false, toast: toast(`${spec.title}: walk to ${spec.where}`) };
 }
 
 function play(s: GameState, a: Action): GameState {
@@ -1532,7 +1569,9 @@ function play(s: GameState, a: Action): GameState {
     case 'animalFix': {
       const r = fixIssue(s, a.issue, a.fix);
       if ('error' in r) return { ...s, toast: toast(r.error) };
-      return { ...r.state, ...(r.right ? gainXp(s, 0.06) : {}), points: s.points + (r.right ? 20 : 0), toast: toast(r.right ? `${r.text} · +20 points` : r.text) };
+      const fixed = { ...r.state, ...(r.right ? gainXp(s, 0.06) : {}), points: s.points + (r.right ? 20 : 0), toast: toast(r.right ? `${r.text} · +20 points` : r.text) };
+      // on the 3D farm, the right fix is then given by hand at the pen or the coop
+      return r.right && onFarm(s) && !(s.jobs ?? []).some(j => j.key === `treat:${a.issue}`) ? { ...addJob(fixed, treatJob(a.issue, a.fix)), toast: fixed.toast } : fixed;
     }
     case 'animalPrevent': {
       const r = doPrevent(s, a.id);
@@ -1848,6 +1887,29 @@ function play(s: GameState, a: Action): GameState {
       if (!b || saved.includes(a.id)) return s;
       const code = offerCode(b.id, s.farmer?.name);
       return { ...s, offers: [...saved, a.id], note: `Offer from ${b.name}: ${b.offer.title}, code ${code}. ${b.offer.line}.`, toast: toast(`Offer from ${b.name}: code ${code} · it is in Messages`) };
+    }
+    case 'jobAdd': {
+      const jobs = s.jobs ?? [];
+      if (jobs.some(j => j.key === a.job.key)) return { ...s, modal: null, fromMenu: false, toast: toast(`Already on your jobs: ${a.job.title.toLowerCase()}`) };
+      if (jobs.length >= JOBS_MAX) return { ...s, toast: toast('Your hands are full: finish a job on the farm first') };
+      // the action must be possible now (money, the day, the order of parts): a refusal says why, and nothing is added
+      if (a.job.then) {
+        const n = play(s, a.job.then);
+        if (!changedState(s, n)) return n.toast && n.toast !== s.toast ? { ...s, toast: n.toast } : s;
+      }
+      return addJob(s, a.job);
+    }
+    case 'jobStep': {
+      const jobs = s.jobs ?? [];
+      if (!jobs.some(j => j.id === a.id)) return s;
+      return { ...s, jobs: jobs.map(j => (j.id === a.id ? { ...j, done: Math.min(j.stops.length, j.done + 1) } : j)) };
+    }
+    case 'jobDone':
+      return jobDone(s, a.id);
+    case 'jobDrop': {
+      const job = (s.jobs ?? []).find(j => j.id === a.id);
+      if (!job) return s;
+      return { ...s, jobs: (s.jobs ?? []).filter(j => j.id !== a.id), toast: toast(`Dropped: ${job.title.toLowerCase()}${job.then ? '. Nothing was paid' : ''}`) };
     }
     case 'tidyDay': {
       const today = achClock.today();

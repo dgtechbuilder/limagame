@@ -1,4 +1,5 @@
 import { useState, type Dispatch } from 'react';
+import { act } from '../onsite/model';
 import { Page, Tile } from '../components/Page';
 import { MiniGame, type GameSpec } from '../minigames/MiniGame';
 import { money } from '../money';
@@ -78,7 +79,7 @@ export function GreenhousePage({ s, dispatch, bed }: { s: GameState; dispatch: D
             <b>{needs.thirsty} beds need water today</b>
             <small>Under glass no rain falls on them: water every bed, every day, or switch on the solar drip.</small>
           </span>
-          <button type="button" className="gold-btn" style={{ height: 30, padding: '0 14px', fontSize: 11 }} onClick={() => dispatch({ type: 'ghWater', bed: -1 })}>
+          <button type="button" className="gold-btn" style={{ height: 30, padding: '0 14px', fontSize: 11 }} onClick={() => act(s, dispatch, { type: 'ghWater', bed: -1 })}>
             Water all
           </button>
         </div>
@@ -143,7 +144,7 @@ export function GreenhousePage({ s, dispatch, bed }: { s: GameState; dispatch: D
               <b>{b.watered >= day ? 'Watered today' : 'Needs water today'}</b>
               <small>{drip ? 'The solar drip waters it every night.' : `${ghCropOf(b.crop).water} L from the tank. A day without water costs ${GREENHOUSE.dry}% of its health.`}</small>
             </span>
-            <button type="button" className="gold-btn" style={{ height: 30, padding: '0 14px', fontSize: 11 }} disabled={b.watered >= day} onClick={() => dispatch({ type: 'ghWater', bed: tab })}>
+            <button type="button" className="gold-btn" style={{ height: 30, padding: '0 14px', fontSize: 11 }} disabled={b.watered >= day} onClick={() => act(s, dispatch, { type: 'ghWater', bed: tab })}>
               Water
             </button>
           </div>

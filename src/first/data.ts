@@ -188,12 +188,23 @@ export interface Cheer {
   line: string;
 }
 
+/** One of the animals' morning jobs on the story's page 1. */
+export interface StoryChore {
+  id: 'cowFeed' | 'henWater' | 'eggs';
+  icon: string;
+  button: string;
+  doing: string;
+  done: string;
+}
+
 export interface StoryPage {
   id: 'bought' | 'failed' | 'learn';
   title: string;
   lines: string[];
   /** page 1: the farmer signs for the farm (their name is written onto the deed and the signpost) */
   deed?: { title: string; owner: string; button: string; done: string; cheer: Cheer };
+  /** page 1, once signed: the cows and hens that came with the farm get their morning care, a tap and a short timer each */
+  animals?: { intro: string; chores: StoryChore[]; cheer: Cheer };
   /** page 2: last season, played a step at a time, then the sum (the = button shows the loss) */
   replay?: StoryStep[];
   sum?: { title: string; ask: string; done: string };
@@ -211,7 +222,7 @@ export const STORY: StoryPage[] = [
     id: 'bought',
     title: 'A farm of my own',
     lines: [
-      'For years, {name} saved from a job in town, and bought this farm: red soil, a water tank, a small hut.',
+      'For years, {name} saved from a job in town, and bought this farm: red soil, a water tank, a small hut, two cows and four hens.',
       'The plan: plant maize and sukuma wiki, return at harvest, sell.',
     ],
     deed: {
@@ -220,6 +231,15 @@ export const STORY: StoryPage[] = [
       button: 'Sign for my farm',
       done: 'Signed. This farm is yours, {name}.',
       cheer: { title: 'Congratulations!', line: 'Hi {name}, welcome to your farm.' },
+    },
+    animals: {
+      intro: 'The cows and hens came with the farm. Give them their morning care:',
+      chores: [
+        { id: 'cowFeed', icon: '🌾', button: 'Feed the cows', doing: 'Hay in…', done: 'Fed' },
+        { id: 'henWater', icon: '💧', button: 'Water the hens', doing: 'Filling…', done: 'Watered' },
+        { id: 'eggs', icon: '🥚', button: 'Collect the eggs', doing: 'Collecting…', done: 'Collected' },
+      ],
+      cheer: { title: 'Well done, {name}!', line: 'Fed and watered every day, cows give milk and hens lay eggs. You will care for them every morning.' },
     },
     button: 'Next',
   },
@@ -283,6 +303,9 @@ export const ksh = kshText;
 
 /** How long each step of the story's replay of last season takes (seconds). */
 export const STORY_STEP_S = 2;
+
+/** How long each of the animals' morning jobs on page 1 takes (seconds). */
+export const STORY_CHORE_S = 1.2;
 
 /* ------------------------------------------------------------------ */
 /* The farm update: on arriving at the maize, before the first check, how this season is going. The numbers make one

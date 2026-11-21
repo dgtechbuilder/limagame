@@ -7,12 +7,13 @@ import { speak } from '../speech';
 import { photoByKey } from '../rounds/photos';
 import { Field, FIELD_H, FIELD_W, FarmerFigure, Hut, Kale, Tree } from './art';
 import { CallIcon } from './Review';
-import { ksh, say, STORY, STORY_STEP_S, type Cheer, type Look, type StoryPage } from './data';
+import { ksh, say, STORY, STORY_CHORE_S, STORY_STEP_S, type Cheer, type Look, type StoryChore, type StoryPage } from './data';
 import { track } from './track';
 import { sfx } from '../sfx';
 
 /* The story so far: three pages between naming the farmer and the first walk, each with something to do.
-   1 · the farmer bought this farm: they sign for it, and their name goes on the deed and the signpost
+   1 · the farmer bought this farm: they sign for it, and their name goes on the deed and the signpost; then they give
+       the cows and hens that came with it their morning care (feed, water, eggs)
    2 · last season, replayed a step at a time (plant, look after the farm, harvest: each a button and a short timer),
        then the sum: spent − earned, and the = button shows the loss
    3 · what went wrong: tap each mistake to see what to do instead, then start with the maize.
@@ -32,6 +33,8 @@ interface Progress {
   flipped: number[];
   /** page 2's planting: the beds sown so far */
   sown: Seed[];
+  /** page 1's animal care: the jobs done so far */
+  cared: StoryChore['id'][];
 }
 
 /** The two seeds the farmer plants by hand on page 2. */
@@ -47,10 +50,12 @@ export function Story({ name, look, page: at, onPage, onDone }: { name: string; 
   const page = STORY[i];
   const t = (line: string) => say(line, name);
   const last = i === STORY.length - 1;
-  const [p, setP] = useState<Progress>({ signed: false, steps: 0, summed: false, flipped: [], sown: [] });
+  const [p, setP] = useState<Progress>({ signed: false, steps: 0, summed: false, flipped: [], sown: [], cared: [] });
   const set = (patch: Partial<Progress>) => setP(v => ({ ...v, ...patch }));
   /** the replay step whose timer is running, and when it started */
   const [running, setRunning] = useState<{ step: number; start: number } | null>(null);
+  /** page 1: the animal job whose timer is running */
+  const [caring, setCaring] = useState<StoryChore['id'] | null>(null);
   /** planting by hand: on while the player sows, and the bunch of seeds in their hand */
   const [planting, setPlanting] = useState(false);
   const [holding, setHolding] = useState<Seed | null>(null);
@@ -113,8 +118,24 @@ export function Story({ name, look, page: at, onPage, onDone }: { name: string; 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running]);
 
-  const ready = !cheer && (page.id === 'bought' ? p.signed : page.id === 'failed' ? p.summed : p.flipped.length === (page.mistakes?.length ?? 0));
-  const waiting = page.id === 'bought' ? 'Sign for your farm to go on' : page.id === 'failed' ? (p.steps < 3 ? 'Play each step of last season' : 'Press = to see how it went') : 'Tap each mistake to go on';
+  // page 1's animal care: each job runs a short timer, and the last one ends with a pop-up
+  useEffect(() => {
+    if (!caring) return;
+    const id = window.setTimeout(() => {
+      const cared = [...p.cared, caring];
+      setCaring(null);
+      set({ cared });
+      track('story_care', { job: caring });
+      sfx.action();
+      if (page.animals && cared.length === page.animals.chores.length) celebrate(page.animals.cheer);
+    }, STORY_CHORE_S * 1000);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [caring]);
+  const caredAll = !page.animals || p.cared.length >= page.animals.chores.length;
+
+  const ready = !cheer && (page.id === 'bought' ? p.signed && caredAll : page.id === 'failed' ? p.summed : p.flipped.length === (page.mistakes?.length ?? 0));
+  const waiting = page.id === 'bought' ? (p.signed ? 'Care for your cows and hens to go on' : 'Sign for your farm to go on') : page.id === 'failed' ? (p.steps < 3 ? 'Play each step of last season' : 'Press = to see how it went') : 'Tap each mistake to go on';
 
   const next = () => (last ? (track('story_done'), onDone()) : onPage(i + 1));
   const skip = () => (track('story_skipped', { page: page.id }), onDone());
@@ -132,7 +153,7 @@ export function Story({ name, look, page: at, onPage, onDone }: { name: string; 
         </button>
 
         <div key={page.id} className="story-art" aria-hidden="true">
-          <StoryArt page={page} look={look} name={name} p={p} running={running?.step ?? null} planting={planting} holding={holding} />
+          <StoryArt page={page} look={look} name={name} p={p} running={running?.step ?? null} planting={planting} holding={holding} caring={caring} />
           {page.id === 'failed' && (running?.step ?? p.steps) === 2 && ARMYWORM && (
             <>
               {/* a close look, in a real photo: the caterpillar in the leaf funnel */}
@@ -188,7 +209,31 @@ export function Story({ name, look, page: at, onPage, onDone }: { name: string; 
           {page.lines.map(l => (
             <p key={l}>{t(l)}</p>
           ))}
-          {page.deed && <Deed deed={page.deed} name={name} signed={p.signed} onSign={() => (set({ signed: true }), track('story_signed'), celebrate(page.deed!.cheer))} />}
+          {page.deed && <Deed deed={page.deed} name={name} signed={p.signed} compact={p.signed && !!page.animals} onSign={() => (set({ signed: true }), track('story_signed'), celebrate(page.deed!.cheer))} />}
+          {page.animals && p.signed && !(cheer && p.cared.length === 0) && (
+            <div className="story-care" role="group" aria-label="Morning care for the cows and hens">
+              <p className="story-hint">{page.animals.intro}</p>
+              <div className="story-care-row">
+                {page.animals.chores.map(c => {
+                  const done = p.cared.includes(c.id);
+                  const on = caring === c.id;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className={`story-step story-chore${done ? ' is-done' : ''}${on ? ' is-on' : ''}${!done && !on && !caring && !cheer ? ' is-turn' : ''}`}
+                      disabled={done || !!caring || !!cheer}
+                      onClick={() => setCaring(c.id)}
+                      aria-label={done ? `${c.button}: done` : c.button}
+                    >
+                      {on ? <ChoreRing /> : <span className="story-step-n" aria-hidden="true">{done ? '✓' : c.icon}</span>}
+                      {on ? c.doing : done ? c.done : c.button}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           {page.replay && (
             <Replay
               page={page}
@@ -276,7 +321,7 @@ export function Story({ name, look, page: at, onPage, onDone }: { name: string; 
 
 /* ---------------- page 1: sign for the farm ---------------- */
 
-function Deed({ deed, name, signed, onSign }: { deed: NonNullable<StoryPage['deed']>; name: string; signed: boolean; onSign: () => void }) {
+function Deed({ deed, name, signed, compact, onSign }: { deed: NonNullable<StoryPage['deed']>; name: string; signed: boolean; compact?: boolean; onSign: () => void }) {
   // the name is written a letter at a time, as if by hand
   const [shown, setShown] = useState(signed ? name.length : 0);
   useEffect(() => {
@@ -285,7 +330,7 @@ function Deed({ deed, name, signed, onSign }: { deed: NonNullable<StoryPage['dee
     return () => window.clearTimeout(id);
   }, [signed, shown, name.length]);
   return (
-    <div className={`story-deed${signed ? ' is-signed' : ''}`}>
+    <div className={`story-deed${signed ? ' is-signed' : ''}${compact ? ' is-compact' : ''}`}>
       <span className="story-deed-title">{deed.title}</span>
       <span className="story-deed-line">
         <i>{deed.owner}</i>
@@ -392,6 +437,13 @@ function Replay({
   );
 }
 
+/** The timer on one of the animals' morning jobs: a ring that fills. */
+function ChoreRing() {
+  const start = useRef(performance.now());
+  const now = useNow(true);
+  return <Ring frac={Math.min(1, (now - start.current) / (STORY_CHORE_S * 1000))} />;
+}
+
 /** Stars bursting out behind a pop-up's title. */
 function Burst() {
   return (
@@ -462,7 +514,7 @@ function Count({ to }: { to: number }) {
 /* ---------------- the pictures ---------------- */
 
 /** One picture per page, drawn in SVG with the first session's own art (300 × 220). It follows what the player has done. */
-function StoryArt({ page, look, name, p, running, planting, holding }: { page: StoryPage; look: Look; name: string; p: Progress; running: number | null; planting: boolean; holding: Seed | null }) {
+function StoryArt({ page, look, name, p, running, planting, holding, caring }: { page: StoryPage; look: Look; name: string; p: Progress; running: number | null; planting: boolean; holding: Seed | null; caring?: StoryChore['id'] | null }) {
   if (page.id === 'bought')
     return (
       <svg viewBox="0 0 300 220" width={300} height={220}>
@@ -503,6 +555,8 @@ function StoryArt({ page, look, name, p, running, planting, holding }: { page: S
             </g>
           )}
         </g>
+        {/* the cows and hens that came with the farm: fed, watered, the eggs collected */}
+        <StoryAnimals cared={p.cared} caring={caring ?? null} />
         <g transform="translate(172,198) scale(1.15)">
           <FarmerFigure look={look} pose={p.signed ? 'cheer' : 'stand'} />
         </g>
@@ -566,6 +620,69 @@ function StoryArt({ page, look, name, p, running, planting, holding }: { page: S
         ))}
       </g>
     </svg>
+  );
+}
+
+/** Page 1's cows and hens: a cow by the tree (a feeder of hay once fed, her head down to eat), hens by the hut (a
+    drinker once watered, pecking at it), and a basket that fills with eggs. */
+function StoryAnimals({ cared, caring }: { cared: StoryChore['id'][]; caring: StoryChore['id'] | null }) {
+  const fed = cared.includes('cowFeed');
+  const watered = cared.includes('henWater');
+  const eggs = cared.includes('eggs');
+  return (
+    <g>
+      {/* the cow */}
+      <g transform="translate(44,150)">
+        <ellipse cy={1} rx={24} ry={3.5} fill="rgba(0,0,0,0.15)" />
+        {[-14, -8, 9, 15].map(x => (
+          <rect key={x} x={x - 1.6} y={-12} width={3.2} height={12} rx={1.2} fill="#5a4636" />
+        ))}
+        <ellipse cy={-17} rx={19} ry={9.5} fill="#f7f3ea" stroke="#5a4636" strokeWidth={1.2} />
+        <path d="M-8,-24 Q-2,-20 -6,-12 Q-12,-14 -12,-20 Z M6,-25 Q12,-22 10,-15 Q4,-17 5,-22 Z" fill="#3a2f28" />
+        <path d="M-19,-18 Q-24,-14 -22,-8" stroke="#5a4636" strokeWidth={1.4} fill="none" />
+        <ellipse cx={-2} cy={-8} rx={4} ry={2.4} fill="#f2b8b0" />
+        <g transform={fed ? 'translate(21,-8) rotate(28)' : 'translate(21,-18)'} className={fed || caring === 'cowFeed' ? 'story-eat' : undefined}>
+          <ellipse rx={6.5} ry={5.5} fill="#f7f3ea" stroke="#5a4636" strokeWidth={1.2} />
+          <ellipse cx={4} cy={2} rx={3.4} ry={2.6} fill="#f2b8b0" />
+          <circle cx={-1} cy={-1.5} r={1} fill="#2a1d14" />
+          <path d="M-4,-5 L-7,-9 M2,-5 L4,-9" stroke="#d9c7a0" strokeWidth={1.6} strokeLinecap="round" />
+        </g>
+        {/* the feeder: empty, then full of hay */}
+        <g transform="translate(30,-2)">
+          <path d="M-10,-6 L10,-6 L7,0 L-7,0 Z" fill="#8a5a30" />
+          {(fed || caring === 'cowFeed') && <path className="story-pop" d="M-9,-6 Q-6,-12 -2,-8 Q1,-13 4,-8 Q7,-12 9,-6 Z" fill="#e8c867" stroke="#b8963a" strokeWidth={0.8} />}
+        </g>
+      </g>
+      {/* the hens and their drinker */}
+      {[
+        [204, 176, 1],
+        [222, 182, -1],
+        [244, 174, 1],
+        [210, 192, -1],
+      ].map(([x, y, f], k) => (
+        <g key={k} transform={`translate(${x},${y}) scale(${f},1)`} className={watered || caring === 'henWater' ? 'story-peck' : undefined} style={{ animationDelay: `${k * 120}ms` }}>
+          <ellipse cy={1} rx={6} ry={1.5} fill="rgba(0,0,0,0.15)" />
+          <path d="M-2,-1 L-2,1 M2,-1 L2,1" stroke="#d9862a" strokeWidth={1.2} />
+          <ellipse cy={-5} rx={6.5} ry={4.8} fill={k % 2 ? '#8a4b22' : '#b5642c'} />
+          <path d="M-6,-6 L-9,-10 L-5,-8 Z" fill="#5a2e12" />
+          <circle cx={5} cy={-9} r={3} fill={k % 2 ? '#8a4b22' : '#b5642c'} />
+          <path d="M4.5,-12.5 Q5.5,-14.5 6.5,-12.5" stroke="#d9302a" strokeWidth={1.6} fill="none" />
+          <path d="M8,-9 L10,-8.4 L8,-7.8 Z" fill="#f2b234" />
+        </g>
+      ))}
+      <g transform="translate(232,196)">
+        <ellipse cy={0} rx={9} ry={2.4} fill="#9aa3a8" />
+        <path d="M-6,-1 L-5,-9 L5,-9 L6,-1 Z" fill="#c9d1d6" stroke="#7d8489" strokeWidth={0.8} />
+        {(watered || caring === 'henWater') && <ellipse className="story-pop" cy={-1.2} rx={7.5} ry={1.6} fill="#56b9f0" />}
+      </g>
+      {/* the egg basket */}
+      <g transform="translate(266,200)">
+        <path d="M-10,-6 Q0,-16 10,-6" stroke="#8a5a30" strokeWidth={1.6} fill="none" />
+        {(eggs || caring === 'eggs') &&
+          [-5, 0, 5].map((x, k) => <ellipse key={x} className="story-pop" style={{ animationDelay: `${k * 150}ms` }} cx={x} cy={-7} rx={3} ry={3.8} fill="#f6efe0" stroke="#c9b18a" strokeWidth={0.6} />)}
+        <path d="M-10,-6 L10,-6 L7,2 L-7,2 Z" fill="#c9a05a" stroke="#8a5a30" strokeWidth={1} />
+      </g>
+    </g>
   );
 }
 
