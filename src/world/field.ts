@@ -86,15 +86,14 @@ export function tileCenter(farm: number, i: number) {
   return { x: p.x + (col - (COLS - 1) / 2) * TILE, z: p.z + (row - (ROWS - 1) / 2) * TILE };
 }
 
-/** Farms 7 and 8, the new farms (src/garden): at the bottom of the farm either side of the market path, 4 × 3 tiles. */
-export const GARDEN_PLOTS: { x: number; z: number }[] = [
-  { x: -7.4, z: 13.0 },
-  { x: 7.4, z: 13.0 },
-];
-export const GARDEN_COLS = 4;
-export const GARDEN_ROWS = 3;
-/** Where a new farm's sign stands: at its top right corner, by the lane. */
-export const gardenSign = (i: number) => ({ x: GARDEN_PLOTS[i].x + (GARDEN_COLS * TILE) / 2 + 0.35, z: GARDEN_PLOTS[i].z - (GARDEN_ROWS * TILE) / 2 - 0.3 });
+/** The greenhouse (src/greenhouse), where Farm 7 was: left of the market path at the bottom of the farm. Glass walls
+    w × d, four raised beds inside (Bed 1 back left, Bed 2 back right, Bed 3 front left, Bed 4 front right), its door in
+    the wall that faces the market path. */
+export const GREENHOUSE_AT = { x: -7.4, z: 13.0, w: 5.0, d: 3.8 };
+export const GH_BED = { w: 2.0, d: 1.25 };
+export const ghBedCenter = (i: number) => ({ x: GREENHOUSE_AT.x + (i % 2 ? 1.25 : -1.25), z: GREENHOUSE_AT.z + (i < 2 ? -0.9 : 0.9) });
+/** The storehouse (src/storehouse), where Farm 8 was: right of the market path. Its door is in the back wall, by the lane. */
+export const STOREHOUSE_AT = { x: 7.4, z: 13.0, w: 5.0, d: 3.8, door: 1.6 };
 
 /** Where the farm's sign stands: at the path side, below the plot. */
 export const signOf = (farm: number) => ({ x: PLOTS[farm].x + PLOT_W / 2 + 0.35, z: PLOTS[farm].z + PLOT_D / 2 + 0.3 });
@@ -336,7 +335,7 @@ export interface Task {
   target: { farm: number; at: 'plot' | 'sign' } | { place: Place };
 }
 
-export type Place = 'mission' | 'shed-seeds' | 'shed-fertilizer' | 'shed-sprayer' | 'pond' | 'hire' | 'market' | 'house' | 'pen' | 'coop' | 'power';
+export type Place = 'mission' | 'shed-seeds' | 'shed-fertilizer' | 'shed-sprayer' | 'pond' | 'hire' | 'market' | 'restaurant' | 'house' | 'pen' | 'coop' | 'power' | 'greenhouse' | 'storehouse';
 export type TaskIcon = 'plan' | 'hoe' | 'seeds' | 'fertilizer' | 'check' | 'weed' | 'water' | 'spray' | 'drain' | 'goat' | 'birds' | 'tractor' | 'corn' | 'sleep' | 'wait' | 'results';
 
 /** The task card's icon for each scheduled care job. */

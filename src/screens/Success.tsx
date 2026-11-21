@@ -233,7 +233,7 @@ function DayTwo({ s, dispatch, done }: Each<'day2'>) {
   );
 }
 
-/** A morning with something new: today's power part, the cow shed (day 3), the new farms (day 4). */
+/** A morning with something new: today's power part, the cow shed (day 3), the greenhouse and the storehouse (day 4). */
 function Morning({ x, s, dispatch, done }: Each<'morning'>) {
   const name = s.farmer?.name ?? 'farmer';
   const first = x.lines[0];

@@ -41,7 +41,7 @@ test('the CLIMATE button sits beside MISSION and opens the Climate page; Back, M
 test('a Farm Moja task is tracked: manure stores carbon, earns credits and shows in Activity', async ({ page }) => {
   await boot(page);
   await jump(page, { view: 'classic', modal: { kind: 'steps', step: 'landprep' } });
-  await page.getByRole('button', { name: `Organic Manure, ${money(40)}` }).click();
+  await page.getByRole('button', { name: `Organic Manure, ${money(200)}` }).click();
   await expect.poll(async () => (await climate(page)).total.stored).toBe(40);
   const c = await climate(page);
   expect(c.total.co2).toBeCloseTo(6, 5);
@@ -49,7 +49,7 @@ test('a Farm Moja task is tracked: manure stores carbon, earns credits and shows
   expect(c.log[0].label).toContain('Organic Manure');
 
   // a chemical task pollutes
-  await page.getByRole('button', { name: `Herbicide, ${money(40)}` }).click();
+  await page.getByRole('button', { name: `Herbicide, ${money(150)}` }).click();
   await expect.poll(async () => (await climate(page)).total.pollution).toBe(8);
 
   await act(page, { type: 'open', modal: { kind: 'climate', tab: 'activity' } });
@@ -157,7 +157,9 @@ test('Land & pay and Farm areas: the six farms plot by plot, every area, and the
   // the water credits are paid at midnight too (src/water): the tank's day
   const water = s.ledger.entries.filter((e: { type: string }) => e.type === 'water').reduce((n: number, e: { coins: number }) => n + e.coins, 0);
   expect(water).toBeGreaterThan(0);
-  expect(s.coins).toBeCloseTo(960 + p.coins + water, 6);
+  // and the market stall's evening sale (the daily sales cycle, src/produce)
+  const stall = (s.produce?.sales ?? []).filter((x: { auto?: boolean }) => x.auto).reduce((n: number, x: { earned: number }) => n + x.earned, 0);
+  expect(s.coins).toBeCloseTo(960 + p.coins + water + stall, 6);
   expect(s.climate.pay.day).toBe('2026-11-16');
   await expect(dialog(page).getByText(`+${money(p.coins)}`, { exact: true })).toBeVisible();
 

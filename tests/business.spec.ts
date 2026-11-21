@@ -24,6 +24,7 @@ import {
   fulfilment,
   graduation,
   hireOf,
+  DRIVER_WAGE,
   inWindow,
   leaderboard,
   levelOf,
@@ -143,7 +144,7 @@ test('a day: at least three farms, a route through all of them, the efficiency s
     }, 0),
   );
   expect(top.shortfall).toBe(top.revenue - top.collected);
-  expect(top.profit).toBe(top.revenue - top.shortfall + top.commission - top.diesel - top.wage - top.hubFee);
+  expect(top.profit).toBe(top.revenue - top.shortfall + top.commission - top.diesel - top.wage - top.hubFee - top.refund);
   expect(top.missed).toBe(0);
   const { biz, result } = runDay(b, top);
   expect(biz.day).toBe(2);
@@ -445,7 +446,7 @@ test('levels, partners and the fleet open as the business grows', () => {
   // a day hired out to the county: the fee, less the driver and the hub's share of its own tractor
   const s4 = reducer({ ...s2, biz: { ...s2.biz!, partners: [...s2.biz!.partners, 'county'] } }, { type: 'bizHireOut' });
   expect(s4.biz!.day).toBe(s2.biz!.day + 1);
-  expect(s4.biz!.cash).toBe(s2.biz!.cash + 12000 - 1000 - 12000 * HUB_SHARE);
+  expect(s4.biz!.cash).toBe(s2.biz!.cash + 12000 - DRIVER_WAGE - 12000 * HUB_SHARE);
 });
 
 test('the tractor business screen: book farms, order the route, run the day', async ({ page }) => {
@@ -528,7 +529,8 @@ test('the tractor business screen: book farms, order the route, run the day', as
   await expect(page.locator('.biz-eff')).toContainText('Route score');
   await expect(page.locator('.biz-eff')).toContainText(/The best route!|km longer than the best/);
   await expect(page.locator('.biz-eff .ht-ser')).toContainText('SER');
-  await expect(page.locator('.biz-sheet')).toContainText('Profit');
+  // a route under 90% efficient is a loss: the farmers pay back hire (the sheet then says Loss)
+  await expect(page.locator('.biz-sheet')).toContainText(/Profit|Loss/);
   await expect(page.locator('.biz-result')).toContainText(/Jobs done \d+ of \d+ · \+\d+ counted acres/);
   // the day is a whole flow: it ends with the fanfare
   expect(await page.evaluate(() => (window as unknown as Win).__lima.sfx().at(-1))).toBe('flow');

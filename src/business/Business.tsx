@@ -21,6 +21,8 @@ import {
   CLUSTER,
   CROPS,
   DAY_HOURS,
+  FARMER_PAY_X,
+  PAY_EFFICIENCY,
   HUBS,
   MAP_H,
   MAP_W,
@@ -230,6 +232,7 @@ function Welcome({ name, onGo }: { name: string; onGo: () => void }) {
     ['🔍', 'Scout', 'Tap a farm to see its jobs.'],
     ['📋', 'Book', 'Give each job to the tractor or a partner.'],
     ['🚜', 'Drive', 'Ten seconds at the wheel at each farm.'],
+    ['💵', 'Get paid', `${FARMER_PAY_X}× the hire, if your route is ${Math.round(PAY_EFFICIENCY * 100)}%+ efficient.`],
     ['🏆', 'Grow', `${first.counted} acres earns your own ${first.hp}HP tractor.`],
   ];
   return (
@@ -401,7 +404,9 @@ function Today({ b, name, dispatch, onDone, signal }: { b: Biz; name: string; di
           : 'Tap the farms in the order to visit them.'
         : plan.dropped.length
           ? `Too spread out: ${plan.dropped.map(k => shortName(clientKey(k))).join(', ')} would be dropped.`
-          : 'Route set. Start the day!'
+          : plan.refund > 0
+            ? `Only ${Math.round(plan.efficiency * 100)}% efficient: farmers would pay back the hire. Try a shorter route.`
+            : 'Route set. Start the day!'
       : plan.problem && Object.keys(bookings).length && !plan.problem.startsWith('Plan your route')
         ? plan.problem
         : pick
@@ -410,7 +415,7 @@ function Today({ b, name, dispatch, onDone, signal }: { b: Biz; name: string; di
             : 'Choose who does each job.'
           : `Tap a farm to see its jobs. Book at least ${plural(plan.needed, 'farm')}.`;
 
-  const est = plan.revenue + plan.commission - plan.workDiesel - plan.wage - plan.hubFee;
+  const est = plan.revenue + plan.commission - plan.workDiesel - plan.wage - plan.hubFee - plan.refund;
 
   return (
     <div className="biz-today">
@@ -457,8 +462,11 @@ function Today({ b, name, dispatch, onDone, signal }: { b: Biz; name: string; di
             good={plan.serBand === 'healthy'}
             title="Acres worked for every km driven: book farms close together"
           />
-          <div className="biz-meter biz-keep" title={`Hire ${ksh(plan.revenue + plan.commission)}, less work diesel ${ksh(plan.workDiesel)}, driver ${ksh(plan.wage)}${plan.hubFee ? ` and the hub’s share ${ksh(plan.hubFee)}` : ''}. Road diesel comes off after the route.`}>
-            <small>Est. profit</small>
+          <div
+            className={`biz-meter biz-keep${plan.refund > 0 ? ' is-warn' : ''}`}
+            title={`Hire ${ksh(plan.revenue + plan.commission)}, less work diesel ${ksh(plan.workDiesel)}, driver ${ksh(plan.wage)}${plan.hubFee ? ` and the hub’s share ${ksh(plan.hubFee)}` : ''}${plan.refund > 0 ? `. Route only ${Math.round(plan.efficiency * 100)}% efficient: farmers pay back ${ksh(plan.refund)}` : ''}. Road diesel comes off after the route.`}
+          >
+            <small>{est < 0 ? 'Est. loss' : 'Est. profit'}</small>
             <b className={est < 0 ? 'is-cost' : ''}>{ksh(est)}</b>
           </div>
         </div>
@@ -989,7 +997,8 @@ function Results({ r, b, onNext }: { r: DayResult; b: Biz; onNext: () => void })
   const band = serBand(r.ser);
   const farmOf = (k: ReqKey) => shortName(clientKey(k));
   const earned = r.revenue - (r.shortfall ?? 0) + r.commission;
-  const costs = r.diesel + r.wage + r.hubFee;
+  const refund = r.refund ?? 0;
+  const costs = r.diesel + r.wage + r.hubFee + refund;
   const extras = [
     r.cleanFarms > 0 && `${plural(r.cleanFarms, 'clean drive')} +${r.cleanFarms * CLEAN_DRIVE.points}`,
     r.cluster && `Neighbours synced +${CLUSTER.points}`,
@@ -1040,12 +1049,13 @@ function Results({ r, b, onNext }: { r: DayResult; b: Biz; onNext: () => void })
 
         <div className="biz-sheet">
           <Fact label="Earned" value={ksh(earned)} sub={r.shortfall && r.shortfall > 0 ? `${ksh(r.shortfall)} not paid` : r.commission ? `incl. ${ksh(r.commission)} from partners` : 'from farmers'} tone="good" />
-          <Fact label="Costs" value={`−${ksh(costs)}`} sub={`Diesel ${ksh(r.diesel)} · driver ${ksh(r.wage)}${r.hubFee ? ` · hub ${ksh(r.hubFee)}` : ''}`} tone="bad" />
-          <Fact className="is-total" label="Profit" value={ksh(r.profit)} sub={r.instalment > 0 ? `−${ksh(r.instalment)} tractor payment` : r.saved > 0 ? `Farmers saved ${ksh(r.saved)}` : undefined} tone={r.profit < 0 ? 'bad' : undefined} />
+          <Fact label="Costs" value={`−${ksh(costs)}`} sub={`Diesel ${ksh(r.diesel)} · driver ${ksh(r.wage)}${r.hubFee ? ` · hub ${ksh(r.hubFee)}` : ''}${refund ? ` · paid back ${ksh(refund)}` : ''}`} tone="bad" />
+          <Fact className="is-total" label={r.profit < 0 ? 'Loss' : 'Profit'} value={ksh(r.profit)} sub={r.instalment > 0 ? `−${ksh(r.instalment)} tractor payment` : r.saved > 0 ? `Farmers saved ${ksh(r.saved)}` : undefined} tone={r.profit < 0 ? 'bad' : undefined} />
         </div>
 
-        {(r.dropped.length > 0 || r.unfinished.length > 0 || r.payg?.warn || r.payg?.repossessed) && (
+        {(r.dropped.length > 0 || r.unfinished.length > 0 || refund > 0 || r.payg?.warn || r.payg?.repossessed) && (
           <p className="biz-result-line is-warn">
+            {refund > 0 && `Route under ${Math.round(PAY_EFFICIENCY * 100)}% efficient: farmers paid back ${ksh(refund)}. A shorter route keeps the full hire. `}
             {r.dropped.length > 0 && `Dropped (too far): ${r.dropped.map(farmOf).join(', ')}. `}
             {r.unfinished.length > 0 && `Not finished: ${r.unfinished.map(farmOf).join(', ')}. `}
             {r.payg?.repossessed

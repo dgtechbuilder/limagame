@@ -2,7 +2,7 @@ import type { ShopTab, StepId } from './data';
 import { STORY } from './first/data';
 import { CHECK_DAYS, currentDay } from './trials/model';
 import { dayNumber } from './rounds/farms';
-import type { AchTab, Action, AnimalsTab, ClimateTab, FsPhase, GameState, GlossaryTab, Modal, PartnersTab, PowerTab, SecurityTab, SettingsTab, WalletTab } from './state';
+import type { AchTab, Action, AnimalsTab, ClimateTab, FsPhase, GameState, GlossaryTab, KakumaTab, MarketTab, Modal, StoreTab, PartnersTab, PowerTab, SecurityTab, SettingsTab, WalletTab, FinanceTab } from './state';
 import { BRANDS, type BrandId } from './partners/data';
 
 /* Web addresses: every screen has its own address after the # (…/limagame/#/settings/display), so a player can
@@ -22,9 +22,13 @@ const ACH: Record<AchTab, string> = { journey: 'journey', modules: 'modules', to
 const PARTNERS: Record<PartnersTab, string> = { offers: 'offers', placements: 'placements', join: 'partner-with-us', shortlist: 'shortlist' };
 const ANIMALS: Record<AnimalsTab, string> = { today: 'today', health: 'health', water: 'water', coop: 'coop', shed: 'cow-shed', herd: 'herd' };
 const WALLET: Record<WalletTab, string> = { history: 'history', climate: 'climate-payments', summary: 'summary' };
+const FINANCE: Record<FinanceTab, string> = { overview: 'overview', savings: 'savings', invest: 'investments', profit: 'profit' };
 const POWER_TABS: Record<PowerTab, string> = { build: 'build', today: 'today', impact: 'impact', history: 'history' };
+const MARKET_TABS: Record<MarketTab, string> = { sell: 'sell', restaurant: 'restaurant', nutrition: 'nutrition', sales: 'sales' };
+const STORE_TABS: Record<StoreTab, string> = { store: 'store', harvest: 'harvest', produce: 'produce' };
 const SECURITY: Record<SecurityTab, string> = { protect: 'protect', risk: 'risks', reports: 'night-reports' };
 const GLOSSARY: Record<GlossaryTab, string> = { basics: 'basics', feed: 'fertilizer', protect: 'sprays', pests: 'pests', seed: 'seeds', tools: 'tools', machines: 'tractors', water: 'water-and-storage', animals: 'animals', power: 'power-and-climate' };
+const KAKUMA: Record<KakumaTab, string> = { about: 'about', foods: 'foods', life: 'food-and-life', donate: 'donate' };
 const BRAND_WORD = Object.fromEntries(BRANDS.map(b => [b.id, b.id])) as Record<BrandId, string>;
 const SHOP: Record<ShopTab, string> = { food: 'food', fertilizer: 'fertilizer', tank: 'water-tanks', equipment: 'equipment' };
 const STEPS: Record<StepId, string> = { landprep: 'land-prep', planting: 'planting', fertilizer: 'fertilizer', pesticides: 'pesticides', water: 'water', harvest: 'harvest' };
@@ -41,7 +45,6 @@ const SIMPLE = {
   outcome: 'results',
   rewards: 'rewards',
   training: 'training',
-  market: 'market',
   tractorGame: 'tractor-game',
 } as const satisfies Partial<Record<Modal['kind'], string>>;
 
@@ -88,12 +91,20 @@ function modalPath(s: GameState, m: Modal): string {
       return `/security/${SECURITY[m.tab ?? 'protect']}`;
     case 'wallet':
       return `/wallet/${WALLET[m.tab ?? 'history']}`;
+    case 'finance':
+      return `/money/${FINANCE[m.tab ?? 'overview']}`;
     case 'power':
       return `/power/${POWER_TABS[m.tab ?? 'build']}`;
-    case 'garden':
-      return `/new-farms/${m.farm + 7}`;
+    case 'market':
+      return m.tab && m.tab !== 'sell' ? `/market/${MARKET_TABS[m.tab]}` : '/market';
+    case 'greenhouse':
+      return `/greenhouse/bed-${m.bed + 1}`;
+    case 'storehouse':
+      return `/storehouse/${STORE_TABS[m.tab ?? 'store']}`;
     case 'glossary':
       return `/farm-words/${GLOSSARY[m.tab ?? 'basics']}`;
+    case 'kakuma':
+      return `/kakuma/${KAKUMA[m.tab ?? 'about']}`;
     default:
       return `/${SIMPLE[m.kind]}`;
   }
@@ -168,18 +179,42 @@ function modalFor(s: GameState, parts: string[]): Modal | null | 'bad' {
     const t = tab(WALLET);
     return t === 'bad' || parts.length > 2 ? 'bad' : { kind: 'wallet', tab: t ?? 'history' };
   }
+  if (first === 'money') {
+    const t = tab(FINANCE);
+    return t === 'bad' || parts.length > 2 ? 'bad' : { kind: 'finance', tab: t ?? 'overview' };
+  }
   if (first === 'power') {
     const t = tab(POWER_TABS);
     return t === 'bad' || parts.length > 2 ? 'bad' : { kind: 'power', tab: t ?? 'build' };
   }
+  if (first === 'market') {
+    const t = tab(MARKET_TABS);
+    return t === 'bad' || parts.length > 2 ? 'bad' : { kind: 'market', tab: t ?? 'sell' };
+  }
+  // the restaurant beside the stall, and what each crop is worth to eat
+  if ((first === 'restaurant' || first === 'nutrition') && parts.length === 1) return { kind: 'market', tab: first };
   if (first === 'farm-words') {
     const t = tab(GLOSSARY);
     return t === 'bad' || parts.length > 2 ? 'bad' : { kind: 'glossary', tab: t ?? 'basics' };
   }
+  if (first === 'kakuma') {
+    const t = tab(KAKUMA);
+    return t === 'bad' || parts.length > 2 ? 'bad' : { kind: 'kakuma', tab: t ?? 'about' };
+  }
+  if (first === 'greenhouse') {
+    if (parts.length > 2) return 'bad';
+    const n = second === undefined ? 1 : Number(second.replace(/^bed-?/, ''));
+    return Number.isInteger(n) && n >= 1 && n <= 4 ? { kind: 'greenhouse', bed: n - 1 } : 'bad';
+  }
+  if (first === 'storehouse') {
+    const t = tab(STORE_TABS);
+    return t === 'bad' || parts.length > 2 ? 'bad' : { kind: 'storehouse', tab: t ?? 'store' };
+  }
+  // the old addresses of Farms 7 and 8: the greenhouse and the storehouse stand there now
   if (first === 'new-farms') {
     if (parts.length > 2) return 'bad';
-    const n = second === undefined ? 7 : Number(second);
-    return n === 7 || n === 8 ? { kind: 'garden', farm: n - 7 } : 'bad';
+    if (second === undefined || second === '7') return { kind: 'greenhouse', bed: 0 };
+    return second === '8' ? { kind: 'storehouse', tab: 'store' } : 'bad';
   }
   if (first === 'loan-calculator') {
     if (second === undefined) return { kind: 'loan', view: 'calc' };
@@ -203,7 +238,7 @@ export function routeTo(s: GameState, raw: string): Action[] {
   if (phase !== 'done') {
     // the menu and Settings are open during the first session, as their buttons are; so is Partners, for a partner
     // visiting before they play
-    if (modal) return modal.kind === 'menu' || modal.kind === 'settings' || modal.kind === 'partners' || modal.kind === 'glossary' ? [{ type: 'open', modal }] : say('Finish checking your first crops to open the farm.');
+    if (modal) return modal.kind === 'menu' || modal.kind === 'settings' || modal.kind === 'partners' || modal.kind === 'glossary' || modal.kind === 'kakuma' ? [{ type: 'open', modal }] : say('Finish checking your first crops to open the farm.');
     const close: Action[] = s.modal ? [{ type: 'close' }, { type: 'close' }] : [];
     const step = (to: FsPhase, page?: number): Action[] => [...close, { type: 'fs', phase: to, page }];
     // the step the player is on (e.g. Back from the menu to it)
