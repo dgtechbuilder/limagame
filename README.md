@@ -1322,6 +1322,25 @@ fast clock (the first cycle) or with a calendar day; the first night brings a **
   are numbered on the animal, and the three fixes sit beside them. The player can also tap any part (a healthy
   one says what normal looks like), drag to look round, and zoom with the wheel, a pinch or + and −. Read aloud
   reads each step; Reduce motion keeps the film but stills the movement.
+- **Full checks** ([`src/inspect`](src/inspect), the same examination screen): the parts are listed in **sections**,
+  in the order they are checked (cow: *Head*, *Body*, *Udder, legs & dung*, *Feed & water*; hens: *Head*, *Body &
+  legs*, *The coop*), each with how many of its parts are seen. The parts that show the problem are **red** from the
+  start, under *Look at the N red parts first*, and their section is outlined in red. **Finish the check** with parts
+  still unseen does not just close: it asks *N parts not checked yet* (listed by section, with a dashed ring on each
+  on the animal) and offers **Check the other N**: the camera sweeps every part not yet seen, about two seconds each.
+  A healthy part says so and moves on by itself. An **early sign** (`src/inspect/early.ts`: ticks in the ear, a cracked
+  teat, wet clover in the trough, a dripping float valve, long hooves; for hens cracks in the perch, wet litter, a
+  soft-shelled egg…) stops the sweep: **fix it now** (two to four seconds of work, and its cost) or **plan it** for
+  tomorrow or the two days after, or leave it. The end shows every part checked, the red parts' fixes, and each early
+  sign dealt with, planned or left. Up to three early signs show a day for each subject (the same all day; a planned
+  one stays until done; one dealt with stays away five days).
+  - **What it does:** an early sign dealt with keeps the problem it grows into away for five days (its weight drops
+    to a twentieth); a day checked all over with a sign dealt with lowers that night's chance of a problem by 15%;
+    a planned job left past its day raises it by 20% (both show in the Health tab's risk line). **+5 points** a sign
+    dealt with, **+15** for a check of every part (once a day for each). A check of only some parts earns nothing.
+  - **Animals › Health** has **Check the cows all over** and **Check the hens all over** (a routine check, with any
+    problem showing as red parts) and a **Planned from your checks** list, with *Do it* on each and *Overdue* in red.
+  - Every number is in `CHECKS` (`src/inspect/model.ts`). Placeholders for the vet's review.
 - **Water:** what the cows and hens drink is drawn by the water model each day; on top, a dry season makes cows drink a
   fifth more, heat stress more again, and a leaking trough wastes **300 L a day** until its valve is fixed. The Water tab
   shows every litre and how many days the tank lasts at today's use.

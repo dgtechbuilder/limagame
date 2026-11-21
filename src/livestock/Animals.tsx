@@ -36,6 +36,9 @@ import { roll } from './rand';
 import { Exam } from './Exam';
 import { ExamScene } from './ExamScene';
 import { FINDINGS, marksOf, spotsOf } from './exam';
+import { checksOf, plannedOf } from '../inspect/model';
+import { subjectFor, subjectOf } from '../inspect/subjects';
+import type { SubjectId } from '../inspect/types';
 
 /* The Animals page: the cows and the hens. Today (the day's jobs), Health (problems by their signs, and the fix to
    choose; vaccines and tick control), Water (what they drink and waste from the tank), Coop (build it from day 2), and
@@ -263,12 +266,70 @@ function Fixes({ s, dispatch, id, since }: { s: GameState; dispatch: Dispatch<Ac
   );
 }
 
+/** A full check of the cows or the hens: the red parts of a problem showing (if any) first, then every other part. */
+function Routine({ s, dispatch, subject, onClose }: { s: GameState; dispatch: Dispatch<Action>; subject: SubjectId; onClose: () => void }) {
+  const l = lifeOf(s.life);
+  const g = subjectOf(subject).group;
+  // the problem it opened with stays its red parts, even once fixed (the check goes on)
+  const [issue] = useState(() => l.issues.find(i => issueOf(i.id).group === g) ?? null);
+  const still = issue && l.issues.some(i => i.id === issue.id);
+  return (
+    <Exam
+      s={s}
+      dispatch={dispatch}
+      subject={subject}
+      issue={issue?.id ?? null}
+      since={issue?.since}
+      onClose={onClose}
+      decide={issue && still ? <Fixes s={s} dispatch={dispatch} id={issue.id} since={issue.since} /> : issue ? <p className="lv-hint">✓ Treated.</p> : undefined}
+    />
+  );
+}
+
 function Health({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
   const l = lifeOf(s.life);
   const [examining, setExamining] = useState<IssueId | null>(null);
+  const [routine, setRoutine] = useState<SubjectId | null>(null);
   const exam = examining ? l.issues.find(i => i.id === examining) : null;
+  const ch = checksOf(s.checks);
+  const planned = plannedOf(s.checks).filter(p => p.subject === 'cow' || p.subject === 'hen');
   return (
     <div className="lv-health">
+      <div className="lv-checks" role="group" aria-label="Full checks">
+        {(['cows', 'hens'] as Group[]).map(g => {
+          const sub = subjectFor(g);
+          const last = ch.full[sub];
+          return (
+            <button key={g} type="button" className={`lv-check${last === l.day ? ' is-done' : ''}`} onClick={() => setRoutine(sub)} disabled={countOf(s, g) === 0}>
+              <i aria-hidden="true">🔍</i>
+              <span>
+                <b>Check the {g} all over</b>
+                <small>{last === l.day ? '✓ Checked today' : last ? `Last full check: day ${last}` : 'Every part, a few seconds each: finds problems early'}</small>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {planned.length > 0 && (
+        <div className="lv-planned" aria-label="Planned from your checks">
+          <p className="set-title lv-sub">Planned from your checks</p>
+          {planned.map(p => (
+            <div key={`${p.subject}:${p.early.id}`} className={`lv-job${p.day < l.day ? ' is-late' : ''}`}>
+              <span className="lv-job-text">
+                <b>
+                  <span className="cl-where">{p.day < l.day ? `Overdue · day ${p.day}` : p.day === l.day ? 'Today' : `Day ${p.day}`}</span> {p.early.fix.label}
+                </b>
+                <small>
+                  {subjectOf(p.subject).name === 'cow' ? 'Cows' : 'Hens'}: {p.early.title.toLowerCase()}. {p.early.risk}
+                </small>
+              </span>
+              <Btn tone="go" disabled={!open} onClick={() => dispatch({ type: 'checkFix', subject: p.subject, id: p.early.id })} label={`${p.early.fix.label}${p.early.fix.cost ? ` for ${money(p.early.fix.cost)}` : ''}`}>
+                Do it{p.early.fix.cost ? ` · ${money(p.early.fix.cost)}` : ''}
+              </Btn>
+            </div>
+          ))}
+        </div>
+      )}
       {l.issues.length === 0 ? (
         <p className="cl-tip">
           No problems showing. Cows: {pct(issueRisk(s, 'cows').chance)} chance of one tonight; hens: {pct(issueRisk(s, 'hens').chance)}. Clean, fed, watered and vaccinated animals get sick
@@ -281,7 +342,7 @@ function Health({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
           return (
             <div key={i.id} className="lv-issue" aria-label={`A problem with the ${def.group}`}>
               <button type="button" className="lv-thumb" onClick={() => setExamining(i.id)} aria-label={`Examine the ${who} up close`}>
-                <ExamScene group={def.group} marks={marksOf(i.id)} spots={spotsOf(i.id)} rings={[...new Set(FINDINGS[i.id].map(f => f.part))]} />
+                <ExamScene subject={subjectFor(def.group)} marks={marksOf(i.id)} spots={spotsOf(i.id)} rings={[...new Set<string>(FINDINGS[i.id].map(f => f.part))]} />
                 <span className="lv-thumb-go">
                   <i aria-hidden="true">🔍</i> Examine the {who}
                 </span>
@@ -299,7 +360,18 @@ function Health({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
           );
         })
       )}
-      {exam && <Exam issue={exam.id} since={exam.since} day={l.day} onClose={() => setExamining(null)} decide={<Fixes s={s} dispatch={dispatch} id={exam.id} since={exam.since} />} />}
+      {exam && (
+        <Exam
+          s={s}
+          dispatch={dispatch}
+          subject={subjectFor(issueOf(exam.id).group)}
+          issue={exam.id}
+          since={exam.since}
+          onClose={() => setExamining(null)}
+          decide={<Fixes s={s} dispatch={dispatch} id={exam.id} since={exam.since} />}
+        />
+      )}
+      {routine && !exam && <Routine s={s} dispatch={dispatch} subject={routine} onClose={() => setRoutine(null)} />}
       <p className="set-title lv-sub">Keep them well</p>
       {PREVENT.map(p => {
         const left = preventLeft(s, p.id);
