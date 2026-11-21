@@ -282,7 +282,7 @@ function Impact({ s }: { s: GameState }) {
   const p = powerOf(s.power);
   const on = powerOn(s);
   const lines: [string, string, string, boolean][] = [
-    ['💧', 'Water', `The solar pump lifts up to ${POWER.pumpLitres} L a day from the pond into the tank (${p.totals.water.toLocaleString('en-US')} L so far), and drips Farms 7 and 8 with ${Math.round(POWER.dripShare * 100)}% of the water.`, loadOn(s, 'pump')],
+    ['💧', 'Water', `The solar pump lifts up to ${POWER.pumpLitres} L a day from the pond into the tank (${p.totals.water.toLocaleString('en-US')} L so far), and drips the greenhouse with ${Math.round(POWER.dripShare * 100)}% of the water.`, loadOn(s, 'pump')],
     ['🌍', 'Climate', `Clean power keeps ${Math.round(p.totals.avoided)} kg CO₂ out of the air (paid as climate credits); the generator has burned ${Math.round(p.totals.fuelL)} L of diesel (${Math.round(p.totals.emitted)} kg CO₂). Pumping and cooking count as solar.`, on],
     ['💰', 'Profit', `Chilled milk sells for ${Math.round(POWER.milkPremium * 100)}% more, lit coops lay ${Math.round((partOf(s, 'lights')?.eggs ?? POWER.eggBoost) * 100)}% more eggs, the cold room keeps fresh produce (+10% at the stall, no wilting). Saved on bills: ${money(Math.max(0, p.totals.saved))}.`, coldRoom(s) || lightsEggs(s) > 0],
     ['🚜', 'Tractor', `The workshop’s power tools cut servicing and repairs by ${Math.round(POWER.repairCut * 100)}%; the diesel tank refuels the tractor without a trip to the pump.`, repairCut(s) > 0 || has(s, 'fuel')],

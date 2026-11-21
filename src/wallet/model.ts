@@ -8,13 +8,13 @@ import type { Action, GameState } from '../state';
 import { achClock } from '../achievements/track';
 import { lifeOf } from '../livestock/model';
 
-export type WalletKind = 'climate' | 'water' | 'harvest' | 'produce' | 'animals' | 'power' | 'tractor' | 'farm' | 'shop' | 'business' | 'reward' | 'security' | 'other';
+export type WalletKind = 'climate' | 'water' | 'harvest' | 'produce' | 'animals' | 'power' | 'tractor' | 'farm' | 'shop' | 'business' | 'reward' | 'security' | 'giving' | 'savings' | 'other';
 
 export const WALLET_KINDS: Record<WalletKind, { label: string; icon: string }> = {
   climate: { label: 'Climate payments', icon: '🌍' },
   water: { label: 'Water', icon: '💧' },
   harvest: { label: 'Harvests', icon: '🌽' },
-  produce: { label: 'Market stall', icon: '🧺' },
+  produce: { label: 'Market stall and restaurant', icon: '🧺' },
   animals: { label: 'Animals', icon: '🐄' },
   power: { label: 'Power', icon: '⚡' },
   tractor: { label: 'Tractor', icon: '🚜' },
@@ -23,6 +23,8 @@ export const WALLET_KINDS: Record<WalletKind, { label: string; icon: string }> =
   business: { label: 'Tractor business', icon: '📍' },
   reward: { label: 'Rewards', icon: '🏅' },
   security: { label: 'Security', icon: '🔒' },
+  giving: { label: 'Giving', icon: '🤝' },
+  savings: { label: 'Savings & investments', icon: '🏦' },
   other: { label: 'Other', icon: '•' },
 };
 
@@ -48,11 +50,16 @@ export interface WalletState {
   entries: WalletEntry[];
   /** all time, by kind (never trimmed) */
   totals: Partial<Record<WalletKind, { in: number; out: number }>>;
+  /** by farm day, by kind: the last DAYS_KEPT farm days (for profit tracking; missing in older saves) */
+  days?: Record<number, Partial<Record<WalletKind, { in: number; out: number }>>>;
 }
+
+/** Farm days of money in and out kept by day. */
+export const DAYS_KEPT = 60;
 
 export const WALLET_KEEP = 400;
 export const emptyWallet = (): WalletState => ({ entries: [], totals: {} });
-export const walletOf = (w: Partial<WalletState> | undefined): WalletState => ({ entries: w?.entries ?? [], totals: w?.totals ?? {} });
+export const walletOf = (w: Partial<WalletState> | undefined): WalletState => ({ entries: w?.entries ?? [], totals: w?.totals ?? {}, days: w?.days ?? {} });
 
 let seq = 0;
 
@@ -62,12 +69,22 @@ export function addEntry<S extends { wallet?: Partial<WalletState>; life?: GameS
   const w = walletOf(s.wallet);
   const t = Date.now();
   const e: WalletEntry = { id: t * 100 + (++seq % 100), t, date: achClock.today(), day: lifeOf(s.life).day, kind, label, amount: round2(amount), balance: round2(coins), ...extra };
-  const tot = w.totals[kind] ?? { in: 0, out: 0 };
+  const add = (t: { in: number; out: number } | undefined) => {
+    const x = t ?? { in: 0, out: 0 };
+    return amount > 0 ? { ...x, in: round2(x.in + amount) } : { ...x, out: round2(x.out - amount) };
+  };
+  const days = { ...(w.days ?? {}) };
+  days[e.day] = { ...(days[e.day] ?? {}), [kind]: add(days[e.day]?.[kind]) };
+  const keep = Object.keys(days)
+    .map(Number)
+    .sort((a, b) => b - a)
+    .slice(0, DAYS_KEPT);
   return {
     ...s,
     wallet: {
       entries: [e, ...w.entries].slice(0, WALLET_KEEP),
-      totals: { ...w.totals, [kind]: amount > 0 ? { ...tot, in: round2(tot.in + amount) } : { ...tot, out: round2(tot.out - amount) } },
+      totals: { ...w.totals, [kind]: add(w.totals[kind]) },
+      days: Object.fromEntries(keep.map(d => [d, days[d]])),
     },
   };
 }
@@ -142,10 +159,24 @@ function describe(a: Action, prev: GameState, next: GameState): { kind: WalletKi
       return { kind: 'power', label: 'Diesel for the generator' };
     case 'produceSell':
       return { kind: 'produce', label: 'Sold at the market stall' };
-    case 'gardenPlant':
-    case 'gardenWater':
-    case 'gardenHarvest':
-      return { kind: 'farm', label: a.type === 'gardenPlant' ? `Planted Farm ${a.farm + 7}` : 'New farms' };
+    case 'restaurantCook':
+      return { kind: 'produce', label: 'Meals sold at the restaurant' };
+    case 'ghPlant':
+    case 'ghWater':
+    case 'ghHarvest':
+      return { kind: 'farm', label: a.type === 'ghPlant' ? `Planted greenhouse bed ${a.bed + 1}` : 'Greenhouse' };
+    case 'storeMake':
+      return { kind: 'produce', label: 'Storehouse: jars, sugar and milling' };
+    case 'finDeposit':
+      return { kind: 'savings', label: 'Into SACCO savings' };
+    case 'finWithdraw':
+      return { kind: 'savings', label: 'Out of SACCO savings' };
+    case 'finInvest':
+      return { kind: 'savings', label: 'Invested' };
+    case 'finSell':
+      return { kind: 'savings', label: 'Investment taken out' };
+    case 'kakumaGive':
+      return { kind: 'giving', label: 'Gift to Kakuma, with WFP' };
     case 'loanAsk':
     case 'bookTraining':
       return { kind: 'other', label: 'Training booked' };
