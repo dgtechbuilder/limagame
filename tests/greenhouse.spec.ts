@@ -146,7 +146,8 @@ test('on the farm: the greenhouse door opens its beds, the storehouse door its s
     }, p);
   // the greenhouse door: the button says what the beds need, and opens the bed to pick
   await walkTo('greenhouse');
-  await expect(page.locator('.hud-place .is-enter')).toContainText('Open the greenhouse');
+  // the walk across the farm takes about 9 seconds here and two or three times that on a slow CI runner
+  await expect(page.locator('.hud-place .is-enter')).toContainText('Open the greenhouse', { timeout: 60_000 });
   await expect(page.locator('.hud-place .is-enter')).toContainText('1 to pick');
   await optIn(page);
   const gh = page.getByRole('dialog', { name: 'Greenhouse', exact: true });
