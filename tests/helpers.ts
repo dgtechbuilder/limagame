@@ -98,7 +98,15 @@ export async function tapTask(page: Page, title: RegExp | string) {
 /** At a place's white square (a shed, the pond, the Train spot…): nothing opens by walking in, so press its button. */
 export async function optIn(page: Page) {
   const btn = page.locator('.hud-place .is-enter');
-  await expect(btn).toBeVisible({ timeout: 60_000 });
+  // the farmer has arrived: standing still, with the place's button showing. (Pressing while still walking off an
+  // earlier square, the button left over from it, would open that place instead: seen on slower CI machines.)
+  await expect.poll(async () => {
+    const at = () => page.evaluate(() => (window as unknown as Win).__limaWorld!.farmerAt());
+    const a = await at();
+    await page.waitForTimeout(250);
+    const b = await at();
+    return a.x === b.x && a.z === b.z && (await btn.isVisible());
+  }, { timeout: 60_000 }).toBe(true);
   await btn.click();
 }
 
