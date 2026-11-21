@@ -1,14 +1,15 @@
 import { useId } from 'react';
 import { INK } from '../art/anime';
-import type { Group } from './config';
-import type { Mark, PartId } from './exam';
-import { PARTS } from './exam';
+import { subjectOf } from '../inspect/subjects';
+import type { SubjectId } from '../inspect/types';
+import type { Mark } from './exam';
 
 /* The animal being examined, drawn in SVG on a 480 × 270 scene in the game's ink-outline style: a cow in her pen (a
    feed trough, a milk pail, a water trough and the tank) or a hen in the coop (the perch, the nest boxes and the egg
    tray). Each sign of a problem (exam.ts Mark) is drawn on the body where a vet would see it, and moves where it
-   moves: the flank heaves, tears and drips fall, a hurt foot is held up. The parts are where exam.ts PARTS puts the
-   camera. */
+   moves: the flank heaves, tears and drips fall, a hurt foot is held up. Early signs (src/inspect/early.ts) are drawn
+   smaller, where a full check finds them: ticks in an ear, a dripping valve, a cracked perch. The parts are where the
+   subject's parts (src/inspect/subjects.ts) put the camera. */
 
 const W = 480;
 const H = 270;
@@ -19,27 +20,35 @@ const PINK = '#f2a7a6';
 const HOOF = '#3b2d29';
 
 export interface SceneProps {
-  group: Group;
+  subject: SubjectId;
   marks: Set<Mark>;
-  /** parts to pin with a pulsing ring (the ones with a finding) */
-  rings?: PartId[];
+  /** the early signs to draw (not yet dealt with) */
+  early?: string[];
+  /** parts to pin with a pulsing red ring (the ones with a finding) */
+  rings?: string[];
+  /** parts with an early sign found: an amber ring */
+  amber?: string[];
+  /** parts not checked yet: a dashed ring */
+  todo?: string[];
   /** numbered pins, after the examination */
-  pins?: PartId[];
+  pins?: string[];
   /** the part the camera is on (its rings are hidden) */
-  focus?: PartId | null;
+  focus?: string | null;
   /** parts moved from their usual place by the animal's pose (exam.ts spotsOf) */
-  spots?: Partial<Record<PartId, { x: number; y: number }>>;
+  spots?: Record<string, { x: number; y: number }>;
   /** tap a part */
-  onPart?: (id: PartId) => void;
+  onPart?: (id: string) => void;
   className?: string;
 }
 
-export function ExamScene({ group, marks, rings = [], pins = [], focus, spots = {}, onPart, className }: SceneProps) {
+export function ExamScene({ subject, marks, early = [], rings = [], amber = [], todo = [], pins = [], focus, spots = {}, onPart, className }: SceneProps) {
   const uid = `ex${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
-  const parts = PARTS[group].map(p => (spots[p.id] ? { ...p, at: { ...p.at, ...spots[p.id] } } : p));
+  const parts = subjectOf(subject).parts.map(p => (spots[p.id] ? { ...p, at: { ...p.at, ...spots[p.id] } } : p));
+  const at = (id: string) => parts.find(x => x.id === id)!.at;
+  const e = new Set(early);
   return (
     <svg className={`ex-scene${className ? ` ${className}` : ''}`} viewBox={`0 0 ${W} ${H}`} width={W} height={H} aria-hidden="true">
-      {group === 'cows' ? <Pen uid={uid} m={marks} /> : <Coop uid={uid} m={marks} />}
+      {subject === 'cow' ? <Pen uid={uid} m={marks} e={e} /> : <Coop uid={uid} m={marks} e={e} />}
       {onPart &&
         parts.map(p => (
           <circle
@@ -48,43 +57,49 @@ export function ExamScene({ group, marks, rings = [], pins = [], focus, spots = 
             cx={p.at.x}
             cy={p.at.y}
             r={p.id === 'stance' ? 0 : 14}
-            onClick={e => {
-              e.stopPropagation();
+            onClick={ev => {
+              ev.stopPropagation();
               onPart(p.id);
             }}
           />
         ))}
+      {todo
+        .filter(id => id !== focus && !rings.includes(id))
+        .map(id => (
+          <circle key={`todo-${id}`} className="ex-todo-ring" cx={at(id).x} cy={at(id).y} r={7} />
+        ))}
+      {amber
+        .filter(id => id !== focus && !rings.includes(id))
+        .map(id => (
+          <g key={`amber-${id}`} className="ex-ring is-amber" transform={`translate(${at(id).x} ${at(id).y})`}>
+            <circle r={8} />
+          </g>
+        ))}
       {rings
         .filter(id => id !== focus)
-        .map(id => {
-          const p = parts.find(x => x.id === id)!;
-          return (
-            <g key={`ring-${id}`} className="ex-ring" transform={`translate(${p.at.x} ${p.at.y})`}>
-              <circle r={9} />
-              <circle r={9} className="ex-ring-wave" />
-            </g>
-          );
-        })}
-      {pins.map((id, i) => {
-        const p = parts.find(x => x.id === id)!;
-        return (
-          <g key={`pin-${id}`} transform={`translate(${p.at.x} ${p.at.y})`}>
-            <g className="ex-pin" style={{ animationDelay: `${0.5 + i * 0.12}s` }}>
-              <circle r={7} />
-              <text y={2.6} textAnchor="middle">
-                {i + 1}
-              </text>
-            </g>
+        .map(id => (
+          <g key={`ring-${id}`} className="ex-ring" transform={`translate(${at(id).x} ${at(id).y})`}>
+            <circle r={9} />
+            <circle r={9} className="ex-ring-wave" />
           </g>
-        );
-      })}
+        ))}
+      {pins.map((id, i) => (
+        <g key={`pin-${id}`} transform={`translate(${at(id).x} ${at(id).y})`}>
+          <g className="ex-pin" style={{ animationDelay: `${0.5 + i * 0.12}s` }}>
+            <circle r={7} />
+            <text y={2.6} textAnchor="middle">
+              {i + 1}
+            </text>
+          </g>
+        </g>
+      ))}
     </svg>
   );
 }
 
 /* ---------------- the cow in her pen ---------------- */
 
-function Pen({ uid, m }: { uid: string; m: Set<Mark> }) {
+function Pen({ uid, m, e }: { uid: string; m: Set<Mark>; e: Set<string> }) {
   const hot = m.has('shade');
   return (
     <g stroke={INK} strokeWidth={SW} strokeLinejoin="round" strokeLinecap="round">
@@ -114,10 +129,29 @@ function Pen({ uid, m }: { uid: string; m: Set<Mark> }) {
         <path key={x} d={`M${x},${252 - (i % 2) * 8} l3,-7 l2,6 l3,-8 l2,9`} fill="none" stroke="#9b9a4a" strokeWidth={1.1} />
       ))}
       {hot && <Shade />}
+      {!hot && e.has('hotWeek') && (
+        <g className="ex-sun-early">
+          <Sun />
+          <path d="M140,92 C150,70 176,64 190,76" fill="none" stroke="#f0a43a" strokeWidth={1.2} strokeDasharray="3 3" />
+        </g>
+      )}
 
       {/* the tank, its pipe, and the water trough */}
       <Tank low={m.has('tankDrop')} />
       <Trough mud={m.has('mud')} low={m.has('drinkMore')} />
+      {e.has('tapDrip') && !m.has('tankDrop') && (
+        <g>
+          <circle cx={446} cy={181} r={2.6} fill="#8fd0ea" strokeWidth={0.8} />
+          <path className="ex-drip" d="M446,184 c-1.8,2.6 -1.8,4.4 0,5 c1.8,-0.6 1.8,-2.4 0,-5 Z" fill="#8fd0ea" strokeWidth={0.7} />
+          <ellipse cx={446} cy={206} rx={7} ry={1.8} fill="#8fb9cf" stroke="none" />
+        </g>
+      )}
+      {e.has('valveDrip') && !m.has('mud') && (
+        <g>
+          <ellipse cx={414} cy={238} rx={13} ry={3} fill="#9a7a52" stroke="none" />
+          <path className="ex-drip is-slow" d="M417,204 c-1.8,2.6 -1.8,4.4 0,5 c1.8,-0.6 1.8,-2.4 0,-5 Z" fill="#8fd0ea" strokeWidth={0.7} />
+        </g>
+      )}
 
       {/* the feed trough */}
       <g>
@@ -133,7 +167,25 @@ function Pen({ uid, m }: { uid: string; m: Set<Mark> }) {
             </g>
           </g>
         ) : (
-          <path d="M28,207 C40,202 60,204 74,201 C86,203 96,203 100,207 Z" fill="#8db457" />
+          <g>
+            <path d="M28,207 C40,202 60,204 74,201 C86,203 96,203 100,207 Z" fill="#8db457" />
+            {e.has('wetClover') && (
+              <g strokeWidth={0.8}>
+                <path d="M36,205 C38,194 52,190 60,196 C68,190 82,194 84,205 Z" fill="#3f8a3a" />
+                {[44, 54, 64, 74].map((x, i) => (
+                  <g key={x}>
+                    <circle cx={x} cy={198 - (i % 2) * 2} r={2.6} fill="#5fae4a" />
+                    <circle cx={x + 2.6} cy={197 - (i % 2) * 2} r={2.2} fill="#5fae4a" />
+                  </g>
+                ))}
+                <g fill="#bfe3f2" stroke="none">
+                  <circle cx={48} cy={195} r={1} />
+                  <circle cx={62} cy={193} r={1.1} />
+                  <circle cx={77} cy={197} r={0.9} />
+                </g>
+              </g>
+            )}
+          </g>
         )}
       </g>
 
@@ -141,9 +193,19 @@ function Pen({ uid, m }: { uid: string; m: Set<Mark> }) {
       <Pail low={m.has('milkLow')} clots={m.has('clots')} />
 
       {/* dung */}
-      <path d="M380,252 C378,244 386,240 392,242 C396,236 406,240 404,247 C410,248 408,255 400,255 L384,255 C379,255 378,253 380,252 Z" fill="#6f5236" />
+      {e.has('looseDung') ? (
+        <g strokeWidth={1}>
+          <path d="M374,253 C374,247 386,244 394,246 C404,243 414,248 412,253 C410,257 378,258 374,253 Z" fill="#6f5a2e" />
+          <ellipse cx={392} cy={250} rx={8} ry={1.4} fill="rgba(255,255,255,0.35)" stroke="none" />
+          {[368, 419, 380, 406].map((x, i) => (
+            <circle key={x} cx={x} cy={252 - (i % 2) * 5} r={1.4} fill="#6f5a2e" stroke="none" />
+          ))}
+        </g>
+      ) : (
+        <path d="M380,252 C378,244 386,240 392,242 C396,236 406,240 404,247 C410,248 408,255 400,255 L384,255 C379,255 378,253 380,252 Z" fill="#6f5236" />
+      )}
 
-      <Cow uid={uid} m={m} />
+      <Cow uid={uid} m={m} e={e} />
     </g>
   );
 }
@@ -151,7 +213,7 @@ function Pen({ uid, m }: { uid: string; m: Set<Mark> }) {
 const BODY = 'M156,104 C156,86 178,80 206,82 L334,80 C364,80 374,96 372,120 C370,152 360,174 326,176 L196,178 C168,178 154,150 156,104 Z';
 const HEAD = 'M140,94 C134,86 118,84 108,88 C100,92 94,104 88,118 L76,136 C70,148 76,160 90,160 C104,160 112,156 118,146 L134,122 C140,112 142,102 140,94 Z';
 
-function Cow({ uid, m }: { uid: string; m: Set<Mark> }) {
+function Cow({ uid, m, e }: { uid: string; m: Set<Mark>; e: Set<string> }) {
   const fast = m.has('fastBreath');
   const open = m.has('pant') || m.has('tongueBlisters');
   return (
@@ -190,6 +252,12 @@ function Cow({ uid, m }: { uid: string; m: Set<Mark> }) {
         <ellipse cx={304} cy={182} rx={m.has('quarter') ? 13 : 10} ry={m.has('quarter') ? 12 : 9} fill={m.has('quarter') ? '#e56b5f' : PINK} />
         <rect x={283} y={189} width={4.5} height={7} rx={2} fill="#e99493" />
         <rect x={304} y={190} width={4.5} height={m.has('quarter') ? 9 : 7} rx={2} fill="#e99493" />
+        {e.has('teatCrack') && (
+          <g>
+            <path d="M283.4,191 C285,192 286,193.6 287.4,194.6" fill="none" stroke="#b3321f" strokeWidth={0.9} />
+            <path d="M282.6,186 C285,185 288,186 289,189 L284,190 Z" fill="#8a6a42" stroke="none" opacity={0.85} />
+          </g>
+        )}
         {m.has('quarter') && <path className="ex-haze" d="M298,170 q2,-4 0,-8 q-2,-4 0,-8 M308,170 q2,-4 0,-8 q-2,-4 0,-8" fill="none" stroke="#e5543f" strokeWidth={1} />}
       </g>
       {/* near legs: the back one kicks with bloat, the front one is held up with a sore foot */}
@@ -201,6 +269,7 @@ function Cow({ uid, m }: { uid: string; m: Set<Mark> }) {
       <g transform={m.has('hoofBlisters') ? 'translate(0 -9) rotate(-10 181 160)' : undefined}>
         <path d="M170,154 L194,154 L191,228 L174,228 Z" fill={COAT} />
         <Hoof x={173} y={228} sore={m.has('hoofBlisters')} />
+        {e.has('longHoof') && <path d="M173,229 C166,232 162,236 160,239 C164,238 168,237 171,237 Z" fill={HOOF} strokeWidth={1} />}
       </g>
       {m.has('hoofBlisters') && <path d="M168,244 l-4,3 M176,246 l0,4 M186,245 l3,4" fill="none" strokeWidth={1} stroke="#a8382a" />}
       {/* the neck and the head */}
@@ -208,6 +277,13 @@ function Cow({ uid, m }: { uid: string; m: Set<Mark> }) {
       <path d="M134,134 C142,150 150,160 160,164" fill="none" stroke="#c9b9a6" strokeWidth={1} />
       <path d="M136,100 C144,90 160,88 168,95 C160,104 148,107 138,107 Z" fill={COAT} />
       <path d="M142,101 C150,95 158,94 162,96 C156,101 150,103 144,103 Z" fill={PINK} stroke="none" />
+      {e.has('ticks') && (
+        <g fill="#5a3a26" strokeWidth={0.6}>
+          <ellipse cx={148} cy={99.5} rx={2} ry={1.5} />
+          <ellipse cx={153.5} cy={98.4} rx={2.3} ry={1.7} />
+          <ellipse cx={157.6} cy={99.6} rx={1.7} ry={1.3} />
+        </g>
+      )}
       <path d="M126,92 C125,83 129,78 134,79 L136,90 Z" fill="#efe2c4" />
       <path d={HEAD} fill={COAT} />
       <g clipPath={`url(#${uid}-head)`} stroke="none">
@@ -249,6 +325,20 @@ function Cow({ uid, m }: { uid: string; m: Set<Mark> }) {
       <circle cx={110} cy={106.4} r={3.1} fill="#2a1a18" />
       <circle cx={109} cy={105} r={1} fill="#fff" stroke="none" />
       <path d="M105,102 C108,100 113,100 117,102" fill="none" />
+      {e.has('flies') && (
+        <g className="ex-fly">
+          {[
+            [119, 101],
+            [103, 113],
+            [117, 113],
+          ].map(([x, y]) => (
+            <g key={x * y}>
+              <circle cx={x} cy={y} r={1.3} fill={INK} stroke="none" />
+              <path d={`M${x - 1},${y - 1.6} l-1.6,-1.6 M${x + 1},${y - 1.6} l1.6,-1.6`} strokeWidth={0.6} />
+            </g>
+          ))}
+        </g>
+      )}
       {m.has('tears') && (
         <g>
           <path d="M107,111 C104,118 104,126 101,134" fill="none" stroke="#8fd0ea" strokeWidth={2} />
@@ -430,7 +520,7 @@ const HEN_DARK = '#8e3f1f';
 const HEN_NECK = '#d07a3a';
 const COMB = '#d8322b';
 
-function Coop({ uid, m }: { uid: string; m: Set<Mark> }) {
+function Coop({ uid, m, e }: { uid: string; m: Set<Mark>; e: Set<string> }) {
   return (
     <g stroke={INK} strokeWidth={SW} strokeLinejoin="round" strokeLinecap="round">
       <defs>
@@ -455,9 +545,15 @@ function Coop({ uid, m }: { uid: string; m: Set<Mark> }) {
       {[0, 1, 2, 3, 4].map(i => (
         <ellipse key={i} cx={38 + i * 14.5} cy={74} rx={5} ry={6.4} fill={m.has('fewerEggs') && i > 0 ? '#d9cbb0' : '#f6e8d2'} strokeWidth={m.has('fewerEggs') && i > 0 ? 0.8 : SW} opacity={m.has('fewerEggs') && i > 0 ? 0.55 : 1} />
       ))}
+      {e.has('dirtyEggs') && (
+        <g fill="#7a5a38" stroke="none" opacity={0.85}>
+          <path d="M49,72 C52,70 55,72 55,75 C53,77 50,76 49,72 Z" />
+          <path d="M78,74 C81,71 84,73 84,77 C81,78 79,77 78,74 Z" />
+        </g>
+      )}
 
       {/* the perch */}
-      <Perch specks={m.has('specks')} dead={m.has('dead')} />
+      <Perch specks={m.has('specks')} dead={m.has('dead')} cracks={e.has('perchCracks')} />
 
       {/* the nest box */}
       <g>
@@ -475,25 +571,45 @@ function Coop({ uid, m }: { uid: string; m: Set<Mark> }) {
           <g>
             <ellipse cx={58} cy={210} rx={6} ry={7.4} fill="#f6e8d2" />
             <ellipse cx={74} cy={211} rx={6} ry={7.4} fill="#f6e8d2" />
+            {e.has('thinShell') && (
+              <g>
+                <path d="M84,214 C83,206 88,203 91,205 C95,207 96,214 92,217 C88,218 85,217 84,214 Z" fill="#efe6d6" strokeWidth={0.9} />
+                <path d="M86,209 C88,211 90,210 92,212" fill="none" stroke="#b9a98e" strokeWidth={0.8} />
+              </g>
+            )}
           </g>
         )}
       </g>
 
       {/* droppings */}
+      {e.has('wetLitter') && (
+        <g>
+          <ellipse cx={372} cy={244} rx={34} ry={7} fill="rgba(110,84,44,0.5)" stroke="none" />
+          <path d="M392,236 l3,-4 M402,238 l3,-4" fill="none" stroke="#b7c79a" strokeWidth={1} className="ex-haze" />
+        </g>
+      )}
       <Droppings kind={m.has('bloodDrop') ? 'blood' : m.has('greenDrop') ? 'green' : 'normal'} />
 
-      <Hen m={m} />
+      {e.has('wildBirds') && (
+        <g className="ex-float-still" fill="#a7a39a" strokeWidth={0.7}>
+          <path d="M300,118 c6,-6 14,-4 12,4 c-6,4 -12,2 -12,-4 Z" />
+          <path d="M306,116 l6,4" fill="none" />
+          <path d="M206,204 c5,-5 12,-3 10,3 c-5,3 -10,2 -10,-3 Z" />
+        </g>
+      )}
+      <Hen m={m} e={e} />
     </g>
   );
 }
 
-function Perch({ specks, dead }: { specks: boolean; dead: boolean }) {
+function Perch({ specks, dead, cracks }: { specks: boolean; dead: boolean; cracks: boolean }) {
   return (
     <g>
       {specks && <rect x={316} y={40} width={176} height={80} rx={8} fill="rgba(30,30,70,0.32)" stroke="none" />}
       <rect x={340} y={92} width={6} height={124} fill="#8c5a2f" />
       <rect x={452} y={92} width={6} height={124} fill="#8c5a2f" />
       <rect x={324} y={88} width={160} height={8} rx={4} fill="#a77445" />
+      {cracks && <path d="M362,90 l6,2 l5,-1 M392,93 l7,-2 l4,2 M420,90 l5,3 l6,-2 M446,93 l5,-2" fill="none" stroke="#5a3a1c" strokeWidth={1.1} />}
       {dead && <DeadHen />}
       {specks && (
         <g>
@@ -549,7 +665,7 @@ function Droppings({ kind }: { kind: 'normal' | 'green' | 'blood' }) {
   );
 }
 
-function Hen({ m }: { m: Set<Mark> }) {
+function Hen({ m, e }: { m: Set<Mark>; e: Set<string> }) {
   const pale = m.has('pale');
   const comb = pale ? '#f1b7ae' : COMB;
   const ruffled = m.has('ruffled');
@@ -563,6 +679,7 @@ function Hen({ m }: { m: Set<Mark> }) {
         <path d="M240,196 L238,234" />
         <path d="M264,196 L266,234" />
       </g>
+      {e.has('scalyLegs') && <path d="M236,210 l5,-1 M236,218 l5,-1 M236,226 l5,-1 M263,212 l5,1 M264,220 l5,1 M264,228 l5,1" fill="none" stroke="#7a5418" strokeWidth={1.2} />}
       <g fill="none" stroke="#d6a13a" strokeWidth={2.2}>
         <path d="M238,234 l-10,2 M238,234 l2,4 M238,234 l9,1" />
         <path d="M266,234 l-10,2 M266,234 l2,4 M266,234 l9,1" />
@@ -601,6 +718,7 @@ function Hen({ m }: { m: Set<Mark> }) {
       )}
       <g transform={head}>
         <path d={`M168,82 C166,70 174,66 177,76 C177,62 188,62 188,73 C190,62 201,65 198,78 C203,74 207,82 200,86 Z`} fill={comb} />
+        {e.has('combScab') && <ellipse cx={186} cy={74} rx={2.2} ry={1.7} fill="#4a2a22" strokeWidth={0.6} />}
         <circle cx={186} cy={93} r={16} fill={HEN_NECK} />
         <ellipse cx={170} cy={110} rx={5} ry={7.6} fill={comb} />
         {/* the beak: open when gasping */}

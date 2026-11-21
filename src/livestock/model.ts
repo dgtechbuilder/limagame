@@ -8,6 +8,7 @@ import { animalsUse, tankOf, type TankState } from '../water/model';
 import type { Forecast, Trial } from '../trials/model';
 import { roll } from './rand';
 import { idBlock, type UnlockHost } from '../unlock/model';
+import { caughtEarly, earlyRisk, type ChecksState } from '../inspect/model';
 import {
   CARE,
   COOPS,
@@ -100,6 +101,8 @@ export interface LifeHost {
   tank?: Partial<TankState>;
   trial: Trial | null;
   coins: number;
+  /** full checks: early signs dealt with or planned (src/inspect/model.ts) */
+  checks?: Partial<ChecksState>;
 }
 
 export const herdOf = (s: Pick<LifeHost, 'tank'>): Herd => tankOf(s.tank).herd;
@@ -317,6 +320,8 @@ const issueWeight = (s: LifeHost, l: LifeState, id: IssueId) => {
   if (id === 'eggEating' && crowded(s)) w *= 2;
   if (id === 'cocci') w *= 1 - (coopOption(l.coop)?.disease ?? 0);
   if (i.group === 'cows' && id !== 'leak') w *= 1 - (shedOption(l.shed)?.disease ?? 0);
+  // an early sign of it found on a full check and dealt with keeps it away for a few days
+  if (caughtEarly(s.checks, id, l.day)) w *= 0.05;
   return w;
 };
 
@@ -331,6 +336,9 @@ export function issueRisk(s: LifeHost, g: Group): { chance: number; why: string[
   if (g === 'hens' && l.coop) (p *= 1 - (coopOption(l.coop)!.disease * 0.5)), why.push('the coop keeps them dry');
   if ((l.prevent.deworm ?? 0) >= l.day) (p *= 0.85), why.push('dewormed');
   if (l.health[g] >= 85) (p *= 0.8), why.push('in good health');
+  const early = earlyRisk(s.checks, g, l.day);
+  p *= early.factor;
+  why.push(...early.why);
   return { chance: Math.min(0.6, p), why };
 }
 

@@ -1,21 +1,29 @@
 import { createPortal } from 'react-dom';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent, type ReactNode, type WheelEvent as RWheelEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type Dispatch, type PointerEvent as RPointerEvent, type ReactNode, type WheelEvent as RWheelEvent } from 'react';
 import { useVoice } from '../art/style';
+import { money } from '../money';
 import { sfx } from '../sfx';
 import { speak, stopSpeaking } from '../speech';
-import { LIFE, issueOf, type IssueId } from './config';
+import type { Action, GameState } from '../state';
+import { CHECKS, checksOf, earlyToday, keyOf, type Shown } from '../inspect/model';
+import { subjectOf } from '../inspect/subjects';
+import type { Part, SubjectId } from '../inspect/types';
+import { LIFE, type IssueId } from './config';
 import { ExamScene } from './ExamScene';
-import { FINDINGS, PARTS, marksOf, partOf, spotsOf, stepsOf, type Finding, type PartId, type Reading } from './exam';
+import { FINDINGS, marksOf, spotsOf, stepsOf, type Finding, type Reading, type Step } from './exam';
+import { lifeOf } from './model';
 
-/* Examining a sick animal, up close. The whole animal first, with a ring on every part that shows something. START
-   THE EXAMINATION plays it like a film: black bars close in, a title card, then the camera flies to each part in the
-   standard order (exam.ts PARTS), the light closes round it, and a caption says what is there, with the measure
-   (the thermometer, the breaths counted, the days of feed left). It moves on by itself; Back, Pause and Next take
-   over. At the end the camera pulls back, the parts are numbered, and the player chooses the fix beside them.
-   At any time the player can look for themselves: tap a part (on the animal or in the list), drag to look round,
+/* A full check, up close: an animal (or, src/inspect/subjects.ts, anything else on the farm a routine check covers).
+   The whole drawing first, its parts listed in sections in the order they are checked. When something is wrong, the
+   parts that show it are red, first in line: START THE EXAMINATION plays them like a film (black bars, a title card,
+   the camera flying to each, a caption with the measure), and at the end the player chooses the fix beside them.
+   FINISH THE CHECK then asks for the rest: a check of only the red parts misses what is starting elsewhere, so the
+   camera sweeps the parts not seen yet, a couple of seconds each. Healthy parts pass by themselves; an early sign
+   (src/inspect/early.ts) stops the sweep, to be fixed now (a few seconds' work and its cost) or planned for a day.
+   At any time the player can look for themselves: tap a part (on the drawing or in the list), drag to look round,
    and zoom with the wheel, a pinch or the + and − buttons. */
 
-type Mode = 'idle' | 'intro' | 'step' | 'end' | 'free';
+type Mode = 'idle' | 'intro' | 'step' | 'end' | 'free' | 'ask' | 'sweep' | 'done';
 interface Cam {
   x: number;
   y: number;
@@ -31,30 +39,67 @@ const Z_MAX = 4.5;
 /** the camera's flight to a part (ms), and how long the caption holds after it (ms): the caption bar runs this long */
 const FLY = 1100;
 const HOLD = 4200;
-const RAIL = 132;
+/** the sweep: its flight, and how long a healthy part and a red one hold (ms) */
+const SWEEP_FLY = 650;
+const SWEEP_FINE = 1500;
+const SWEEP_RED = 2600;
+/** the parts list's right edge, and the summary's width */
+const RAIL = 236;
 const SIDE = 300;
 
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 /** No motion: the phone asks for it, or Settings › Reduce motion is on (it stops every animation, the caption bar too). */
 const reduced = () => typeof window !== 'undefined' && (!!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || !!document.querySelector('.stage.reduce-motion'));
 
-export function Exam({ issue, since, day, onClose, decide }: { issue: IssueId; since: number; day: number; onClose: () => void; decide: ReactNode }) {
-  const def = issueOf(issue);
-  const group = def.group;
-  const who = group === 'cows' ? 'cow' : 'hens';
-  const steps = useMemo(() => stepsOf(issue), [issue]);
-  const marks = useMemo(() => marksOf(issue), [issue]);
-  const spots = useMemo(() => spotsOf(issue), [issue]);
-  const found = useMemo(() => new Set<PartId>(FINDINGS[issue].map(f => f.part)), [issue]);
+interface Props {
+  s: GameState;
+  dispatch: Dispatch<Action>;
+  subject: SubjectId;
+  /** the problem showing: its signs are the red parts. None for a routine check. */
+  issue?: IssueId | null;
+  /** the farm day the problem showed */
+  since?: number;
+  onClose: () => void;
+  /** the fixes to choose from, at the end */
+  decide?: ReactNode;
+}
+
+export function Exam({ s, dispatch, subject, issue = null, since = 0, onClose, decide }: Props) {
+  const def = subjectOf(subject);
+  const day = lifeOf(s.life).day;
   const voice = useVoice();
+  /** the parts in their sections' order */
+  const order = useMemo(() => def.sections.flatMap(sc => sc.parts), [def]);
+  const rank = (id: string) => order.indexOf(id);
+  const steps: Step[] = useMemo(() => (issue ? stepsOf(issue).sort((a, b) => rank(a.part.id) - rank(b.part.id)) : []), [issue]); // eslint-disable-line react-hooks/exhaustive-deps
+  const findings: Finding[] = useMemo(() => (issue ? FINDINGS[issue] : []), [issue]);
+  const marks = useMemo(() => marksOf(issue), [issue]);
+  const spots = useMemo(() => spotsOf(issue) as Record<string, { x: number; y: number }>, [issue]);
+  const red = useMemo(() => new Set<string>(findings.map(f => f.part)), [findings]);
+  // today's early signs, as the check opened (a sign dealt with stays on the list, ticked)
+  const [signs] = useState<Shown[]>(() => earlyToday(s.checks, subject, day, lifeOf(s.life).issues.map(i => i.id)));
+  const checks = checksOf(s.checks);
+  const isFixed = (e: Shown) => checks.fixed[keyOf(subject, e.id)] === day;
+  const plannedFor = (e: Shown) => checks.planned[keyOf(subject, e.id)];
+  const signAt = (part: string) => signs.filter(e => e.part === part);
+  const partOf = (id: string): Part => {
+    const p = def.parts.find(x => x.id === id)!;
+    return spots[id] ? { ...p, at: { ...p.at, ...spots[id] } } : p;
+  };
 
   const [mode, setMode] = useState<Mode>('idle');
   const [step, setStep] = useState(0);
   const [playing, setPlaying] = useState(true);
-  const [look, setLook] = useState<PartId | null>(null);
+  const [look, setLook] = useState<string | null>(null);
   const [cam, setCam] = useState<Cam>(WHOLE);
-  const [seen, setSeen] = useState<Set<PartId>>(() => new Set());
+  const [seen, setSeen] = useState<Set<string>>(() => new Set());
   const [dragging, setDragging] = useState(false);
+  /** the sweep: the parts still to see, and where it is */
+  const [queue, setQueue] = useState<string[]>([]);
+  const [qi, setQi] = useState(0);
+  /** an early sign being fixed (its timer runs), or just fixed */
+  const [work, setWork] = useState<{ id: string; done: boolean } | null>(null);
+  const see = useCallback((id: string) => setSeen(v => (v.has(id) ? v : new Set(v).add(id))), []);
 
   /* ---- the stage's size (its own pixels, before the game's fit-to-screen scale) ---- */
   const stage = useRef<HTMLDivElement>(null);
@@ -68,25 +113,38 @@ export function Exam({ issue, since, day, onClose, decide }: { issue: IssueId; s
     ro?.observe(el);
     return () => ro?.disconnect();
   }, []);
-  const s = Math.min(size.w / SCENE_W, size.h / SCENE_H);
+  const sc = Math.min(size.w / SCENE_W, size.h / SCENE_H);
 
+  const sweepPart = mode === 'sweep' ? queue[qi] : null;
   /** where on the stage the camera's point sits: right of the parts list, above the caption, or left of the summary */
   const anchor = (m: Mode) => {
     if (m === 'step' || m === 'intro') return { x: size.w * 0.56, y: size.h * 0.37 };
-    if (m === 'end') return { x: (size.w - SIDE) / 2, y: size.h / 2 };
+    if (m === 'end' || m === 'done') return { x: (size.w - SIDE) / 2, y: size.h / 2 };
+    if (m === 'sweep') return { x: RAIL + (size.w - RAIL) / 2, y: size.h * 0.36 };
     if (m === 'free') return { x: RAIL + (size.w - RAIL) / 2, y: size.h * 0.42 };
-    return { x: RAIL + (size.w - RAIL) / 2, y: size.h * 0.44 };
+    return { x: RAIL + (size.w - RAIL) / 2, y: size.h * 0.46 };
   };
-  const endZoom = clamp((size.w - SIDE - 16) / (SCENE_W * s), 0.6, 0.95);
-  const target: Cam = mode === 'step' ? steps[step].part.at : mode === 'free' ? cam : mode === 'intro' ? { ...WHOLE, z: 1.08 } : mode === 'end' ? { ...WHOLE, z: endZoom } : WHOLE;
+  const endZoom = clamp((size.w - SIDE - 16) / (SCENE_W * sc), 0.6, 0.95);
+  const restZoom = clamp((size.w - RAIL - 12) / (SCENE_W * sc), 0.6, WHOLE.z);
+  const target: Cam =
+    mode === 'step'
+      ? steps[step].part.at
+      : mode === 'sweep' && sweepPart
+        ? partOf(sweepPart).at
+        : mode === 'free'
+          ? cam
+          : mode === 'intro'
+            ? { ...WHOLE, z: 1.08 }
+            : mode === 'end' || mode === 'done'
+              ? { ...WHOLE, z: endZoom }
+              : { ...WHOLE, z: restZoom };
   const a = anchor(mode);
-  const tx = a.x - target.x * s * target.z;
-  const ty = a.y - target.y * s * target.z;
+  const tx = a.x - target.x * sc * target.z;
+  const ty = a.y - target.y * sc * target.z;
 
-  /* ---- the film ---- */
+  /* ---- the film of the red parts ---- */
   const start = () => {
     sfx.action();
-    setSeen(new Set());
     setLook(null);
     setPlaying(true);
     setStep(0);
@@ -112,10 +170,10 @@ export function Exam({ issue, since, day, onClose, decide }: { issue: IssueId; s
   useEffect(() => {
     if (mode !== 'step') return;
     const st = steps[step];
-    setSeen(v => new Set(v).add(st.part.id));
+    see(st.part.id);
     sfx.flow();
     if (voice) speak(`${st.part.label}. ${st.findings.map(f => `${f.title}. ${f.see}`).join(' ')}`);
-  }, [mode, step, steps, voice]);
+  }, [mode, step, steps, voice, see]);
   // with no motion the caption bar does not run, so a timer moves the film on
   useEffect(() => {
     if (mode !== 'step' || !playing || !reduced()) return;
@@ -124,29 +182,118 @@ export function Exam({ issue, since, day, onClose, decide }: { issue: IssueId; s
   }, [mode, step, playing, go]);
   useEffect(() => () => stopSpeaking(), []);
 
+  /* ---- finishing: every part, or the sweep of the rest first ---- */
+  const left = order.filter(id => !seen.has(id));
+  const reported = useRef(false);
+  const finishAll = () => {
+    setLook(null);
+    setMode('done');
+    if (!reported.current) {
+      reported.current = true;
+      dispatch({ type: 'checkDone', subject, checked: order.length });
+    }
+  };
+  const finish = () => {
+    sfx.action();
+    if (left.length === 0) finishAll();
+    else {
+      setLook(null);
+      setMode('ask');
+    }
+  };
+  const sweep = (ids = left) => {
+    sfx.action();
+    setLook(null);
+    setWork(null);
+    setQueue(ids);
+    setQi(0);
+    setMode('sweep');
+  };
+  const leaveEarly = () => {
+    dispatch({ type: 'checkDone', subject, checked: seen.size });
+    onClose();
+  };
+  const next = useCallback(() => {
+    setWork(null);
+    if (qi + 1 >= queue.length) {
+      setMode('done');
+      if (!reported.current) {
+        reported.current = true;
+        dispatch({ type: 'checkDone', subject, checked: order.length });
+      }
+    } else setQi(qi + 1);
+  }, [qi, queue.length, dispatch, subject, order.length]);
+  /** what the sweep found at its part: an early sign still to deal with, a red sign, or nothing */
+  const sweepSign = sweepPart ? signAt(sweepPart).find(e => !isFixed(e) && plannedFor(e) === undefined) : undefined;
+  const sweepRed = sweepPart ? findings.filter(f => f.part === sweepPart) : [];
+  useEffect(() => {
+    if (mode !== 'sweep' || !sweepPart) return;
+    see(sweepPart);
+    if (sweepSign) {
+      sfx.flow();
+      if (voice) speak(`${partOf(sweepPart).label}. An early sign: ${sweepSign.title}. ${sweepSign.risk}`);
+    }
+  }, [mode, qi]); // eslint-disable-line react-hooks/exhaustive-deps
+  // a healthy part (or a red one already known) moves on by itself
+  useEffect(() => {
+    if (mode !== 'sweep' || !sweepPart || sweepSign || work) return;
+    const t = window.setTimeout(next, SWEEP_FLY + (sweepRed.length ? SWEEP_RED : SWEEP_FINE));
+    return () => window.clearTimeout(t);
+  }, [mode, qi, sweepPart, sweepSign, sweepRed.length, work, next]);
+
+  /** deal with an early sign now: its few seconds of work, then it is done */
+  const fixNow = (e: Shown) => {
+    if (s.coins < e.fix.cost) {
+      dispatch({ type: 'checkFix', subject, id: e.id });
+      return;
+    }
+    sfx.action();
+    setWork({ id: e.id, done: false });
+  };
+  useEffect(() => {
+    if (!work || work.done) return;
+    const e = signs.find(x => x.id === work.id)!;
+    const t = window.setTimeout(() => {
+      dispatch({ type: 'checkFix', subject, id: e.id });
+      setWork({ id: e.id, done: true });
+    }, e.fix.secs * 1000);
+    return () => window.clearTimeout(t);
+  }, [work, signs, dispatch, subject]);
+  useEffect(() => {
+    if (!work?.done || mode !== 'sweep') return;
+    const t = window.setTimeout(next, 700);
+    return () => window.clearTimeout(t);
+  }, [work, mode, next]);
+  const plan = (e: Shown, on: number) => {
+    sfx.action();
+    dispatch({ type: 'checkPlan', subject, id: e.id, day: on });
+    if (mode === 'sweep') next();
+  };
+
   /* ---- looking for yourself ---- */
-  const lookAt = (id: PartId) => {
-    const p = partOf(group, id);
+  const lookAt = (id: string) => {
+    const p = partOf(id);
     setLook(id);
-    setCam({ ...p.at, ...spots[id] });
+    setWork(null);
+    setCam(p.at);
     setMode('free');
-    setSeen(v => new Set(v).add(id));
+    see(id);
   };
   const wholeView = () => {
     setLook(null);
     setCam(WHOLE);
     setMode(m => (m === 'free' ? 'free' : 'idle'));
   };
-  const freeCam = (): Cam => (mode === 'free' ? cam : mode === 'idle' ? WHOLE : target);
+  const freeCam = (): Cam => (mode === 'free' ? cam : mode === 'idle' ? { ...WHOLE, z: restZoom } : target);
   const zoomBy = (f: number, px?: number, py?: number) => {
     const c = freeCam();
     const fa = anchor('free');
-    const z = clamp(c.z * f, Z_MIN, Z_MAX);
+    const z = clamp(c.z * f, Math.min(Z_MIN, restZoom), Z_MAX);
     const p = { x: px ?? fa.x, y: py ?? fa.y };
     // keep the scene point under the pointer where it is
-    const sx = c.x + (p.x - fa.x) / (s * c.z);
-    const sy = c.y + (p.y - fa.y) / (s * c.z);
-    setCam({ x: clamp(sx - (p.x - fa.x) / (s * z), 0, SCENE_W), y: clamp(sy - (p.y - fa.y) / (s * z), 0, SCENE_H), z });
+    const sx = c.x + (p.x - fa.x) / (sc * c.z);
+    const sy = c.y + (p.y - fa.y) / (sc * c.z);
+    setCam({ x: clamp(sx - (p.x - fa.x) / (sc * z), 0, SCENE_W), y: clamp(sy - (p.y - fa.y) / (sc * z), 0, SCENE_H), z });
     if (mode !== 'free') setMode('free');
   };
 
@@ -191,7 +338,7 @@ export function Exam({ issue, since, day, onClose, decide }: { issue: IssueId; s
       setDragging(true);
     }
     const c = freeCam();
-    setCam({ x: clamp(c.x - dx / (s * c.z), 0, SCENE_W), y: clamp(c.y - dy / (s * c.z), 0, SCENE_H), z: c.z });
+    setCam({ x: clamp(c.x - dx / (sc * c.z), 0, SCENE_W), y: clamp(c.y - dy / (sc * c.z), 0, SCENE_H), z: c.z });
     if (mode !== 'free') setMode('free');
   };
   const onUp = (e: RPointerEvent) => {
@@ -204,7 +351,7 @@ export function Exam({ issue, since, day, onClose, decide }: { issue: IssueId; s
     zoomBy(e.deltaY < 0 ? 1.18 : 1 / 1.18, p.x, p.y);
   };
 
-  /* ---- keys: arrows step through the film, Escape closes the examination (and not the Animals page under it) ---- */
+  /* ---- keys: arrows step through the film, Escape closes the examination (and not the page under it) ---- */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -220,31 +367,44 @@ export function Exam({ issue, since, day, onClose, decide }: { issue: IssueId; s
 
   const film = mode === 'intro' || mode === 'step';
   const cur = mode === 'step' ? steps[step] : null;
-  const lookPart = mode === 'free' && look ? partOf(group, look) : null;
-  const lookFindings = lookPart ? FINDINGS[issue].filter(f => f.part === lookPart.id) : [];
+  const lookPart = mode === 'free' && look ? partOf(look) : null;
+  const lookFindings = lookPart ? findings.filter(f => f.part === lookPart.id) : [];
+  const lookSigns = lookPart ? signAt(lookPart.id) : [];
+  // what the drawing shows: the early signs not yet dealt with; amber rings on the ones found
+  const showing = signs.filter(e => !isFixed(e) && !(work?.done && work.id === e.id));
+  const amber = [...new Set(showing.filter(e => seen.has(e.part)).map(e => e.part))];
+  const redSeen = [...red].filter(id => seen.has(id)).length;
+  const focus = lookPart?.id ?? sweepPart ?? null;
 
-  // over the whole game screen, not just the Animals panel (the stage is the phone-shaped frame)
+  // over the whole game screen, not just the page under it (the stage is the phone-shaped frame)
   const host = typeof document !== 'undefined' ? document.querySelector('.stage') : null;
   const view = (
-    <div className={`ex is-${mode}${film ? ' is-film' : ''}`} role="dialog" aria-modal="true" aria-label={`Examine the ${who}`}>
+    <div className={`ex is-${mode}${film ? ' is-film' : ''}`} role="dialog" aria-modal="true" aria-label={def.title}>
       <div
         ref={stage}
-        className={`ex-stage is-${group}${dragging ? ' is-dragging' : ''}${canLook ? ' can-look' : ''}`}
+        className={`ex-stage is-${subject}${dragging ? ' is-dragging' : ''}${canLook ? ' can-look' : ''}`}
+        style={{ background: def.ground }}
         onPointerDown={onDown}
         onPointerMove={onMove}
         onPointerUp={onUp}
         onPointerCancel={onUp}
         onWheel={onWheel}
       >
-        <div className="ex-cam" style={{ width: SCENE_W * s, height: SCENE_H * s, transform: `translate(${tx}px, ${ty}px) scale(${target.z})`, transitionDuration: dragging ? '0ms' : mode === 'free' ? '450ms' : `${FLY}ms` }}>
-          <div className={`ex-drift${cur ? ' is-on' : ''}`} key={cur ? `d${step}` : 'still'} style={cur ? { transformOrigin: `${cur.part.at.x * s}px ${cur.part.at.y * s}px` } : undefined}>
+        <div
+          className="ex-cam"
+          style={{ width: SCENE_W * sc, height: SCENE_H * sc, transform: `translate(${tx}px, ${ty}px) scale(${target.z})`, transitionDuration: dragging ? '0ms' : mode === 'free' ? '450ms' : mode === 'sweep' ? `${SWEEP_FLY}ms` : `${FLY}ms` }}
+        >
+          <div className={`ex-drift${cur ? ' is-on' : ''}`} key={cur ? `d${step}` : 'still'} style={cur ? { transformOrigin: `${cur.part.at.x * sc}px ${cur.part.at.y * sc}px` } : undefined}>
             <ExamScene
-              group={group}
+              subject={subject}
               marks={marks}
+              early={showing.map(e => e.id)}
               spots={spots}
-              rings={canLook ? [...found] : []}
+              rings={canLook || mode === 'ask' ? [...red] : []}
+              amber={canLook || mode === 'ask' || mode === 'done' ? amber : []}
+              todo={mode === 'ask' ? left : []}
               pins={mode === 'end' ? steps.map(x => x.part.id) : []}
-              focus={lookPart?.id ?? null}
+              focus={focus}
               onPart={canLook ? lookAt : undefined}
             />
           </div>
@@ -259,7 +419,7 @@ export function Exam({ issue, since, day, onClose, decide }: { issue: IssueId; s
       {mode === 'intro' && (
         <div className="ex-title" aria-live="polite">
           <small>Examination</small>
-          <b>{group === 'cows' ? 'The sick cow' : 'The sick hens'}</b>
+          <b>The sick {def.name}</b>
           <span>
             Day {day} · signs since day {since} · {steps.length} things to see
           </span>
@@ -268,10 +428,8 @@ export function Exam({ issue, since, day, onClose, decide }: { issue: IssueId; s
 
       <header className="ex-head">
         <p>
-          <b>{film ? 'Examination' : mode === 'end' ? 'What you saw' : `Examine the ${who}`}</b>
-          <span>
-            {group === 'cows' ? 'Cows' : 'Hens'} · since day {since}
-          </span>
+          <b>{film ? 'Examination' : mode === 'end' ? 'What you saw' : mode === 'sweep' ? 'Checking the rest' : mode === 'done' ? 'Check done' : def.title}</b>
+          <span>{issue ? `${def.group === 'cows' ? 'Cows' : 'Hens'} · since day ${since}` : `Day ${day} · a routine check`}</span>
         </p>
         {film && (
           <ol className="ex-dots" aria-label={`Step ${step + 1} of ${steps.length}`}>
@@ -285,29 +443,73 @@ export function Exam({ issue, since, day, onClose, decide }: { issue: IssueId; s
         </button>
       </header>
 
-      {/* the standard parts to check */}
-      <nav className="ex-rail" aria-label={`Parts of the ${who === 'cow' ? 'cow' : 'hen'} to check`}>
-        <p>{who === 'cow' ? 'Check the cow' : 'Check the hens'}</p>
-        {PARTS[group].map(p => (
-          <button
-            key={p.id}
-            type="button"
-            className={`ex-part${look === p.id && mode === 'free' ? ' is-on' : ''}${seen.has(p.id) ? (found.has(p.id) ? ' is-found' : ' is-fine') : ''}`}
-            onClick={() => lookAt(p.id)}
-            tabIndex={canLook ? 0 : -1}
-          >
-            <i aria-hidden="true" />
-            {p.label}
+      {/* the parts to check, in sections; the red ones first in line */}
+      <nav className="ex-rail" aria-label={`Parts of the ${def.name} to check`}>
+        <p className="ex-rail-head">
+          {def.rail}
+          <span>
+            {seen.size}/{order.length}
+          </span>
+        </p>
+        <span className="ex-meter" aria-hidden="true">
+          <span style={{ width: `${(seen.size / order.length) * 100}%` }} />
+        </span>
+        {red.size > 0 && (
+          <p className="ex-first">
+            <i aria-hidden="true" /> {redSeen < red.size ? `Look at the ${red.size} red parts first` : 'Red parts seen: now the rest'}
+          </p>
+        )}
+        {def.sections.map(sec => {
+          const n = sec.parts.filter(id => seen.has(id)).length;
+          const reds = sec.parts.filter(id => red.has(id)).length;
+          return (
+            <div key={sec.label} className={`ex-sec${reds ? ' has-red' : ''}${n === sec.parts.length ? ' is-done' : ''}`}>
+              <p className="ex-sec-head">
+                <span>{sec.label}</span>
+                {reds > 0 && <b aria-label={`${reds} red`}>{reds}</b>}
+                <small>{n === sec.parts.length ? '✓' : `${n}/${sec.parts.length}`}</small>
+              </p>
+              <div className="ex-sec-parts">
+                {sec.parts.map(id => {
+                  const p = def.parts.find(x => x.id === id)!;
+                  const sign = seen.has(id) && signAt(id).some(e => !isFixed(e));
+                  const state = !seen.has(id) ? '' : red.has(id) ? ' is-found' : sign ? ' is-early' : ' is-fine';
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      className={`ex-part${red.has(id) ? ' is-red' : ''}${state}${(look === id && mode === 'free') || sweepPart === id ? ' is-on' : ''}`}
+                      onClick={() => lookAt(id)}
+                      tabIndex={canLook || mode === 'sweep' || mode === 'done' ? 0 : -1}
+                    >
+                      <i aria-hidden="true" />
+                      {p.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+        {(mode === 'idle' || mode === 'free') && (
+          <button type="button" className={`ex-finish${left.length === 0 ? ' is-ready' : ''}`} onClick={finish}>
+            ✓ Finish the check
           </button>
-        ))}
+        )}
       </nav>
 
-      {/* idle: start the film */}
+      {/* idle: start the film of the red parts, or the check of every part */}
       {mode === 'idle' && (
         <div className="ex-start">
-          <button type="button" className="ex-go" onClick={start}>
-            <span aria-hidden="true">▶</span> Start the examination
-          </button>
+          {steps.length ? (
+            <button type="button" className="ex-go" onClick={start}>
+              <span aria-hidden="true">▶</span> Start the examination
+            </button>
+          ) : (
+            <button type="button" className="ex-go" onClick={() => sweep(order.filter(id => !seen.has(id)))}>
+              <span aria-hidden="true">▶</span> Check every part
+            </button>
+          )}
           <small>or tap a part to look for yourself · drag and zoom to look closer</small>
         </div>
       )}
@@ -345,25 +547,29 @@ export function Exam({ issue, since, day, onClose, decide }: { issue: IssueId; s
       )}
       {cur && cur.findings.some(f => f.reading) && (
         <div className="ex-reading" key={`r${step}`} style={{ left: a.x + 64, top: Math.max(40, a.y - 96) }}>
-          {cur.findings.filter(f => f.reading).map(f => (
-            <ReadingCard key={f.mark} r={f.reading!} f={f} since={since} day={day} />
-          ))}
+          {cur.findings
+            .filter(f => f.reading)
+            .map(f => (
+              <ReadingCard key={f.mark} r={f.reading!} f={f} since={since} day={day} />
+            ))}
         </div>
       )}
 
       {/* looking for yourself: what this part shows */}
       {lookPart && (
-        <div className={`ex-caption is-look${lookFindings.length ? ' is-sign' : ' is-normal'}`} key={`l${lookPart.id}`} aria-live="polite">
+        <div className={`ex-caption is-look${lookFindings.length ? ' is-sign' : lookSigns.length ? ' is-early' : ' is-normal'}`} key={`l${lookPart.id}`} aria-live="polite">
           <p className="ex-kicker">{lookPart.label}</p>
-          {lookFindings.length ? (
-            lookFindings.map(f => (
-              <div key={f.mark} className="ex-find">
-                <b>{f.title}</b>
-                <span>{f.see}</span>
-                {f.reading && <ReadingLine r={f.reading} since={since} day={day} f={f} />}
-              </div>
-            ))
-          ) : (
+          {lookFindings.map(f => (
+            <div key={f.mark} className="ex-find">
+              <b>{f.title}</b>
+              <span>{f.see}</span>
+              {f.reading && <ReadingLine r={f.reading} since={since} day={day} f={f} />}
+            </div>
+          ))}
+          {lookSigns.map(e => (
+            <EarlySign key={e.id} e={e} day={day} fixed={isFixed(e)} planned={plannedFor(e)} working={work?.id === e.id ? work : null} coins={s.coins} onFix={() => fixNow(e)} onPlan={on => plan(e, on)} />
+          ))}
+          {!lookFindings.length && !lookSigns.length && (
             <div className="ex-find">
               <b>Nothing wrong here</b>
               <span>Healthy: {lowerFirst(lookPart.normal)}</span>
@@ -380,9 +586,9 @@ export function Exam({ issue, since, day, onClose, decide }: { issue: IssueId; s
             +
           </button>
           <button type="button" className="is-whole" onClick={wholeView}>
-            Whole {who === 'cow' ? 'cow' : 'coop'}
+            {def.whole}
           </button>
-          {mode === 'free' && (
+          {mode === 'free' && steps.length > 0 && (
             <button type="button" className="is-play" onClick={start}>
               ▶ Examination
             </button>
@@ -390,7 +596,76 @@ export function Exam({ issue, since, day, onClose, decide }: { issue: IssueId; s
         </div>
       )}
 
-      {/* the end: what you saw, and the choice */}
+      {/* only the red parts seen: check the rest too */}
+      {mode === 'ask' && (
+        <div className="ex-ask-card" role="alertdialog" aria-label="Check the rest too?">
+          <p className="ex-kicker">{red.size ? `${redSeen} of ${red.size} red parts seen` : `${seen.size} of ${order.length} parts seen`}</p>
+          <b>
+            {left.length} part{left.length === 1 ? '' : 's'} not checked yet
+          </b>
+          <span>Problems start small. A quick look at each (about {Math.max(5, Math.round((left.length * (SWEEP_FLY + SWEEP_FINE)) / 1000))} seconds) finds what is starting, while it is cheap to fix or plan.</span>
+          <ul className="ex-todo">
+            {def.sections
+              .filter(sec => sec.parts.some(id => !seen.has(id)))
+              .map(sec => (
+                <li key={sec.label}>
+                  <small>{sec.label}</small>
+                  {sec.parts
+                    .filter(id => !seen.has(id))
+                    .map(id => def.parts.find(x => x.id === id)!.label)
+                    .join(' · ')}
+                </li>
+              ))}
+          </ul>
+          <div className="ex-ask-go">
+            <button type="button" className="ex-go" onClick={() => sweep()}>
+              <span aria-hidden="true">▶</span> Check the other {left.length}
+            </button>
+            <button type="button" className="ex-link" onClick={leaveEarly}>
+              Finish without them
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* the sweep: each part not seen yet, a moment each */}
+      {mode === 'sweep' && sweepPart && (
+        <div className={`ex-caption is-sweep${sweepSign || work ? ' is-early' : sweepRed.length ? ' is-sign' : ' is-normal'}`} key={`s${qi}`} aria-live="polite">
+          <p className="ex-kicker">
+            Quick check {qi + 1} of {queue.length} · {partOf(sweepPart).label}
+          </p>
+          {sweepRed.map(f => (
+            <div key={f.mark} className="ex-find">
+              <b>{f.title}</b>
+              <span>{f.see}</span>
+            </div>
+          ))}
+          {work ? (
+            <EarlySign e={signs.find(x => x.id === work.id)!} day={day} fixed={work.done} working={work} coins={s.coins} onFix={() => undefined} onPlan={() => undefined} />
+          ) : sweepSign ? (
+            <EarlySign e={sweepSign} day={day} fixed={false} working={null} coins={s.coins} onFix={() => fixNow(sweepSign)} onPlan={on => plan(sweepSign, on)} onLeave={next} />
+          ) : (
+            !sweepRed.length && (
+              <div className="ex-find">
+                <b>✓ Looks healthy</b>
+                <span>{partOf(sweepPart).normal}</span>
+              </div>
+            )
+          )}
+          {!sweepSign && !work && (
+            <span className="ex-timer">
+              <span style={{ animationDuration: `${sweepRed.length ? SWEEP_RED : SWEEP_FINE}ms`, animationDelay: `${SWEEP_FLY}ms` }} />
+            </span>
+          )}
+          <div className="ex-ctrl">
+            <button type="button" className="is-skip" onClick={finishAll}>
+              Skip to the end
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* the film's end: what you saw, and the choice */}
       {mode === 'end' && (
         <aside className="ex-side" aria-label="What you saw, and what you will do">
           <ol className="ex-list">
@@ -403,6 +678,9 @@ export function Exam({ issue, since, day, onClose, decide }: { issue: IssueId; s
           </ol>
           <p className="ex-ask">What will you do?</p>
           {decide}
+          <button type="button" className="ex-finish is-wide" onClick={finish}>
+            ✓ Finish the check
+          </button>
           <div className="ex-again">
             <button type="button" onClick={start}>
               ↺ Watch again
@@ -413,9 +691,109 @@ export function Exam({ issue, since, day, onClose, decide }: { issue: IssueId; s
           </div>
         </aside>
       )}
+
+      {/* every part checked: what was found, and what was done about it */}
+      {mode === 'done' && (
+        <aside className="ex-side ex-done" aria-label="The check, done">
+          <p className="ex-done-head">
+            <i aria-hidden="true">✓</i> Every part checked <small>{order.length} of {order.length}</small>
+          </p>
+          {red.size > 0 && decide && (
+            <>
+              <p className="ex-done-sub is-red">
+                {red.size} red part{red.size === 1 ? '' : 's'}: {findings.map(f => f.title.toLowerCase()).slice(0, 3).join('; ')}
+              </p>
+              <p className="ex-ask">What will you do?</p>
+              {decide}
+            </>
+          )}
+          <p className="ex-done-sub">{signs.length ? `Early sign${signs.length === 1 ? '' : 's'} found (${signs.length})` : 'No early signs today'}</p>
+          <ul className="ex-early-list">
+            {signs.map(e => (
+              <li key={e.id}>
+                <EarlySign e={e} day={day} fixed={isFixed(e)} planned={plannedFor(e)} working={work?.id === e.id ? work : null} coins={s.coins} compact onFix={() => fixNow(e)} onPlan={on => plan(e, on)} />
+              </li>
+            ))}
+          </ul>
+          <p className="ex-done-sub is-fine">{order.length - red.size - new Set(signs.map(e => e.part)).size} parts healthy</p>
+          <div className="ex-again">
+            <button type="button" onClick={onClose}>
+              Close
+            </button>
+            <button type="button" onClick={() => setMode('idle')}>
+              Look again
+            </button>
+          </div>
+        </aside>
+      )}
     </div>
   );
   return host ? createPortal(view, host) : view;
+}
+
+/* ---------------- an early sign: fix it now, or plan it ---------------- */
+
+function EarlySign({
+  e,
+  day,
+  fixed,
+  planned,
+  working,
+  coins,
+  compact,
+  onFix,
+  onPlan,
+  onLeave,
+}: {
+  e: Shown;
+  day: number;
+  fixed: boolean;
+  planned?: number;
+  working: { id: string; done: boolean } | null;
+  coins: number;
+  compact?: boolean;
+  onFix: () => void;
+  onPlan: (day: number) => void;
+  onLeave?: () => void;
+}) {
+  const cost = e.fix.cost ? money(e.fix.cost) : 'free';
+  return (
+    <div className={`ex-early${fixed ? ' is-fixed' : planned !== undefined ? ' is-planned' : ''}${compact ? ' is-compact' : ''}`}>
+      <p className="ex-early-tag">{fixed ? '✓ Dealt with' : planned !== undefined ? `Planned · day ${planned}${planned < day ? ' (overdue)' : planned === day ? ' (today)' : ''}` : 'Early sign'}</p>
+      <b>{e.title}</b>
+      {!compact && <span>{e.see}</span>}
+      {!fixed && <em className="ex-risk">Left alone: {lowerFirst(e.risk)}</em>}
+      {working && !working.done ? (
+        <div className="ex-work" role="status">
+          <span>{e.fix.doing}</span>
+          <span className="ex-work-bar">
+            <span style={{ animationDuration: `${e.fix.secs}s` }} />
+          </span>
+        </div>
+      ) : (
+        !fixed && (
+          <div className="ex-early-do">
+            <button type="button" className="is-fix" onClick={onFix} disabled={coins < e.fix.cost} title={coins < e.fix.cost ? `You need ${money(e.fix.cost - coins)} more` : undefined}>
+              {e.fix.label} · {cost} · {e.fix.secs} s
+            </button>
+            <span className="ex-plan" role="group" aria-label={`Plan: ${e.fix.label}`}>
+              <small>or plan it:</small>
+              {CHECKS.planDays.map(d => (
+                <button key={d} type="button" className={planned === day + d ? 'is-on' : ''} onClick={() => onPlan(day + d)}>
+                  {d === 1 ? 'Tomorrow' : `Day ${day + d}`}
+                </button>
+              ))}
+            </span>
+            {onLeave && (
+              <button type="button" className="ex-link" onClick={onLeave}>
+                Leave it
+              </button>
+            )}
+          </div>
+        )
+      )}
+    </div>
+  );
 }
 
 const lowerFirst = (t: string) => t.charAt(0).toLowerCase() + t.slice(1);

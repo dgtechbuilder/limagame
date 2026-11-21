@@ -13,6 +13,8 @@ import { DIMENSIONS, ROWS_PER_FARM } from './strategy/data';
 import { riskReduce, type RiskAction, type RiskState } from './risk/model';
 import { LIFE, type CareId, type CoopId, type Group, type IssueId, type PreventId, type ShedId } from './livestock/config';
 import { buildCoop, buildShed, doCare, doPrevent, fixIssue, lifeOf, type LifeEvent, type LifeState } from './livestock/model';
+import { checkDone, checkFix, checkPlan, type ChecksState } from './inspect/model';
+import type { SubjectId } from './inspect/types';
 import { addEntry, trackWallet, type WalletState } from './wallet/model';
 import { MET_BONUS, focusRegion, give, givingOf, type GivingState, type RegionId } from './events/regions';
 import { daysOn } from './events/days';
@@ -352,6 +354,8 @@ export interface GameState {
   collectedDay: Record<string, string>; // milk/eggs → date last collected
   /** the cows and the hens: care, health, problems, the coop (src/livestock) */
   life?: Partial<LifeState>;
+  /** full checks: early signs dealt with or planned, and the day each was last checked all over (src/inspect) */
+  checks?: Partial<ChecksState>;
   /** theft: the measures in place, what was taken, the night reports (src/security) */
   security?: Partial<SecurityState>;
   /** every payment in and out of the farmer's money (src/wallet; missing in older saves) */
@@ -673,6 +677,10 @@ export type Action =
   | { type: 'animalCare'; id: CareId }
   | { type: 'animalFix'; issue: IssueId; fix: string }
   | { type: 'animalPrevent'; id: PreventId }
+  /** a full check: an early sign dealt with now, planned for a day, or the check finished (`checked` parts of it) */
+  | { type: 'checkFix'; subject: SubjectId; id: string }
+  | { type: 'checkPlan'; subject: SubjectId; id: string; day: number }
+  | { type: 'checkDone'; subject: SubjectId; checked: number }
   | { type: 'coopBuild'; id: CoopId }
   | { type: 'herdBuy'; group: Group; n: number }
   /** theft (src/security): buy a measure; switch a nightly one (the watchman) on or off */
@@ -765,9 +773,9 @@ function trackFinance(prev: GameState, next: GameState): GameState {
   return out;
 }
 /** Flows: finishing one of these ends a whole piece of play. */
-const FLOWS = new Set<Action['type']>(['achClaimAll', 'completeSale', 'trialHarvest', 'bizRun', 'bizHireOut', 'bizContract', 'bizGraduate', 'tractorDone']);
+const FLOWS = new Set<Action['type']>(['checkDone', 'achClaimAll', 'completeSale', 'trialHarvest', 'bizRun', 'bizHireOut', 'bizContract', 'bizGraduate', 'tractorDone']);
 /** Actions: finishing one of these is one thing done. Some only count when they earned something (their message). */
-const ACTIONS = new Set<Action['type']>(['achClaim', 'achDaily', 'levelClaim', 'partnerSave', 'buy', 'sell', 'bookTraining', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo', 'tidyClear', 'animalCare', 'animalPrevent', 'coopBuild', 'shedBuild', 'herdBuy', 'securityBuy', 'powerInstall', 'powerFuel', 'tractorHub', 'produceSell', 'restaurantCook', 'ghPlant', 'ghWater', 'ghHarvest', 'storeMake', 'shedChoose', 'kakumaGive', 'kakumaGiveStore', 'give']);
+const ACTIONS = new Set<Action['type']>(['achClaim', 'achDaily', 'levelClaim', 'partnerSave', 'buy', 'sell', 'bookTraining', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo', 'tidyClear', 'animalCare', 'animalPrevent', 'checkFix', 'coopBuild', 'shedBuild', 'herdBuy', 'securityBuy', 'powerInstall', 'powerFuel', 'tractorHub', 'produceSell', 'restaurantCook', 'ghPlant', 'ghWater', 'ghHarvest', 'storeMake', 'shedChoose', 'kakumaGive', 'kakumaGiveStore', 'give']);
 const EARNED = new Set<Action['type']>(['roundResult', 'trialCheck', 'fieldMark']);
 const FS_ORDER: FsPhase[] = ['create', 'story', 'walk1', 'update', 'review1', 'walkRetry', 'retry', 'walk2', 'review2', 'done'];
 
@@ -1575,6 +1583,18 @@ function play(s: GameState, a: Action): GameState {
       const fixed = { ...r.state, ...(r.right ? gainXp(s, 0.06) : {}), points: s.points + (r.right ? 20 : 0), toast: toast(r.right ? `${r.text} · +20 points` : r.text) };
       // on the 3D farm, the right fix is then given by hand at the pen or the coop
       return r.right && onFarm(s) && !(s.jobs ?? []).some(j => j.key === `treat:${a.issue}`) ? { ...addJob(fixed, treatJob(a.issue, a.fix)), toast: fixed.toast } : fixed;
+    }
+    case 'checkFix': {
+      const r = checkFix(s, a.subject, a.id, lifeOf(s.life).day);
+      return 'error' in r ? { ...s, toast: toast(r.error) } : { ...r.state, ...gainXp(s, 0.02), toast: toast(r.text) };
+    }
+    case 'checkPlan': {
+      const r = checkPlan(s, a.subject, a.id, a.day, lifeOf(s.life).day);
+      return 'error' in r ? { ...s, toast: toast(r.error) } : { ...r.state, toast: toast(r.text) };
+    }
+    case 'checkDone': {
+      const r = checkDone(s, a.subject, a.checked, lifeOf(s.life).day);
+      return { ...r.state, toast: toast(r.text) };
     }
     case 'animalPrevent': {
       const r = doPrevent(s, a.id);
