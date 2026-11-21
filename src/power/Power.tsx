@@ -137,6 +137,10 @@ export function PowerPage({ s, dispatch, tab = 'build' }: { s: GameState; dispat
           Farm day {day} · {powerOn(s) ? 'the power is on' : `${POWER_STEPS.filter(x => has(s, x.id)).length} of 7 done`}
           <br />
           Numbers are estimates for learning.
+          <br />
+          <button type="button" className="set-link ck-link" onClick={() => dispatch({ type: 'open', modal: { kind: 'checks', subject: 'power' } })}>
+            🔍 Examine the power setup
+          </button>
         </>
       }
     >

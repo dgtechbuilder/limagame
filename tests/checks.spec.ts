@@ -2,7 +2,8 @@ import { expect, test } from '@playwright/test';
 import { boot, state, type Win } from './helpers';
 import { initialState, reducer, type GameState } from '../src/state';
 import { CHECKS, checkFix, earlyToday, plannedOf } from '../src/inspect/model';
-import { subjectOf } from '../src/inspect/subjects';
+import { CHECK_ORDER, subjectOf } from '../src/inspect/subjects';
+import { urgentOf } from '../src/inspect/urgent';
 import { issueRisk, lifeOf, type LifeState } from '../src/livestock/model';
 
 /* Full checks (src/inspect, src/livestock/Exam.tsx): the parts in sections, the red parts of a problem first, the
@@ -18,14 +19,25 @@ const game = (life: Partial<LifeState> = {}, patch: Partial<GameState> = {}): Ga
   ...patch,
 });
 
-test('every part of the cow and the hens is in exactly one section, in the order they are checked', () => {
-  for (const id of ['cow', 'hen'] as const) {
+test('every part of every check is in exactly one section, in the order they are checked; every early sign is on a part', () => {
+  expect(CHECK_ORDER).toEqual(['cow', 'hen', 'plant', 'tractor', 'farm', 'water', 'power']);
+  for (const id of CHECK_ORDER) {
     const def = subjectOf(id);
     const listed = def.sections.flatMap(s => s.parts);
     expect(new Set(listed).size).toBe(listed.length);
     expect([...listed].sort()).toEqual(def.parts.map(p => p.id).sort());
     for (const e of def.early) expect(def.parts.map(p => p.id)).toContain(e.part);
+    expect(new Set(def.early.map(e => e.id)).size).toBe(def.early.length);
+    for (const p of def.parts) {
+      expect(p.at.x).toBeGreaterThanOrEqual(0);
+      expect(p.at.x).toBeLessThanOrEqual(480);
+      expect(p.at.y).toBeGreaterThanOrEqual(0);
+      expect(p.at.y).toBeLessThanOrEqual(270);
+    }
+    expect(def.sections.length).toBeGreaterThanOrEqual(3);
+    expect(earlyToday(undefined, id, 3).length).toBeGreaterThanOrEqual(1);
   }
+  expect(subjectOf('hen').title).toBe('Examine the chicken');
   expect(subjectOf('cow').sections.map(s => s.label)).toEqual(['Head', 'Body', 'Udder, legs & dung', 'Feed & water']);
 });
 
@@ -135,8 +147,8 @@ test('a routine check of the hens, nothing wrong: every part in one sweep, and t
     const L = (window as unknown as Win).__lima;
     L.jump({ view: 'classic', coins: 20000, life: { day: 5, started: 2, date: new Date().toISOString().slice(0, 10) }, modal: { kind: 'animals', tab: 'health' } });
   });
-  await page.getByRole('button', { name: /Check the hens all over/ }).click();
-  const exam = page.getByRole('dialog', { name: 'Examine the hens' });
+  await page.getByRole('button', { name: /Examine the chicken/ }).click();
+  const exam = page.getByRole('dialog', { name: 'Examine the chicken' });
   await expect(exam.locator('.ex-sec')).toHaveCount(3);
   await expect(exam.locator('.ex-part.is-red')).toHaveCount(0);
   await exam.getByRole('button', { name: /Check every part/ }).click();
@@ -152,4 +164,85 @@ test('a routine check of the hens, nothing wrong: every part in one sweep, and t
   await expect(page.locator('.lv-planned .lv-job')).toHaveCount(n);
   await page.locator('.lv-planned .lv-job').first().getByRole('button').click();
   await expect(page.locator('.lv-planned .lv-job')).toHaveCount(n - 1);
+});
+
+test('red parts on the farm come from the game: a low tank, a worn tractor low on diesel, a dry spell', () => {
+  const s = game({}, { tank: { level: 100 }, hub: { condition: 40, fuel: 4 } });
+  expect(urgentOf(s, 'water').map(u => u.part)).toEqual(['tank']);
+  expect(urgentOf(s, 'tractor').map(u => u.part)).toEqual(['oil', 'fuel']);
+  expect(urgentOf(game({}, { tank: { level: 9000 }, hub: { condition: 100, fuel: 60 } }), 'tractor')).toHaveLength(0);
+  expect(urgentOf(game({}, { tank: { level: 9000 } }), 'water')).toHaveLength(0);
+  expect(urgentOf(s, 'plant')).toHaveLength(0);
+});
+
+test('Farm checks: a card for each check; the tractor’s red parts first, the rest swept, an early sign fixed', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const L = (window as unknown as Win).__lima;
+    L.jump({ view: 'classic', coins: 20000, hub: { condition: 40, fuel: 4 }, life: { day: 4, started: 2, date: new Date().toISOString().slice(0, 10) }, modal: { kind: 'menu' } });
+  });
+  await page.getByRole('button', { name: 'Farm checks', exact: true }).click();
+  const hub = page.getByRole('dialog', { name: 'Farm checks' });
+  await expect(hub.locator('.ck-card')).toHaveCount(7);
+  await expect(hub.locator('.ck-card').nth(3)).toContainText('2 red');
+  await hub.getByRole('button', { name: /Examine the tractor/ }).click();
+  const exam = page.getByRole('dialog', { name: 'Examine the tractor' });
+  await expect(exam.locator('.ex-sec')).toHaveCount(4);
+  await expect(exam.locator('.ex-part.is-red')).toHaveCount(2);
+  // the film of the two red parts, then Finish asks for the other eleven
+  await exam.getByRole('button', { name: /Start the examination/ }).click();
+  await expect(exam.locator('.ex-caption')).toContainText('Worn: due a service');
+  await exam.getByRole('button', { name: /^(Next|Finish) ›$/ }).click();
+  await expect(exam.locator('.ex-caption')).toContainText('Almost out of diesel');
+  await exam.getByRole('button', { name: /^(Next|Finish) ›$/ }).click();
+  await exam.getByRole('button', { name: /Finish the check/ }).click();
+  await page.getByRole('alertdialog', { name: 'Check the rest too?' }).getByRole('button', { name: 'Check the other 11' }).click();
+  const signs = earlyToday(undefined, 'tractor', 4);
+  for (let i = 0; i < 40 && !(await exam.locator('.ex-done').count()); i++) {
+    const fix = exam.locator('.ex-caption.is-sweep .is-fix');
+    if (await fix.count()) await fix.click();
+    await page.waitForTimeout(600);
+  }
+  await expect(exam.locator('.ex-done-head')).toContainText('13 of 13');
+  // a sign on a part already seen in the film is fixed from the summary
+  for (let i = 0; i < 6 && (await exam.locator('.ex-done .is-fix').count()); i++) {
+    await exam.locator('.ex-done .is-fix').first().click();
+    await expect(exam.locator('.ex-work')).toHaveCount(0, { timeout: 8000 });
+  }
+  await expect(exam.locator('.ex-early.is-fixed')).toHaveCount(signs.length);
+  const s = await state(page);
+  expect(s.checks.full.tractor).toBe(4);
+  expect(Object.keys(s.checks.fixed).sort()).toEqual(signs.map(e => `tractor:${e.id}`).sort());
+  await exam.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(hub.locator('.ck-card').nth(3)).toContainText('Checked today');
+});
+
+test('each new check opens from its own page or address, drawn with its parts', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const L = (window as unknown as Win).__lima;
+    L.jump({ view: 'classic', coins: 20000, life: { day: 3, started: 2, date: new Date().toISOString().slice(0, 10) }, modal: { kind: 'power', tab: 'build' } });
+  });
+  await page.getByRole('button', { name: /Examine the power setup/ }).click();
+  await expect(page.getByRole('dialog', { name: 'Examine the power setup' }).locator('.ex-part')).toHaveCount(11);
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => (window as unknown as Win).__lima.dispatch({ type: 'open', modal: { kind: 'animals', tab: 'water' } }));
+  await page.getByRole('button', { name: /Examine the water setup/ }).click();
+  await expect(page.getByRole('dialog', { name: 'Examine the water setup' }).locator('.ex-part')).toHaveCount(11);
+  await page.keyboard.press('Escape');
+  for (const [id, title, n] of [
+    ['plant', 'Examine the plant', 12],
+    ['farm', 'Examine the farm', 11],
+  ] as const) {
+    await page.evaluate(sub => (window as unknown as Win).__lima.dispatch({ type: 'open', modal: { kind: 'checks', subject: sub } }), id);
+    const exam = page.getByRole('dialog', { name: title });
+    await expect(exam.locator('.ex-part')).toHaveCount(n);
+    // tap a part to look for yourself
+    await exam.locator('.ex-part').first().click();
+    await expect(exam.locator('.ex-caption.is-look')).toBeVisible();
+    await page.keyboard.press('Escape');
+  }
+  // the page's address
+  await page.evaluate(() => (window as unknown as Win).__lima.dispatch({ type: 'open', modal: { kind: 'checks' } }));
+  await expect(page).toHaveURL(/#\/farm-checks/);
 });

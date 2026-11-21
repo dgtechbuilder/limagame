@@ -48,6 +48,7 @@ export function MainMenu({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
         { label: 'Greenhouse', note: 'Four beds: tomatoes, capsicum, strawberries…', run: () => open({ kind: 'greenhouse', bed: 0 }) },
         { label: 'Storehouse', note: 'Store your harvest, make sauce, jam, flour', run: () => open({ kind: 'storehouse', tab: 'store' }) },
         { label: 'Animals', note: 'Cows, hens, the coop and the cow shed', run: () => open({ kind: 'animals' }) },
+        { label: 'Farm checks', note: 'Examine the cow, chicken, plant, tractor, farm, water and power', run: () => open({ kind: 'checks' }) },
         { label: 'Security', note: 'Keep thieves off the farm', run: () => open({ kind: 'security' }) },
         { label: 'Shop', note: 'Seeds, fertilizer, tools', run: () => open({ kind: 'shop', tab: 'food' }) },
         {

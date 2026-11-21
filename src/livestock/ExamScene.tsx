@@ -1,12 +1,26 @@
-import { useId } from 'react';
+import { useId, type ReactElement } from 'react';
 import { INK } from '../art/anime';
 import { subjectOf } from '../inspect/subjects';
 import type { SubjectId } from '../inspect/types';
 import type { Mark } from './exam';
+import { FarmScene } from '../inspect/scenes/Farm';
+import { PlantScene } from '../inspect/scenes/Plant';
+import { PowerScene } from '../inspect/scenes/Power';
+import { TractorScene } from '../inspect/scenes/Tractor';
+import { WaterScene } from '../inspect/scenes/Water';
 
-/* The animal being examined, drawn in SVG on a 480 × 270 scene in the game's ink-outline style: a cow in her pen (a
-   feed trough, a milk pail, a water trough and the tank) or a hen in the coop (the perch, the nest boxes and the egg
-   tray). Each sign of a problem (exam.ts Mark) is drawn on the body where a vet would see it, and moves where it
+/** The drawings of the farm's machines and places: early signs `e`, and the red marks `r`. */
+const SCENES: Partial<Record<SubjectId, (p: { uid: string; e: Set<string>; r: Set<string> }) => ReactElement>> = {
+  plant: PlantScene,
+  tractor: TractorScene,
+  farm: FarmScene,
+  water: WaterScene,
+  power: PowerScene,
+};
+
+/* What is being examined, drawn in SVG on a 480 × 270 scene in the game's ink-outline style: a cow in her pen (a
+   feed trough, a milk pail, a water trough and the tank), a hen in the coop (the perch, the nest boxes and the egg
+   tray), or one of the farm's machines and places (src/inspect/scenes). Each sign of a problem (exam.ts Mark) is drawn on the body where a vet would see it, and moves where it
    moves: the flank heaves, tears and drips fall, a hurt foot is held up. Early signs (src/inspect/early.ts) are drawn
    smaller, where a full check finds them: ticks in an ear, a dripping valve, a cracked perch. The parts are where the
    subject's parts (src/inspect/subjects.ts) put the camera. */
@@ -21,7 +35,8 @@ const HOOF = '#3b2d29';
 
 export interface SceneProps {
   subject: SubjectId;
-  marks: Set<Mark>;
+  /** the red signs to draw (an animal's problem: exam.ts Mark; elsewhere src/inspect/urgent.ts) */
+  marks: Set<string>;
   /** the early signs to draw (not yet dealt with) */
   early?: string[];
   /** parts to pin with a pulsing red ring (the ones with a finding) */
@@ -48,7 +63,7 @@ export function ExamScene({ subject, marks, early = [], rings = [], amber = [], 
   const e = new Set(early);
   return (
     <svg className={`ex-scene${className ? ` ${className}` : ''}`} viewBox={`0 0 ${W} ${H}`} width={W} height={H} aria-hidden="true">
-      {subject === 'cow' ? <Pen uid={uid} m={marks} e={e} /> : <Coop uid={uid} m={marks} e={e} />}
+      {subject === 'cow' ? <Pen uid={uid} m={marks as Set<Mark>} e={e} /> : subject === 'hen' ? <Coop uid={uid} m={marks as Set<Mark>} e={e} /> : SCENES[subject]!({ uid, e, r: marks })}
       {onPart &&
         parts.map(p => (
           <circle
