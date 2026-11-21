@@ -69,6 +69,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [My Progress: certification levels and learning credits](#my-progress-certification-levels-and-learning-credits)
 - [Partners: billboards, branded products and offers](#partners-billboards-branded-products-and-offers)
 - [Farm words: info buttons and Farm basics](#farm-words-info-buttons-and-farm-basics)
+- [Special events, regions and Donate](#special-events-regions-and-donate)
 - [Special event: Kakuma, with the World Food Programme](#special-event-kakuma-with-the-world-food-programme)
 - [Character art: retro anime](#character-art-retro-anime)
 - [Design review mode](#design-review-mode)
@@ -990,6 +991,9 @@ reload without losing their place, bookmark a page, and use the browser's **Back
 | `#/kakuma/about` · `#/kakuma/foods` · `#/kakuma/food-and-life` · `#/kakuma/donate` | The Kakuma special event: about the camp, the foods grown there, food and life, donate (open before the farm too) |
 | `#/animals/today` · `health` · `water` · `coop` · `herd` | Animals, by section |
 | `#/security/protect` · `risks` · `night-reports` | Security, by section |
+| `#/events/happening-now` · `special-days` · `regions` · `donate` | Special events, by section |
+| `#/events/regions/<region>` (`horn-of-africa`, `sahel`, `southern-africa`, `lake-chad`, `madagascar`, `sudan`) | One region in need, and its relief packs |
+| `#/donate` · `#/regions` | Short addresses for Donate (open before the farm too) and Regions |
 | `#/money/overview` · `savings` · `investments` · `profit` | Money: what the farmer is worth, savings, investments, profit by part of the farm |
 | `#/market` · `#/market/restaurant` · `nutrition` · `sales` | The market stall, the restaurant, nutrition, every sale (`#/restaurant` and `#/nutrition` work too) |
 
@@ -1885,6 +1889,20 @@ Every word is one entry in `src/learn/glossary.ts` (for an agronomist to review:
 advice, not a product label). An entry's `aka` names find it from any name in the game (`termFor`: the longest name in
 a text wins; a name in capitals, like CAN, only matches in capitals), so a new product or tool with a known name gets
 its ⓘ with no code change.
+
+## Special events, regions and Donate
+
+**Special events** (main menu → *Special events*, `src/events`) gathers what is going on across the game world in
+one page with four sections:
+
+| Section | What it shows |
+| --- | --- |
+| **Happening now** | Everything live today, grouped *Across Africa*, *On the farm*, *Animals & safety* and *Money & partners*: a special day that is on, the appeal of the week, the daily tidy-up, the six farms' checks, the next power part, the market stall, animal care and sick animals, last night's report, rewards waiting and partner offers. Each has a button to the page that deals with it (by its address). The count of things to do shows on the tab and on the menu button. |
+| **Special days** | The world days about food, farming, water and the climate (World Food Day, World Soil Day, Africa Day, the Desertification and Drought Day and others), soonest first. Each is on for a week around its date, with a job in the game that fits it. |
+| **Regions** | Six African regions living through climate and food instability: the Horn of Africa, the Sahel, Southern Africa, the Lake Chad Basin, southern Madagascar, and Sudan & South Sudan. Each says what it faces (drought, floods, heat, cyclones, conflict), how farming and food are hit, and a lesson for the player's own farm. The player sends relief packs (three per region, small to large) **from the game's money**: the gift goes in the wallet as *Giving* and earns giving points (1 per 10 stored money), **double** for the appeal of the week (one region, turning each Monday) or while a special day is on. A region's appeal is met once the player's gifts reach its goal, for a one-time bonus of 300 points. |
+| **Donate** | Real organisations working on hunger, farming and climate shocks in Africa: the World Food Programme, One Acre Fund, UNICEF, Action Against Hunger, Heifer International, the Red Cross & Red Crescent (IFRC), Oxfam and GiveDirectly. **The game takes no money**: each *Donate on their site* button opens the organisation's own official site in a new tab. Donate can be opened during the first session too (main menu → *Donate*). |
+
+The words about each region describe what it has faced in recent years in general terms, not live figures.
 
 ## Character art: retro anime
 

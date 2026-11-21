@@ -14,6 +14,9 @@ import { riskReduce, type RiskAction, type RiskState } from './risk/model';
 import { LIFE, type CareId, type CoopId, type Group, type IssueId, type PreventId, type ShedId } from './livestock/config';
 import { buildCoop, buildShed, doCare, doPrevent, fixIssue, lifeOf, type LifeEvent, type LifeState } from './livestock/model';
 import { addEntry, trackWallet, type WalletState } from './wallet/model';
+import { MET_BONUS, focusRegion, give, givingOf, type GivingState, type RegionId } from './events/regions';
+import { daysOn } from './events/days';
+import { orgOf } from './events/orgs';
 import { PRODUCTS, depositBlock, financeOf, payoutOf, settle, type FinanceState, type Goal, type ProductId } from './finance/model';
 import { POWER, partOptionOf, stepOf, type LoadId, type StepId as PowerStepId } from './power/config';
 import { fuelTankL, loadsAvailable, powerOf, stepBlock, type PowerState } from './power/model';
@@ -138,6 +141,10 @@ export type Modal =
   | { kind: 'tractorGame' }
   /** Farm words: what every fertilizer, spray, tool and machine is, and the Farm basics lessons (src/learn) */
   | { kind: 'glossary'; tab?: GlossaryTab }
+  /** Special events: what is happening across the game world, the special days, the regions in need and the Donate
+      page (src/events); region: the region to show */
+  | { kind: 'events'; tab?: EventsTab; region?: RegionId }
+
   /** the Kakuma special event with the World Food Programme: learn and give (src/events) */
   | { kind: 'kakuma'; tab?: KakumaTab };
 
@@ -211,6 +218,8 @@ export type MarketTab = 'sell' | 'restaurant' | 'nutrition' | 'sales';
 export type StoreTab = 'store' | 'harvest' | 'produce';
 /** the Farm words page: the Farm basics lessons, or one section of words (src/learn/glossary.ts) */
 export type GlossaryTab = 'basics' | SectionId;
+/** Special events (src/events): happening now, the special days, the regions in need, the Donate page */
+export type EventsTab = 'now' | 'days' | 'regions' | 'donate';
 export type KakumaTab = 'about' | 'foods' | 'life' | 'donate';
 export const DEFAULT_SETTINGS: Settings = { art: 'anime', graphics: 'auto', reduceMotion: false, voice: false, sound: true, upgradeNotes: true, country: '', night: 'auto', pad: DEFAULT_PAD, tractor: DEFAULT_TRACTOR };
 
@@ -360,6 +369,8 @@ export interface GameState {
   prefs?: Partial<Record<PlotKind, string>>;
   /** the Farm basics lessons read (their index in BASICS, src/learn/glossary.ts) */
   basics?: number[];
+  /** gifts to the regions in need (src/events/regions.ts; missing in older saves) */
+  giving?: Partial<GivingState>;
   /** the Kakuma special event: the gifts given, and whether its pop-up is tucked away (src/events; missing in older saves) */
   kakuma?: Partial<KakumaState>;
   // season
@@ -686,6 +697,10 @@ export type Action =
   | { type: 'storeMake'; recipe: RecipeId; batches: number; score: number }
   /** at the shed: a seed, fertilizer or sprayer chosen for every farm that can still take it, then picked up */
   | { type: 'shedChoose'; kind: PlotKind; id: string }
+  /** Events › Regions: a relief pack given to a region, paid from the game's money (src/events/regions.ts) */
+  | { type: 'give'; region: string; pack: string }
+  /** Events › Donate: the player opened an organisation's site (counted, src/events/orgs.ts) */
+  | { type: 'orgVisit'; id: string }
 
 /** A morning's news waits for the screen on top to close (it is shown on the farm): opening or closing a screen keeps it. */
 export const MORNING_KINDS: Success['kind'][] = ['night', 'day2', 'morning'];
@@ -742,7 +757,7 @@ function trackFinance(prev: GameState, next: GameState): GameState {
 /** Flows: finishing one of these ends a whole piece of play. */
 const FLOWS = new Set<Action['type']>(['achClaimAll', 'completeSale', 'trialHarvest', 'bizRun', 'bizHireOut', 'bizContract', 'bizGraduate', 'tractorDone']);
 /** Actions: finishing one of these is one thing done. Some only count when they earned something (their message). */
-const ACTIONS = new Set<Action['type']>(['achClaim', 'achDaily', 'levelClaim', 'partnerSave', 'buy', 'sell', 'bookTraining', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo', 'tidyClear', 'animalCare', 'animalPrevent', 'coopBuild', 'shedBuild', 'herdBuy', 'securityBuy', 'powerInstall', 'powerFuel', 'tractorHub', 'produceSell', 'restaurantCook', 'ghPlant', 'ghWater', 'ghHarvest', 'storeMake', 'shedChoose', 'kakumaGive', 'kakumaGiveStore']);
+const ACTIONS = new Set<Action['type']>(['achClaim', 'achDaily', 'levelClaim', 'partnerSave', 'buy', 'sell', 'bookTraining', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo', 'tidyClear', 'animalCare', 'animalPrevent', 'coopBuild', 'shedBuild', 'herdBuy', 'securityBuy', 'powerInstall', 'powerFuel', 'tractorHub', 'produceSell', 'restaurantCook', 'ghPlant', 'ghWater', 'ghHarvest', 'storeMake', 'shedChoose', 'kakumaGive', 'kakumaGiveStore', 'give']);
 const EARNED = new Set<Action['type']>(['roundResult', 'trialCheck', 'fieldMark']);
 const FS_ORDER: FsPhase[] = ['create', 'story', 'walk1', 'update', 'review1', 'walkRetry', 'retry', 'walk2', 'review2', 'done'];
 
@@ -1859,6 +1874,23 @@ function play(s: GameState, a: Action): GameState {
           ? { toast: toast(`Farm tidy! +${money(r.coins)} · +${r.points} points${r.tidy.streak > 1 ? ` · ${r.tidy.streak}-day tidy streak` : ''}`) }
           : {}),
       };
+    }
+    case 'give': {
+      const today = achClock.today();
+      const double = focusRegion(today).id === a.region || daysOn(today).length > 0;
+      const r = give(s.giving, a.region, a.pack, s.coins, double, today);
+      if ('error' in r) return { ...s, toast: toast(r.error.replace(/\d+/, n => money(+n))) };
+      const coins = s.coins - r.amount;
+      const paid = addEntry({ ...s, coins, giving: r.giving, points: s.points + r.points }, 'giving', `Gift: ${r.pack.name} · ${r.region.name}`, -r.amount, coins);
+      return {
+        ...paid,
+        toast: toast(r.met ? `${r.region.name}: appeal met! +${r.points} points (${MET_BONUS} bonus points)` : `Thank you: ${lowerFirst(r.pack.name)} for ${r.region.name} · +${r.points} points${double ? ' (double)' : ''}`),
+      };
+    }
+    case 'orgVisit': {
+      const g = givingOf(s.giving);
+      if (!orgOf(a.id) || g.visits.includes(a.id)) return s;
+      return { ...s, giving: { ...g, visits: [...g.visits, a.id] } };
     }
     case 'achDaily': {
       const ach = achOfSave(s.ach);
