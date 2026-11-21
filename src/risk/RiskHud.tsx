@@ -131,10 +131,46 @@ export function RiskHud({
 
   return (
     <>
-      {hud && harvest && <HarvestButton est={harvest} onClick={openHarvest} />}
+      {/* one card, top left: what the harvest brings in if it goes well, and attached under it, the money at risk on
+          the farms today (the same number everywhere: the list, the sheet and the cheer) */}
+      {hud && (harvest || show) && (
+        <div className={`hud-money${show ? ' has-risk' : ''}`}>
+          {harvest && <HarvestButton est={harvest} onClick={openHarvest} />}
+          {show && (
+            <button
+              type="button"
+              className={`hud-risk${clear ? ' is-clear' : ''}${saved ? ' is-saved' : ''}`}
+              onClick={tap}
+              aria-label={clear ? (harvestTime ? 'Harvest time: nothing more at risk' : 'All clear: nothing at risk on your farms') : `${money(risk.total)} at risk on your farms today. Tap to see where.`}
+            >
+              <span className="hud-risk-icon" aria-hidden="true">
+                {clear ? '✓' : '!'}
+              </span>
+              <span className="hud-risk-text">
+                {clear ? (
+                  <b>{harvestTime ? 'Harvest time' : 'All clear'}</b>
+                ) : (
+                  <>
+                    <b>{moneyCompact(risk.total)}</b> <i>at risk today</i>
+                  </>
+                )}
+              </span>
+              <span className="hud-risk-go" aria-hidden="true">
+                ›
+              </span>
+              {saved && (
+                <span key={saved.id} className="hud-risk-saved" aria-hidden="true">
+                  {moneyCompact(saved.amount)} saved
+                </span>
+              )}
+            </button>
+          )}
+        </div>
+      )}
       {harvestOpen && harvest && (
         <HarvestSheet
           est={harvest}
+          risk={risk}
           onClose={() => setHarvestOpen(false)}
           onRisk={() => {
             setHarvestOpen(false);
@@ -143,33 +179,6 @@ export function RiskHud({
             track('risk_open', { total: risk.total, items: risk.items.length, day: risk.day, from: 'harvest' });
           }}
         />
-      )}
-      {show && (
-        <button
-          type="button"
-          className={`hud-risk${clear ? ' is-clear' : ''}${saved ? ' is-saved' : ''}`}
-          onClick={tap}
-          aria-label={clear ? (harvestTime ? 'Harvest time: nothing more at risk' : 'All clear: nothing at risk on your farms') : `${money(risk.total)} at risk on your farms. Tap to see where.`}
-        >
-          <span className="hud-risk-icon" aria-hidden="true">
-            {clear ? '✓' : '!'}
-          </span>
-          <span className="hud-risk-text">
-            {clear ? (
-              <b>{harvestTime ? 'Harvest time' : 'All clear'}</b>
-            ) : (
-              <>
-                <b>{moneyCompact(risk.total)}</b>
-                <i>at risk</i>
-              </>
-            )}
-          </span>
-          {saved && (
-            <span key={saved.id} className="hud-risk-saved" aria-hidden="true">
-              {moneyCompact(saved.amount)} saved
-            </span>
-          )}
-        </button>
       )}
 
       {open && (
@@ -247,20 +256,38 @@ function RiskCheer({ amount, left, onList, onClose }: { amount: number; left: nu
 
 function RiskSheet({ risk, onClose, onGo }: { risk: RiskSummary; onClose: () => void; onGo: (item: RiskItem) => void }) {
   useEscape(onClose);
+  const tomorrow = risk.items.reduce((n, x) => n + (x.next ?? x.amount), 0);
+  const full = risk.items.reduce((n, x) => n + x.stated, 0);
   return (
     <div className="abs risk-layer" style={{ inset: 0 }} role="dialog" aria-modal="true" aria-label="Money at risk">
       <div className="success-scrim" onClick={onClose} />
       <div className="risk-sheet">
         <CloseX onClick={onClose} />
         <p className="risk-kicker">Money at risk</p>
-        <p className="risk-total">{risk.total > 0 ? `${money(risk.total)} at risk` : 'All clear'}</p>
+        <p className="risk-total">{risk.total > 0 ? `${money(risk.total)} at risk today` : 'All clear'}</p>
         <p className="risk-lead">
           {risk.items.length
-            ? 'Each farm here has a problem that will cost harvest if it is left. Tap one to go and find out what it is.'
+            ? 'Each farm here has a problem that will cost harvest if it is left. The longer it is left, the more it costs. Tap a farm to go and find out what it is.'
             : risk.day > CHECK_DAYS
               ? 'Harvest time: nothing more can be saved this cycle.'
               : 'Every problem on your farms is dealt with. Check them again tomorrow.'}
         </p>
+        {risk.items.length > 0 && (
+          <div className="sheet-stats">
+            <span className="is-loss">
+              <small>At risk today</small>
+              <b>−{money(risk.total)}</b>
+            </span>
+            <span className="is-loss is-soft">
+              <small>Tomorrow, if left</small>
+              <b>−{money(tomorrow)}</b>
+            </span>
+            <span className="is-loss is-soft">
+              <small>By harvest, if never fixed</small>
+              <b>−{money(full)}</b>
+            </span>
+          </div>
+        )}
         {risk.items.length > 0 && (
           <ul className="risk-list">
             {risk.items.map(x => (
@@ -271,7 +298,7 @@ function RiskSheet({ risk, onClose, onGo }: { risk: RiskSummary; onClose: () => 
                     <i>{x.plots ? `${x.plots} of 20 plots` : 'Plots 1–20'} · {STATUS_WORDS[x.status]}</i>
                   </span>
                   <span className="risk-amount">
-                    <b>{moneyCompact(x.amount)}</b>
+                    <b>−{moneyCompact(x.amount)}</b>
                     <i>{growLine(x)}</i>
                   </span>
                   <span className="risk-go" aria-hidden="true">
@@ -310,7 +337,7 @@ function HarvestButton({ est, onClick }: { est: HarvestEstimate; onClick: () => 
       aria-label={
         done
           ? `Last harvest: ${money(est.income)}. Tap for each farm.`
-          : `Harvest estimate: ${money(est.income)} if your harvest goes well.${risky ? ` ${money(est.atRisk)} at risk if the problems are not put right.` : ''} Tap for each farm.`
+          : `Harvest estimate: ${money(est.income)} if your harvest goes well.${risky ? ` Up to ${money(est.atRisk)} less if the problems on your farms are never put right.` : ''} Tap for each farm.`
       }
     >
       <span className="hud-harvest-icon" aria-hidden="true">
@@ -319,17 +346,16 @@ function HarvestButton({ est, onClick }: { est: HarvestEstimate; onClick: () => 
       <span className="hud-harvest-text">
         <i>{done ? 'Last harvest' : 'Harvest estimate'}</i>
         <b>{moneyCompact(est.income)}</b>
-        <small className="hud-harvest-risk">
-          {done ? `${est.bags} bags` : risky ? `−${moneyCompact(est.atRisk)} if not fixed` : 'Nothing at risk now'}
-        </small>
+        <small className="hud-harvest-sub">{done ? `${est.bags} bags` : 'if it goes well'}</small>
       </span>
     </button>
   );
 }
 
-function HarvestSheet({ est, onClose, onRisk }: { est: HarvestEstimate; onClose: () => void; onRisk: () => void }) {
+function HarvestSheet({ est, risk, onClose, onRisk }: { est: HarvestEstimate; risk: RiskSummary; onClose: () => void; onRisk: () => void }) {
   useEscape(onClose);
   const done = est.kind === 'done';
+  const today = (farm: number) => risk.items.filter(x => x.farm === farm).reduce((n, x) => n + x.amount, 0);
   return (
     <div className="abs risk-layer" style={{ inset: 0 }} role="dialog" aria-modal="true" aria-label="Harvest estimate">
       <div className="success-scrim" onClick={onClose} />
@@ -340,20 +366,21 @@ function HarvestSheet({ est, onClose, onRisk }: { est: HarvestEstimate; onClose:
         <p className="risk-lead">
           {done
             ? `Your farms brought in ${money(est.income)} for ${est.bags} bags. After what they cost (${money(est.costs)}), that is ${money(est.profit)}.`
-            : `What your farms are likely to bring in, the way you are farming them now, if the harvest goes well. They have cost ${money(est.costs)} so far: about ${money(est.profit)} after costs.`}
+            : `What your farms should bring in, the way you farm them now. They have cost ${money(est.costs)} so far: about ${money(est.profit)} after costs.`}
         </p>
         {!done && (
-          <div className={`harvest-split${est.atRisk > 0 ? '' : ' is-clear'}`}>
+          <div className={`sheet-stats harvest-split${est.atRisk > 0 ? '' : ' is-clear'}`}>
             <span>
-              <small>Successful harvest</small>
+              <small>If it goes well</small>
               <b>{money(est.income)}</b>
             </span>
             <span className="is-loss">
-              <small>Likely to lose if not put right</small>
-              <b>{est.atRisk > 0 ? `−${money(est.atRisk)}` : money(0)}</b>
+              <small>At risk today</small>
+              <b>{risk.total > 0 ? `−${money(risk.total)}` : money(0)}</b>
+              {est.atRisk > risk.total && <em>Grows each day it is left: up to −{money(est.atRisk)}</em>}
             </span>
             <span>
-              <small>Harvest if left alone</small>
+              <small>If never put right</small>
               <b>{money(est.ifLeft)}</b>
             </span>
           </div>
@@ -369,15 +396,17 @@ function HarvestSheet({ est, onClose, onRisk }: { est: HarvestEstimate; onClose:
               </span>
               <span className="risk-amount">
                 <b className="is-income">{moneyCompact(x.income)}</b>
-                {!done && <i className={x.atRisk ? 'is-loss' : ''}>{x.atRisk ? `−${moneyCompact(x.atRisk)} if left` : 'Nothing at risk'}</i>}
+                {!done && <i className={today(x.farm) ? 'is-loss' : ''}>{today(x.farm) ? `−${moneyCompact(today(x.farm))} at risk today` : 'Nothing at risk'}</i>}
               </span>
             </li>
           ))}
         </ul>
-        {!done && est.atRisk > 0 && (
-          <button type="button" className="risk-cheer-go harvest-go" onClick={onRisk}>
-            See what is at risk
-          </button>
+        {!done && risk.total > 0 && (
+          <div className="sheet-foot">
+            <button type="button" className="sheet-go" onClick={onRisk}>
+              See what is at risk
+            </button>
+          </div>
         )}
       </div>
     </div>

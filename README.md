@@ -510,8 +510,12 @@ WASD. The **task card** at the top says what to do next; tap it and the farmer w
   nothing. A tap on the task card at a place the farmer already stands in opens it again.
 - **Sleep** at the farmhouse starts the next day (on the fast clock); **Plan** by the house, or **Mission** on the
   HUD, opens the plans, progress and results.
-- The HUD: the farmer and their level (top left), settings, coins and points (top right; **+** opens the shop and
-  the rewards), Mission and Shop, the day and what the farmer carries (bottom left).
+- The HUD: the farmer and their level (top left) with the harvest card and its at-risk tab beside them, the task card
+  (top centre, alone: nothing else sits under it), coins and points (top right; **+** opens the shop and the rewards,
+  and a small *Night* chip shows under the day at night), the two rails of round buttons, one stack bottom left
+  (today's Farm basics lesson, today's build, then the cycle's day and what the farmer carries) and the small daily
+  chips bottom right (*Animal chores*, *Daily tidy-up*: one line each). Mama Achieng's bubble and a sign's *Check*
+  button stay under the top cards, whatever the camera does.
 - **Settings → Farm view** switches to the classic painted farm (Farm Moja seasons and the everyday field rounds),
   and back.
 
@@ -571,7 +575,7 @@ tune); the 3D pieces are `wildBush` and `rockPile` in `src/world/models.ts`, dra
 - **Clearing.** Walk up to one and a **Clear bush** or **Move rock** button shows under the farmer. Pressing it
   starts a short timer: 2.5 seconds for a bush (with the sickle, leaves flying) and 2 for a rock (grit flying).
   Walking away stops it, and the piece stays. A cleared piece goes in a puff.
-- **The chip** (bottom right): *Daily tidy-up* with bushes 0/3 and rocks 0/5. Tap it to walk to the nearest piece
+- **The chip** (bottom right, one line): *Daily tidy-up* with bushes 0/3 and rocks 0/5. Tap it to walk to the nearest piece
   still to clear. When all 8 are cleared it turns green (*✓ Farm tidy*), with the tidy streak.
 - **What it pays.** +5 points a piece; clearing all 8 adds **+40 points and KSh 600** (60 stored coins, shown in the
   player's currency: $4.65), so 80 points in all. Every piece counts the day as played for the daily streak, and the last one plays the flow sound.
@@ -617,7 +621,7 @@ button never stand on the same spot; at a job's spot the job's button takes the 
 `src/onsite/model.ts` (`jobFor`); the walk, the button and the timer are in `src/world/World.tsx`, the tools, the
 animals coming over and the bursts in `src/world/engine.ts` (`jobWorking`, `gather`, `tractorPose`, `setCrate`).
 
-**Animal chores, every day.** From day 2 a chip beside the tidy-up counts the day's care at the pen and the coop
+**Animal chores, every day.** From day 2 a one-line chip above the tidy-up counts the day's care at the pen and the coop
 (*🐄 1/3 · 🐔 0/4*, by what is due today); tap it and the next chore goes on the list and the farmer walks to it. It
 turns green (*✓ Animals cared for*) when all are done. The Animals page marks a chore on the list *On your list*.
 
@@ -1165,9 +1169,10 @@ mapping; `tests/controller.spec.ts` plays it with pretend Xbox, PlayStation, Nin
 
 ## Money at risk
 
-The farm's first button, top centre beside the task card: **the money every unresolved problem on the six farms
-would cost if it is left**, added up and written short in the player's currency (*KSh 50k at risk*, *KSh 1.2M at
-risk*). It makes the daily loop's stakes visible at a glance and gives a reason to open the game every day.
+A red tab hanging from the harvest card, top left: **the money every unresolved problem on the six farms puts at
+risk today**, added up and written short in the player's currency (*KSh 50k at risk today*, *KSh 1.2M at risk
+today*). It is the only at-risk number on the farm: the harvest card above it says what the harvest brings in if it
+goes well, the tab says what is at risk of coming off it. It makes the daily loop's stakes visible at a glance and gives a reason to open the game every day.
 
 ![The at-risk list: each farm, what is at risk and when it grows, never the cause](docs/at-risk-list.webp)
 
@@ -1182,8 +1187,9 @@ risk*). It makes the daily loop's stakes visible at a glance and gives a reason 
   risk by then. A problem the plan cannot treat (pests on a farm with no pest control) does not carry over, and once
   read right it leaves the list as lost, not saved. All of it is in `src/risk/config.ts` (`startShare`,
   `escalatePerDay`, `carryOver`).
-- **Tap it** for the list, biggest first: the farm and its plots, what is at risk now, and what it will be in a day
-  (or *Full cost*). The list never says what the problem is, only where the player is with it (*Not checked yet*,
+- **Tap it** for the list, in the same style as the harvest sheet: three boxes (*At risk today*, *Tomorrow, if left*,
+  *By harvest, if never fixed*), then each farm, biggest first: the farm and its plots, what is at risk now, and what
+  it will be in a day (or *Full cost*). The list never says what the problem is, only where the player is with it (*Not checked yet*,
   *Read wrong: look again*, *Read right: choose the fix*, *Read right: the work is left*). **Tap a farm** to go straight
   to its sign and into its check (or the fix, or the work left).
 - **Live.** Dealing with a problem takes it off at once: the button pops, a *KSh 9.6k saved* chip floats off it and a
@@ -1207,8 +1213,8 @@ stays on its farm, the list never names a cause and a tap opens that farm's chec
 ## Harvest estimate
 
 Beside the farmer's portrait, top left, styled like the task card: **what the harvest is likely to bring in if it goes
-well, the way the player is farming now**, and under it in small red text **what they are likely to lose if they do
-not put right the problems on the farms now** (*$3.1k*, *−$315 if not fixed*).
+well, the way the player is farming now** (*$3.1k if it goes well*), with the money at risk today hanging from it as a
+red tab (*$158 at risk today*). One card, one number for each idea: the farm never shows two different at-risk numbers.
 
 ![The harvest estimate beside the portrait, and its sheet](docs/harvest-estimate.webp)
 
@@ -1216,19 +1222,19 @@ not put right the problems on the farms now** (*$3.1k*, *−$315 if not fixed*).
   care done or missed, and every problem so far as it was dealt with, with today's open problems taken as put right.
   Nothing new is assumed to go wrong. At harvest time nothing more can be put right, so it is the harvest as the checks
   made it; once harvested, the button shows *Last harvest* and what it brought in.
-- **The risk line** is every open problem at its full cost if it is left alone: the same number the check shows
-  (*Will cost you about … if it is left alone*). The *at risk* button beside the task card shows what is at risk
-  *today* (half of that on the day a problem shows, growing each day it is left); the harvest line shows where that
-  ends up if nothing is done. With nothing open it reads *Nothing at risk now*.
-- **Tap it** for the sheet: the successful harvest, what would be lost if not put right, the harvest if left alone,
-  what the farms have cost so far and the profit after costs, then each farm's bags, cost, value and its own risk.
+- **What is at risk** on the card is today's (the tab): half a problem's full cost on the day it shows, growing each
+  day it is left. The sheet shows where that ends up: *At risk today −$158 · Grows each day it is left: up to −$315*,
+  the full cost being the number the check shows (*Will cost you about … if it is left alone*), and *If never put
+  right* is the harvest less that full cost. With nothing open the tab reads *All clear*.
+- **Tap it** for the sheet: *If it goes well*, *At risk today* (and how far it grows), *If never put right*, what the
+  farms have cost so far and the profit after costs, then each farm's bags, cost, value and what is at risk on it today.
   *See what is at risk* opens the at-risk list, to go and deal with them.
 - It shows only once a planting is growing (or harvested). Evidence: `harvest_open`.
 
-`src/risk/harvest.ts` works it out from the save (no screens; `harvestEstimate`), the button and sheet are in
+`src/risk/harvest.ts` works it out from the save (no screens; `harvestEstimate`), the card and sheet are in
 `src/risk/RiskHud.tsx`, and `tests/harvest.spec.ts` checks the estimate is the model's harvest with today's problems
-put right, the risk is every open problem's full cost (and drops by exactly one when it is fixed), and the button sits
-beside the portrait, clear of the task card, with the same numbers.
+put right, the full cost is every open problem's stated cost (and drops by exactly one when it is fixed), and the card
+sits beside the portrait, clear of the task card, with the at-risk tab under it showing the list's total.
 
 ## Climate-smart farming: row strategies and treatment choices
 
@@ -1930,8 +1936,8 @@ in partnership with the **World Food Programme (WFP)**. Code: `src/events/model.
 
 - **The pop-up.** A card on the farm's bottom left, under the left column of buttons, names the event, its dates and
   the partner, counts down the days to it (*Starts in 7 days*), and turns green with *on now* on the event's days.
-  **Join the event** opens the event's page. The **×** tucks it into a round **KAKUMA** button under Partners, which
-  brings it back. While the card is out, the day and *Today* buttons move to its right. After 30 November the pop-up
+  **Join ›** opens the event's page. The **×** tucks it into a round **KAKUMA** button under Partners, which
+  brings it back. While the card is out, the bottom-left stack (lesson, *Today*, the day) moves to its right. After 30 November the pop-up
   and its button are gone.
 - **The page** (`#/kakuma/…`) has four sections:
   - **About Kakuma**: where it is, when it opened, who lives there, the weather, and the Kalobeyei settlement.
