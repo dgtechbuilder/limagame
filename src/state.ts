@@ -16,13 +16,15 @@ import { addEntry, trackWallet, type WalletState } from './wallet/model';
 import { MET_BONUS, focusRegion, give, givingOf, type GivingState, type RegionId } from './events/regions';
 import { daysOn } from './events/days';
 import { orgOf } from './events/orgs';
+import { PRODUCTS, depositBlock, financeOf, payoutOf, settle, type FinanceState, type Goal, type ProductId } from './finance/model';
 import { POWER, partOptionOf, stepOf, type LoadId, type StepId as PowerStepId } from './power/config';
 import { fuelTankL, loadsAvailable, powerOf, stepBlock, type PowerState } from './power/model';
 import { HUB, hubOf, levelOf as hubLevel, lessonOf, type HubSection, type HubState } from './tractor/hub';
-import { produceOf, sell as sellProduce, stock, type ProduceId, type ProduceState } from './produce/model';
+import { PRODUCE, produceOf, sell as sellProduce, stock, type ProduceId, type ProduceState } from './produce/model';
 import { cook as cookMeal, dishOf, RESTAURANT, type DishId } from './produce/restaurant';
 import { harvestLine, nutritionOf, peopleDays } from './nutrition/data';
-import { GARDEN, GARDEN_NAMES, cropOf as gardenCrop, gardenOf, harvestKg, type GardenCropId, type GardenState } from './garden/model';
+import { BED_NAMES, GREENHOUSE, ghCropOf, greenhouseOf, pickBed, plantBed, type GhCropId, type GreenhouseState } from './greenhouse/model';
+import { make as makeProduct, recipeOf, STOREHOUSE, type RecipeId, type StorehouseState } from './storehouse/model';
 import { trackSystems, coldRoom, repairCut } from './systems/track';
 import { trackLife } from './livestock/track';
 import { MEASURES, measureOf, type MeasureId } from './security/config';
@@ -123,13 +125,17 @@ export type Modal =
   | { kind: 'security'; tab?: SecurityTab }
   /** the farmer's wallet: every payment in and out (src/wallet) */
   | { kind: 'wallet'; tab?: WalletTab }
+  /** money: savings, investments and profit tracking (src/finance) */
+  | { kind: 'finance'; tab?: FinanceTab }
   /** the power system: building it over the first 7 days, today's energy, what it does for the farm (src/power) */
   | { kind: 'power'; tab?: PowerTab }
   /** the market stall: up to 25 kg of the store sold a day, the restaurant beside it, and what the food is worth to
       eat (src/produce, src/nutrition) */
   | { kind: 'market'; tab?: MarketTab }
-  /** Farm 7 or Farm 8, the new farms (src/garden): farm 0 or 1 */
-  | { kind: 'garden'; farm: number }
+  /** the greenhouse, where Farm 7 was: its four beds (src/greenhouse), bed 0 to 3 */
+  | { kind: 'greenhouse'; bed: number }
+  /** the storehouse, where Farm 8 was: the store, the greenhouse's picks brought in, and what is made (src/storehouse) */
+  | { kind: 'storehouse'; tab?: StoreTab }
   /** the tractor game: plough the mini farm in 30 seconds, round rocks, trees and holes (src/minifarm) */
   | { kind: 'tractorGame' }
   /** Farm words: what every fertilizer, spray, tool and machine is, and the Farm basics lessons (src/learn) */
@@ -171,7 +177,7 @@ export type Success =
   | { kind: 'night'; id: number; nights: number; day: number; events: LifeEvent[] }
   /** day 2: the animals come into the player's care, and the farm's safety is theirs to look after */
   | { kind: 'day2'; id: number }
-  /** a morning with something new to build or open (the cow shed on day 3, the new farms on day 4, a power part) */
+  /** a morning with something new to build or open (the cow shed on day 3, the greenhouse and the storehouse on day 4, a power part) */
   | { kind: 'morning'; id: number; day: number; lines: { icon: string; title: string; text: string; go: Modal; lesson?: number }[] };
 
 /** Player settings. They are kept on this device and survive Reset progress. */
@@ -203,8 +209,10 @@ export type PartnersTab = 'offers' | 'placements' | 'join' | 'shortlist';
 export type AnimalsTab = 'today' | 'health' | 'water' | 'coop' | 'shed' | 'herd';
 export type SecurityTab = 'protect' | 'risk' | 'reports';
 export type WalletTab = 'history' | 'climate' | 'summary';
+export type FinanceTab = 'overview' | 'savings' | 'invest' | 'profit';
 export type PowerTab = 'build' | 'today' | 'impact' | 'history';
 export type MarketTab = 'sell' | 'restaurant' | 'nutrition' | 'sales';
+export type StoreTab = 'store' | 'harvest' | 'produce';
 /** the Farm words page: the Farm basics lessons, or one section of words (src/learn/glossary.ts) */
 export type GlossaryTab = 'basics' | SectionId;
 /** Special events (src/events): happening now, the special days, the regions in need, the Donate page */
@@ -342,14 +350,18 @@ export interface GameState {
   security?: Partial<SecurityState>;
   /** every payment in and out of the farmer's money (src/wallet; missing in older saves) */
   wallet?: Partial<WalletState>;
+  /** savings, investments and what they earned (src/finance; missing in older saves) */
+  finance?: Partial<FinanceState>;
   /** the power system (src/power) */
   power?: Partial<PowerState>;
   /** the farm's own tractor: training, condition, diesel (src/tractor/hub.ts) */
   hub?: Partial<HubState>;
   /** the store of produce and the market stall (src/produce) */
   produce?: Partial<ProduceState>;
-  /** Farm 7 and Farm 8, the new farms (src/garden) */
-  garden?: Partial<GardenState>;
+  /** the greenhouse, where Farm 7 was (src/greenhouse) */
+  greenhouse?: Partial<GreenhouseState>;
+  /** the storehouse, where Farm 8 was: what it has made (src/storehouse) */
+  storehouse?: Partial<StorehouseState>;
   /** the seed, fertilizer and sprayer last chosen at the shed: new farms start with them */
   prefs?: Partial<Record<PlotKind, string>>;
   /** the Farm basics lessons read (their index in BASICS, src/learn/glossary.ts) */
@@ -377,7 +389,9 @@ export interface GameState {
 
 const initialStock = Object.fromEntries(SHOP_TABS.find(t => t.id === 'food')!.items.map(i => [i.id, i.stock![0]]));
 
-export const DEFAULT_PRICES: Prices = { farmgate: 12, market: 24, transport: 24, storage: 24 };
+/** A 90 kg bag of maize (stored money: 1 = KSh 10): KSh 3,000 at the farm gate, KSh 3,800 at market; transport and
+    storage are entered per 10 bags (KSh 1,500 and KSh 1,000: KSh 150 and KSh 100 a bag). */
+export const DEFAULT_PRICES: Prices = { farmgate: 300, market: 380, transport: 150, storage: 100 };
 
 export const freshSeason = {
   day: 0,
@@ -472,7 +486,8 @@ const finalHealth = (s: GameState) =>
 export function expectedHarvest(s: GameState, choice: HarvestChoice) {
   const h = s.stage >= stepIndex('harvest') ? finalHealth(s) : (cropHealth(s) ?? 0);
   const fx = HARVEST_EFFECT[choice];
-  const bags = Math.round((90 + 90 * h) * fx.yieldFactor);
+  // 90 kg bags from Farm Moja's acre: 18 for a neglected crop, up to 36 for a healthy one (as the six farms: trials/model.ts)
+  const bags = Math.round((18 + 18 * h) * fx.yieldFactor);
   const quality = Math.max(1, Math.min(5, Math.round(1 + 4 * h) + fx.qualityShift));
   return { bags, quality, health: h };
 }
@@ -557,6 +572,11 @@ export type Action =
   | { type: 'bookTraining'; id: string }
   /** the Kakuma event: give money or a food gift bought with money (KAKUMA_GIFTS), or produce from the store */
   | { type: 'kakumaGive'; gift: string }
+  | { type: 'finDeposit'; amount: number }
+  | { type: 'finWithdraw'; amount: number }
+  | { type: 'finInvest'; product: Exclude<ProductId, 'savings'>; amount: number }
+  | { type: 'finSell'; id: number }
+  | { type: 'finGoal'; goal: Goal | null }
   | { type: 'kakumaGiveStore'; produce: ProduceId }
   /** the Kakuma pop-up on the farm: tucked into its round button, or open again */
   | { type: 'kakumaTuck'; tucked: boolean }
@@ -666,10 +686,12 @@ export type Action =
   | { type: 'produceAuto'; on: boolean }
   /** the restaurant: cook some plates of a dish from the store and sell them */
   | { type: 'restaurantCook'; dish: DishId; plates: number }
-  /** the new farms: plant (score: the planting mini-game), water, harvest */
-  | { type: 'gardenPlant'; farm: number; crop: GardenCropId; score: number }
-  | { type: 'gardenWater'; farm: number }
-  | { type: 'gardenHarvest'; farm: number; score: number }
+  /** the greenhouse: plant a bed (score: the planting mini-game), water a bed (or every bed: -1), pick a ready bed */
+  | { type: 'ghPlant'; bed: number; crop: GhCropId; score: number }
+  | { type: 'ghWater'; bed: number }
+  | { type: 'ghHarvest'; bed: number; score: number }
+  /** the storehouse: make some batches of a product from the store (score: the making mini-game) */
+  | { type: 'storeMake'; recipe: RecipeId; batches: number; score: number }
   /** at the shed: a seed, fertilizer or sprayer chosen for every farm that can still take it, then picked up */
   | { type: 'shedChoose'; kind: PlotKind; id: string }
   /** Events › Regions: a relief pack given to a region, paid from the game's money (src/events/regions.ts) */
@@ -705,15 +727,34 @@ export function reducer(s: GameState, a: Action): GameState {
   if (next === s) return s;
   const kind = soundOf(s, next, a);
   // an action that finished something counts today as a day played (the streak)
-  const tracked = trackWallet(s, trackSystems(s, trackEvidence(s, trackAchievements(s, trackLife(s, trackWater(s, trackClimate(s, next, a), a), a), a, kind !== null), a), a), a);
+  const tracked = trackFinance(s, trackWallet(s, trackSystems(s, trackEvidence(s, trackAchievements(s, trackLife(s, trackWater(s, trackClimate(s, next, a), a), a), a, kind !== null), a), a), a));
   return kind ? { ...tracked, sfx: { id: ++sfxId, kind } } : tracked;
 }
 
 let sfxId = 0;
+
+/** When a farm day ends, the savings and investments earn their interest and returns for each day that passed, and a
+    Treasury bill whose day has come is paid back into the wallet (written in the wallet as savings, not income). */
+function trackFinance(prev: GameState, next: GameState): GameState {
+  if (!next.finance) return next;
+  const day = lifeOf(next.life).day;
+  // money put away for the first time starts earning from today, not from farm day 1
+  const f0 = financeOf(next.finance);
+  const f = prev.finance ? f0 : { ...f0, settled: Math.max(f0.settled, lifeOf(prev.life).day) };
+  if (f !== f0 && day <= f.settled) return { ...next, finance: f };
+  if (day <= f.settled) return next;
+  const { f: after, paid } = settle(f, day);
+  let out: GameState = { ...next, finance: after };
+  for (const p of paid) {
+    out = { ...out, coins: out.coins + p.amount };
+    out = addEntry(out, 'savings', p.label, p.amount, out.coins);
+  }
+  return out;
+}
 /** Flows: finishing one of these ends a whole piece of play. */
 const FLOWS = new Set<Action['type']>(['achClaimAll', 'completeSale', 'trialHarvest', 'bizRun', 'bizHireOut', 'bizContract', 'bizGraduate', 'tractorDone']);
 /** Actions: finishing one of these is one thing done. Some only count when they earned something (their message). */
-const ACTIONS = new Set<Action['type']>(['achClaim', 'achDaily', 'levelClaim', 'partnerSave', 'buy', 'sell', 'bookTraining', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo', 'tidyClear', 'animalCare', 'animalPrevent', 'coopBuild', 'shedBuild', 'herdBuy', 'securityBuy', 'powerInstall', 'powerFuel', 'tractorHub', 'produceSell', 'restaurantCook', 'gardenPlant', 'gardenWater', 'gardenHarvest', 'shedChoose', 'kakumaGive', 'kakumaGiveStore', 'give']);
+const ACTIONS = new Set<Action['type']>(['achClaim', 'achDaily', 'levelClaim', 'partnerSave', 'buy', 'sell', 'bookTraining', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo', 'tidyClear', 'animalCare', 'animalPrevent', 'coopBuild', 'shedBuild', 'herdBuy', 'securityBuy', 'powerInstall', 'powerFuel', 'tractorHub', 'produceSell', 'restaurantCook', 'ghPlant', 'ghWater', 'ghHarvest', 'storeMake', 'shedChoose', 'kakumaGive', 'kakumaGiveStore', 'give']);
 const EARNED = new Set<Action['type']>(['roundResult', 'trialCheck', 'fieldMark']);
 const FS_ORDER: FsPhase[] = ['create', 'story', 'walk1', 'update', 'review1', 'walkRetry', 'retry', 'walk2', 'review2', 'done'];
 
@@ -1545,6 +1586,49 @@ function play(s: GameState, a: Action): GameState {
     }
     case 'tractorHub':
       return hubAction(s, a);
+    case 'finDeposit': {
+      const f = financeOf(s.finance);
+      const amount = Math.round(a.amount * 100) / 100;
+      const no = depositBlock('savings', amount, s.coins);
+      if (no) return { ...s, toast: toast(no === 'Not enough in your wallet' ? `You have ${money(s.coins)} in your wallet` : no.startsWith('The least') ? `The least you can save is ${money(PRODUCTS.savings.min)}` : no) };
+      return { ...s, coins: s.coins - amount, finance: { ...f, savings: f.savings + amount, log: [{ day: lifeOf(s.life).day, text: `Saved ${money(amount)}.` }, ...f.log].slice(0, 40) }, toast: toast(`${money(amount)} into your SACCO savings`) };
+    }
+    case 'finWithdraw': {
+      const f = financeOf(s.finance);
+      const amount = Math.min(f.savings, Math.round(a.amount * 100) / 100);
+      if (!(amount > 0)) return { ...s, toast: toast('Nothing in your savings to take out') };
+      return { ...s, coins: s.coins + amount, finance: { ...f, savings: Math.round((f.savings - amount) * 100) / 100, log: [{ day: lifeOf(s.life).day, text: `Took ${money(amount)} out of savings.` }, ...f.log].slice(0, 40) }, toast: toast(`${money(amount)} back in your wallet`) };
+    }
+    case 'finInvest': {
+      const f = financeOf(s.finance);
+      const p = PRODUCTS[a.product];
+      const amount = Math.round(a.amount * 100) / 100;
+      const no = depositBlock(a.product, amount, s.coins);
+      if (no) return { ...s, toast: toast(no === 'Not enough in your wallet' ? `You have ${money(s.coins)} in your wallet` : no.startsWith('The least') ? `The least for the ${p.name} is ${money(p.min)}` : no) };
+      const day = lifeOf(s.life).day;
+      const id = Math.max(0, ...f.holdings.map(h => h.id)) + 1;
+      const h = { id, product: a.product, principal: amount, value: amount, since: day, ...(p.lockDays ? { matures: day + p.lockDays } : {}) };
+      return { ...s, coins: s.coins - amount, finance: { ...f, holdings: [...f.holdings, h], log: [{ day, text: `Invested ${money(amount)}: ${p.name}.` }, ...f.log].slice(0, 40) }, ...gainXp(s, 0.01), toast: toast(`${money(amount)} invested: ${p.name}${p.lockDays ? `: paid back on farm day ${day + p.lockDays}` : ''}`) };
+    }
+    case 'finSell': {
+      const f = financeOf(s.finance);
+      const h = f.holdings.find(x => x.id === a.id);
+      if (!h) return s;
+      const day = lifeOf(s.life).day;
+      const out = payoutOf(h, day);
+      // what the holding earned is given up when a T-bill comes out early, and the fee is a cost
+      const lost = Math.round((h.value - out.pay) * 100) / 100;
+      const earnedBy = { ...f.earnedBy, [h.product]: Math.round(((f.earnedBy[h.product] ?? 0) - lost) * 100) / 100 };
+      const p = PRODUCTS[h.product];
+      return {
+        ...s,
+        coins: s.coins + out.pay,
+        finance: { ...f, holdings: f.holdings.filter(x => x.id !== h.id), earned: Math.round((f.earned - lost) * 100) / 100, earnedBy, log: [{ day, text: `Took ${money(out.pay)} out: ${p.name}${out.early ? ' early: the interest was lost' : ''}.` }, ...f.log].slice(0, 40) },
+        toast: toast(`${money(out.pay)} back in your wallet${out.early ? ' (out early: no interest)' : out.fee ? ` after a ${money(out.fee)} fee` : ''}`),
+      };
+    }
+    case 'finGoal':
+      return { ...s, finance: { ...financeOf(s.finance), goal: a.goal && a.goal.target > 0 ? { name: a.goal.name.trim().slice(0, 40) || 'My goal', target: Math.round(a.goal.target) } : null } };
     case 'kakumaGive': {
       const g = giftOf(a.gift);
       if (!g) return s;
@@ -1593,47 +1677,65 @@ function play(s: GameState, a: Action): GameState {
         toast: toast(`${r.plates} plates of ${d.name.toLowerCase()} sold · +${money(r.earned)} · profit ${money(r.profit)} (${money(r.extra)} more than selling the food raw) · a day’s protein for ${fed} people`),
       };
     }
-    case 'gardenPlant': {
-      const g = gardenOf(s.garden);
+    case 'ghPlant': {
+      const g = greenhouseOf(s.greenhouse);
       const day = lifeOf(s.life).day;
-      const f = g.farms[a.farm];
-      if (!f) return s;
-      if (day < GARDEN.openDay) return { ...s, toast: toast(`The new farms open on day ${GARDEN.openDay}`) };
-      if (f.crop) return { ...s, toast: toast(`${GARDEN_NAMES[a.farm]} already grows ${gardenCrop(f.crop).name.toLowerCase()}`) };
-      const c = gardenCrop(a.crop);
+      const b = g.beds[a.bed];
+      if (!b) return s;
+      if (day < GREENHOUSE.openDay) return { ...s, toast: toast(`The greenhouse opens on day ${GREENHOUSE.openDay}`) };
+      if (b.crop) return { ...s, toast: toast(`${BED_NAMES[a.bed]} already grows ${ghCropOf(b.crop).name.toLowerCase()}`) };
+      const c = ghCropOf(a.crop);
       if (s.coins < c.cost) return { ...s, toast: toast(`You need ${money(c.cost)} to plant ${c.name.toLowerCase()}`) };
-      const farms = g.farms.map((x, i) => (i === a.farm ? { crop: a.crop, planted: day, watered: day, ready: day + c.grow, health: 100, score: Math.max(0, Math.min(1, a.score)), harvests: 0 } : x));
-      return { ...s, coins: s.coins - c.cost, points: s.points + GARDEN.plantPoints, garden: { ...g, farms }, ...gainXp(s, 0.06), toast: toast(`${GARDEN_NAMES[a.farm]} planted with ${c.name.toLowerCase()} · ready on day ${day + c.grow} · +${GARDEN.plantPoints} points`) };
-    }
-    case 'gardenWater': {
-      const g = gardenOf(s.garden);
-      const day = lifeOf(s.life).day;
-      const f = g.farms[a.farm];
-      if (!f?.crop) return s;
-      if (f.watered >= day) return { ...s, toast: toast(`${GARDEN_NAMES[a.farm]} is watered for today`) };
-      const need = gardenCrop(f.crop).water;
-      const t = tankOf(s.tank);
-      if (t.level < need) return { ...s, toast: toast(`The tank has ${Math.round(t.level)} L: ${GARDEN_NAMES[a.farm]} needs ${need} L. Buy water (Climate › Water)`) };
-      const farms = g.farms.map((x, i) => (i === a.farm ? { ...x, watered: day, health: Math.min(100, x.health + 5) } : x));
-      return { ...s, garden: { ...g, farms }, tank: { ...t, level: t.level - need }, toast: toast(`${GARDEN_NAMES[a.farm]} watered: ${need} L from the tank`) };
-    }
-    case 'gardenHarvest': {
-      const g = gardenOf(s.garden);
-      const day = lifeOf(s.life).day;
-      const f = g.farms[a.farm];
-      if (!f?.crop) return s;
-      if (day < f.ready) return { ...s, toast: toast(`Not ready yet: ${GARDEN_NAMES[a.farm]} is ready on day ${f.ready}`) };
-      const c = gardenCrop(f.crop);
-      const kg = harvestKg(f, a.score);
-      const farm = c.regrow ? { ...f, ready: day + c.regrow, harvests: f.harvests + 1 } : { ...f, crop: null, harvests: f.harvests + 1 };
-      const farms = g.farms.map((x, i) => (i === a.farm ? farm : x));
       return {
         ...s,
-        garden: { ...g, farms, kg: g.kg + kg, last: { farm: a.farm, crop: c.id, kg, day } },
-        produce: stock(s.produce, { [c.produce]: kg }),
-        points: s.points + GARDEN.harvestPoints,
+        coins: s.coins - c.cost,
+        points: s.points + GREENHOUSE.plantPoints,
+        greenhouse: plantBed(g, a.bed, a.crop, a.score, day),
+        ...gainXp(s, 0.06),
+        toast: toast(`Greenhouse ${BED_NAMES[a.bed].toLowerCase()} planted with ${c.name.toLowerCase()} · first pick on day ${day + c.grow} · +${GREENHOUSE.plantPoints} points`),
+      };
+    }
+    case 'ghWater': {
+      const g = greenhouseOf(s.greenhouse);
+      const day = lifeOf(s.life).day;
+      const want = g.beds.map((_, i) => i).filter(i => (a.bed < 0 || i === a.bed) && g.beds[i].crop && g.beds[i].watered < day);
+      if (!want.length) return { ...s, toast: toast(a.bed < 0 ? 'Every bed is watered for today' : `${BED_NAMES[a.bed]} is watered for today`) };
+      const need = want.reduce((n, i) => n + ghCropOf(g.beds[i].crop!).water, 0);
+      const t = tankOf(s.tank);
+      if (t.level < need) return { ...s, toast: toast(`The tank has ${Math.round(t.level)} L: the greenhouse needs ${need} L. Buy water (Climate › Water)`) };
+      const beds = g.beds.map((x, i) => (want.includes(i) ? { ...x, watered: day, health: Math.min(100, x.health + 5) } : x));
+      return { ...s, greenhouse: { ...g, beds }, tank: { ...t, level: t.level - need }, toast: toast(`${want.length === 1 ? BED_NAMES[want[0]] : `${want.length} beds`} watered: ${need} L from the tank`) };
+    }
+    case 'ghHarvest': {
+      const day = lifeOf(s.life).day;
+      const b = greenhouseOf(s.greenhouse).beds[a.bed];
+      if (!b?.crop) return s;
+      if (day < b.ready) return { ...s, toast: toast(`Not ready yet: ${BED_NAMES[a.bed].toLowerCase()} is ready on day ${b.ready}`) };
+      const r = pickBed(s.greenhouse, a.bed, a.score, day)!;
+      const c = ghCropOf(r.crop);
+      return {
+        ...s,
+        greenhouse: r.g,
+        produce: stock(s.produce, { [c.produce]: r.kg }),
+        points: s.points + GREENHOUSE.harvestPoints,
         ...gainXp(s, 0.05),
-        toast: toast(`${kg} kg of ${c.name.toLowerCase()} into the store · ${harvestLine({ [c.produce]: kg })} · +${GARDEN.harvestPoints} points`),
+        toast: toast(`${r.kg} kg of ${c.name.toLowerCase()} into the storehouse · ${harvestLine({ [c.produce]: r.kg })} · +${GREENHOUSE.harvestPoints} points${r.spent ? ` · the plants are spent: plant ${BED_NAMES[a.bed].toLowerCase()} again` : ''}`),
+      };
+    }
+    case 'storeMake': {
+      const day = lifeOf(s.life).day;
+      if (day < GREENHOUSE.openDay) return { ...s, toast: toast(`The storehouse opens on day ${GREENHOUSE.openDay}`) };
+      const r = makeProduct(s.produce, s.storehouse, a.recipe, a.batches, a.score, day, s.coins, coldRoom(s));
+      if ('error' in r) return { ...s, toast: toast(r.error) };
+      const name = recipeOf(a.recipe).out;
+      return {
+        ...s,
+        coins: s.coins - r.making,
+        produce: r.p,
+        storehouse: r.h,
+        points: s.points + STOREHOUSE.points * r.batches,
+        ...gainXp(s, 0.04),
+        toast: toast(`${r.kg} kg of ${PRODUCE[name].name.toLowerCase()} made and stored · worth ${money(r.extra)} more than selling the food raw, after ${money(r.making)} for the making`),
       };
     }
     case 'shedChoose': {
@@ -1891,6 +1993,9 @@ function loadSaved(): GameState {
     const saved = JSON.parse(raw);
     // Saves from before the farm had one owner may carry a reminder about neighbours.
     if (typeof saved.note === 'string' && /Achieng|neighbour/i.test(saved.note)) saved.note = 'Check every bed often: open Rounds.';
+    // Saves from before the maize prices were real (a bag at KSh 240) take the new ones, unless the player typed their own.
+    const p = saved.prices;
+    if (p && p.farmgate === 12 && p.market === 24 && p.transport === 24 && p.storage === 24) saved.prices = DEFAULT_PRICES;
     return { ...initialState, ...saved, fromMenu: false, navSeq: 0, rideReq: 0, modal: null, plotSelected: false, toast: null, success: null, sfx: null, award: null, ach: achOfSave(saved.ach), roundsOpen: false, roundsView: null, roundsDemo: null, worldDemo: null, trialsOpen: false, bizOpen: false, roundsTrial: false, rounds: { ...initialState.rounds, ...(saved.rounds ?? {}) }, settings: { ...DEFAULT_SETTINGS, ...(saved.settings ?? {}) }, climate: { ...initialClimate, ...(saved.climate ?? {}) } };
   } catch {
     return initialState;

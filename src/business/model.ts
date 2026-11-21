@@ -5,12 +5,15 @@
    farms, drives the tractor at each stop (the minigame in drive.ts), and runs the day. Two numbers are computed
    continuously: the Service Efficiency Ratio (acres a km) and the fulfilment rate; counted acres (physical acres ×
    unique activities) take the agent to PAYG financing of a tractor of their own, which the Marketplace then keeps
-   busy year-round. Money is the business's own account, in shillings: hire prices and diesel are Wakala's real
-   figures (tractor/data.ts MONEY and IMPL); everything else here is a game estimate, marked as one. Every number the
+   busy year-round. Money is the business's own account, in stored money like the rest of the game (src/money.ts:
+   1 = KSh 10). Diesel, hand labour and the market hire are Wakala's real shilling figures (tractor/data.ts MONEY and
+   IMPL), turned into stored money with fromKsh(); the farmers pay the business FARMER_PAY_X times the market hire,
+   but only a route at least PAY_EFFICIENCY efficient keeps it (planDay). Everything else here is a game estimate,
+   marked as one. Every number the
    brief calls tunable is a named constant here. No screens or pictures, so the save and the tests can use it. */
 
 import { IMPL, MONEY, TRACTORS, type ImplId } from '../tractor/data';
-import { kshText } from '../money';
+import { fromKsh, kshText } from '../money';
 
 /* ---------------- the map ---------------- */
 
@@ -55,8 +58,10 @@ export interface ToolInfo {
   name: string;
   activity: Activity;
   does: string;
-  /** hire, KSh an acre */
+  /** what the farmer pays the business an acre (stored money): FARMER_PAY_X times the market hire */
   hire: number;
+  /** the market hire, real KSh an acre (the source's figure) */
+  marketKsh: number;
   /** litres of diesel an acre */
   lpa: number;
   /** the same work by hand, person-days an acre */
@@ -65,7 +70,14 @@ export interface ToolInfo {
   impl?: ImplId;
 }
 
-const fromImpl = (id: ImplId, activity: Activity, name = IMPL[id].name): ToolInfo => ({ name, activity, does: IMPL[id].does, hire: IMPL[id].hire.value, lpa: IMPL[id].lpa, manual: IMPL[id].manual.value, impl: id });
+/** The farmer pays the tractor business this many times the market hire an acre (tractor/data.ts MONEY). */
+export const FARMER_PAY_X = 10;
+/** A route under this efficiency (the shortest way round's km against the route's, as the day's Efficiency score) is a
+    loss: the farmers waited, so they pay back what the late, wasteful day did not earn (planDay: refund). */
+export const PAY_EFFICIENCY = 0.9;
+/** What a farmer pays the business an acre, in stored money, for a market hire in real shillings. */
+const payFor = (marketKsh: number) => fromKsh(marketKsh) * FARMER_PAY_X;
+const fromImpl = (id: ImplId, activity: Activity, name = IMPL[id].name): ToolInfo => ({ name, activity, does: IMPL[id].does, hire: payFor(IMPL[id].hire.value), marketKsh: IMPL[id].hire.value, lpa: IMPL[id].lpa, manual: IMPL[id].manual.value, impl: id });
 
 /** Every tool a job can call for. Transport and the combine are game estimates; the rest are Wakala's implements. */
 export const TOOLS: Record<BizTool, ToolInfo> = {
@@ -74,9 +86,9 @@ export const TOOLS: Record<BizTool, ToolInfo> = {
   ridger: fromImpl('ridger', 'landprep'),
   planter: fromImpl('planter', 'planting'),
   spreader: fromImpl('spreader', 'fertilizer'),
-  trailer: { name: 'Trailer', activity: 'transport', does: 'Hauls inputs in and the harvest out, all year.', hire: 1500, lpa: 2.5, manual: 3 },
+  trailer: { name: 'Trailer', activity: 'transport', does: 'Hauls inputs in and the harvest out, all year.', hire: payFor(1500), marketKsh: 1500, lpa: 2.5, manual: 3 },
   harvester: fromImpl('maizeH', 'harvest', 'Tractor harvester'),
-  combine: { name: 'Combine harvester', activity: 'harvest', does: 'Cuts and threshes wheat and barley in one pass.', hire: 4500, lpa: 9, manual: 14 },
+  combine: { name: 'Combine harvester', activity: 'harvest', does: 'Cuts and threshes wheat and barley in one pass.', hire: payFor(4500), marketKsh: 4500, lpa: 9, manual: 14 },
 };
 export const toolName = (tool: BizTool) => TOOLS[tool].name;
 export const hireOf = (tool: BizTool) => TOOLS[tool].hire;
@@ -237,8 +249,10 @@ export const ROAD_KMH = 20;
 export const ROAD_LPKM = 0.3;
 /** A working day, hours. */
 export const DAY_HOURS = 9;
-/** The driver's pay for a day, KSh (game estimate, near MONEY.wage for skilled work). */
-export const DRIVER_WAGE = 1000;
+/** The driver's pay for a day: KSh 1,000 (game estimate, near MONEY.wage for skilled work), as stored money. */
+export const DRIVER_WAGE = fromKsh(1000);
+/** A litre of diesel at the pump, as stored money (MONEY.diesel is real shillings). */
+export const DIESEL_PRICE = fromKsh(MONEY.diesel.value);
 /** Overtime: each hour past the working day costs the driver's hourly pay this many times over (game estimate). */
 export const OVERTIME = 1.5;
 /** What a partner pays the player for a booking passed on: a share of its hire (game estimate). */
@@ -250,12 +264,12 @@ export type BizTractor = 'standard' | 'large';
 /** How fast each tractor works against a standard one (TRACTORS' speed, as a work rate). */
 export const WORK_RATE: Record<BizTractor, number> = { standard: 1, large: 1.3 };
 export const fuelFactor = (k: BizTractor) => TRACTORS.find(t => t.id === k)!.fuel;
-/** What the farmer would spend doing the job by hand instead, KSh (MONEY: person-days at a day's wage). */
-export const handCost = (tool: BizTool, acres: number) => Math.round(TOOLS[tool].manual * acres * MONEY.wage.value);
+/** What the farmer would spend doing the job by hand instead, stored money (MONEY: person-days at a day's wage). */
+export const handCost = (tool: BizTool, acres: number) => Math.round(TOOLS[tool].manual * acres * fromKsh(MONEY.wage.value));
 
 /** What one job leaves the business on the tractor: its hire less the diesel to do it and the hub's share (road not counted). */
 export function jobKeep(b: Pick<Biz, 'tractor' | 'partners' | 'owned'>, tool: BizTool, acres: number) {
-  const price = MONEY.diesel.value * (b.partners.includes('fuel') ? 1 - FUEL_DISCOUNT : 1);
+  const price = DIESEL_PRICE * (b.partners.includes('fuel') ? 1 - FUEL_DISCOUNT : 1);
   const diesel = Math.round(acres * TOOLS[tool].lpa * fuelFactor(b.tractor) * price);
   const hire = Math.round(hireOf(tool) * acres);
   const hub = b.owned.length ? 0 : Math.round(hire * HUB_SHARE);
@@ -380,6 +394,8 @@ export interface DayResult {
   hubFee: number;
   /** the PAYG instalment taken from the day's hire */
   instalment: number;
+  /** the hire paid back when the route was under PAY_EFFICIENCY (missing in days played before the rule) */
+  refund?: number;
   profit: number;
   /** what the farmers saved against doing the same work by hand */
   saved: number;
@@ -961,6 +977,8 @@ export interface Plan {
   commission: number;
   hubFee: number;
   instalment: number;
+  /** the hire paid back to the farmers when the route is under PAY_EFFICIENCY: the day is a loss */
+  refund: number;
   profit: number;
   saved: number;
   farmers: number;
@@ -1050,7 +1068,7 @@ export function planDay(b: Biz, requests: ReqKey[], bookings: Bookings, route: s
   const driveH = km / ROAD_KMH;
   const hours = driveH + workH;
   const overH = Math.max(0, hours - DAY_HOURS);
-  const price = MONEY.diesel.value * (b.partners.includes('fuel') ? 1 - FUEL_DISCOUNT : 1);
+  const price = DIESEL_PRICE * (b.partners.includes('fuel') ? 1 - FUEL_DISCOUNT : 1);
   const workL = mine.reduce((n, x) => n + x.part.acres * TOOLS[x.part.tool].lpa * share(x.client.id) * (1 - CLEAN_DIESEL * cleanOf(e(x.client.id))), 0) * fuel;
   const litres = km * ROAD_LPKM * fuel + workL;
   const diesel = Math.round(litres * price);
@@ -1070,7 +1088,13 @@ export function planDay(b: Biz, requests: ReqKey[], bookings: Bookings, route: s
   const urgentWaiting = urgentAll.length - urgentServed;
   const wage = mineFarms.length ? DRIVER_WAGE + Math.round((overH * DRIVER_WAGE * OVERTIME) / DAY_HOURS) : 0;
   const hubFee = rig.own ? 0 : Math.round(revenue * HUB_SHARE);
-  const instalment = rig.own ? Math.min(Math.round(revenue * PAYG.share), Math.max(0, rig.own.price - rig.own.paid)) : 0;
+  // the route's efficiency (the day's Efficiency score): under PAY_EFFICIENCY the farmers waited too long, and they
+  // pay back the hire until the day earns only that share of what it cost: a loss, deeper the worse the route
+  const efficiency = km > 0 && !unrouted.length ? Math.min(1, bestKm / km) : km > 0 ? 0 : 1;
+  const costs = diesel + wage + hubFee;
+  const takings = collected + commission;
+  const refund = km > 0 && !unrouted.length && efficiency < PAY_EFFICIENCY ? Math.max(0, takings - Math.floor(costs * efficiency)) : 0;
+  const instalment = rig.own ? Math.min(Math.round(Math.max(0, revenue - refund) * PAYG.share), Math.max(0, rig.own.price - rig.own.paid)) : 0;
   const farmers = new Set(mine.map(x => x.client.id)).size;
   const partnerFarmers = new Set(theirs.map(x => x.client.id).filter(id => !mine.some(mm => mm.client.id === id))).size;
   const missed = requests.filter(k => !bookings[k]).length;
@@ -1117,7 +1141,7 @@ export function planDay(b: Biz, requests: ReqKey[], bookings: Bookings, route: s
     km,
     bestKm,
     best,
-    efficiency: km > 0 && !unrouted.length ? Math.min(1, bestKm / km) : km > 0 ? 0 : 1,
+    efficiency,
     driveH,
     workH,
     hours,
@@ -1133,7 +1157,8 @@ export function planDay(b: Biz, requests: ReqKey[], bookings: Bookings, route: s
     commission,
     hubFee,
     instalment,
-    profit: revenue - (revenue - collected) + commission - diesel - wage - hubFee,
+    refund,
+    profit: takings - costs - refund,
     saved,
     farmers,
     partnerFarmers,
@@ -1154,7 +1179,7 @@ export function planDay(b: Biz, requests: ReqKey[], bookings: Bookings, route: s
     shortfall: revenue - collected,
     urgentServed,
     urgentWaiting,
-    value: dayValue(km > 0 && !unrouted.length ? Math.min(1, bestKm / km) : km > 0 ? 0 : 1, revenue ? collected / revenue : 1, urgentAll.length ? urgentServed / urgentAll.length : 1),
+    value: dayValue(efficiency, revenue ? collected / revenue : 1, urgentAll.length ? urgentServed / urgentAll.length : 1),
     problem,
   };
 }
@@ -1193,6 +1218,7 @@ export function runDay(b: Biz, plan: Plan, done: Record<string, Activity[]> = {}
     commission: plan.commission,
     hubFee: plan.hubFee,
     instalment: plan.instalment,
+    refund: plan.refund,
     profit: plan.profit,
     saved: plan.saved,
     missed: plan.missed,
@@ -1231,7 +1257,7 @@ export function contractDay(b: Biz, offer: Offer, requests: ReqKey[], bookings: 
   const theirs = requests.filter(k => bookings[k] === 'partner').map(partOf);
   const commission = theirs.reduce((n, x) => n + Math.round(hireOf(x.part.tool) * x.part.acres * PARTNER_CUT), 0);
 
-  const price = MONEY.diesel.value * (b.partners.includes('fuel') ? 1 - FUEL_DISCOUNT : 1);
+  const price = DIESEL_PRICE * (b.partners.includes('fuel') ? 1 - FUEL_DISCOUNT : 1);
   const diesel = Math.round((offer.km * ROAD_LPKM + offer.acres * TOOLS[offer.tool].lpa) * fuelFactor(rig.tractor) * price);
   const instalment = rig.own ? Math.min(Math.round(offer.pay * PAYG.share), Math.max(0, rig.own.price - rig.own.paid)) : 0;
   const missed = requests.filter(k => !bookings[k]).length;

@@ -4,7 +4,7 @@ import { CloseX } from './Success';
 import type { Action } from '../state';
 
 /* A full page with sections down the left, as Settings, Climate and Animals have: used by the Wallet, Power, the
-   market stall and the new farms. */
+   market stall, the greenhouse and the storehouse. */
 
 export function Page<T extends string | number>({
   title,

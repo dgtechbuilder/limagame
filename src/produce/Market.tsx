@@ -7,7 +7,7 @@ import { coldRoom } from '../systems/track';
 import { dayText } from '../training/data';
 import { CompareTable, FoodCard, NutriChips, NutriTotal, PlateBars } from '../nutrition/Nutri';
 import { GROUPS, nutritionOf } from '../nutrition/data';
-import { MARKET, PRODUCE, PRODUCE_IDS, growCost, leftToday, priceOf, produceOf, profitOf, storeKg, type ProduceId } from './model';
+import { CROP_IDS, MARKET, PRODUCE, PRODUCE_IDS, growCost, leftToday, priceOf, produceName, produceOf, profitOf, storeKg, type ProduceId } from './model';
 import { DISHES, RESTAURANT, dishOf, foodFor, plateNutrition, platesInStore, platesLeft, quote, type Dish, type DishId } from './restaurant';
 
 /* The market stall: up to 25 kg of the store sold a day (what the farmer does not choose is sold for them when the
@@ -16,7 +16,7 @@ import { DISHES, RESTAURANT, dishOf, foodFor, plateNutrition, platesInStore, pla
 
 const itemsWords = (items: Partial<Record<ProduceId, number>>) =>
   (Object.entries(items) as [ProduceId, number][])
-    .map(([id, kg]) => `${kg} kg ${PRODUCE[id].name.toLowerCase()}`)
+    .map(([id, kg]) => `${kg} kg ${produceName(id).toLowerCase()}`)
     .join(', ');
 
 export function MarketPage({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
@@ -99,7 +99,7 @@ function SellTab({ s, dispatch, left, cold }: { s: GameState; dispatch: Dispatch
                   {PRODUCE[id].name} · {money(priceOf(id, cold))} a kg
                 </b>
                 <small>
-                  {p.store[id]} kg in the store · grown for {money(PRODUCE[id].cost)} a kg
+                  {p.store[id]} kg in the store · {PRODUCE[id].made ? 'made' : 'grown'} for {money(PRODUCE[id].cost)} a kg
                 </small>
                 <NutriChips food={id} max={2} />
               </span>
@@ -116,7 +116,7 @@ function SellTab({ s, dispatch, left, cold }: { s: GameState; dispatch: Dispatch
           ))}
         </>
       ) : (
-        <p className="cl-empty">The store is empty. Harvest the six farms, or Farms 7 and 8: some of every harvest is kept here to sell, {MARKET.dailyKg} kg a day.</p>
+        <p className="cl-empty">The storehouse is empty. Harvest the six farms, or pick the greenhouse: some of every harvest is kept there to sell, {MARKET.dailyKg} kg a day.</p>
       )}
       {have.length > 0 && (
         <button
@@ -226,7 +226,7 @@ function NutritionTab({ s }: { s: GameState }) {
           </span>
         ))}
       </p>
-      <CompareTable foods={PRODUCE_IDS} onPick={setPick} picked={pick} />
+      <CompareTable foods={CROP_IDS} onPick={setPick} picked={pick} />
       <div className="nu-pair">
         <FoodCard food={pick} />
         <div className="pg-card nu-card">
