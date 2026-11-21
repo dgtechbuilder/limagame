@@ -742,13 +742,14 @@ brand's five characters).
 
 ![Campbell scouts a farm](docs/business-campbell.webp)
 ![The drive at a farm](docs/business-drive.webp)
-![The day's result with the efficiency score and the SER](docs/business-result.webp)
+![The day's result: route score, day value, SER, and the money in three figures](docs/business-result.webp)
 
 **A day** (the *Today* tab)
 
-- **The territory.** A map of the Narok hub: the yard and nine farms, six **inside the territory** (a sage ellipse
-  with a dashed Sunset Blaze edge) and three outside it, placed near the map's edges and marked with a dashed
-  Hibiscus border. **The map is laid out afresh every day** (seeded by the day, so a reload shows the same map), with
+- **The territory.** A map of the Narok hub: the yard (a barn) and nine farms, six **inside the territory** (a dashed
+  white ellipse, with its key in the map's corner) and three outside it, placed near the map's edges and marked with
+  a dashed orange edge. Each farm is a small field with its name on a white label and a badge for its jobs (a number,
+  then ✓ once booked); a farm's answer to Campbell's tip shows as a ✓ or ✕ on its other corner. **The map is laid out afresh every day** (seeded by the day, so a reload shows the same map), with
   winding murram roads joining every farm to every other; distances are along the roads, and there is no route line,
   no km and no "shortest" hint while planning (`mapFor` in `model.ts`). Farms inside the territory book more often.
 - **Narok's calendar and the Knowledge Graph.** Three business days make a month, and the game opens in February
@@ -756,16 +757,15 @@ brand's five characters).
   or potatoes), and each day's bookings are **in window for that crop this month** (`CROPS`: land preparation,
   planting, fertilizer application, harvest; transport all year). The windows are seeded from public agronomy for
   Narok County and are to be signed off by Hello Tractor's agronomy team before the territory ships (the brief, §7.1).
-- **Project Campbell (Loop A).** Tap a farm and Campbell scouts it: the crop on its first booked part, what is in
-  window this month, the **practice it flags** (*plans to plant by hand two weeks after the land is ready*) and the
-  recommendation (*plant with the tractor right after land prep, inside the window*). **Deliver the advice** and the
-  farmer answers in Wekeza's voice: a yes adds the recommended job to today's bookings (*on your advice*); a no says
-  why. One recommendation a farm a day. If the next activity is out of window, Campbell says when the window opens:
-  the lesson is the window, by consequence, not by quiz.
+- **Project Campbell (Loop A).** Tap a farm and Campbell's tip names the **practice it flags** in one line
+  (*Wanjiru hauls everything a sack at a time by donkey*), with one button: **Suggest** the recommended job, and how
+  likely the farmer is to say yes (the reason, *one trailer load does the whole trip the same day*, shows on hover).
+  A yes adds the job to today's bookings (marked *your tip*); a no says why in a few words. One tip a farm a day. The
+  crop windows behind it are on the *Calendar* tab.
 - **The territory advantage (Loop B).** How likely a farmer is to take the advice (`ACCEPT`): inside the territory
   55%, plus 25 points for the **Hub Manager's demo plot** on that crop and 15 for the **CX Team's follow-up call**
   (95% with both); outside the territory 25%, with neither. The *Hub* tab lets the player ask the Hub Manager for one
-  demo plot per business level, and explains the CX Team in Caro's voice.
+  demo plot per business level, and explains the CX Team's follow-up calls.
 - **My tractor or a partner.** Each part of the farm is booked for **the hub tractor** the agent dispatches, or
   passed to a **partner**. Each button shows what that choice leaves the business: the hire less the job's diesel and
   **the hub's 25% share of its tractor** (`HUB_SHARE`, until the agent owns one), or the partner's 10%. A job needs its
@@ -773,7 +773,7 @@ brand's five characters).
   Fleet. Wheat and barley harvests need a combine (below): pass them on for the commission.
 - **At least three farms, then the route**, as before: tap the farms in the order the tractor visits them (yard →
   stops → yard). The day only has to fit with the shortest way round (work + shortest drive ≤ 9 hours).
-- **Density: the Service Efficiency Ratio (Loop C, §5.1).** `SER = acres serviced ÷ km driven`. The *Density* meter
+- **Density: the Service Efficiency Ratio (Loop C, §5.1).** `SER = acres serviced ÷ km driven`. The *Spread* meter
   shows the band while booking (from the shortest route, which stays hidden). Below the **floor** the sparsest stop
   (the one whose acres are least worth the km driven for them) is **dropped as unserviceable**, then the next, until
   the rest clear the floor: the farmer waits, the booking does not close, and the day's counted acres are halved.
@@ -805,13 +805,14 @@ brand's five characters).
     under 80% of the baseline leaves the job **unfinished**: the hire is cut to the share done and the booking does
     not close. The drive then carries on to the next farm. The fields are seeded by the day and the farm, and the
     main menu or any page opened over the drive pauses it.
-- **The result.** The efficiency score (the shortest route's km against the player's) as before, now with the
-  day's **SER** beside it, the farmers helped, clean drives, a **neighbourhood synchronised** (three or more farms
-  booked on the same activity the same day: +30 points), anything dropped or unfinished, the money (hire, partner
-  commissions, diesel, driver, the hub's share, and the PAYG instalment once the agent owns a tractor), the
-  fulfilment of the day and the counted acres earned.
+- **The result.** Four figures: the **route score** (the shortest route's km against the player's), the **day
+  value**, the day's **SER** and the farmers helped; the player's route and the best one; the money as three figures
+  (earned, costs with diesel, driver and the hub's share under it, and profit, with the PAYG instalment once the agent
+  owns a tractor); then one line for the jobs done, counted acres and points (clean drives, a **neighbourhood
+  synchronised** of three or more farms on the same activity: +30, urgent jobs), and anything dropped or unfinished.
 
-**The two numbers (§5)**, computed every day and shown in the header: the **fulfilment rate** (bookings closed
+**The two numbers (§5)**, computed every day and shown in the row of figures at the top of every section (as *Jobs
+kept* and *Acres per km*, with the full names on hover): the **fulfilment rate** (bookings closed
 against every booking there was: unbooked requests expire, dropped and unfinished jobs do not close) and the **SER**
 over the last week. Fulfilment is the agent's reputation: the *Hub* tab's **community leaderboard** ranks the player
 among seven other agents (simulated, their rates drifting slowly); at 90% or better one more farm books each day, under
@@ -845,14 +846,19 @@ app), **Fleet** (ridger, fertilizer spreader, maize planter, tractor harvester, 
 and **levels** by farmers helped are as before. A day hired out to the county is booked like any other day's hire:
 the hub keeps its share while the tractor is the hub's, and an owned tractor pays its PAYG instalment from it.
 
-**Hello Tractor's voice (§6).** The business screens use the brand's palette (Sunset Blaze `#FF461E`, Hibiscus
-`#F8285F`, Plum `#2F1C54`, Sage `#93C393`, Summer Breeze `#93C2C6`, Charcoal `#161616`) and type (Merriweather for
-headings, Manrope for body copy: the brand's web fallbacks, fetched from Google Fonts only when the business opens, so
-the game's first screen stays as light as before), the speech-bubble supergraphic for every character's line, and a
-Sunset Blaze → Plum gradient for the graduation moment. The five characters from the brief are in-game guides:
+**The screen.** The business is laid out as every other full page in the game (`components/Page.tsx`, the spacing
+plan's layout B): its six sections down the left (Today, Hub, Calendar, My trend, Partners, Fleet), the level and its
+bar at the foot of that list, and a row of five figures across the top of every section (the day, the account, counted
+acres towards a tractor, jobs kept, acres per km). It uses the game's own type (Poppins) and tokens: 10px uppercase
+labels, 11–12px text, 13–15px values and titles, one 24px figure on the result; cards are the *Partners › Offers*
+card. *Today* puts the map (drawn in the model's pixels and shown at 0.82) beside one panel: Caro's line saying what to
+do now, then today's farms, a farm's jobs, the route or the stops, and one gold button; four small meters sit under the
+map (farms, hours, how close together, the estimated profit). Every panel keeps to a line or two of plain words.
+
+**Hello Tractor's voice (§6).** The five characters from the brief are in-game guides:
 **Sasha** (the welcome, graduation), **Caro** (the coach on the guide line, the CX Team), **Aziza** (the path to
 ownership, PAYG), **Wekeza** (the farmer's answer to advice) and **Gitonga** (the owner, on the calendar and fleet).
-Their pictures are cropped below the head and never rotated, on palette colours (`src/business/cast/*.webp`, 2–5 KB
+Their pictures are cropped below the head and never rotated, on soft backgrounds (`src/business/cast/*.webp`, 2–5 KB
 each).
 
 **Numbers.** The business keeps its own account in stored money like the rest of the game (it starts with
@@ -863,11 +869,12 @@ at KSh 10,000 a day) and most days lost money.
 
 **What the farmer pays, and the 90% rule.** Farmers pay the business **10 times the market hire**
 (`FARMER_PAY_X`: ploughing KSh 30,000 an acre against the market's KSh 3,000), but only a route at least **90%
-efficient** keeps it (`PAY_EFFICIENCY`; the efficiency is the day's *Efficiency score*: the shortest way round's km
+efficient** keeps it (`PAY_EFFICIENCY`; the efficiency is the day's *Route score*: the shortest way round's km
 against the route's). Under 90 the farmers waited while the tractor took the long way round, and they pay back hire
 (`refund`) until the day earns only *efficiency × its costs* (diesel, driver, the hub's share): the day is always a
-loss, and a deeper one the worse the route. The planner shows the refund as soon as a slow route is drawn, and the
-day's result has a *Paid back* line and a red note. The PAYG instalment is taken from the hire kept. The trailer's
+loss, and a deeper one the worse the route. Once a slow route is placed, Caro says so and the *Est. profit*
+meter under the map turns red (*Est. loss*); on the day's result the refund is in *Costs* as *paid back*, with a
+red note. The PAYG instalment is taken from the hire kept. The trailer's
 and the combine's hire, road speed (20 km/h) and diesel, work rates, the driver's KSh 1,000 a day, the hub's and the
 partner's shares, the shop's prices, the SER thresholds, the acceptance chances and the PAYG prices are **game
 estimates**, marked in the code.
@@ -1318,7 +1325,7 @@ To show that playing changes behaviour (`src/evidence/model.ts`):
 - **The farm drives urgency.** While the player's own six farms are in their planting window, land preparation and
   planting bookings are more urgent; rain forecast makes them more so, a dry season makes the harvest and transport
   urgent (`farmSignal`, `urgencyOf`).
-- **My trend**: a chart of the trainee's efficiency score and day value, day by day.
+- **My trend**: a chart of the trainee's route score and day value, day by day.
 
 ## Climate tracking
 
