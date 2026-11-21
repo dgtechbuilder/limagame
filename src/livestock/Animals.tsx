@@ -33,6 +33,9 @@ import {
   preventLeft,
 } from './model';
 import { roll } from './rand';
+import { Exam } from './Exam';
+import { ExamScene } from './ExamScene';
+import { FINDINGS, marksOf, spotsOf } from './exam';
 
 /* The Animals page: the cows and the hens. Today (the day's jobs), Health (problems by their signs, and the fix to
    choose; vaccines and tick control), Water (what they drink and waste from the tank), Coop (build it from day 2), and
@@ -232,9 +235,38 @@ function shuffled(id: IssueId, since: number) {
   return [...issueOf(id).fixes].map((f, i) => ({ f, k: roll(`${id}:${since}:${i}`) })).sort((a, b) => a.k - b.k).map(x => x.f);
 }
 
-function Health({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
+/** The fix to choose for a problem: the last wrong one's lesson, the three fixes, and its name once one was tried. */
+function Fixes({ s, dispatch, id, since }: { s: GameState; dispatch: Dispatch<Action>; id: IssueId; since: number }) {
   const l = lifeOf(s.life);
   const open = careOpen(s);
+  const def = issueOf(id);
+  const tried = l.tried[id] ?? [];
+  const last = tried.length ? def.fixes.find(f => f.id === tried[tried.length - 1]) : null;
+  return (
+    <>
+      {last && !last.right && <p className="lv-wrong">Not that: {last.lesson}</p>}
+      <div className="lv-fixes" role="group" aria-label="Choose the fix">
+        {shuffled(id, since).map(f => (
+          <Btn key={f.id} disabled={!open || tried.includes(f.id)} onClick={() => dispatch({ type: 'animalFix', issue: id, fix: f.id })}>
+            {f.label}
+            {f.cost ? ` · ${money(f.cost)}` : ''}
+          </Btn>
+        ))}
+      </div>
+      {tried.length > 0 && (
+        <p className="lv-hint">
+          It is <b>{def.name}</b>
+          <Info term={def.name} size={14} />. {def.cause}
+        </p>
+      )}
+    </>
+  );
+}
+
+function Health({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
+  const l = lifeOf(s.life);
+  const [examining, setExamining] = useState<IssueId | null>(null);
+  const exam = examining ? l.issues.find(i => i.id === examining) : null;
   return (
     <div className="lv-health">
       {l.issues.length === 0 ? (
@@ -245,35 +277,29 @@ function Health({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
       ) : (
         l.issues.map(i => {
           const def = issueOf(i.id);
-          const tried = l.tried[i.id] ?? [];
-          const last = tried.length ? def.fixes.find(f => f.id === tried[tried.length - 1]) : null;
+          const who = def.group === 'cows' ? 'cow' : 'hens';
           return (
             <div key={i.id} className="lv-issue" aria-label={`A problem with the ${def.group}`}>
-              <p className="lv-issue-head">
-                <span className="cl-where">{GROUP_NAME[def.group]}</span>
-                <b>What you see</b>
-                <small>since day {i.since}</small>
-              </p>
-              <p className="lv-signs">{def.signs}</p>
-              {last && !last.right && <p className="lv-wrong">Not that: {last.lesson}</p>}
-              <div className="lv-fixes" role="group" aria-label="Choose the fix">
-                {shuffled(i.id, i.since).map(f => (
-                  <Btn key={f.id} disabled={!open || tried.includes(f.id)} onClick={() => dispatch({ type: 'animalFix', issue: i.id, fix: f.id })}>
-                    {f.label}
-                    {f.cost ? ` · ${money(f.cost)}` : ''}
-                  </Btn>
-                ))}
-              </div>
-              {tried.length > 0 && (
-                <p className="lv-hint">
-                  It is <b>{def.name}</b>
-                  <Info term={def.name} size={14} />. {def.cause}
+              <button type="button" className="lv-thumb" onClick={() => setExamining(i.id)} aria-label={`Examine the ${who} up close`}>
+                <ExamScene group={def.group} marks={marksOf(i.id)} spots={spotsOf(i.id)} rings={[...new Set(FINDINGS[i.id].map(f => f.part))]} />
+                <span className="lv-thumb-go">
+                  <i aria-hidden="true">🔍</i> Examine the {who}
+                </span>
+              </button>
+              <div className="lv-issue-body">
+                <p className="lv-issue-head">
+                  <span className="cl-where">{GROUP_NAME[def.group]}</span>
+                  <b>What you see</b>
+                  <small>since day {i.since}</small>
                 </p>
-              )}
+                <p className="lv-signs">{def.signs}</p>
+                <Fixes s={s} dispatch={dispatch} id={i.id} since={i.since} />
+              </div>
             </div>
           );
         })
       )}
+      {exam && <Exam issue={exam.id} since={exam.since} day={l.day} onClose={() => setExamining(null)} decide={<Fixes s={s} dispatch={dispatch} id={exam.id} since={exam.since} />} />}
       <p className="set-title lv-sub">Keep them well</p>
       {PREVENT.map(p => {
         const left = preventLeft(s, p.id);

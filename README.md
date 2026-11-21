@@ -1308,6 +1308,20 @@ fast clock (the first cycle) or with a calendar day; the first night brings a **
   left (East Coast fever after 3 days, bloat and Newcastle after 1). **Prevention:** tick spray (7 days), the
   foot-and-mouth and Newcastle vaccines, deworming. A dirty pen or coop, unfed animals and a crowded coop make
   problems likelier; good health and a dry, raised coop make them rarer.
+- **Examine up close** ([`src/livestock/Exam.tsx`](src/livestock/Exam.tsx), [`exam.ts`](src/livestock/exam.ts),
+  [`ExamScene.tsx`](src/livestock/ExamScene.tsx)): each problem's card shows the animal with a ring on every part
+  that shows a sign. **Examine the cow** (or the hens) opens it over the whole screen. Each group has one standard set
+  of parts to check, in a vet's order: for a cow the eyes, nose, mouth, ears and neck, breathing, belly and left
+  flank, udder, milk, legs and hooves, temperature, dung, how she stands, and her feed trough, water trough and tank;
+  for hens the comb, eyes, beak and breathing, neck, feathers, vent, feet, droppings, perch, nest boxes and egg tray.
+  Every sign is drawn where it shows and moves as it would (tears and drips fall, the flank heaves, a sore foot is
+  held up, a bloated cow kicks at her belly). **Start the examination** plays it like a film: black bars, a title
+  card, then the camera flies to each part with a finding, the light closes round it, and a caption says what is
+  there with its measure (the thermometer, breaths counted, days of feed left, litres of milk). It moves on by
+  itself (Back, Pause, Next and Skip take over; the arrow keys too). At the end the camera pulls back, the findings
+  are numbered on the animal, and the three fixes sit beside them. The player can also tap any part (a healthy
+  one says what normal looks like), drag to look round, and zoom with the wheel, a pinch or + and −. Read aloud
+  reads each step; Reduce motion keeps the film but stills the movement.
 - **Water:** what the cows and hens drink is drawn by the water model each day; on top, a dry season makes cows drink a
   fifth more, heat stress more again, and a leaking trough wastes **300 L a day** until its valve is fixed. The Water tab
   shows every litre and how many days the tank lasts at today's use.
