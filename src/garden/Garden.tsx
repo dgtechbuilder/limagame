@@ -6,6 +6,8 @@ import { lifeOf } from '../livestock/model';
 import { loadOn } from '../power/model';
 import type { Action, GameState } from '../state';
 import { GARDEN, GARDEN_CROPS, GARDEN_NAMES, cropOf, gardenOf, harvestKg, statusOf, type GardenCropId } from './model';
+import { NutriChips, NutriTotal } from '../nutrition/Nutri';
+import { nutritionOf } from '../nutrition/data';
 
 /* Farms 7 and 8: choose a crop, plant it (a mini-game), water it each day, harvest it into the store. Opened at
    their signs on the farm, from the morning of day 4, or the main menu. */
@@ -60,7 +62,7 @@ export function GardenPage({ s, dispatch, farm }: { s: GameState; dispatch: Disp
     >
       {st === 'locked' && (
         <p className="pg-lead">
-          {GARDEN_NAMES[tab]} opens on <b>day {GARDEN.openDay}</b>, after your first three days (today is day {day}). Then grow spinach, tomatoes, beans, onions, watermelon or a fruit orchard here, and sell
+          {GARDEN_NAMES[tab]} opens on <b>day {GARDEN.openDay}</b>, after your first three days (today is day {day}). Then grow spinach, cabbage, tomatoes, beans, onions, watermelon or a fruit orchard here, and sell
           it at the market stall.
         </p>
       )}
@@ -79,6 +81,7 @@ export function GardenPage({ s, dispatch, farm }: { s: GameState; dispatch: Disp
                 <p>
                   About {c.kg} kg a harvest{c.regrow ? `, again every ${c.regrow} days` : ''} · {c.water} L a day
                 </p>
+                <NutriChips food={c.produce} max={2} />
                 <button type="button" className="gold-btn" disabled={s.coins < c.cost} onClick={() => setGame({ kind: 'plant', crop: c.id })} aria-label={`Plant ${c.name} on ${GARDEN_NAMES[tab]} for ${money(c.cost)}`}>
                   Plant · {money(c.cost)}
                 </button>
@@ -87,6 +90,17 @@ export function GardenPage({ s, dispatch, farm }: { s: GameState; dispatch: Disp
           </div>
         </>
       )}
+      {g.last && g.last.farm === tab && g.last.day === day && (
+        <div className="pg-row nu-harvest" aria-label="Today's harvest">
+          <i aria-hidden="true">{cropOf(g.last.crop).icon}</i>
+          <span className="pg-row-text">
+            <b>
+              Harvested today: {g.last.kg} kg of {cropOf(g.last.crop).name.toLowerCase()}, into the store
+            </b>
+            <NutriTotal total={nutritionOf({ [cropOf(g.last.crop).produce]: g.last.kg })} prefix="It feeds" />
+          </span>
+        </div>
+      )}
       {f.crop && st !== 'locked' && st !== 'empty' && (
         <>
           <div className="pg-tiles">
@@ -94,6 +108,14 @@ export function GardenPage({ s, dispatch, farm }: { s: GameState; dispatch: Disp
             <Tile label="Health" value={`${f.health}%`} sub={f.health < 70 ? 'it went thirsty' : 'well watered'} tone={f.health < 70 ? 'bad' : 'good'} />
             <Tile label={st === 'ready' ? 'Ready now' : 'Ready on'} value={st === 'ready' ? `${harvestKg(f, 1)} kg` : `Day ${f.ready}`} sub={st === 'ready' ? 'harvest it into the store' : `${f.ready - day} day${f.ready - day === 1 ? '' : 's'} to go`} tone={st === 'ready' ? 'good' : undefined} />
             <Tile label="Harvests" value={`${f.harvests}`} sub={cropOf(f.crop).regrow ? `again every ${cropOf(f.crop).regrow} days` : 'once, then plant again'} />
+          </div>
+          <div className="pg-row">
+            <i aria-hidden="true">🥗</i>
+            <span className="pg-row-text">
+              <b>What {cropOf(f.crop).name.toLowerCase()} gives the people who eat it</b>
+              <NutriChips food={cropOf(f.crop).produce} />
+              <NutriTotal total={nutritionOf({ [cropOf(f.crop).produce]: harvestKg(f, 1) })} prefix={`This harvest (${harvestKg(f, 1)} kg) feeds`} top={2} />
+            </span>
           </div>
           <div className="pg-row">
             <i aria-hidden="true">💧</i>

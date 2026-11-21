@@ -13,6 +13,7 @@ import { sixFarmsDue } from '../route';
 import { daysOn, daysTo, daysAhead } from './days';
 import { CRISES, focusRegion, givingOf } from './regions';
 import { BRANDS } from '../partners/data';
+import { KAKUMA_EVENT, daysToGo, kakumaPhase } from './model';
 
 export type EventWhere = 'world' | 'farm' | 'animals' | 'business';
 
@@ -42,6 +43,12 @@ export function liveEvents(s: GameState, today = achClock.today()): LiveEvent[] 
   for (const d of daysOn(today)) {
     const n = daysTo(d, today);
     out.push({ id: `day-${d.id}`, icon: d.icon, title: d.name, text: `${n === 0 ? 'Today' : n > 0 ? `In ${n} day${n > 1 ? 's' : ''}` : 'This week'}: ${d.task} Gifts to the regions earn double points.`, where: 'world', status: 'now', cta: 'Take part', go: d.go });
+  }
+  // the Kakuma special event with the World Food Programme (src/events/model.ts)
+  const kk = kakumaPhase();
+  if (kk !== 'over') {
+    const n = daysToGo();
+    out.push({ id: 'kakuma', icon: '🍲', title: `Kakuma, with the ${KAKUMA_EVENT.partner}`, text: kk === 'on' ? `On now until ${KAKUMA_EVENT.dates.split('–')[1]}: learn about food in Kakuma refugee camp and give.` : `${KAKUMA_EVENT.dates}, in ${n} day${n === 1 ? '' : 's'}: read about Kakuma refugee camp now.`, where: 'world', status: kk === 'on' ? 'now' : 'soon', cta: 'Open the event', go: '/kakuma' });
   }
   const focus = focusRegion(today);
   const given = givingOf(s.giving).totals[focus.id] ?? 0;

@@ -1,4 +1,6 @@
 import { Suspense, useEffect, useMemo, useRef, useState, type Dispatch, type PointerEvent as RPointerEvent } from 'react';
+import { KakumaPopup } from '../events/Kakuma';
+import { kakumaOf, kakumaPhase } from '../events/model';
 import { BasicsChip } from '../learn/Basics';
 import { img } from '../assets';
 import { FarmerPortrait } from '../first/art';
@@ -557,6 +559,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     }
     if (p === 'hire') return setHub(hireInfo(st).ready ? 'hire' : 'yard');
     if (p === 'market') return onMarket();
+    if (p === 'restaurant') return dispatch({ type: 'open', modal: { kind: 'market', tab: 'restaurant' } });
     if (p === 'house') {
       const tk = nextTask(st.field, tr, dayNumber(), st.coins);
       if (tk.icon !== 'sleep') return say(tr?.phase === 'growing' ? `Not yet: ${tk.title.toLowerCase()} first` : 'Home sweet home');
@@ -890,7 +893,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
   })();
 
   return (
-    <div className={`abs world${nightMode ? ' is-night' : ''}`} style={{ inset: 0 }}>
+    <div className={`abs world${nightMode ? ' is-night' : ''}${kakumaPhase() !== 'over' && !kakumaOf(s.kakuma).tucked ? ' has-event' : ''}`} style={{ inset: 0 }}>
       <canvas ref={canvas} className="world-canvas" width={STAGE_W} height={STAGE_H} />
       <div ref={pad} className="world-pad" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} />
       {!loadGone && <FarmLoading done={loaded} />}
@@ -990,6 +993,8 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         <PartnersIcon />
         <span>PARTNERS</span>
       </button>
+      {/* the Kakuma special event: a pop-up on the bottom left, or tucked into a round button under Partners */}
+      <KakumaPopup s={s} dispatch={dispatch} />
       <button type="button" className="hud-round hud-shop" onClick={() => dispatch({ type: 'open', modal: { kind: 'shop', tab: 'food' } })} aria-label="Shop">
         <img src={img.cart} alt="" width={30} height={30} />
         <span>SHOP</span>
@@ -1310,6 +1315,8 @@ function placeButton(p: Place, carry: GameState['field']['carry']): { label: str
       return { label: 'Start training', sub: 'Tractor yard', aria: 'Start training at the tractor yard', icon: 'tractor' };
     case 'market':
       return { label: 'Open the market', sub: 'Sell your harvest', aria: 'Open the market', icon: 'corn' };
+    case 'restaurant':
+      return { label: 'Open the restaurant', sub: 'Cook meals from your harvest', aria: 'Open the restaurant', emoji: '🍲' };
     case 'house':
       return { label: 'Go to sleep', sub: 'End the day', aria: 'Go to sleep', icon: 'sleep' };
     case 'mission':

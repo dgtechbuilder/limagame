@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { initialState, reducer, type GameState } from '../src/state';
+import { produceOf } from '../src/produce/model';
 import { payClock } from '../src/climate/track';
 import { achClock } from '../src/achievements/track';
 import { AREA_SIZE, LAND_FACTORS, LAND_PLOTS, PAY, areasOf, coinsFor, farmedRate, landOf, payRate } from '../src/climate/land';
@@ -28,6 +29,8 @@ const farm = (patch: Partial<GameState> = {}): GameState => ({
   ...patch,
 });
 const tick = (s: GameState) => reducer(s, { type: 'climateTick' });
+/** What the market stall sold for the farmer when the days ended (the daily sales cycle, src/produce). */
+const stall = (s: GameState) => produceOf(s.produce).sales.filter(x => x.auto).reduce((n, x) => n + x.earned, 0);
 const area = (s: GameState, id: string) => areasOf(s).find(a => a.id === id)!;
 /** a day's credits from the areas other than the six farms (the forest and the pen) */
 const fixedCredits = (AREA_SIZE.forest * LAND_FACTORS.forest.value + AREA_SIZE.pasture * LAND_FACTORS.pasture.value) / 10;
@@ -131,7 +134,7 @@ test('the end of a day pays every credit earned since the last payment, from eve
   expect(s.climate.level).toBe(1);
   expect(toUsd(p.coins)).toBeCloseTo(Math.round(p.credits * 0.25 * 1.1 * 100) / 100, 6);
   // the day's climate payment, and the water credits for the day (src/water) in the same night
-  expect(s.coins).toBeCloseTo(afterTask + p.coins + ledgerOf(s.ledger).coins.water, 6);
+  expect(s.coins).toBeCloseTo(afterTask + p.coins + ledgerOf(s.ledger).coins.water + stall(s), 6);
   expect(p.label).toBe('Sun 15 Nov');
   expect(p.areas?.map(a => a.id)).toContain('forest');
   expect(s.climate.log[0].where).toBe('land');
@@ -183,7 +186,7 @@ test('a night slept on the fast clock ends a farm day and pays it', () => {
   const p = payOf(s.climate).payments[0];
   expect(p.label).toBe('Farm day 1');
   expect(p.coins).toBeGreaterThan(0);
-  expect(s.coins).toBeCloseTo(1000 + p.coins + ledgerOf(s.ledger).coins.water, 6);
+  expect(s.coins).toBeCloseTo(1000 + p.coins + ledgerOf(s.ledger).coins.water + stall(s), 6);
   // the calendar day is still today: it is counted at midnight as usual
   expect(payOf(s.climate).day).toBe('2026-11-15');
 });

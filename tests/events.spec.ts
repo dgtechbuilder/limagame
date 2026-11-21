@@ -39,6 +39,8 @@ test('the data: regions, packs, special days and organisations are sound', () =>
   expect(isOn(DAYS.find(d => d.id === 'soil')!, '2026-11-20')).toBe(false);
   expect(nextDate(DAYS.find(d => d.id === 'wetlands')!, '2026-12-20')).toBe('2027-02-02');
   expect(daysOn('2026-10-16').map(d => d.id)).toEqual(expect.arrayContaining(['food', 'rural']));
+  // the Kakuma event (src/events/model.ts) opens from Happening now
+  expect(routeTo(farm({ modal: { kind: 'events', tab: 'now' } }), '/kakuma')).toEqual([{ type: 'open', modal: { kind: 'kakuma', tab: 'about' } }]);
   expect(ORGS.map(o => o.name)).toContain('World Food Programme');
   for (const o of ORGS) expect(o.url).toMatch(/^https:\/\/[a-z0-9.-]+\/$/);
 });

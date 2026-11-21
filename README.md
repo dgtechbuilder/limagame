@@ -59,6 +59,8 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [The shed's options](#the-sheds-options)
 - [Options that open as you grow](#options-that-open-as-you-grow)
 - [The market stall](#the-market-stall)
+- [The restaurant](#the-restaurant)
+- [Nutrition](#nutrition)
 - [Farms 7 and 8](#farms-7-and-8)
 - [Mini-games](#mini-games)
 - [The tractor game: the mini farm](#the-tractor-game-the-mini-farm)
@@ -67,6 +69,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [Partners: billboards, branded products and offers](#partners-billboards-branded-products-and-offers)
 - [Farm words: info buttons and Farm basics](#farm-words-info-buttons-and-farm-basics)
 - [Special events, regions and Donate](#special-events-regions-and-donate)
+- [Special event: Kakuma, with the World Food Programme](#special-event-kakuma-with-the-world-food-programme)
 - [Character art: retro anime](#character-art-retro-anime)
 - [Design review mode](#design-review-mode)
 - [Saving, events and privacy](#saving-events-and-privacy)
@@ -94,8 +97,8 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 | **From day 2** | Looks after the **cows and hens** every day (feed, water, milk, eggs, cleaning), treats their diseases by their signs, and **keeps the farm safe from thieves** at night. |
 | **Days 1 to 7** | **Builds a solar power system**, one part a day, each with its own mini-game: panels, inverter, battery, lights, generator, diesel, then switches it on. It powers the pump, the milk cooler, the lights, the house and the workshop. |
 | **Day 1 · day 3** | **Upgrades the chicken coop** (day 1) and **the cow shed** (day 3), nail by nail. |
-| **From day 4** | Plants **Farms 7 and 8**: spinach, tomatoes, French beans, onions, watermelon or a fruit orchard. |
-| **Every day** | Sells up to **25 kg** of the store at the **market stall**; every payment in and out is kept in the **Wallet**. |
+| **From day 4** | Plants **Farms 7 and 8**: spinach, cabbage, tomatoes, French beans, onions, watermelon or a fruit orchard. |
+| **Every day** | The **market stall** sells **25 kg** of the store (maize, beans, sukuma wiki…): the farmer picks, or the day's sale is made for them each evening, with its profit. The **restaurant** beside it cooks the store into meals. Every crop shows its **nutrition**. Every payment in and out is kept in the **Wallet**. |
 | **Any time** | Taps **TRACTOR** to train, learn, check, service, repair, refuel, hire or drive the tractor (each a mini-game). |
 
 A wrong call is part of learning: the clue they missed is circled, and they try again on a second maize bed.
@@ -178,7 +181,8 @@ src/
   finance/loan.ts          the loan calculator (no coins change hands)
   wallet/                  every payment in and out: model.ts (trackWallet, addEntry), Wallet.tsx (the page)
   power/                   the solar power system: config.ts (every number), model.ts (a day of power), Power.tsx
-  produce/                 the store and the market stall (25 kg a day): model.ts, Market.tsx
+  produce/                 the store, the market stall (25 kg a day) and the restaurant: model.ts, restaurant.ts, Market.tsx
+  nutrition/               what each crop gives the people who eat it: data.ts (every number), Nutri.tsx (the markers)
   garden/                  Farms 7 and 8 (spinach, orchard…): model.ts, Garden.tsx
   systems/track.ts         the newer systems through the days: power, gutters, drip, wilting, tractor wear, morning news
   minigames/MiniGame.tsx   the mini-games: timing, hold-to-fill, tap the spots, wires, order, quiz, aim, steer, balance
@@ -954,11 +958,13 @@ reload without losing their place, bookmark a page, and use the browser's **Back
 | `#/loan-calculator` · `#/loan-calculator/quote` · `#/training` | The loan calculator and its quote, farmer training |
 | `#/progress/journey` · `modules` · `today` · `badges` · `certificates` | My Progress, by section (`#/achievements/…` still works) |
 | `#/partners/offers` · `#/partners/offers/<brand>` · `#/partners/placements` · `#/partners/partner-with-us` · `#/partners/shortlist` | Partners: offers (one brand's in view), placements, ways to partner, the shortlist (open before the farm too) |
+| `#/kakuma/about` · `#/kakuma/foods` · `#/kakuma/food-and-life` · `#/kakuma/donate` | The Kakuma special event: about the camp, the foods grown there, food and life, donate (open before the farm too) |
 | `#/animals/today` · `health` · `water` · `coop` · `herd` | Animals, by section |
 | `#/security/protect` · `risks` · `night-reports` | Security, by section |
 | `#/events/happening-now` · `special-days` · `regions` · `donate` | Special events, by section |
 | `#/events/regions/<region>` (`horn-of-africa`, `sahel`, `southern-africa`, `lake-chad`, `madagascar`, `sudan`) | One region in need, and its relief packs |
 | `#/donate` · `#/regions` | Short addresses for Donate (open before the farm too) and Regions |
+| `#/market` · `#/market/restaurant` · `nutrition` · `sales` | The market stall, the restaurant, nutrition, every sale (`#/restaurant` and `#/nutrition` work too) |
 
 **The player's session decides where an address can go.** The game's saved state stays the one source of
 truth: the address always names the page on show, and a typed address goes through the same rules as a tap.
@@ -1500,10 +1506,39 @@ five. Farms 7 and 8 open on day 4, when every crop is open.
 
 ## The market stall
 
-Some of every harvest goes into the **store**: 3% of each six-farm harvest (maize, sukuma wiki), and everything Farms 7
-and 8 grow. The **Sell** stall (when the six farms' harvest is not waiting to be sold) opens the market stall
-(`#/market`): up to **25 kg a day** in all, at a price a kg for each crop. Fresh produce wilts 4% a night in a store
-without the power system's cold room. `src/produce/model.ts`.
+Some of every harvest goes into the **store**: 3% of each six-farm harvest (maize, sukuma wiki), a quarter of the beans
+grown between the maize rows, and everything Farms 7 and 8 grow. The game starts with last season's harvest in it (60 kg
+maize, 20 kg dry beans, 12 kg sukuma wiki), so the stall sells from day 1. The **Sell** stall (when the six farms'
+harvest is not waiting to be sold) opens the market stall (`#/market`): up to **25 kg a day** in all, at a price a kg
+for each crop. Fresh produce wilts 4% a night in a store without the power system's cold room. `src/produce/model.ts`.
+
+**The daily sales cycle.** Every day the stall sells 25 kg. The farmer can choose what (*Sell today*); whatever of the
+day's 25 kg is left is sold for them when the day ends, a share of everything in the store, so a day's sale is a mix
+(say 15 kg maize, 5 kg beans, 5 kg sukuma wiki). The money goes into the wallet, the morning says what sold and its
+**profit** over what the food cost to grow (`PRODUCE[id].cost`), and *Sales* lists every day. *Daily selling* can be
+turned off on the page.
+
+## The restaurant
+
+A small kiosk with a green and yellow awning stands beside the Sell stall; its white square (**Eat**) opens the
+restaurant (`#/market/restaurant`, or *Restaurant* in the main menu). The farmer packages food from the store as
+meals: **ugali na sukuma wiki**, **githeri** (maize and beans), **ugali na spinach**, **ugali with beans and French
+beans**, **cabbage and bean stew**, **kachumbari**, **fruit salad** and **watermelon juice** (`src/produce/restaurant.ts`:
+the food in a plate, its price and the cooking: fuel, oil, salt, the cook). It serves up to **30 plates a day**. Each
+dish shows what a plate gives (energy, protein, fibre, iron, calcium, vitamins A and C, as a share of a day's need),
+what the batch earns and its profit, and how much more that is than selling the same food raw at the stall.
+
+## Nutrition
+
+Every crop the farm grows carries small **nutrition markers**: its food group (maize an *energy food*, beans a
+*body-building food*, leaves, vegetables and fruit *protective foods*) and what 100 g gives of an adult's daily need of
+the nutrients it is best for (maize: energy and fibre; dry beans: protein and iron; sukuma wiki: vitamins C and A and
+calcium; cabbage: vitamin C…). They are on the seeds at the shed and on Farms 7 and 8, on the six farms as they grow
+(Mission), on the store at the stall, and on every plate at the restaurant. At harvest the game says how many people
+the food feeds for a day (a Farm 7/8 harvest, and a *Feeds* row in the six farms' results). The **Nutrition** section
+of the market page (`#/market/nutrition`) puts every crop side by side, the best of each nutrient starred, with a
+crop's whole nutrition and what everything in the store would feed. The numbers (`src/nutrition/data.ts`) are rounded
+from the Kenya Food Composition Tables 2018 and USDA FoodData Central, for teaching; a nutritionist can review them there.
 
 ## Farms 7 and 8
 
@@ -1512,7 +1547,8 @@ day 4: `GARDEN.openDay`). At a farm's sign a button says what it needs: *Plant*,
 (`src/garden/model.ts`): **spinach** (cut every 2 days), **tomatoes**, **French beans**, **onions**, **watermelon** and a
 **fruit orchard** (avocado and mango: fruit every 3 days, and the trees store carbon). Planting is a mini-game (tap
 every planting hole), and so is the harvest (pick the ripe ones, leave the green ones). An unwatered day costs 15% of
-the crop's health, unless the solar drip is on. The harvest goes into the store for the market stall.
+the crop's health, unless the solar drip is on. The harvest goes into the store for the market stall, and the page says how
+many people it feeds. **Cabbage** grows here too, beside the sukuma wiki of the six farms, to compare their nutrition.
 
 ## Mini-games
 
@@ -1689,6 +1725,34 @@ each. To sign a partner, add or edit its brand and put its id on the slots it bo
 - **Shortlist**: the ways tapped *Interested*, saved with the game (`partnerPicks`). *Copy the shortlist* puts it on
   the clipboard as text; set `VITE_PARTNER_EMAIL` at build time to add an *Email it to the TemoLima team* button.
 
+## Special event: Kakuma, with the World Food Programme
+
+From **27 to 30 November** TemoLima runs a special event about **Kakuma refugee camp** in Turkana, north-west Kenya,
+in partnership with the **World Food Programme (WFP)**. Code: `src/events/model.ts` (dates, content, gifts) and
+`src/events/Kakuma.tsx` (the page and the pop-up).
+
+- **The pop-up.** A card on the farm's bottom left, under the left column of buttons, names the event, its dates and
+  the partner, counts down the days to it (*Starts in 7 days*), and turns green with *on now* on the event's days.
+  **Join the event** opens the event's page. The **×** tucks it into a round **KAKUMA** button under Partners, which
+  brings it back. While the card is out, the day and *Today* buttons move to its right. After 30 November the pop-up
+  and its button are gone.
+- **The page** (`#/kakuma/…`) has four sections:
+  - **About Kakuma**: where it is, when it opened, who lives there, the weather, and the Kalobeyei settlement.
+  - **Foods grown**: eight crops grown in Kakuma's kitchen gardens and shade nets (sukuma wiki, cowpeas, sorghum,
+    amaranth, okra, tomatoes and onions, moringa, green grams): why each grows there, what it does for the families
+    who eat or sell it, and what a player can take to their own farm.
+  - **Food and life**: how food gives refugees a semblance of normal life: cooking dishes from home, choosing their
+    own food with WFP's *Bamba Chakula* phone money, kitchen gardens, school meals, farming beside Turkana neighbours,
+    and why ration cuts make gifts matter.
+  - **Donate**: give **money** (three sizes), a **food gift** bought with money (a family food basket, a week of
+    school meals, a kitchen garden kit), or **10 kg of produce from the store** (src/produce). Each gift counts the
+    meals it stands for in the game and earns 10 points, 20 on the event's days; money given shows in the Wallet
+    under *Giving*. Gifts in the game move game money only: **Give at wfp.org** links to WFP's own page to give for
+    real.
+- **Saved** in `kakuma` (gifts, totals, whether the pop-up is tucked away). The dates are `KAKUMA_EVENT` in
+  `src/events/model.ts`; `kakumaClock` lets a test set the day.
+- **Tests:** `tests/kakuma.spec.ts`.
+
 ## Farm words: info buttons and Farm basics
 
 Many players have never farmed, so the game assumes nothing: a small blue **ⓘ** sits beside the name of almost every
@@ -1846,6 +1910,7 @@ Some tests use no browser: they call the game's rules directly.
 | `phases.spec.ts`, `risk.spec.ts` | climate-smart row strategies and treatment choices; money at risk and the evidence log |
 | `achievements.spec.ts`, `progress.spec.ts`, `success.spec.ts` | badges, the streak and certificates; My Progress and partners; the success dialogs, training and the loan quote |
 | `frame.spec.ts` | every screen keeps its boxes and buttons inside the rounded frame |
+| `nutrition.spec.ts` | each crop's nutrition; the daily sales cycle (25 kg a day, a mix, its profit, turned off); the restaurant's plates; harvests that say how many they feed; the restaurant, nutrition table and markers in the browser |
 | `unlock.spec.ts` | options that open as you grow: two on day 1, three on day 2, five on day 3 or Level 3, across every buying decision, and the power yard's picker |
 
 They run on every pull request (`.github/workflows/tests.yml`), with one retry on CI; the report and screenshots are
