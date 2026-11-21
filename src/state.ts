@@ -23,7 +23,7 @@ import { PRODUCTS, depositBlock, financeOf, payoutOf, settle, type FinanceState,
 import { POWER, partOptionOf, stepOf, type LoadId, type StepId as PowerStepId } from './power/config';
 import { fuelTankL, loadsAvailable, powerOf, stepBlock, type PowerState } from './power/model';
 import { HUB, hubOf, levelOf as hubLevel, lessonOf, type HubSection, type HubState } from './tractor/hub';
-import { PRODUCE, produceOf, sell as sellProduce, stock, type ProduceId, type ProduceState } from './produce/model';
+import { PRODUCE, produceOf, sell as sellProduce, sellTo, stock, type ProduceId, type ProduceState } from './produce/model';
 import { cook as cookMeal, dishOf, RESTAURANT, type DishId } from './produce/restaurant';
 import { harvestLine, nutritionOf, peopleDays } from './nutrition/data';
 import { BED_NAMES, GREENHOUSE, ghCropOf, greenhouseOf, pickBed, plantBed, type GhCropId, type GreenhouseState } from './greenhouse/model';
@@ -138,6 +138,8 @@ export type Modal =
   /** the market stall: up to 25 kg of the store sold a day, the restaurant beside it, and what the food is worth to
       eat (src/produce, src/nutrition) */
   | { kind: 'market'; tab?: MarketTab }
+  /** the market stall or the restaurant played: customers walk in, order, and are served (src/shop) */
+  | { kind: 'serve'; shop: 'market' | 'restaurant' }
   /** the greenhouse, where Farm 7 was: its four beds (src/greenhouse), bed 0 to 3 */
   | { kind: 'greenhouse'; bed: number }
   /** the storehouse, where Farm 8 was: the store, the greenhouse's picks brought in, and what is made (src/storehouse) */
@@ -702,6 +704,10 @@ export type Action =
   | { type: 'produceAuto'; on: boolean }
   /** the restaurant: cook some plates of a dish from the store and sell them */
   | { type: 'restaurantCook'; dish: DishId; plates: number }
+  /** the shop floor (src/shop): a customer at the stall paid for their bags (what they asked for and got) and a tip */
+  | { type: 'shopSell'; given: Partial<Record<ProduceId, number>>; asked: Partial<Record<ProduceId, number>>; tip: number; name: string }
+  /** the shop floor: a restaurant customer paid for their meal (a plate of each dish), less half for a burnt dish, and a tip */
+  | { type: 'shopMeal'; dishes: DishId[]; discount: number; tip: number; name: string }
   /** the greenhouse: plant a bed (score: the planting mini-game), water a bed (or every bed: -1), pick a ready bed */
   | { type: 'ghPlant'; bed: number; crop: GhCropId; score: number }
   | { type: 'ghWater'; bed: number }
@@ -777,7 +783,7 @@ function trackFinance(prev: GameState, next: GameState): GameState {
 /** Flows: finishing one of these ends a whole piece of play. */
 const FLOWS = new Set<Action['type']>(['checkDone', 'achClaimAll', 'completeSale', 'trialHarvest', 'bizRun', 'bizHireOut', 'bizContract', 'bizGraduate', 'tractorDone']);
 /** Actions: finishing one of these is one thing done. Some only count when they earned something (their message). */
-const ACTIONS = new Set<Action['type']>(['achClaim', 'achDaily', 'levelClaim', 'partnerSave', 'buy', 'sell', 'bookTraining', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo', 'tidyClear', 'animalCare', 'animalPrevent', 'checkFix', 'coopBuild', 'shedBuild', 'herdBuy', 'securityBuy', 'powerInstall', 'powerFuel', 'tractorHub', 'produceSell', 'restaurantCook', 'ghPlant', 'ghWater', 'ghHarvest', 'storeMake', 'shedChoose', 'kakumaGive', 'kakumaGiveStore', 'give']);
+const ACTIONS = new Set<Action['type']>(['achClaim', 'achDaily', 'levelClaim', 'partnerSave', 'buy', 'sell', 'bookTraining', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo', 'tidyClear', 'animalCare', 'animalPrevent', 'checkFix', 'coopBuild', 'shedBuild', 'herdBuy', 'securityBuy', 'powerInstall', 'powerFuel', 'tractorHub', 'produceSell', 'restaurantCook', 'shopSell', 'shopMeal', 'ghPlant', 'ghWater', 'ghHarvest', 'storeMake', 'shedChoose', 'kakumaGive', 'kakumaGiveStore', 'give']);
 const EARNED = new Set<Action['type']>(['roundResult', 'trialCheck', 'fieldMark']);
 const FS_ORDER: FsPhase[] = ['create', 'story', 'walk1', 'update', 'review1', 'walkRetry', 'retry', 'walk2', 'review2', 'done'];
 
@@ -1740,6 +1746,26 @@ function play(s: GameState, a: Action): GameState {
         ...gainXp(s, 0.04),
         toast: toast(`${r.plates} plates of ${d.name.toLowerCase()} sold · +${money(r.earned)} · profit ${money(r.profit)} (${money(r.extra)} more than selling the food raw) · a day’s protein for ${fed} people`),
       };
+    }
+    case 'shopSell': {
+      const day = lifeOf(s.life).day;
+      const r = sellTo(s.produce, a.given, a.asked, day, achClock.today(), coldRoom(s));
+      if ('error' in r) return { ...s, toast: toast(r.error) };
+      const tip = Math.max(0, Math.round(a.tip * 100) / 100);
+      return { ...s, coins: s.coins + r.earned + tip, produce: r.p, ...gainXp(s, 0.01) };
+    }
+    case 'shopMeal': {
+      const day = lifeOf(s.life).day;
+      let produce = s.produce;
+      let earned = 0;
+      for (const d of a.dishes) {
+        const r = cookMeal(produce, d, 1, day, achClock.today(), coldRoom(s));
+        if ('error' in r) return { ...s, toast: toast(r.error) };
+        produce = r.p;
+        earned += r.earned;
+      }
+      const extra = Math.round((Math.max(0, a.tip) - Math.min(Math.max(0, a.discount), earned)) * 100) / 100;
+      return { ...s, coins: s.coins + earned + extra, produce, points: s.points + Math.ceil(RESTAURANT.points / 2), ...gainXp(s, 0.015) };
     }
     case 'ghPlant': {
       const g = greenhouseOf(s.greenhouse);

@@ -63,6 +63,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [Options that open as you grow](#options-that-open-as-you-grow)
 - [The market stall](#the-market-stall)
 - [The restaurant](#the-restaurant)
+- [The shop floor: serving customers](#the-shop-floor-serving-customers)
 - [Nutrition](#nutrition)
 - [The greenhouse and the storehouse](#the-greenhouse-and-the-storehouse)
 - [Mini-games](#mini-games)
@@ -186,6 +187,7 @@ src/
   wallet/                  every payment in and out: model.ts (trackWallet, addEntry), Wallet.tsx (the page)
   power/                   the solar power system: config.ts (every number), model.ts (a day of power), Power.tsx
   produce/                 the store, the market stall (25 kg a day) and the restaurant: model.ts, restaurant.ts, Market.tsx
+  shop/                    the stall and the restaurant played: model.ts (customers, orders, recipes), scene.ts (the 3D room), Shop.tsx
   nutrition/               what each crop gives the people who eat it: data.ts (every number), Nutri.tsx (the markers)
   greenhouse/              the greenhouse where Farm 7 was (four beds under glass): model.ts, Greenhouse.tsx
   storehouse/              the storehouse where Farm 8 was (store, harvest, produce): model.ts, Storehouse.tsx
@@ -1057,6 +1059,7 @@ reload without losing their place, bookmark a page, and use the browser's **Back
 | `#/donate` · `#/regions` | Short addresses for Donate (open before the farm too) and Regions |
 | `#/money/overview` · `savings` · `investments` · `profit` | Money: what the farmer is worth, savings, investments, profit by part of the farm |
 | `#/market` · `#/market/restaurant` · `nutrition` · `sales` | The market stall, the restaurant, nutrition, every sale (`#/restaurant` and `#/nutrition` work too) |
+| `#/serve/market` · `#/serve/restaurant` | The shop floor: serving customers at the stall, or in the restaurant's kitchen |
 
 **The player's session decides where an address can go.** The game's saved state stays the one source of
 truth: the address always names the page on show, and a typed address goes through the same rules as a tap.
@@ -1734,6 +1737,43 @@ the food in a plate, its price and the cooking: fuel, oil, salt, the cook). It s
 dish shows what a plate gives (energy, protein, fibre, iron, calcium, vitamins A and C, as a share of a day's need),
 what the batch earns and its profit, and how much more that is than selling the same food raw at the stall.
 
+## The shop floor: serving customers
+
+**Open the market** at the Sell stall and **Open the restaurant** at the kiosk now open a game, not a page: the inside of
+the shop in 3D, seen from behind the counter (`src/shop`: the rules in `model.ts`, the room in `scene.ts`, the screen
+in `Shop.tsx`; `#/serve/market` and `#/serve/restaurant`). The farmer, in an apron, stands at the counter. Customers
+are built like the farmer, each with something of their own (glasses or shades, a backpack, headphones, a beanie, a
+bucket hat, a bow, a scarf; some are children), walk in at the door, queue, and order from what is **in the store**.
+Each customer's patience runs down while they wait; one kept waiting too long walks out. The page's *Sell today* and
+*Restaurant* sections open them too (*Open the stall*, *Open the kitchen*), and the shop's *Stall book* or *Menu and
+prices* goes back to the page.
+
+**At the market stall** the customer at the counter says what they want ("2 kg of tomatoes and 1 kg of sukuma wiki in
+one bag, and 3 kg of maize in another"): one bag, or two that keep the fresh food apart from the dry. Every food in the
+store has a **mini card** along the bottom; a tap packs a kilo (half a kilo of the dear things: strawberries, chillies,
+jars) into the bag being filled, and the farmer steps to that shelf. *+ A second bag* puts another bag on the counter.
+*Hand over* the bags: the customer pays for what they asked for and got (a kilo over the order is given away), and tips
+up to 15% for a perfect order, more the quicker it was. The bags count toward the stall's **25 kg a day**.
+
+**In the restaurant** the kitchen is a row of stations behind the farmer: the **jiko and sufuria**, the **stove and
+pan**, the **chopping board**, the **blender** and the **oven**. The farmer *takes the order* at the counter, and the
+customer sits at a table to wait (or stands, if the tables are full). Each dish on their ticket is *started*, its food
+taken from the store (the cards it needs light up), then made at its stations in order (`RECIPES`): chopped with a few
+taps on the board; boiled, fried or baked until its timer fills, and taken off in time (a little long is
+*overcooked*; much too long is **burnt**, and smokes); or blended. Then it is **plated** to eat here or **boxed** to
+take away, as they asked, and waits on the pass. *Serve* them when all their dishes are ready: they walk up, take it,
+and eat at the table or leave with the box. They pay the plates' price, half for a burnt dish, and tip good food served
+quickly. Two oven dishes joined the menu for it: **baked stuffed capsicum** and **baked maize bread**. The plates count
+toward the restaurant's **30 a day**.
+
+Customers come while there is something to sell; when the store or the day's limit runs out the shop closes, and a card
+shows the customers served, the money for the food, the tips, the happy ones and the ones who walked out. Every
+customer's money goes into the wallet by name (*Market stall: Amani's order and a tip*).
+
+![The market stall's shop floor: a customer's order, two bags, the store's food cards](docs/shop-market.webp)
+
+![The restaurant's kitchen: the jiko's githeri is ready to take out, a customer waits at a table](docs/shop-restaurant.webp)
+
 ## Nutrition
 
 Every crop the farm grows carries small **nutrition markers**: its food group (maize an *energy food*, beans a
@@ -2140,6 +2180,7 @@ Some tests use no browser: they call the game's rules directly.
 | `achievements.spec.ts`, `progress.spec.ts`, `success.spec.ts` | badges, the streak and certificates; My Progress and partners; the success dialogs, training and the loan quote |
 | `frame.spec.ts` | every screen keeps its boxes and buttons inside the rounded frame |
 | `onsite.spec.ts` | jobs done by hand: nothing paid until the last spot, refusals and dropping, every spot clear of the places, a right fix given by hand, the chores chip at the pen, a service round the tractor |
+| `shop.spec.ts` | the shop floor: orders from the store and the day's limits, two bags kept apart, packing scored, paying and tipping, walking out, closing; the kitchen's recipe, burning and packing; served in the browser from the farm |
 | `nutrition.spec.ts` | each crop's nutrition; the daily sales cycle (25 kg a day, a mix, its profit, turned off); the restaurant's plates; harvests that say how many they feed; the restaurant, nutrition table and markers in the browser |
 | `unlock.spec.ts` | options that open as you grow: two on day 1, three on day 2, five on day 3 or Level 3, across every buying decision, and the power yard's picker |
 

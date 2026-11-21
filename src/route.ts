@@ -101,6 +101,8 @@ function modalPath(s: GameState, m: Modal): string {
       return `/power/${POWER_TABS[m.tab ?? 'build']}`;
     case 'market':
       return m.tab && m.tab !== 'sell' ? `/market/${MARKET_TABS[m.tab]}` : '/market';
+    case 'serve':
+      return `/serve/${m.shop}`;
     case 'greenhouse':
       return `/greenhouse/bed-${m.bed + 1}`;
     case 'storehouse':
@@ -194,6 +196,8 @@ function modalFor(s: GameState, path: string[]): Modal | null | 'bad' {
     const t = tab(POWER_TABS);
     return t === 'bad' || parts.length > 2 ? 'bad' : { kind: 'power', tab: t ?? 'build' };
   }
+  // the shop floor: the stall or the restaurant played
+  if (first === 'serve') return parts.length === 2 && (second === 'market' || second === 'restaurant') ? { kind: 'serve', shop: second } : 'bad';
   if (first === 'market') {
     const t = tab(MARKET_TABS);
     return t === 'bad' || parts.length > 2 ? 'bad' : { kind: 'market', tab: t ?? 'sell' };

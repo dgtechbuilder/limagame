@@ -145,6 +145,12 @@ test('the restaurant beside the stall, the nutrition table and the markers on th
   // the walk across the farm takes about 9 seconds here and two or three times that on a slow CI runner
   await expect(page.locator('.hud-place .is-enter')).toContainText('Open the restaurant', { timeout: 60_000 });
   await optIn(page);
+  // the restaurant opens on its shop floor (src/shop: tests/shop.spec.ts); its menu and prices are the market page's
+  // Restaurant section
+  const floor = page.getByRole('dialog', { name: 'Restaurant: serving customers' });
+  await expect(floor).toBeVisible();
+  await expect(page).toHaveURL(/#\/serve\/restaurant$/);
+  await floor.getByRole('button', { name: 'Menu and prices' }).click();
   const market = page.getByRole('dialog', { name: 'Market stall', exact: true });
   await expect(market).toBeVisible();
   await expect(page).toHaveURL(/#\/market\/restaurant$/);

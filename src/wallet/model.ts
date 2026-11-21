@@ -161,6 +161,10 @@ function describe(a: Action, prev: GameState, next: GameState): { kind: WalletKi
       return { kind: 'produce', label: 'Sold at the market stall' };
     case 'restaurantCook':
       return { kind: 'produce', label: 'Meals sold at the restaurant' };
+    case 'shopSell':
+      return { kind: 'produce', label: `Market stall: ${a.name}'s order${a.tip > 0 ? ' and a tip' : ''}` };
+    case 'shopMeal':
+      return { kind: 'produce', label: `Restaurant: ${a.name}'s meal${a.tip > 0 ? ' and a tip' : ''}` };
     case 'ghPlant':
     case 'ghWater':
     case 'ghHarvest':

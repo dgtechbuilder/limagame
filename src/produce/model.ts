@@ -175,6 +175,29 @@ export function sell(p0: Partial<ProduceState> | undefined, items: Partial<Recor
   return record(p, store, sold, kg, earned, day, date, false);
 }
 
+/** A customer served at the stall (src/shop): what was packed leaves the store and counts toward the day's kg; the
+    customer pays for what they asked for and got (a kg packed over the order is given away). */
+export function sellTo(p0: Partial<ProduceState> | undefined, given: Partial<Record<ProduceId, number>>, asked: Partial<Record<ProduceId, number>>, day: number, date: string, cold: boolean): { p: ProduceState; kg: number; earned: number; cost: number } | { error: string } {
+  const p = produceOf(p0);
+  let left = leftToday(p, day);
+  if (left <= 0) return { error: `The stall has sold its ${MARKET.dailyKg} kg today: come back tomorrow` };
+  const store = { ...p.store };
+  const sold: Partial<Record<ProduceId, number>> = {};
+  let kg = 0;
+  let earned = 0;
+  for (const [k, want] of Object.entries(given) as [ProduceId, number][]) {
+    const n = round1(Math.max(0, Math.min(want ?? 0, store[k] ?? 0, left)));
+    if (n <= 0) continue;
+    store[k] = round1((store[k] ?? 0) - n);
+    sold[k] = n;
+    kg += n;
+    left -= n;
+    earned += Math.min(n, asked[k] ?? 0) * priceOf(k, cold);
+  }
+  if (kg <= 0) return { error: 'The bags are empty: pack the order first' };
+  return record(p, store, sold, kg, earned, day, date, false);
+}
+
 function record(p: ProduceState, store: ProduceState['store'], sold: Partial<Record<ProduceId, number>>, kg0: number, earned0: number, day: number, date: string, auto: boolean): { p: ProduceState; kg: number; earned: number; cost: number; items: Partial<Record<ProduceId, number>> } {
   const kg = round1(kg0);
   const earned = round2(earned0);

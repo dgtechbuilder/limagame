@@ -9,6 +9,7 @@ import { CompareTable, FoodCard, NutriChips, NutriTotal, PlateBars } from '../nu
 import { GROUPS, nutritionOf } from '../nutrition/data';
 import { CROP_IDS, MARKET, PRODUCE, PRODUCE_IDS, growCost, leftToday, priceOf, produceName, produceOf, profitOf, storeKg, type ProduceId } from './model';
 import { DISHES, RESTAURANT, dishOf, foodFor, plateNutrition, platesInStore, platesLeft, quote, type Dish, type DishId } from './restaurant';
+import { recipeIcons } from '../shop/model';
 
 /* The market stall: up to 25 kg of the store sold a day (what the farmer does not choose is sold for them when the
    day ends), the mini restaurant beside it, what each crop is worth to eat, and every sale. Opened by walking to the
@@ -86,34 +87,44 @@ function SellTab({ s, dispatch, left, cold }: { s: GameState; dispatch: Dispatch
           {p.auto ? 'On' : 'Off'}
         </button>
       </div>
+      <div className="fm-open">
+        <span>
+          <b>Serve customers at the stall</b>
+          <small>They walk in and queue; pack each order into one bag or two, and they pay (and tip a quick, right order).</small>
+        </span>
+        <button type="button" className="gold-btn" onClick={() => dispatch({ type: 'open', modal: { kind: 'serve', shop: 'market' } })} disabled={left <= 0 || !have.length}>
+          🧺 Open the stall
+        </button>
+      </div>
       {have.length ? (
         <>
           <p className="nu-store">
             <NutriTotal total={nutritionOf(p.store)} prefix="Your store feeds" />
           </p>
-          {have.map(id => (
-            <div key={id} className="pg-row">
-              <i aria-hidden="true">{PRODUCE[id].icon}</i>
-              <span className="pg-row-text">
-                <b>
-                  {PRODUCE[id].name} · {money(priceOf(id, cold))} a kg
-                </b>
+          <div className="fm-grid" role="list" aria-label="Food in the store">
+            {have.map(id => (
+              <div key={id} role="listitem" className={`fm-card fm-sell${(want[id] ?? 0) > 0 ? ' is-on' : ''}`} aria-label={PRODUCE[id].name}>
+                <i aria-hidden="true">{PRODUCE[id].icon}</i>
+                <b>{PRODUCE[id].name.replace(/ \(.*\)/, '')}</b>
                 <small>
-                  {p.store[id]} kg in the store · {PRODUCE[id].made ? 'made' : 'grown'} for {money(PRODUCE[id].cost)} a kg
+                  {money(priceOf(id, cold))} a kg · {p.store[id]} kg
                 </small>
-                <NutriChips food={id} max={2} />
-              </span>
-              <span className="pg-stepper">
-                <button type="button" aria-label={`5 kg less ${PRODUCE[id].name}`} onClick={() => change(id, -5)}>
-                  −
-                </button>
-                <b aria-label={`${PRODUCE[id].name} to sell`}>{want[id] ?? 0} kg</b>
-                <button type="button" aria-label={`5 kg more ${PRODUCE[id].name}`} onClick={() => change(id, 5)}>
-                  +
-                </button>
-              </span>
-            </div>
-          ))}
+                <small className="fm-cost">
+                  {PRODUCE[id].made ? 'made' : 'grown'} for {money(PRODUCE[id].cost)} a kg
+                </small>
+                <NutriChips food={id} max={2} compact />
+                <span className="pg-stepper">
+                  <button type="button" aria-label={`5 kg less ${PRODUCE[id].name}`} onClick={() => change(id, -5)}>
+                    −
+                  </button>
+                  <b aria-label={`${PRODUCE[id].name} to sell`}>{want[id] ?? 0} kg</b>
+                  <button type="button" aria-label={`5 kg more ${PRODUCE[id].name}`} onClick={() => change(id, 5)}>
+                    +
+                  </button>
+                </span>
+              </div>
+            ))}
+          </div>
         </>
       ) : (
         <p className="cl-empty">The storehouse is empty. Harvest the six farms, or pick the greenhouse: some of every harvest is kept there to sell, {MARKET.dailyKg} kg a day.</p>
@@ -151,6 +162,15 @@ function RestaurantTab({ s, dispatch, day, cold }: { s: GameState; dispatch: Dis
         <Tile label="Restaurant sales" value={money(t.earned)} sub={`food and cooking ${money(t.cost)}`} />
         <Tile label="Restaurant profit" value={money(t.earned - t.cost)} tone={t.earned - t.cost >= 0 ? 'good' : 'bad'} />
       </div>
+      <div className="fm-open">
+        <span>
+          <b>Run the kitchen</b>
+          <small>Take each customer’s order, cook it on the jiko, the stove or in the oven, plate it or box it, and serve it.</small>
+        </span>
+        <button type="button" className="gold-btn" onClick={() => dispatch({ type: 'open', modal: { kind: 'serve', shop: 'restaurant' } })} disabled={left <= 0}>
+          🍲 Open the kitchen
+        </button>
+      </div>
       <div className="pg-grid nu-dishes">
         {DISHES.map(d => (
           <DishCard key={d.id} d={d} s={s} dispatch={dispatch} left={left} cold={cold} />
@@ -175,15 +195,16 @@ function DishCard({ d, s, dispatch, left, cold }: { d: Dish; s: GameState; dispa
         <small>{money(d.price)} a plate</small>
       </div>
       <p>{d.what}</p>
-      <p className="nu-food">
-        A plate:{' '}
-        {(Object.entries(food) as [ProduceId, number][]).map(([id, kg], i) => (
-          <span key={id} className={(store[id] ?? 0) < kg ? 'is-short' : undefined}>
-            {i ? ' · ' : ''}
-            {Math.round(kg * 1000)} g {PRODUCE[id].name.toLowerCase().replace(/ \(.*\)/, '')}
+      <div className="fm-row" role="list" aria-label={`A plate of ${d.name}`}>
+        {(Object.entries(food) as [ProduceId, number][]).map(([id, kg]) => (
+          <span key={id} role="listitem" className={`fm-card fm-mini${(store[id] ?? 0) < kg ? ' is-short' : ''}`} title={`${PRODUCE[id].name}: ${(store[id] ?? 0)} kg in the store`}>
+            <i aria-hidden="true">{PRODUCE[id].icon}</i>
+            <b>{Math.round(kg * 1000)} g</b>
+            <small>{PRODUCE[id].name.toLowerCase().replace(/ \(.*\)/, '')}</small>
           </span>
         ))}
-      </p>
+      </div>
+      <p className="fm-recipe">Cooked: {recipeIcons(d.id)}</p>
       <PlateBars total={plateNutrition(d)} />
       <p className="nu-money">
         {plates || RESTAURANT.step} plates: <b>{money(q.earned)}</b> · profit <b className={q.profit >= 0 ? 'pg-in' : 'pg-out'}>{money(q.profit)}</b>
