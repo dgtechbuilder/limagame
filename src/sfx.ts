@@ -17,6 +17,8 @@ export const sfxLog: SfxKind[] = [];
 export const setSoundOn = (v: boolean) => {
   on = v;
 };
+/** Settings → Sound effects is on (the tractor's own sounds follow it too) */
+export const soundOn = () => on;
 
 function audio(): AudioContext | null {
   if (typeof window === 'undefined') return null;

@@ -142,7 +142,8 @@ test('the restaurant beside the stall, the nutrition table and the markers on th
     const at = (window as unknown as Win).__lima.places.restaurant;
     (window as unknown as Win).__limaWorld!.walkTo(at.x, at.z);
   });
-  await expect(page.locator('.hud-place .is-enter')).toContainText('Open the restaurant');
+  // the walk across the farm takes about 9 seconds here and two or three times that on a slow CI runner
+  await expect(page.locator('.hud-place .is-enter')).toContainText('Open the restaurant', { timeout: 60_000 });
   await optIn(page);
   const market = page.getByRole('dialog', { name: 'Market stall', exact: true });
   await expect(market).toBeVisible();
