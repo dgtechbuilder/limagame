@@ -11,15 +11,15 @@ const jump = (page: Page, s: Record<string, unknown>) => page.evaluate(x => (win
 const climate = async (page: Page) => (await state(page)).climate;
 const dialog = (page: Page) => page.getByRole('dialog', { name: 'Climate' });
 
-test('the CLIMATE button sits in the right-hand column below MISSION and opens the Climate page; Back, Menu and Farm work', async ({ page }) => {
+test('the CLIMATE button sits in the column under MISSION and opens the Climate page; Back, Menu and Farm work', async ({ page }) => {
   await boot(page);
   await scenario(page, 'tractor');
   const btn = page.getByRole('button', { name: /^Climate:/ });
   const mission = page.getByRole('button', { name: /^Mission:/ });
   await expect(btn).toBeVisible();
-  // in the right-hand column of the HUD (#51): the same column as Mission, below it
+  // in the right-hand column with Mission (#51): the same column, below it
   const [b, m] = [await btn.boundingBox(), await mission.boundingBox()];
-  expect(Math.abs(b!.x + b!.width / 2 - (m!.x + m!.width / 2))).toBeLessThan(4);
+  expect(Math.abs(b!.x - m!.x)).toBeLessThan(4);
   expect(b!.y).toBeGreaterThan(m!.y + m!.height);
 
   await btn.click();

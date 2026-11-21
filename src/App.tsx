@@ -24,6 +24,7 @@ const FinancePage = lazyPage(() => import('./finance/Finance').then(m => m.Finan
 const PowerPage = lazyPage(() => import('./power/Power').then(m => m.PowerPage), 1);
 const TractorGamePage = lazyPage(() => import('./minifarm/MiniFarm').then(m => m.TractorGamePage), 1);
 const MarketPage = lazyPage(() => import('./produce/Market').then(m => m.MarketPage), 1);
+const EventsPage = lazyPage(() => import('./events/Events').then(m => m.EventsPage), 1);
 const GreenhousePage = lazyPage(() => import('./greenhouse/Greenhouse').then(m => m.GreenhousePage), 1);
 const StorehousePage = lazyPage(() => import('./storehouse/Storehouse').then(m => m.StorehousePage), 1);
 const KakumaPage = lazyPage(() => import('./events/Kakuma').then(m => m.KakumaPage), 1);
@@ -365,6 +366,11 @@ export default function App() {
         {m?.kind === 'storehouse' && (
           <Suspense fallback={<ActivityLoading label="Opening the storehouse…" />}>
             <StorehousePage s={s} dispatch={dispatch} tab={m.tab ?? 'store'} />
+          </Suspense>
+        )}
+        {m?.kind === 'events' && (
+          <Suspense fallback={<ActivityLoading label="Opening special events…" />}>
+            <EventsPage s={s} dispatch={dispatch} tab={m.tab} region={m.region} />
           </Suspense>
         )}
         {m?.kind === 'kakuma' && (
