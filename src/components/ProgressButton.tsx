@@ -5,6 +5,7 @@ import { currentLevel, levelProgress } from '../progress/model';
 import { slotBrand } from '../partners/data';
 import { useSlotView } from '../partners/track';
 import type { Action, GameState } from '../state';
+import { securityOf } from '../security/model';
 
 /** The progress ring: the certification level in the middle, filling toward the next level. */
 function LevelRing({ n, value }: { n: number; value: number }) {
@@ -36,9 +37,12 @@ export function ProgressButton({ s, dispatch, classic }: { s: GameState; dispatc
   const toNext = next ? levelProgress(next, { ach: a, v, courses: v.courses }) : 1;
   const sponsor = slotBrand('progress-button');
   useSlotView('progress-button', !!sponsor);
-  const label = `My Progress: ${level ? `level ${level.n}, ${level.name}` : 'not certified yet'}${next ? `, ${Math.round(toNext * 100)}% to level ${next.n}` : ''}, ${streak}-day streak${
+  const label0 = `My Progress: ${level ? `level ${level.n}, ${level.name}` : 'not certified yet'}${next ? `, ${Math.round(toNext * 100)}% to level ${next.n}` : ''}, ${streak}-day streak${
     waiting ? `, ${waiting} reward${waiting === 1 ? '' : 's'} to claim` : ''
   }${sponsor ? `. Certification with ${sponsor.name}` : ''}`;
+  // Security lives inside My Progress: a theft last night shows here, on the farm, so it is not missed
+  const theft = securityOf(s.security).reports[0]?.events.some(e => e.kind === 'theft' || e.kind === 'predator') ?? false;
+  const label = `${label0}${theft ? '. A theft last night: see Security' : ''}`;
   const open = () => dispatch({ type: 'open', modal: { kind: 'achievements' } });
   if (classic)
     return (
@@ -48,6 +52,7 @@ export function ProgressButton({ s, dispatch, classic }: { s: GameState; dispatc
           <i style={{ width: `${Math.round(toNext * 100)}%` }} />
         </i>
         {waiting > 0 && <i className="awards-dot" aria-hidden="true" />}
+        {theft && <i className="theft-dot" aria-hidden="true">!</i>}
       </button>
     );
   return (
@@ -58,6 +63,7 @@ export function ProgressButton({ s, dispatch, classic }: { s: GameState; dispatc
         🔥{streak}
       </i>
       {waiting > 0 && <i className="awards-dot" aria-hidden="true" />}
+      {theft && <i className="theft-dot" aria-hidden="true">!</i>}
     </button>
   );
 }
