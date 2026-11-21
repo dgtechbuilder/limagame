@@ -20,6 +20,9 @@ import {
   CLUSTER,
   CROPS,
   DAY_HOURS,
+  FARMER_PAY_X,
+  PAY_EFFICIENCY,
+  TOOLS,
   HUBS,
   HUB_SHARE,
   MAP_H,
@@ -82,7 +85,7 @@ import {
 import { newDrive, type Drive, type DriveResult } from './drive';
 import { DriveGame } from './DriveGame';
 import { Face, Says } from './Cast';
-import { kshText, withMoney } from '../money';
+import { kshReal, kshText, withMoney } from '../money';
 import { sfx } from '../sfx';
 
 /* The tractor business, to Hello Tractor's brief: Today (scout farms with Campbell, book each job, plan the route,
@@ -90,7 +93,7 @@ import { sfx } from '../sfx';
    Calendar (Narok's year, the Marketplace), Partners and Fleet. The game state holds the business (state.biz);
    today's bookings and route are this screen's own until the day is run. */
 
-/** shillings on screen: 10 times the stored value (src/money.ts) */
+/** stored money on screen, in the player's currency (src/money.ts) */
 const ksh = (n: number) => kshText(Math.round(n));
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 type Tab = 'today' | 'hub' | 'calendar' | 'trend' | 'partners' | 'fleet';
@@ -226,6 +229,9 @@ function Welcome({ name, onGo }: { name: string; onGo: () => void }) {
           </li>
           <li>
             <b>Book.</b> Each job goes on the hub tractor, or to a partner. The hub keeps {Math.round(HUB_SHARE * 100)}% of the hire.
+          </li>
+          <li>
+            <b>Get paid.</b> Farmers pay {FARMER_PAY_X}× the market hire (ploughing: {ksh(hireOf('plough'))} an acre, not {kshReal(TOOLS.plough.marketKsh)}), but only for a route at least {Math.round(PAY_EFFICIENCY * 100)}% efficient. Under {Math.round(PAY_EFFICIENCY * 100)}, they pay back the hire and the day is a loss.
           </li>
           <li>
             <b>Drive.</b> Ten seconds at the wheel per stop. Beat the hub driver’s {Math.round(BASELINE * 100)}% for a cleaner job.
@@ -543,6 +549,11 @@ function Today({ b, name, dispatch, onDone, signal }: { b: Biz; name: string; di
             {plan.hubFee > 0 && (
               <span>
                 Hub <b className="is-cost">−{ksh(plan.hubFee)}</b>
+              </span>
+            )}
+            {plan.refund > 0 && (
+              <span title={`Under ${Math.round(PAY_EFFICIENCY * 100)}% route efficiency the farmers pay the hire back`}>
+                Route {Math.round(plan.efficiency * 100)}%: paid back <b className="is-cost">−{ksh(plan.refund)}</b>
               </span>
             )}
           </p>
@@ -952,6 +963,11 @@ function Results({ r, b, onNext }: { r: DayResult; b: Biz; onNext: () => void })
             {r.urgentWaiting ? `, ${r.urgentWaiting} urgent left waiting` : ''}.
           </p>
         )}
+        {(r.refund ?? 0) > 0 && (
+          <p className="biz-result-line is-warn">
+            Efficiency {score}/100 is under {Math.round(PAY_EFFICIENCY * 100)}: the farmers waited while the tractor took the long way round, so they paid back {ksh(r.refund ?? 0)} of the hire. The day is a loss. Find the shortest route to keep the full hire.
+          </p>
+        )}
         <dl className="biz-sheet">
           <div>
             <dt>Hire from farmers</dt>
@@ -986,8 +1002,14 @@ function Results({ r, b, onNext }: { r: DayResult; b: Biz; onNext: () => void })
               <dd className="is-cost">−{ksh(r.hubFee)}</dd>
             </div>
           )}
+          {(r.refund ?? 0) > 0 && (
+            <div>
+              <dt>Paid back: route under {Math.round(PAY_EFFICIENCY * 100)}% efficient</dt>
+              <dd className="is-cost">−{ksh(r.refund ?? 0)}</dd>
+            </div>
+          )}
           <div className="is-total">
-            <dt>Profit</dt>
+            <dt>{r.profit < 0 ? 'Loss' : 'Profit'}</dt>
             <dd className={r.profit < 0 ? 'is-cost' : ''}>{ksh(r.profit)}</dd>
           </div>
           {r.instalment > 0 && (

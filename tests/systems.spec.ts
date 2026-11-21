@@ -10,7 +10,7 @@ import { POWER, POWER_STEPS } from '../src/power/config';
 import { powerOf, powerOn } from '../src/power/model';
 import { hubOf, HUB } from '../src/tractor/hub';
 import { MARKET, produceOf } from '../src/produce/model';
-import { GARDEN, cropOf, gardenOf } from '../src/garden/model';
+import { GREENHOUSE, ghCropOf, greenhouseOf } from '../src/greenhouse/model';
 import { walletOf } from '../src/wallet/model';
 import { tankOf } from '../src/water/model';
 import { activeMeasures } from '../src/security/model';
@@ -18,7 +18,7 @@ import { activeMeasures } from '../src/security/model';
 /* The newer systems, played through the reducer: the wallet (every payment, climate payments with their credits),
    morning news that waits for an open page, the power system built over 7 days and run each day, the tractor
    screen's sections, the cow shed and the coop from day 1, the shed's options, the market stall's 25 kg a day, and
-   Farms 7 and 8. Then the pages in the browser. */
+   the greenhouse and the storehouse where Farms 7 and 8 were. Then the pages in the browser. */
 
 let day = '2026-11-15';
 payClock.today = () => day;
@@ -162,20 +162,20 @@ test('the market stall sells 25 kg of the store a day; a harvest keeps some back
   expect(produceOf(s.produce).store.maize).toBe(75);
 });
 
-test('Farms 7 and 8 open after day 3: plant, water, harvest into the store', () => {
+test('the greenhouse opens after day 3: plant a bed, water it, pick it into the storehouse', () => {
   let s = onDay(3);
-  s = act(s, { type: 'gardenPlant', farm: 0, crop: 'spinach', score: 1 });
-  expect(gardenOf(s.garden).farms[0].crop).toBeNull();
-  s = act({ ...s, life: { ...lifeOf(s.life), day: GARDEN.openDay } }, { type: 'gardenPlant', farm: 0, crop: 'spinach', score: 1 });
-  const f = gardenOf(s.garden).farms[0];
-  expect(f.crop).toBe('spinach');
-  expect(f.ready).toBe(GARDEN.openDay + cropOf('spinach').grow);
-  s = act(s, { type: 'gardenHarvest', farm: 0, score: 1 });
+  s = act(s, { type: 'ghPlant', bed: 0, crop: 'tomatoes', score: 1 });
+  expect(greenhouseOf(s.greenhouse).beds[0].crop).toBeNull();
+  s = act({ ...s, life: { ...lifeOf(s.life), day: GREENHOUSE.openDay } }, { type: 'ghPlant', bed: 0, crop: 'tomatoes', score: 1 });
+  const b = greenhouseOf(s.greenhouse).beds[0];
+  expect(b.crop).toBe('tomatoes');
+  expect(b.ready).toBe(GREENHOUSE.openDay + ghCropOf('tomatoes').grow);
+  s = act(s, { type: 'ghHarvest', bed: 0, score: 1 });
   expect(s.toast?.text).toMatch(/Not ready/);
-  // ready: the harvest goes into the store, and spinach grows again
-  s = act({ ...s, life: { ...lifeOf(s.life), day: f.ready } }, { type: 'gardenWater', farm: 0 }, { type: 'gardenHarvest', farm: 0, score: 1 });
-  expect(produceOf(s.produce).store.spinach).toBeGreaterThan(20);
-  expect(gardenOf(s.garden).farms[0]).toMatchObject({ crop: 'spinach', harvests: 1 });
+  // ready: the pick goes into the store, and the vines fruit again
+  s = act({ ...s, life: { ...lifeOf(s.life), day: b.ready } }, { type: 'ghWater', bed: 0 }, { type: 'ghHarvest', bed: 0, score: 1 });
+  expect(produceOf(s.produce).store.tomatoes).toBeGreaterThan(30);
+  expect(greenhouseOf(s.greenhouse).beds[0]).toMatchObject({ crop: 'tomatoes', harvests: 1, ready: b.ready + ghCropOf('tomatoes').regrow });
 });
 
 test('the new pages open by their addresses, and the TRACTOR button opens the tractor screen', async ({ page }) => {
@@ -187,16 +187,18 @@ test('the new pages open by their addresses, and the TRACTOR button opens the tr
     ['#/power/build', 'Power'],
     ['#/market', 'Market stall'],
     ['#/animals/cow-shed', 'Animals'],
-    ['#/new-farms/7', 'New farms'],
+    ['#/greenhouse/bed-1', 'Greenhouse'],
+    ['#/storehouse/produce', 'Storehouse'],
+    ['#/greenhouse', 'Greenhouse'],
   ] as const) {
     await page.evaluate(h => (window.location.hash = h), hash);
     await expect(page.getByRole('dialog', { name, exact: true })).toBeVisible();
   }
-  await page.getByRole('dialog', { name: 'New farms' }).getByRole('button', { name: /Plant Spinach on Farm 7/ }).click();
+  await page.getByRole('dialog', { name: 'Greenhouse' }).getByRole('button', { name: /Plant Tomatoes in greenhouse bed 1/ }).click();
   await page.getByRole('button', { name: 'Start', exact: true }).click();
   for (let i = 1; i <= 8; i++) await page.getByRole('button', { name: `Planting hole ${i}`, exact: true }).click();
   await page.getByRole('button', { name: 'Done planting' }).click();
-  await expect.poll(async () => (await state(page)).garden.farms[0].crop).toBe('spinach');
+  await expect.poll(async () => (await state(page)).greenhouse.beds[0].crop).toBe('tomatoes');
   // the tractor screen, and a safety check played through
   await page.evaluate(() => (window.location.hash = '#/farm'));
   await page.getByRole('button', { name: /Walk to the tractor|Drive the tractor/ }).click();

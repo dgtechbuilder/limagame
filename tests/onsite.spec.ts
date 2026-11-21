@@ -81,8 +81,8 @@ test('every action with a job has spots on the farm, clear of the places that op
     ...POWER_STEPS.map(p => ({ type: 'powerInstall', id: p.id, score: 1 }) as Action),
     ...(['service', 'repair', 'refuel', 'safety'] as const).map(section => ({ type: 'tractorHub', section, score: 1 }) as Action),
     ...MEASURES.filter(m => m.kind !== 'nightly' && !['watch', 'mpesa'].includes(m.id)).map(m => ({ type: 'securityBuy', id: m.id }) as Action),
-    { type: 'gardenWater', farm: 0 },
-    { type: 'gardenWater', farm: 1 },
+    { type: 'ghWater', bed: -1 },
+    { type: 'ghWater', bed: 2 },
     ...SHOP_TABS.filter(t => t.id !== 'food').flatMap(t => t.items.map(i => ({ type: 'buy', id: i.id, price: i.price, name: i.name }) as Action)),
   ];
   const specs: JobSpec[] = [...actions.map(a => jobFor(s, a)!), ...ISSUES.map(i => treatJob(i.id, i.fixes.find(f => f.right)!.id))];

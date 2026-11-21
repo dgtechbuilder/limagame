@@ -71,8 +71,6 @@ export const TANK_SITE = at(18.0, 4.3, 19.8, 3.9);
 export const KENNEL = at(-4.8, -15.0, -4.8, -16.2);
 export const FENCE_SPOTS: Spot[] = [at(-3.2, 16.4, -3.2, 17.6), at(3.2, 16.4, 3.2, 17.6), at(21.0, -2.0, 22.4, -2.0)];
 
-/** Farms 7 and 8 (src/garden): three spots across each, from the left (world/field.ts GARDEN_PLOTS). */
-export const GARDEN_SPOTS = (i: number): Spot[] => {
-  const x = i === 0 ? -7.4 : 7.4;
-  return [-1.8, 0, 1.8].map(dx => at(x + dx, 12.2, x + dx, 13.2));
-};
+/** The greenhouse (src/greenhouse, world/field.ts GREENHOUSE_AT at -7.4, 13): its walls are solid, so the beds are
+    watered from the front, through the open side panels, one spot in front of each pair of beds. */
+export const GREENHOUSE_SPOTS: Spot[] = [at(-8.65, 10.4, -8.65, 12.1), at(-6.15, 10.4, -6.15, 12.1)];

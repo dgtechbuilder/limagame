@@ -6,7 +6,7 @@ import { careDoneToday, careDue, careOpen, countOf, lifeOf } from '../livestock/
 import { POWER_STEPS } from '../power/config';
 import { measureOf } from '../security/config';
 import { SHOP_TABS } from '../data';
-import { COOP, COW_MILK, COW_TROUGH, DELIVERY, FENCE_SPOTS, GARDEN_SPOTS, HEN_FEED, KENNEL, LAMP_SPOTS, PEN, POWER_SPOTS, STORE, TANK_SITE, TRACTOR_SPOTS, type Spot } from './spots';
+import { COOP, COW_MILK, COW_TROUGH, DELIVERY, FENCE_SPOTS, GREENHOUSE_SPOTS, HEN_FEED, KENNEL, LAMP_SPOTS, PEN, POWER_SPOTS, STORE, TANK_SITE, TRACTOR_SPOTS, type Spot } from './spots';
 
 /* Jobs done on the farm (the walk and the work by hand). A button on a page (buy the inverter, feed the cows, repair
    the tractor) no longer changes the farm by itself in the 3D farm: the page closes, the farmer walks to the spot (or
@@ -189,9 +189,16 @@ export function jobFor(s: GameState, a: Action): JobSpec | null {
       return hubJob(s, a.section);
     case 'securityBuy':
       return securityJob(a.id);
-    case 'gardenWater': {
-      const name = a.farm === 0 ? 'Farm 7' : 'Farm 8';
-      return { key: `garden:${a.farm}:water`, title: `Water ${name}`, where: name, icon: '💧', stops: GARDEN_SPOTS(a.farm).map((sp, k) => stop(sp, k ? 'Water the next bed' : 'Water the first bed', 'Watering at the roots', 'water', 'can', 1.5)), points: JOB_POINTS };
+    case 'ghWater': {
+      const all = a.bed < 0;
+      return {
+        key: `greenhouse:water:${all ? 'all' : a.bed}`,
+        title: all ? 'Water the greenhouse' : `Water greenhouse bed ${a.bed + 1}`,
+        where: 'the greenhouse',
+        icon: '💧',
+        stops: (all ? GREENHOUSE_SPOTS : [GREENHOUSE_SPOTS[a.bed % 2]]).map((sp, k) => stop(sp, k ? 'Water the next beds' : 'Water the beds', 'Watering at the roots', 'water', 'can', 1.5)),
+        points: JOB_POINTS,
+      };
     }
     case 'buy':
       return shopJob(a.id, a.name);

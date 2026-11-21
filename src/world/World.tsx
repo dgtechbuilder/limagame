@@ -1,4 +1,6 @@
 import { Suspense, useEffect, useMemo, useRef, useState, type Dispatch, type PointerEvent as RPointerEvent } from 'react';
+import { KakumaPopup } from '../events/Kakuma';
+import { kakumaOf, kakumaPhase } from '../events/model';
 import { BasicsChip } from '../learn/Basics';
 import { img } from '../assets';
 import { FarmerPortrait } from '../first/art';
@@ -38,7 +40,6 @@ import {
   type TaskIcon,
   type TreatJob,
   type SprayFor,
-  gardenSign,
 } from './field';
 import { BILLBOARDS, FarmWorld, PLACES, STAGE_H, STAGE_W, TRACTOR_BOARD, type Fx } from './engine';
 import { slotBrand, type SlotId } from '../partners/data';
@@ -64,10 +65,11 @@ import { tankOf } from '../water/model';
 import { LIFE, coopOption, shedOption } from '../livestock/config';
 import { lightsLit, nextStep, powerOf, powerOn } from '../power/model';
 import { cannotDrive, hubOf, speedOf, type HubSection } from '../tractor/hub';
-import { GARDEN, GARDEN_NAMES, cropOf as gardenCropOf, gardenOf, stageOf, statusOf } from '../garden/model';
+import { BED_NAMES, GREENHOUSE, bedStage, ghNeeds, greenhouseOf } from '../greenhouse/model';
+import { PRODUCE, PRODUCE_IDS, produceOf } from '../produce/model';
 import { ShedOptions } from '../plots/ShedOptions';
 import { FarmLoading } from './Loading';
-import { act, careJob, choresCount, choresLeft, jobsOf, type Job, type JobStop } from '../onsite/model';
+import { careJob, choresCount, choresLeft, jobsOf, type Job, type JobStop } from '../onsite/model';
 import { ActivityLoading } from '../components/ActivityLoading';
 import { lazyPage, prefetchActivities } from '../prefetch';
 
@@ -141,7 +143,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
   const [care, setCare] = useState<Care | null>(null);
   /** the tractor type and tool on the tractor now */
   const [rig, setRig] = useState<Rig | null>(null);
-  const [anchors, setAnchors] = useState<Anchors>({ farmer: { x: 437, y: 160 }, sign: null, riding: false, nearTractor: false, plot: null, tidy: null, place: null, garden: null, job: false });
+  const [anchors, setAnchors] = useState<Anchors>({ farmer: { x: 437, y: 160 }, sign: null, riding: false, nearTractor: false, plot: null, tidy: null, place: null, job: false });
   /** the tractor screen (src/tractor/TractorHub.tsx), open at a section */
   const [hub, setHub] = useState<HubSection | null>(null);
   /** clearing or planting one plot: started at, and how long it takes (ms) */
@@ -253,15 +255,12 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     const tick = window.setInterval(() => {
       const f = w.farmerScreen();
       const sg = eng.current && atSignRef.current >= 0 ? signOf(atSignRef.current) : null;
-      const gi = w.gardenHere();
-      const gs = gi >= 0 ? gardenSign(gi) : null;
-      const gp = gs ? w.project(gs.x, 2.5, gs.z) : null;
       const jb = jobRef.current;
       const jst = jb?.stops[jb.done];
       const jp = jst ? stopPoint(jst, w) : null;
       const me = w.farmerAt();
       const jobNear = !!jp && !w.isRiding() && Math.hypot(me.x - jp.x, me.z - jp.z) < JOB_REACH;
-      const next = { farmer: f, sign: sg ? w.project(sg.x, 2.5, sg.z) : null, riding: w.isRiding(), nearTractor: w.nearTractor(), plot: w.plotJobHere(), bill: billboardNear(w), tidy: w.tidyHere(), place: w.placeHere(), garden: gp && gi >= 0 ? { i: gi, x: gp.x, y: gp.y } : null, job: jobNear };
+      const next = { farmer: f, sign: sg ? w.project(sg.x, 2.5, sg.z) : null, riding: w.isRiding(), nearTractor: w.nearTractor(), plot: w.plotJobHere(), bill: billboardNear(w), tidy: w.tidyHere(), place: w.placeHere(), job: jobNear };
       // the HUD follows the farmer: re-render only when something on it would move or change
       setAnchors(a => (sameAnchors(a, next) ? a : next));
     }, 120);
@@ -524,14 +523,33 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
   useEffect(() => {
     eng.current?.setNight(nightMode);
   }, [nightMode]);
-  // Farms 7 and 8 (src/garden)
+  // the greenhouse's beds and the storehouse's shelves (src/greenhouse, src/storehouse)
   const farmDay = lifeOf(s.life).day;
-  const garden = gardenOf(s.garden);
-  const gardenKey = garden.farms.map(f => `${f.crop}:${stageOf(f, farmDay)}`).join('|');
+  const gh = greenhouseOf(s.greenhouse);
+  const ghOpen = farmDay >= GREENHOUSE.openDay;
+  const needs = ghNeeds(gh, farmDay);
+  const ghKey = gh.beds.map((b, i) => `${b.crop}:${bedStage(b, farmDay)}:${needs.statuses[i]}`).join('|');
   useEffect(() => {
-    eng.current?.setGarden(garden.farms.map(f => ({ crop: f.crop, stage: stageOf(f, farmDay), open: farmDay >= GARDEN.openDay })));
+    eng.current?.setGreenhouse(
+      gh.beds.map((b, i) => {
+        const st = needs.statuses[i];
+        return { crop: b.crop, stage: bedStage(b, farmDay), need: st === 'empty' ? 'plant' : st === 'thirsty' ? 'water' : st === 'ready' ? 'pick' : null };
+      }),
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gardenKey, farmDay]);
+  }, [ghKey]);
+  const store = produceOf(s.produce).store;
+  const COLORS: Partial<Record<string, string>> = { tomatoes: '#e2382a', capsicum: '#3f9a3a', cucumber: '#2f7a32', strawberries: '#e0364a', chillies: '#d42a1e', sukuma: '#2f7d3a', sauce: '#b8281e', jam: '#c21f45', chillisauce: '#e0581e', pickles: '#8fae3a', flour: '#f3ead2' };
+  const shelf = {
+    fresh: PRODUCE_IDS.filter(id => PRODUCE[id].fresh && (store[id] ?? 0) > 0).map(id => ({ color: COLORS[id] ?? '#6aa336', kg: store[id]! })),
+    keeps: PRODUCE_IDS.filter(id => !PRODUCE[id].fresh && !PRODUCE[id].made).reduce((n, id) => n + (store[id] ?? 0), 0),
+    made: PRODUCE_IDS.filter(id => PRODUCE[id].made && (store[id] ?? 0) > 0).map(id => ({ color: COLORS[id] ?? '#c4302b', kg: store[id]! })),
+  };
+  const shelfKey = JSON.stringify(shelf);
+  useEffect(() => {
+    eng.current?.setStorehouse(shelf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shelfKey]);
   // the tractor drives as fast as its driver and its condition allow
   const tractor = hubOf(s.hub);
   useEffect(() => {
@@ -677,6 +695,16 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     if (p === 'hire') return setHub(hireInfo(st).ready ? 'hire' : 'yard');
     if (p === 'market') return onMarket();
     if (p === 'restaurant') return dispatch({ type: 'open', modal: { kind: 'market', tab: 'restaurant' } });
+    // the greenhouse opens on the bed that needs the farmer most (pick, then water, then plant); the storehouse on its
+    // Harvest when a bed is ripe
+    if (p === 'greenhouse' || p === 'storehouse') {
+      const day = lifeOf(st.life).day;
+      if (day < GREENHOUSE.openDay) return say(`The ${p} opens on day ${GREENHOUSE.openDay}: sleep at the farmhouse first`);
+      const n = ghNeeds(st.greenhouse, day).statuses;
+      const first = (['ready', 'thirsty', 'empty'] as const).map(k => n.indexOf(k)).find(i => i >= 0) ?? 0;
+      if (p === 'greenhouse') return dispatch({ type: 'open', modal: { kind: 'greenhouse', bed: first } });
+      return dispatch({ type: 'open', modal: { kind: 'storehouse', tab: n.includes('ready') ? 'harvest' : 'store' } });
+    }
     if (p === 'house') {
       const tk = nextTask(st.field, tr, dayNumber(), st.coins);
       if (tk.icon !== 'sleep') return say(tr?.phase === 'growing' ? `Not yet: ${tk.title.toLowerCase()} first` : 'Home sweet home');
@@ -972,7 +1000,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     [t, showCheck, signRec, signFarm, day],
   );
 
-  // today's build: the next power part, the coop (day 1), the cow shed (day 3), the new farms (day 4)
+  // today's build: the next power part, the coop (day 1), the cow shed (day 3), the greenhouse (day 4)
   const build = useMemo(() => {
     if (s.fs.phase !== 'done') return null;
     const step = nextStep(s);
@@ -980,37 +1008,26 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     const l = lifeOf(s.life);
     if (coopOpen(s) && !l.coop) return { icon: '🐔', title: 'Upgrade the chicken coop', go: { kind: 'animals', tab: 'coop' } as const };
     if (shedOpen(s) && !l.shed) return { icon: '🐄', title: 'Upgrade the cow shed', go: { kind: 'animals', tab: 'shed' } as const };
-    const empty = farmDay >= GARDEN.openDay ? garden.farms.findIndex(f => !f.crop) : -1;
-    if (empty >= 0) return { icon: '🌱', title: `Plant ${GARDEN_NAMES[empty]}`, go: { kind: 'garden', farm: empty } as const };
+    const empty = ghOpen ? gh.beds.findIndex(b => !b.crop) : -1;
+    if (empty >= 0) return { icon: '🍅', title: `Plant greenhouse ${BED_NAMES[empty].toLowerCase()}`, go: { kind: 'greenhouse', bed: empty } as const };
     return null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s.power, s.life, s.garden, s.fs.phase, farmDay]);
+  }, [s.power, s.life, s.greenhouse, s.fs.phase, farmDay]);
   const shedKind: PlotKind | null = anchors.place === 'shed-seeds' ? 'seed' : anchors.place === 'shed-fertilizer' ? 'fert' : anchors.place === 'shed-sprayer' ? 'sprayer' : null;
   const powerHasLights = !!pw.parts.lights;
   const placeBtn = anchors.place ? placeButton(anchors.place, s.field.carry) : null;
-  // the button at a new farm's sign: what that farm needs now
-  const gardenBtn = (() => {
-    const gi = anchors.garden?.i;
-    if (gi === undefined || gi < 0) return null;
-    const f = garden.farms[gi];
-    const name = GARDEN_NAMES[gi];
-    const open = () => dispatch({ type: 'open', modal: { kind: 'garden', farm: gi } });
-    switch (statusOf(f, farmDay)) {
-      case 'locked':
-        return { label: `${name} opens on day ${GARDEN.openDay}`, disabled: true, run: open };
-      case 'empty':
-        return { label: `Plant ${name}`, disabled: false, run: open };
-      case 'thirsty':
-        return { label: `Water ${name}`, disabled: false, run: () => act(sRef.current, dispatch, { type: 'gardenWater', farm: gi }) };
-      case 'ready':
-        return { label: `Harvest ${gardenCropOf(f.crop!).name.toLowerCase()}`, disabled: false, run: open };
-      default:
-        return { label: `${name}: ${gardenCropOf(f.crop!).name.toLowerCase()} · ready day ${f.ready}`, disabled: false, run: open };
-    }
-  })();
+  // at the greenhouse's door: what its beds need now
+  const placeSub =
+    anchors.place === 'greenhouse'
+      ? !ghOpen
+        ? `Opens on day ${GREENHOUSE.openDay}`
+        : [needs.ready && `${needs.ready} to pick`, needs.thirsty && `${needs.thirsty} to water`, needs.empty && `${needs.empty} to plant`].filter(Boolean).join(' · ') || 'Every bed growing'
+      : anchors.place === 'storehouse' && !ghOpen
+        ? `Opens on day ${GREENHOUSE.openDay}`
+        : null;
 
   return (
-    <div className={`abs world${nightMode ? ' is-night' : ''}`} style={{ inset: 0 }}>
+    <div className={`abs world${nightMode ? ' is-night' : ''}${kakumaPhase() !== 'over' && !kakumaOf(s.kakuma).tucked ? ' has-event' : ''}`} style={{ inset: 0 }}>
       <canvas ref={canvas} className="world-canvas" width={STAGE_W} height={STAGE_H} />
       <div ref={pad} className="world-pad" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} />
       {!loadGone && <FarmLoading done={loaded} />}
@@ -1110,6 +1127,8 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         <PartnersIcon />
         <span>PARTNERS</span>
       </button>
+      {/* the Kakuma special event: a pop-up on the bottom left, or tucked into a round button under Partners */}
+      <KakumaPopup s={s} dispatch={dispatch} />
       <button type="button" className="hud-round hud-shop" onClick={() => dispatch({ type: 'open', modal: { kind: 'shop', tab: 'food' } })} aria-label="Shop">
         <img src={img.cart} alt="" width={30} height={30} />
         <span>SHOP</span>
@@ -1296,7 +1315,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
             {placeBtn.icon ? <TaskGlyph icon={placeBtn.icon} /> : <span className="hud-place-emoji" aria-hidden>{placeBtn.emoji}</span>}
             <span>
               <b>{placeBtn.label}</b>
-              <i>{placeBtn.sub}</i>
+              <i>{placeSub ?? placeBtn.sub}</i>
             </span>
           </button>
           {shedKind && (
@@ -1313,11 +1332,6 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
             </button>
           )}
         </div>
-      )}
-      {gardenBtn && anchors.garden && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
-        <button type="button" data-pad-primary className="hud-check" style={{ left: anchors.garden.x, top: anchors.garden.y }} disabled={gardenBtn.disabled} onClick={gardenBtn.run}>
-          {gardenBtn.label}
-        </button>
       )}
 
       {anchors.bill && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
@@ -1417,8 +1431,6 @@ type Anchors = {
   tidy?: TidyItem | null;
   /** the place the farmer stands in (a shed spot shows its options button) */
   place?: Place | null;
-  /** a new farm's sign the farmer stands at, where it shows on the stage */
-  garden?: { i: number; x: number; y: number } | null;
   /** the farmer stands at the spot of the job in hand (src/onsite): its button shows */
   job?: boolean;
 };
@@ -1428,7 +1440,7 @@ function sameAnchors(a: Anchors, b: Anchors) {
   if (a.riding !== b.riding || a.nearTractor !== b.nearTractor || !near(a.farmer, b.farmer) || !samePlot(a.plot, b.plot)) return false;
   if (a.bill?.slot !== b.bill?.slot || (a.bill && b.bill && !near(a.bill, b.bill))) return false;
   if (a.tidy?.id !== b.tidy?.id || !!a.job !== !!b.job) return false;
-  if (a.place !== b.place || a.garden?.i !== b.garden?.i || (a.garden && b.garden && !near(a.garden, b.garden))) return false;
+  if (a.place !== b.place) return false;
   if (!a.sign || !b.sign) return a.sign === b.sign;
   return a.sign.visible === b.sign.visible && near(a.sign, b.sign);
 }
@@ -1525,6 +1537,10 @@ function placeButton(p: Place, carry: GameState['field']['carry']): { label: str
       return { label: 'See the hens', sub: 'Chicken coop', aria: 'See the hens', emoji: '🐔' };
     case 'power':
       return { label: 'Open power', sub: 'Power yard', aria: 'Open the power yard', emoji: '⚡' };
+    case 'greenhouse':
+      return { label: 'Open the greenhouse', sub: 'Four beds under glass', aria: 'Open the greenhouse', emoji: '🍅' };
+    case 'storehouse':
+      return { label: 'Open the storehouse', sub: 'Store, harvest, produce', aria: 'Open the storehouse', emoji: '📦' };
   }
 }
 

@@ -33,10 +33,10 @@ import {
   rowMask,
   rowOf,
   BUTTON_JOBS,
-  GARDEN_COLS,
-  GARDEN_PLOTS,
-  GARDEN_ROWS,
-  gardenSign,
+  GH_BED,
+  GREENHOUSE_AT,
+  STOREHOUSE_AT,
+  ghBedCenter,
   followUpLeft,
   routineLeft,
   type Carry,
@@ -103,7 +103,17 @@ import {
   lampPole,
   roofedShed,
   zeroGrazing,
-  gardenTile,
+  crate,
+  glassHouse,
+  glassMaterial,
+  greenhousePlant,
+  jar,
+  nameBoardTexture,
+  raisedBed,
+  sack,
+  SHELF,
+  shelfUnit,
+  workTable,
   type Farmer,
   type Part,
 } from './models';
@@ -157,7 +167,7 @@ export const LAMPS: { x: number; z: number }[] = [
 export const TRACTOR_BOARD = { x: -17.4, z: 8.6 };
 
 /** The partner billboards across the farm (src/partners/data.ts sets the brand on each): two in the yard either side of
-    the farmhouse path, one by the seed shed and one between Farm 8 and the mini forest. Each stands on one steel pole
+    the farmhouse path, one by the seed shed and one between the storehouse and the mini forest. Each stands on one steel pole
     and is turned a little (ry) toward the path the farmer walks. */
 export const BILLBOARDS: { slot: SlotId; x: number; z: number; ry: number }[] = [
   { slot: 'world-billboard-west', x: -7.6, z: -14.9, ry: 0.14 },
@@ -187,6 +197,9 @@ export const PLACES: Record<Place, { x: number; z: number; r: number }> = {
   market: { x: 0, z: 12.9, r: 1.3 },
   /** the mini restaurant beside the stall: meals from the store (src/produce/restaurant.ts) */
   restaurant: { x: 3.35, z: 13.4, r: 0.95 },
+  /** the greenhouse's door, facing the market path, and the storehouse's door, on the lane (src/greenhouse, src/storehouse) */
+  greenhouse: { x: GREENHOUSE_AT.x + GREENHOUSE_AT.w / 2 + 0.85, z: GREENHOUSE_AT.z, r: 0.85 },
+  storehouse: { x: STOREHOUSE_AT.x + STOREHOUSE_AT.door, z: STOREHOUSE_AT.z - STOREHOUSE_AT.d / 2 - 0.85, r: 0.85 },
   house: { x: 0, z: -15.2, r: 1.2 },
   /** the cow pen's gate and the chicken coop's door: the Animals page (src/livestock) */
   pen: { x: -10.7, z: -13.0, r: 1.0 },
@@ -209,11 +222,18 @@ export interface FarmPower {
   lit: boolean;
 }
 
-/** A new farm's crop and how far it has grown (src/garden): -1 nothing planted. */
-export interface FarmGarden {
+/** A greenhouse bed's crop and how far it has grown (src/greenhouse): stage -1 nothing planted; need: its badge. */
+export interface FarmBed {
   crop: string | null;
   stage: number;
-  open: boolean;
+  need: 'plant' | 'water' | 'pick' | null;
+}
+
+/** What is on the storehouse's shelves (src/storehouse), in kg. */
+export interface FarmStore {
+  fresh: { color: string; kg: number }[];
+  keeps: number;
+  made: { color: string; kg: number }[];
 }
 
 const PICKUP_OF: Partial<Record<Place, Exclude<Carry, null>>> = { 'shed-seeds': 'seeds', 'shed-fertilizer': 'fertilizer', 'shed-sprayer': 'sprayer', pond: 'water' };
@@ -682,6 +702,21 @@ export class FarmWorld {
 
     // interaction spots
     const glyphs: Record<string, (g: CanvasRenderingContext2D) => void> = {
+      sprout: g => {
+        g.fillStyle = '#fff';
+        g.fillRect(-4, -6, 8, 46);
+        g.beginPath();
+        g.ellipse(-20, -14, 22, 11, -0.6, 0, Math.PI * 2);
+        g.ellipse(20, -26, 22, 11, 0.6, 0, Math.PI * 2);
+        g.fill();
+      },
+      crate: g => {
+        g.fillStyle = '#fff';
+        g.fillRect(-40, -20, 80, 54);
+        g.fillRect(-46, -30, 92, 10);
+        g.clearRect(-30, -8, 60, 6);
+        g.clearRect(-30, 10, 60, 6);
+      },
       tractor: g => {
         g.fillStyle = '#fff';
         g.fillRect(-46, -20, 62, 30);
@@ -793,6 +828,8 @@ export class FarmWorld {
       ['pen', 'Cows', 'cow', 1.8],
       ['coop', 'Hens', 'hen', 1.7],
       ['power', 'Power', 'bolt', 1.9],
+      ['greenhouse', 'Grow', 'sprout', 1.5],
+      ['storehouse', 'Store', 'crate', 1.5],
     ];
     for (const [p, label, glyph, size] of zones) {
       const mat = sharpText(new THREE.MeshBasicMaterial({ map: zoneTexture(label, glyphs[glyph]), transparent: true, depthWrite: false }));
@@ -842,7 +879,8 @@ export class FarmWorld {
     this.oxen.visible = false;
     this.scene.add(this.oxen);
     this.buildPower();
-    this.buildGarden();
+    this.buildGreenhouse();
+    this.buildStorehouse();
   }
 
   /* ---------------- the power yard, the lights and the night (src/power) ---------------- */
@@ -970,82 +1008,161 @@ export class FarmWorld {
     this.dirty = true;
   }
 
-  /* ---------------- Farms 7 and 8 (src/garden) ---------------- */
+  /* ---------------- the greenhouse and the storehouse (src/greenhouse, src/storehouse) ---------------- */
 
-  private gardenMeshes: (THREE.Mesh | null)[] = [null, null];
-  private gardenKeys = ['', ''];
-  private gardenSigns: THREE.Sprite[] = [];
+  private bedMeshes: (THREE.Mesh | null)[] = [null, null, null, null];
+  private bedKeys = ['', '', '', ''];
+  private bedBadges: THREE.Sprite[] = [];
+  private storeMesh: THREE.Mesh | null = null;
+  private storeKey = '';
 
-  private buildGarden() {
-    const W = GARDEN_COLS * TILE;
-    const D = GARDEN_ROWS * TILE;
-    GARDEN_PLOTS.forEach((p, i) => {
-      const base = new THREE.Mesh(G.box, new THREE.MeshLambertMaterial({ color: '#7a4224' }));
-      base.scale.set(W + 0.5, 0.05, D + 0.5);
-      base.position.set(p.x, 0.02, p.z);
-      base.receiveShadow = true;
-      this.scene.add(base);
-      const beds: Part[] = [];
-      for (let r = 0; r < GARDEN_ROWS; r++) for (let c = 0; c < GARDEN_COLS; c++) beds.push({ geo: G.box, color: C.soil, m: at(p.x + (c - (GARDEN_COLS - 1) / 2) * TILE, 0.06, p.z + (r - (GARDEN_ROWS - 1) / 2) * TILE, { sx: TILE * 0.82, sy: 0.14, sz: TILE * 0.9 }) });
-      const bm = new THREE.Mesh(merge(beds), vcMaterial());
-      bm.receiveShadow = true;
-      this.scene.add(bm);
-      const sg = gardenSign(i);
-      const post = new THREE.Mesh(G.cyl6, new THREE.MeshLambertMaterial({ color: '#8b5a2b' }));
-      post.scale.set(0.12, 1.0, 0.12);
-      post.position.set(sg.x, 0.5, sg.z);
-      const face = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.75, 0.08), sharpText(new THREE.MeshLambertMaterial({ map: signTexture(i + 7) })));
-      face.position.set(sg.x, 1.15, sg.z);
-      this.scene.add(post, face);
-      this.obstacles.push({ x: sg.x, z: sg.z, r: 0.15 });
+  /** A glass building: its solid frame (casting shadows) and its see-through panes, at (x, z). */
+  private addGlassHouse(x: number, z: number, parts: { frame: Part[]; glass: Part[] }, opacity: number) {
+    const fm = new THREE.Mesh(merge(place(parts.frame, at(x, 0, z))), vcMaterial(true));
+    fm.castShadow = true;
+    fm.receiveShadow = true;
+    const gm = new THREE.Mesh(merge(place(parts.glass, at(x, 0, z))), glassMaterial(opacity));
+    gm.renderOrder = 3;
+    this.scene.add(fm, gm);
+  }
+
+  /** A name board over a door, tilted to the camera. */
+  private addBoard(x: number, y: number, z: number, title: string, sub: string, color: string, ry = 0) {
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.49), sharpText(new THREE.MeshLambertMaterial({ map: nameBoardTexture(title, sub, color) })));
+    face.position.set(x, y, z);
+    face.rotation.set(-0.5, ry, 0, 'YXZ');
+    face.renderOrder = 4;
+    this.scene.add(face);
+  }
+
+  private buildGreenhouse() {
+    const g = GREENHOUSE_AT;
+    // a gravel floor on a concrete footing
+    const floor: Part[] = [
+      { geo: G.box, color: '#c9c3b6', m: at(g.x, 0.03, g.z, { sx: g.w + 0.2, sy: 0.06, sz: g.d + 0.2 }) },
+      { geo: G.box, color: '#e3dccb', m: at(g.x, 0.065, g.z, { sx: g.w - 0.1, sy: 0.02, sz: g.d - 0.1 }) },
+    ];
+    for (let i = 0; i < 4; i++) {
+      const c = ghBedCenter(i);
+      floor.push(...place(raisedBed(GH_BED.w, GH_BED.d), at(c.x, 0.06, c.z)));
+    }
+    const fm = new THREE.Mesh(merge(floor), vcMaterial(true));
+    fm.receiveShadow = true;
+    this.scene.add(fm);
+    this.addGlassHouse(g.x, g.z, glassHouse({ w: g.w, d: g.d, h: 1.35, rise: 0.8, frame: '#f4f7f6', glass: '#bfe6f0', door: { side: 'x+', at: 0, width: 0.9 } }), 0.15);
+    this.addBoard(g.x + 1.2, 1.6, g.z + g.d / 2 + 0.06, 'GREENHOUSE', '4 beds under glass', '#2f8a3a');
+    // the farmer walks round it, in by its door (the button at the door opens it)
+    this.rects.push({ x0: g.x - g.w / 2, x1: g.x + g.w / 2, z0: g.z - g.d / 2, z1: g.z + g.d / 2 });
+    for (let i = 0; i < 4; i++) {
+      const c = ghBedCenter(i);
       const badge = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false }));
-      badge.scale.set(0.8, 0.8, 1);
-      badge.position.set(sg.x, 2.05, sg.z);
+      badge.scale.set(0.7, 0.7, 1);
+      badge.position.set(c.x, 2.6, c.z);
       badge.renderOrder = 5;
       badge.visible = false;
       this.scene.add(badge);
-      this.gardenSigns.push(badge);
-    });
+      this.bedBadges.push(badge);
+    }
   }
 
-  /** The new farms' crops, as grown (stage 0 just planted … 3 ready), and their signs' badges. */
-  setGarden(farms: FarmGarden[]) {
-    farms.forEach((f, i) => {
-      const key = `${f.crop}:${f.stage}:${f.open}`;
-      if (key === this.gardenKeys[i]) return;
-      this.gardenKeys[i] = key;
-      const old = this.gardenMeshes[i];
+  private buildStorehouse() {
+    const h = STOREHOUSE_AT;
+    const floor: Part[] = [
+      { geo: G.box, color: '#b9b2a4', m: at(h.x, 0.04, h.z, { sx: h.w + 0.2, sy: 0.08, sz: h.d + 0.2 }) },
+      // shelves along the back and the left wall, a pallet at the front, the work table on the right
+      ...place(shelfUnit(2.7), at(h.x - 0.85, 0.08, h.z - h.d / 2 + 0.4)),
+      ...place(shelfUnit(1.9), at(h.x - h.w / 2 + 0.4, 0.08, h.z + 0.4, { ry: Math.PI / 2 })),
+      { geo: G.box, color: '#c98a4a', m: at(h.x - 0.4, 0.12, h.z + 1.15, { sx: 1.5, sy: 0.08, sz: 0.9 }) },
+      ...place(workTable(), at(h.x + 1.5, 0.08, h.z + 0.9)),
+    ];
+    const fm = new THREE.Mesh(merge(floor), vcMaterial(true));
+    fm.receiveShadow = true;
+    fm.castShadow = true;
+    this.scene.add(fm);
+    this.addGlassHouse(h.x, h.z, glassHouse({ w: h.w, d: h.d, h: 1.6, rise: 0.6, frame: '#2f5d50', glass: '#d6ecef', door: { side: 'z-', at: h.door, width: 0.95 }, plinth: { h: 0.4, color: C.woodPlank } }), 0.15);
+    this.addBoard(h.x, 1.85, h.z + h.d / 2 + 0.06, 'STOREHOUSE', 'store · harvest · produce', '#2f5d50');
+    this.rects.push({ x0: h.x - h.w / 2, x1: h.x + h.w / 2, z0: h.z - h.d / 2, z1: h.z + h.d / 2 });
+  }
+
+  /** The greenhouse's beds, as grown (stage 0 just planted … 3 ready), and a badge over a bed that needs the farmer. */
+  setGreenhouse(beds: FarmBed[]) {
+    beds.forEach((f, i) => {
+      const b = this.bedBadges[i];
+      if (b) {
+        b.visible = !!f.need;
+        if (f.need) b.material.map = f.need === 'pick' ? this.badgeTex.harvest : f.need === 'water' ? this.badgeTex.treat : this.badgeTex.check;
+        b.material.needsUpdate = true;
+      }
+      const key = `${f.crop}:${f.stage}`;
+      if (key === this.bedKeys[i]) return;
+      this.bedKeys[i] = key;
+      const old = this.bedMeshes[i];
       if (old) {
         this.scene.remove(old);
         old.geometry.dispose();
       }
-      this.gardenMeshes[i] = null;
-      const b = this.gardenSigns[i];
-      b.visible = f.open && (!f.crop || f.stage === 3);
-      if (b.visible) b.material.map = f.crop ? this.badgeTex.harvest : this.badgeTex.check;
-      b.material.needsUpdate = true;
+      this.bedMeshes[i] = null;
       if (!f.crop || f.stage < 0) return;
-      const p = GARDEN_PLOTS[i];
+      const c = ghBedCenter(i);
       const parts: Part[] = [];
-      const step = f.crop === 'orchard' ? 2 : 1;
-      for (let r = 0; r < GARDEN_ROWS; r++)
-        for (let c = 0; c < GARDEN_COLS; c += step) parts.push(...place(gardenTile(f.crop, f.stage), at(p.x + (c - (GARDEN_COLS - 1) / 2 + (step - 1) / 2) * TILE, 0.06, p.z + (r - (GARDEN_ROWS - 1) / 2) * TILE)));
+      const vine = f.crop === 'tomatoes' || f.crop === 'cucumber';
+      for (let r = 0; r < 2; r++)
+        for (let k = 0; k < 4; k++) {
+          const x = c.x + (k - 1.5) * 0.46;
+          const z = c.z + (r ? 0.3 : -0.3);
+          parts.push(...place(greenhousePlant(f.crop, f.stage, i * 8 + r * 4 + k), at(x, 0.3, z)));
+          // the vines climb strings from a wire under the roof
+          if (vine) parts.push({ geo: G.cyl6, color: '#e8e1c8', m: at(x, 0.95, z, { sx: 0.012, sy: 1.3, sz: 0.012 }) });
+        }
+      if (vine) for (const z of [-0.3, 0.3]) parts.push({ geo: G.box, color: '#9aa3a8', m: at(c.x, 1.6, c.z + z, { sx: GH_BED.w, sy: 0.02, sz: 0.02 }) });
       const m = new THREE.Mesh(merge(parts), vcMaterial(true));
       m.castShadow = true;
       m.receiveShadow = true;
       this.scene.add(m);
-      this.gardenMeshes[i] = m;
+      this.bedMeshes[i] = m;
     });
     this.dirty = true;
   }
 
-  /** The new farm whose sign the farmer stands at, or -1. */
-  gardenHere() {
-    for (let i = 0; i < GARDEN_PLOTS.length; i++) {
-      const sg = gardenSign(i);
-      if (Math.hypot(this.pos.x - sg.x, this.pos.y - sg.z) < 1.4) return i;
+  /** The storehouse's shelves: a crate for every 15 kg of fresh produce, a sack for every 20 kg kept dry, a jar for
+      every 2 kg made, up to what the shelves hold. */
+  setStorehouse(st: FarmStore) {
+    const crates = st.fresh.flatMap(f => Array.from({ length: Math.min(6, Math.ceil(f.kg / 15)) }, () => f.color)).slice(0, 12);
+    const sacks = Math.min(8, Math.ceil(st.keeps / 20));
+    const jars = st.made.flatMap(f => Array.from({ length: Math.min(6, Math.ceil(f.kg / 2)) }, () => f.color)).slice(0, 12);
+    const key = `${crates.join(',')}|${sacks}|${jars.join(',')}`;
+    if (key === this.storeKey) return;
+    this.storeKey = key;
+    if (this.storeMesh) {
+      this.scene.remove(this.storeMesh);
+      this.storeMesh.geometry.dispose();
+      this.storeMesh = null;
     }
-    return -1;
+    const h = STOREHOUSE_AT;
+    const parts: Part[] = [];
+    // crates on the back wall's rack: the low tier first, then the high one
+    const back = h.z - h.d / 2 + 0.4;
+    crates.forEach((color, i) => {
+      const t = i < 6 ? SHELF.low : SHELF.high;
+      parts.push(...place(crate(color), at(h.x - 1.95 + (i % 6) * 0.44, 0.08 + t.y, back + t.z)));
+    });
+    // sacks on the pallet
+    for (let i = 0; i < sacks; i++) parts.push(...place(sack(i % 2 ? '#e9d8a6' : '#dcc58e'), at(h.x - 0.95 + (i % 4) * 0.36, 0.16 + (i >= 4 ? 0.3 : 0), h.z + 1.15 + (i >= 4 ? 0.1 : -0.15))));
+    // jars on the left wall's rack (turned to face into the room: its low tier is towards +x)
+    const left = h.x - h.w / 2 + 0.4;
+    jars.forEach((color, i) => {
+      const t = i < 6 ? SHELF.low : SHELF.high;
+      parts.push(...place(jar(color, i % 3 === 2), at(left + t.z, 0.08 + t.y, h.z + 0.4 - 0.75 + (i % 6) * 0.3)));
+    });
+    if (!parts.length) {
+      this.dirty = true;
+      return;
+    }
+    const m = new THREE.Mesh(merge(parts), vcMaterial(true));
+    m.castShadow = true;
+    this.scene.add(m);
+    this.storeMesh = m;
+    this.dirty = true;
   }
 
   /** The farmer opts into the place they stand in (the button on its white square): a shed or the pond hands over

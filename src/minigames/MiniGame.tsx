@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { CoachSays, Coach, Confetti, FloatUp, IconArt, QuizArt, iconFor, type ArtId, type Mood } from './fun';
 
 /* The mini-games: short hands-on moments behind every new job (the power system's parts, the tractor's sections,
-   building the coop and the cow shed, planting and harvesting the new farms). One frame for all of them: what to do,
+   building the coop and the cow shed, the greenhouse's beds, the storehouse's sauces and jams). One frame for all of them: what to do,
    the game, then how it went (stars and a score from 0 to 1, which the job uses). Every game is played with taps or
    a held press, so it works on a phone; the keyboard works too. */
 
@@ -28,7 +28,7 @@ export type GameSpec =
   /** switch on loads without going over what the system makes */
   | { type: 'balance'; loads: { id: string; name: string; kwh: number; need: boolean }[]; supply: number };
 
-export type Scene = 'tractor' | 'yard' | 'rows' | 'orchard';
+export type Scene = 'tractor' | 'yard' | 'rows' | 'orchard' | 'greenhouse';
 
 export interface QuizQuestion {
   q: string;
@@ -314,6 +314,22 @@ function SceneArt({ scene }: { scene: Scene }) {
         <rect x={220} y={110} width={80} height={50} fill="#5c4630" />
         <rect x={0} y={170} width={340} height={65} fill="#24402a" />
         <path d="M0 200 Q170 175 340 205" stroke="#6b5235" strokeWidth={16} fill="none" />
+      </g>
+    );
+  if (scene === 'greenhouse')
+    return (
+      <g>
+        <rect width={340} height={235} fill="#d9eef2" />
+        {[0, 1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+          <rect key={i} x={i * 42} y={0} width={3} height={235} fill="#ffffff" opacity={0.9} />
+        ))}
+        <rect x={0} y={0} width={340} height={6} fill="#ffffff" />
+        {[0, 1, 2, 3].map(r => (
+          <g key={r}>
+            <rect x={14} y={20 + r * 54} width={312} height={36} rx={8} fill="#6b4226" />
+            <rect x={14} y={20 + r * 54} width={312} height={5} rx={2} fill="#a8794c" />
+          </g>
+        ))}
       </g>
     );
   if (scene === 'orchard')

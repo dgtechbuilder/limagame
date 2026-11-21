@@ -1,7 +1,8 @@
 /* The farm's newer systems, through the days, as the water and the animals are: after every action, look at what it
    did and what day it is. When a farm day ends (a night slept on the fast clock, or a calendar day), the power system
-   runs its day (src/power), the cow shed's gutters catch rain, the new farms are watered by the drip or go thirsty
-   (src/garden), fresh produce wilts in a store with no cold room (src/produce), and the morning brings what is new to
+   runs its day (src/power), the cow shed's gutters catch rain, the greenhouse's beds are watered by the drip or go
+   thirsty (src/greenhouse), fresh produce wilts in a store with no cold room (src/produce: half as fast once the
+   storehouse is open, src/storehouse), and the morning brings what is new to
    build. Driving wears the tractor and burns its diesel (src/tractor/hub.ts); the milk cooler pays a premium; a share
    of each harvest goes into the store for the market stall. */
 
@@ -17,8 +18,8 @@ import { has, lightsEggs, loadOn, powerOf, powerOn, runDay } from '../power/mode
 import { HUB, hubOf } from '../tractor/hub';
 import { MARKET, PRODUCE, daySale, stock, storeNight, type ProduceId } from '../produce/model';
 import { achClock } from '../achievements/track';
-import { GARDEN, GARDEN_NAMES, cropOf as gardenCrop, gardenNight, gardenOf } from '../garden/model';
-import { cropOf, farmName } from '../trials/model';
+import { GREENHOUSE, ghCropOf, greenhouseNight, greenhouseOf } from '../greenhouse/model';
+import { cropOf } from '../trials/model';
 import { popcount } from '../world/field';
 import { money } from '../money';
 
@@ -58,16 +59,16 @@ function endDay(s: GameState, ended: number): GameState {
   // the cow shed's gutters
   const shed = shedOption(lifeOf(next.life).shed);
   if (shed) addWater(Math.round(shed.gutter * RAIN_SHARE[next.trial?.forecast ?? 'normal']));
-  // the new farms: the drip waters them if it has power and water
-  const g0 = gardenOf(next.garden);
-  const wants = g0.farms.reduce((n, f) => n + (f.crop ? Math.round(gardenCrop(f.crop).water * POWER.dripShare) : 0), 0);
+  // the greenhouse: the drip waters its beds if it has power and water
+  const g0 = greenhouseOf(next.greenhouse);
+  const wants = g0.beds.reduce((n, b) => n + (b.crop ? Math.round(ghCropOf(b.crop).water * POWER.dripShare) : 0), 0);
   const drip = loadOn(next, 'pump') && wants > 0 && tankOf(next.tank).level >= wants;
-  const gn = gardenNight(next.garden, ended, drip);
+  const gn = greenhouseNight(next.greenhouse, ended, drip, POWER.dripShare);
   if (gn.litres) {
     const t = tankOf(next.tank);
     next = { ...next, tank: { ...t, level: Math.max(0, t.level - gn.litres) } };
   }
-  next = { ...next, garden: gn.g };
+  next = { ...next, greenhouse: gn.g };
   // the daily sales cycle: the stall sells what is left of the day's 25 kg, then the store's night
   const sale = daySale(next.produce, ended, achClock.today(), coldRoom(next));
   if (sale) {
@@ -75,7 +76,7 @@ function endDay(s: GameState, ended: number): GameState {
     next = addEntry(next, 'produce', `Market stall, farm day ${ended}: ${sale.kg} kg sold`, sale.earned, next.coins);
     saleLog.push({ day: ended, kg: sale.kg, earned: sale.earned, profit: sale.earned - sale.cost, items: sale.items });
   }
-  next = { ...next, produce: storeNight(next.produce, coldRoom(next)) };
+  next = { ...next, produce: storeNight(next.produce, coldRoom(next), ended >= GREENHOUSE.openDay) };
   return next;
 }
 
@@ -88,13 +89,16 @@ const saleWords = (x: DaySale) =>
     .map(([id, kg]) => `${kg} kg ${PRODUCE[id].name.toLowerCase().replace(/ \(.*\)/, '')}`)
     .join(', ');
 
-/** What is new this morning: today's power part, the cow shed, the new farms. */
+/** What is new this morning: today's power part, the cow shed, the greenhouse and the storehouse. */
 function morningNews(s: GameState, day: number) {
   const lines: { icon: string; title: string; text: string; go: Modal; lesson?: number }[] = [];
   const step = POWER_STEPS.find(p => p.day === day && !has(s, p.id));
   if (step) lines.push({ icon: step.icon, title: step.id === 'switchOn' ? 'Switch on the power' : `Put in the ${step.name.toLowerCase()}`, text: `${step.does} Walk to the power yard (top right) or tap POWER.`, go: { kind: 'power', tab: 'build' } });
   if (day === LIFE.shedDay && !lifeOf(s.life).shed) lines.push({ icon: '🐄', title: 'Upgrade the cow shed', text: 'A roof, a dry floor and troughs: more milk and fewer diseases. Walk to the pen.', go: { kind: 'animals', tab: 'shed' } });
-  if (day === GARDEN.openDay) lines.push({ icon: '🌱', title: 'Farms 7 and 8 are open', text: 'Plant spinach, cabbage, tomatoes, beans, onions, watermelon or a fruit orchard. They are at the bottom of the farm.', go: { kind: 'garden', farm: 0 } });
+  if (day === GREENHOUSE.openDay) {
+    lines.push({ icon: '🍅', title: 'The greenhouse is open', text: 'Four beds under glass: plant tomatoes, capsicum, cucumbers, strawberries or chillies. It stands at the bottom of the farm, left of the market path.', go: { kind: 'greenhouse', bed: 0 } });
+    lines.push({ icon: '🏚️', title: 'The storehouse is open', text: 'Your harvests are kept here, and wilt half as fast in its shade. Make tomato sauce, jam, pickles or maize flour that sell for more. Right of the market path.', go: { kind: 'storehouse', tab: 'produce' } });
+  }
   // the Farm basics lesson for the day, for players new to farming
   const lesson = lessonForDay(day);
   if (lesson !== null && !(s.basics ?? []).includes(lesson)) lines.push({ icon: BASICS[lesson].icon, title: `Farm basics: ${BASICS[lesson].title.toLowerCase()}`, text: BASICS[lesson].lead, go: { kind: 'glossary', tab: 'basics' }, lesson });
@@ -165,5 +169,3 @@ export function trackSystems(prev: GameState, s: GameState, a: Action): GameStat
   return next;
 }
 
-/** Words for a farm in the six farms or the new farms. */
-export const anyFarmName = (i: number) => (i < 6 ? farmName(i) : GARDEN_NAMES[i - 6]);

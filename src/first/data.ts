@@ -79,7 +79,8 @@ export interface ShambaReview {
   practice: string;
   /** Shamba to send the player to after a wrong call. Without one, they look again at the same shamba. */
   retry?: string;
-  /** Shillings of harvest this problem costs if it is left alone (shown while the player checks). */
+  /** Stored money (src/money.ts: 1 = KSh 10) of harvest this problem costs if it is left alone (shown while the player
+      checks): the farm is 4 acres, so the maize's is about 7 bags at KSh 3,600 a bag. */
   atStake: number;
 }
 
@@ -104,7 +105,7 @@ export const SHAMBAS: Record<string, ShambaReview> = {
     right: 'Fall armyworm! Well read, {name}.',
     practice: 'Ash or sand in each funnel stops them early.',
     retry: 'lower',
-    atStake: 10000,
+    atStake: 2500,
   },
   lower: {
     id: 'lower',
@@ -126,7 +127,7 @@ export const SHAMBAS: Record<string, ShambaReview> = {
     clue: { part: 'pests', text: 'Ragged holes and sawdust mean caterpillars, {name}.' },
     right: 'Fall armyworm! You caught it, {name}.',
     practice: 'Ash or sand in each funnel stops them early.',
-    atStake: 10000,
+    atStake: 2500,
   },
   sukuma: {
     id: 'sukuma',
@@ -148,7 +149,7 @@ export const SHAMBAS: Record<string, ShambaReview> = {
     clue: { part: 'soil', text: 'No holes, {name}, but the soil at the back is cracked and dry.' },
     right: 'They are thirsty! Good eye, {name}.',
     practice: 'Water the roots in the cool morning.',
-    atStake: 5000,
+    atStake: 1250,
   },
 };
 
@@ -209,7 +210,7 @@ export interface StoryPage {
   sum?: { title: string; ask: string; done: string };
   /** page 3: tap each mistake to see what to do instead */
   tapHint?: string;
-  /** page 2: what the season cost, in shillings */
+  /** page 2: what the season cost, in stored money (src/money.ts: 1 = KSh 10); the third is the first less the second */
   ledger?: { label: string; ksh: number; kind: 'out' | 'in' | 'lost' }[];
   /** page 3: last season's mistakes, each with what to do instead */
   mistakes?: StoryMistake[];
@@ -255,7 +256,7 @@ export const STORY: StoryPage[] = [
           maize: 'Tap the maize seeds, then tap the maize bed to sow them.',
           kale: 'Now tap the sukuma seeds, then tap the sukuma bed.',
         },
-        after: 'Seed, fertiliser and labour went in: {money:38000} spent.',
+        after: 'Seed, fertiliser and labour went in: {money:9500} spent.',
         cheer: { title: 'Well done, {name}!', line: 'Your crops are in. The season has begun.' },
       },
       {
@@ -269,15 +270,17 @@ export const STORY: StoryPage[] = [
         id: 'harvest',
         button: 'Harvest',
         doing: 'Harvesting…',
-        after: 'Only a little was left to sell: {money:14500}.',
+        after: 'Only a little was left to sell, 10 bags: {money:3600}.',
         cheer: { title: 'Congratulations!', line: 'Your first harvest is done, {name}.' },
       },
     ],
     sum: { title: 'Your first harvest: here is the financial result', ask: 'Press = to see how the season went.', done: 'Most of the money was lost.' },
     ledger: [
-      { label: 'Spent on seed, fertiliser and labour', ksh: 38000, kind: 'out' },
-      { label: 'Earned from the harvest', ksh: 14500, kind: 'in' },
-      { label: 'Lost', ksh: 23500, kind: 'lost' },
+      // a 4-acre farm (src/farmSize.ts): about KSh 24,000 an acre of seed, fertiliser and labour, as the six farms cost;
+      // 10 bags of maize sold at KSh 3,600 (trials/model.ts PRICE_BY_QUALITY)
+      { label: 'Spent on seed, fertiliser and labour', ksh: 9500, kind: 'out' },
+      { label: 'Earned from the harvest', ksh: 3600, kind: 'in' },
+      { label: 'Lost', ksh: 5900, kind: 'lost' },
     ],
     button: 'Next',
   },
@@ -295,7 +298,7 @@ export const STORY: StoryPage[] = [
   },
 ];
 
-/** Shillings on screen: 10 times the stored value (src/money.ts). */
+/** Stored money on screen, in the player's currency (src/money.ts). */
 export const ksh = kshText;
 
 /** How long each step of the story's replay of last season takes (seconds). */
@@ -311,10 +314,11 @@ export const STORY_CHORE_S = 1.2;
 
 export const FARM_UPDATE = {
   weeks: 7,
-  /** spent so far this season: seed, fertilizer and labour (shillings) */
-  spent: 21400,
-  /** what the harvest would bring at this rate (shillings) */
-  atThisRate: 6000,
+  /** spent so far this season: seed, fertilizer and labour (stored money: KSh 54,000) */
+  spent: 5400,
+  /** what the harvest would bring at this rate (stored money: KSh 15,000). Catching both problems saves their stakes
+      (2,500 + 1,250), which brings it to 5,250: about what was spent, a loss turned towards breaking even. */
+  atThisRate: 1500,
   title: 'How your farm is doing',
   lines: [
     'Your farm has been running for {weeks} weeks this season, {name}. You have spent {spent}.',
