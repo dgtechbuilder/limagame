@@ -21,10 +21,10 @@ test('the farm HUD: business in the tractor screen, animals and security in My P
 
   // the tractor screen has the tractor business: its tab opens the business screen
   await page.getByRole('button', { name: /Walk to the tractor|Drive the tractor/ }).click();
-  const hub = page.getByRole('dialog', { name: 'Tractor' });
+  const hub = page.getByRole('dialog', { name: 'Tractor', exact: true });
   await hub.getByRole('button', { name: 'Tractor business', exact: true }).click();
   await expect(hub).toHaveCount(0);
-  await expect(page.locator('.biz-tabs')).toBeVisible();
+  await expect(page.locator('.biz-page')).toBeVisible();
   await page.evaluate(() => (window as unknown as Win).__lima.jump({ view: 'world', bizOpen: false } as never));
 
   // My Progress opens Animals and Security
