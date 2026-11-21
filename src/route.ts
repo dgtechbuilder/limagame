@@ -49,6 +49,7 @@ const SIMPLE = {
   rewards: 'rewards',
   training: 'training',
   tractorGame: 'tractor-game',
+  checks: 'farm-checks',
 } as const satisfies Partial<Record<Modal['kind'], string>>;
 
 /** First-session steps, by address. The story is /story/1 to /story/3. */

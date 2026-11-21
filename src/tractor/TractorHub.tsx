@@ -141,6 +141,9 @@ export function TractorHub({
               <span className={`ty-chip${h.condition < HUB.worn ? ' is-bad' : ''}`}>🔧 {Math.round(h.condition)}%</span>
               <span className={`ty-chip${h.fuel < 10 ? ' is-bad' : ''}`}>⛽ {Math.round(h.fuel)} L</span>
               <span className="ty-chip">📖 {h.lessons.length}/{LESSONS.length} lessons</span>
+              <button type="button" className="ty-chip ck-chip" onClick={() => dispatch({ type: 'open', modal: { kind: 'checks', subject: 'tractor' } })}>
+                🔍 Examine the tractor
+              </button>
             </>
           }
           corner={

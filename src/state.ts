@@ -125,6 +125,8 @@ export type Modal =
   | { kind: 'partners'; tab?: PartnersTab; brand?: BrandId }
   /** the cows and the hens: today's care, their health, water, the coop, the herd (src/livestock) */
   | { kind: 'animals'; tab?: AnimalsTab }
+  /** Farm checks: every full check, and the jobs planned from them (src/inspect/Checks.tsx); `subject` opens one */
+  | { kind: 'checks'; subject?: SubjectId }
   /** keeping the farm safe from theft: what protects it, tonight's risks, the night reports (src/security) */
   | { kind: 'security'; tab?: SecurityTab }
   /** the farmer's wallet: every payment in and out (src/wallet) */

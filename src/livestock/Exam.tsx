@@ -10,7 +10,8 @@ import { subjectOf } from '../inspect/subjects';
 import type { Part, SubjectId } from '../inspect/types';
 import { LIFE, type IssueId } from './config';
 import { ExamScene } from './ExamScene';
-import { FINDINGS, marksOf, spotsOf, stepsOf, type Finding, type Reading, type Step } from './exam';
+import { FINDINGS, marksOf, spotsOf, type Finding, type Reading } from './exam';
+import { urgentOf } from '../inspect/urgent';
 import { lifeOf } from './model';
 
 /* A full check, up close: an animal (or, src/inspect/subjects.ts, anything else on the farm a routine check covers).
@@ -22,6 +23,21 @@ import { lifeOf } from './model';
    (src/inspect/early.ts) stops the sweep, to be fixed now (a few seconds' work and its cost) or planned for a day.
    At any time the player can look for themselves: tap a part (on the drawing or in the list), drag to look round,
    and zoom with the wheel, a pinch or the + and − buttons. */
+
+/** A red sign: an animal's problem (exam.ts FINDINGS), or what is wrong now on a machine or place (inspect/urgent.ts). */
+interface Sign {
+  part: string;
+  mark: string;
+  title: string;
+  see: string;
+  reading?: Reading;
+  at?: { x: number; y: number };
+}
+/** One stop of the film: a part, and its red signs. */
+interface Step {
+  part: Part;
+  findings: Sign[];
+}
 
 type Mode = 'idle' | 'intro' | 'step' | 'end' | 'free' | 'ask' | 'sweep' | 'done';
 interface Cam {
@@ -70,10 +86,22 @@ export function Exam({ s, dispatch, subject, issue = null, since = 0, onClose, d
   const voice = useVoice();
   /** the parts in their sections' order */
   const order = useMemo(() => def.sections.flatMap(sc => sc.parts), [def]);
-  const rank = (id: string) => order.indexOf(id);
-  const steps: Step[] = useMemo(() => (issue ? stepsOf(issue).sort((a, b) => rank(a.part.id) - rank(b.part.id)) : []), [issue]); // eslint-disable-line react-hooks/exhaustive-deps
-  const findings: Finding[] = useMemo(() => (issue ? FINDINGS[issue] : []), [issue]);
-  const marks = useMemo(() => marksOf(issue), [issue]);
+  // the red signs: the problem's, or (a machine or place) what is wrong now, as the check opened
+  const [now] = useState(() => (def.group ? [] : urgentOf(s, subject)));
+  const findings: Sign[] = useMemo(() => (issue ? (FINDINGS[issue] as Sign[]) : now), [issue, now]);
+  const steps: Step[] = useMemo(
+    () =>
+      order
+        .filter(id => findings.some(f => f.part === id))
+        .map(id => {
+          const mine = findings.filter(f => f.part === id);
+          const p = def.parts.find(x => x.id === id)!;
+          const moved = mine.find(f => f.at)?.at;
+          return { part: moved ? { ...p, at: { ...p.at, ...moved } } : p, findings: mine };
+        }),
+    [findings, order, def],
+  );
+  const marks = useMemo(() => (issue ? (marksOf(issue) as Set<string>) : new Set(now.map(f => f.mark))), [issue, now]);
   const spots = useMemo(() => spotsOf(issue) as Record<string, { x: number; y: number }>, [issue]);
   const red = useMemo(() => new Set<string>(findings.map(f => f.part)), [findings]);
   // today's early signs, as the check opened (a sign dealt with stays on the list, ticked)
@@ -419,9 +447,10 @@ export function Exam({ s, dispatch, subject, issue = null, since = 0, onClose, d
       {mode === 'intro' && (
         <div className="ex-title" aria-live="polite">
           <small>Examination</small>
-          <b>The sick {def.name}</b>
+          <b>{issue ? `The sick ${def.name}` : `The ${def.name}`}</b>
           <span>
-            Day {day} · signs since day {since} · {steps.length} things to see
+            Day {day} · {issue ? `signs since day ${since} · ` : ''}
+            {steps.length} {steps.length === 1 ? 'thing' : 'things'} to see
           </span>
         </div>
       )}
@@ -550,7 +579,7 @@ export function Exam({ s, dispatch, subject, issue = null, since = 0, onClose, d
           {cur.findings
             .filter(f => f.reading)
             .map(f => (
-              <ReadingCard key={f.mark} r={f.reading!} f={f} since={since} day={day} />
+              <ReadingCard key={f.mark} r={f.reading!} f={f as Finding} since={since} day={day} />
             ))}
         </div>
       )}
@@ -563,7 +592,7 @@ export function Exam({ s, dispatch, subject, issue = null, since = 0, onClose, d
             <div key={f.mark} className="ex-find">
               <b>{f.title}</b>
               <span>{f.see}</span>
-              {f.reading && <ReadingLine r={f.reading} since={since} day={day} f={f} />}
+              {f.reading && <ReadingLine r={f.reading} since={since} day={day} f={f as Finding} />}
             </div>
           ))}
           {lookSigns.map(e => (

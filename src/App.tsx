@@ -18,6 +18,7 @@ const Business = lazyPage(() => import('./business/Business').then(m => m.Busine
 const World = lazy(() => import('./world/World').then(m => ({ default: m.World })));
 // the animals' and security pages are loaded when first opened
 const AnimalsPage = lazyPage(() => import('./livestock/Animals').then(m => m.AnimalsPage), 1);
+const ChecksPage = lazyPage(() => import('./inspect/Checks').then(m => m.ChecksPage), 1);
 const SecurityPage = lazyPage(() => import('./security/Security').then(m => m.SecurityPage), 1);
 const WalletPage = lazyPage(() => import('./wallet/Wallet').then(m => m.WalletPage), 1);
 const FinancePage = lazyPage(() => import('./finance/Finance').then(m => m.FinancePage), 1);
@@ -341,6 +342,11 @@ export default function App() {
         {m?.kind === 'finance' && (
           <Suspense fallback={<ActivityLoading label="Opening your money…" />}>
             <FinancePage s={s} dispatch={dispatch} tab={m.tab} />
+          </Suspense>
+        )}
+        {m?.kind === 'checks' && (
+          <Suspense fallback={<ActivityLoading label="Opening the farm checks…" />}>
+            <ChecksPage key={m.subject ?? 'all'} s={s} dispatch={dispatch} subject={m.subject} />
           </Suspense>
         )}
         {m?.kind === 'power' && (

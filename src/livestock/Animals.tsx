@@ -89,6 +89,10 @@ export function AnimalsPage({ s, dispatch, tab: startTab }: Props) {
             </button>
           ))}
           <p className="set-foot">
+            <button type="button" className="set-link ck-link" onClick={() => dispatch({ type: 'open', modal: { kind: 'checks' } })}>
+              🔍 All farm checks
+            </button>
+            <br />
             Farm day {l.day}
             {open ? '' : ` · care starts on day ${LIFE.startDay}`}
             <br />
@@ -267,7 +271,7 @@ function Fixes({ s, dispatch, id, since }: { s: GameState; dispatch: Dispatch<Ac
 }
 
 /** A full check of the cows or the hens: the red parts of a problem showing (if any) first, then every other part. */
-function Routine({ s, dispatch, subject, onClose }: { s: GameState; dispatch: Dispatch<Action>; subject: SubjectId; onClose: () => void }) {
+export function Routine({ s, dispatch, subject, onClose }: { s: GameState; dispatch: Dispatch<Action>; subject: SubjectId; onClose: () => void }) {
   const l = lifeOf(s.life);
   const g = subjectOf(subject).group;
   // the problem it opened with stays its red parts, even once fixed (the check goes on)
@@ -303,8 +307,8 @@ function Health({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
             <button key={g} type="button" className={`lv-check${last === l.day ? ' is-done' : ''}`} onClick={() => setRoutine(sub)} disabled={countOf(s, g) === 0}>
               <i aria-hidden="true">🔍</i>
               <span>
-                <b>Check the {g} all over</b>
-                <small>{last === l.day ? '✓ Checked today' : last ? `Last full check: day ${last}` : 'Every part, a few seconds each: finds problems early'}</small>
+                <b>{subjectOf(sub).title}</b>
+                <small>{last === l.day ? '✓ Checked today' : last ? `Last full check: day ${last}` : `Every part of the ${g === 'cows' ? 'cows' : 'hens'}, a few seconds each`}</small>
               </span>
             </button>
           );
@@ -428,6 +432,13 @@ function Water({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
   return (
     <div className="cl-two">
       <div>
+        <button type="button" className="lv-check ck-inline" onClick={() => dispatch({ type: 'open', modal: { kind: 'checks', subject: 'water' } })}>
+          <i aria-hidden="true">🔍</i>
+          <span>
+            <b>Examine the water setup</b>
+            <small>Gutters, tank, pump, pipes and drip lines: every part</small>
+          </span>
+        </button>
         <p className="set-title">What the animals use</p>
         <div className="lv-rows">
           <p>

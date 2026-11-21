@@ -49,6 +49,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [Climate-smart farming: row strategies and treatment choices](#climate-smart-farming-row-strategies-and-treatment-choices)
 - [Water as a real resource](#water-as-a-real-resource)
 - [The animals: cows, hens and the chicken coop](#the-animals-cows-hens-and-the-chicken-coop)
+  - [Farm checks: the plant, the tractor, the farm, the water and the power](#farm-checks-the-plant-the-tractor-the-farm-the-water-and-the-power)
 - [Theft, and keeping the farm safe](#theft-and-keeping-the-farm-safe)
 - [The evidence layer](#the-evidence-layer)
 - [Climate tracking](#climate-tracking)
@@ -1338,9 +1339,35 @@ fast clock (the first cycle) or with a calendar day; the first night brings a **
     to a twentieth); a day checked all over with a sign dealt with lowers that night's chance of a problem by 15%;
     a planned job left past its day raises it by 20% (both show in the Health tab's risk line). **+5 points** a sign
     dealt with, **+15** for a check of every part (once a day for each). A check of only some parts earns nothing.
-  - **Animals › Health** has **Check the cows all over** and **Check the hens all over** (a routine check, with any
+  - **Animals › Health** has **Examine the cow** and **Examine the chicken** (a routine check, with any
     problem showing as red parts) and a **Planned from your checks** list, with *Do it* on each and *Overdue* in red.
   - Every number is in `CHECKS` (`src/inspect/model.ts`). Placeholders for the vet's review.
+
+### Farm checks: the plant, the tractor, the farm, the water and the power
+
+The same full check covers the rest of the farm. **Farm checks** (main menu, or *All farm checks* on the Animals
+page; address `#/farm-checks`) shows a card for each of the seven checks, with what is red on it now, when it was
+last checked all over and how many jobs are planned, and below them **every job planned from any check**, soonest
+first, with *Do it* (overdue in red). Each check opens the examination screen with its own drawing
+(`src/inspect/scenes`), parts in sections, red parts and early signs (`src/inspect/earlyFarm.ts`):
+
+| Check | Opened from | Sections (parts) | Red when |
+| --- | --- | --- | --- |
+| **Examine the cow** | Animals › Health, Farm checks | Head, Body, Udder/legs/dung, Feed & water (15) | a cow problem is showing |
+| **Examine the chicken** | Animals › Health, Farm checks | Head, Body & legs, The coop (11) | a hen problem is showing |
+| **Examine the plant** | Farm checks | The top, Leaves & cob, Stem & roots, Round it (12) | a dry season: leaves rolling |
+| **Examine the tractor** | the tractor yard (chip), Farm checks | Engine, Wheels, Fuel & power, Seat & back end (13) | condition under 60; diesel under a fifth |
+| **Examine the farm** | Farm checks | Boundary, Fields, Buildings, Safety (11) | today's bushes and rocks not cleared (3D farm) |
+| **Examine the water setup** | Animals › Water, Farm checks | Catching rain, The tank, Pump & pipes, Using it (11) | the tank under a fifth full |
+| **Examine the power setup** | Power (page foot), Farm checks | Panels, Storing it, Using it, Backup (11) | generator diesel under a fifth; power short yesterday |
+
+- With red parts, **Start the examination** plays them as a film; with none, **Check every part** sweeps the lot.
+  Finish asks for the parts not yet seen, as for the animals, and the sweep stops at each early sign: armyworm frass
+  in the whorl, a yellow V on the lower leaves, low engine oil, a cracked fan belt, a sagging fence wire, rat droppings
+  at the store, leaves in the gutter, a torn tank screen, dusty panels, water low in the battery cells…
+- What is red comes from the game's own state (`src/inspect/urgent.ts`); early signs are 10 to 12 a check, up to three
+  a day. Off the animals, a sign dealt with earns its points and stays away five days; tying the machines' and places'
+  signs to their systems (a fixed gutter catching more rain, clean panels making more power) is an open decision.
 - **Water:** what the cows and hens drink is drawn by the water model each day; on top, a dry season makes cows drink a
   fifth more, heat stress more again, and a leaking trough wastes **300 L a day** until its valve is fixed. The Water tab
   shows every litre and how many days the tank lasts at today's use.
