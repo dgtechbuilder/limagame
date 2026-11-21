@@ -97,9 +97,8 @@ test('the farm world on a phone: frame cost and draw calls', async ({ page }) =>
   expect(idle.frames as number).toBeGreaterThan(0);
 });
 
-/* The tractor business on a phone: the map while the tractor drives a leg (its transform set each frame, no React
-   re-render), and the ten-second drive minigame (one small canvas, only changed cells repainted), with the CPU slowed
-   4× as a low-cost phone would be. The numbers are printed; the checks are loose ceilings. Dev server only (?dev). */
+/* The tractor business on a phone: the day's drive, on the road between farms and at work in a field (one canvas,
+   painted each frame without a React render), with the CPU slowed 4× as a low-cost phone would be. The numbers are printed; the checks are loose ceilings. Dev server only (?dev). */
 test('the tractor business and its drive minigame on a slow phone', async ({ page }) => {
   test.setTimeout(180_000);
   await page.goto('./?dev');
@@ -148,14 +147,15 @@ test('the tractor business and its drive minigame on a slow phone', async ({ pag
     };
     requestAnimationFrame(tick);
     new MutationObserver(() => {
-      const state = document.querySelector('.drv') ? 'drive' : document.querySelector('.biz-tractor') ? 'leg' : 'none';
+      const drv = document.querySelector<HTMLElement>('.drv');
+      const state = drv?.dataset.stage === 'work' ? 'drive' : drv ? 'leg' : 'none';
       const last = w.__marks[w.__marks.length - 1];
       if (!last || last[0] !== state) w.__marks.push([state, performance.now()]);
-    }).observe(document.body, { childList: true, subtree: true });
+    }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-stage'] });
     new PerformanceObserver(l => l.getEntries().forEach(e => w.__long.push(e.duration))).observe({ type: 'longtask' });
   });
   await page.getByRole('button', { name: 'Start the day', exact: true }).click();
-  await page.waitForSelector('.drv', { timeout: 30_000 });
+  await page.waitForSelector('.drv[data-stage="work"]', { timeout: 30_000 });
   await page.keyboard.down('ArrowUp');
   await page.waitForTimeout(3000);
   await page.keyboard.up('ArrowUp');
@@ -176,7 +176,7 @@ test('the tractor business and its drive minigame on a slow phone', async ({ pag
   console.log(`PERF biz-leg ${JSON.stringify(r.leg)}`);
   console.log(`PERF biz-drive ${JSON.stringify({ ...r.drive, long: r.long, longMs: r.longMs })}`);
   // a slow phone, drawn in software here, still gets a playable minigame, and the main thread is not held for long:
-  // the leg is a short React render then a composited move; the drive repaints one small canvas a frame
+  // the road and the field each repaint one canvas a frame
   expect(r.leg.fps).toBeGreaterThan(6);
   expect(r.drive.fps).toBeGreaterThan(12);
   expect(r.drive.maxGap).toBeLessThan(600);
