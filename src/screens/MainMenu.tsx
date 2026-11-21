@@ -7,6 +7,7 @@ import { money } from '../money';
 import { achOfSave, streakNow, unclaimed } from '../achievements/model';
 import { achClock } from '../achievements/track';
 import { currentLevel } from '../progress/model';
+import { liveEvents } from '../events/live';
 
 /* The main menu: one place to reach every part of the game from any screen. It opens on top of whatever the player
    is doing, so Back (or the close button) returns to it. */
@@ -21,15 +22,18 @@ export function MainMenu({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
   const waiting = unclaimed(ach, today);
   const streak = streakNow(ach, today);
   const { level } = currentLevel(ach);
+  const live = intro ? 0 : liveEvents(s, today).filter(e => e.status === 'now').length;
   const items: Item[] = intro
     ? [
         { label: 'Back to the game', note: 'Carry on where you were', run: () => dispatch({ type: 'close' }) },
         { label: 'How the farm works', note: 'A quick guide', run: () => open({ kind: 'welcome' }) },
         { label: 'Farm words', note: 'What fertilizer, pesticides and herbicides are', run: () => open({ kind: 'glossary', tab: 'basics' }) },
+        { label: 'Donate', note: 'Give to the World Food Programme and others', run: () => open({ kind: 'events', tab: 'donate' }) },
         { label: 'Settings', note: 'Full screen, reset', run: () => open({ kind: 'settings' }) },
       ]
     : [
         { label: 'My farm', note: 'Back to the farm', run: () => dispatch({ type: 'home' }) },
+        { label: live ? `Special events (${live})` : 'Special events', note: 'Today’s events, special days, regions', run: () => open({ kind: 'events', tab: 'now' }) },
         { label: 'Mission', note: 'Plan, progress, results', run: () => dispatch({ type: 'trials', open: true }) },
         { label: 'Field rounds', note: 'Check every bed', run: () => dispatch({ type: 'rounds', open: true }) },
         { label: 'Tractor', note: 'Pick a type and tool, work a plot', run: () => dispatch({ type: 'ride' }) },
@@ -53,6 +57,7 @@ export function MainMenu({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
         },
         { label: 'Climate', note: 'Emissions, water, soil, credits', run: () => open({ kind: 'climate' }) },
         { label: 'Rewards', note: 'Points for real discounts', run: () => open({ kind: 'rewards' }) },
+        { label: 'Donate', note: 'Give to the World Food Programme and others', run: () => open({ kind: 'events', tab: 'donate' }) },
         { label: 'Partners & offers', note: 'Offers, and ways to partner with TemoLima', run: () => open({ kind: 'partners', tab: 'offers' }) },
         { label: 'Farm words', note: 'Farm basics, and every fertilizer, spray and tool', run: () => open({ kind: 'glossary', tab: 'basics' }) },
         { label: 'Training', note: (s.trainings ?? []).length ? `${(s.trainings ?? []).length} booked · book a course` : 'Book a farmer course', run: () => open({ kind: 'training' }) },
