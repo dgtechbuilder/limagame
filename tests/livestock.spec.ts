@@ -256,3 +256,55 @@ test('in the game: ANIMALS opens the day’s jobs, a job is done, the coop is bu
   await page.getByRole('button', { name: 'Risks tonight', exact: true }).click();
   await expect(page.locator('.lv-table')).toContainText('Cows');
 });
+
+test('examining a sick cow up close: the film visits each sign in order, then the fix is chosen beside them', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const L = (window as unknown as Win).__lima;
+    L.jump({ view: 'classic', coins: 20000, life: { day: 6, started: 2, date: new Date().toISOString().slice(0, 10), issues: [{ id: 'ecf', since: 4 }] }, modal: { kind: 'animals', tab: 'health' } });
+  });
+  await page.getByRole('button', { name: 'Examine the cow up close' }).click();
+  const exam = page.getByRole('dialog', { name: 'Examine the cow' });
+  await expect(exam).toBeVisible();
+  // the standard parts to check; one that shows nothing says what healthy looks like
+  await exam.getByRole('button', { name: 'Udder', exact: true }).click();
+  await expect(exam.locator('.ex-caption')).toContainText('Nothing wrong here');
+  await exam.getByRole('button', { name: 'Ears & neck', exact: true }).click();
+  await expect(exam.locator('.ex-caption')).toContainText('swollen lump under the ear');
+  // the film: six signs, head to tail, then her feed
+  await exam.getByRole('button', { name: /Examination/ }).click();
+  const titles = ['Tears down her face', 'A runny nose', 'A swollen lump under the ear', 'Fast breathing', 'A high fever', 'She will not eat'];
+  for (const [i, t] of titles.entries()) {
+    await expect(exam.locator('.ex-kicker')).toContainText(`Step ${i + 1} of 6`);
+    await expect(exam.locator('.ex-caption')).toContainText(t);
+    if (t === 'A high fever') await expect(exam.locator('.ex-card')).toContainText('°C');
+    if (t === 'She will not eat') await expect(exam.locator('.ex-days')).toContainText('Day 6');
+    await exam.getByRole('button', { name: /^(Next|Finish) ›$/ }).click();
+  }
+  // the end: what was seen, numbered on the cow, and the choice
+  await expect(exam.locator('.ex-list li')).toHaveCount(6);
+  await expect(exam.locator('.ex-pin')).toHaveCount(6);
+  await exam.getByRole('button', { name: /Give the antibiotic/ }).click();
+  await expect(exam.locator('.lv-wrong')).toContainText('Not that');
+  await exam.getByRole('button', { name: /Call the vet now/ }).click();
+  // fixed: the examination closes with the problem, and Escape had not closed the Animals page
+  await expect(exam).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: 'Animals' })).toBeVisible();
+  await expect(page.locator('.lv-issue')).toHaveCount(0);
+});
+
+test('the film plays by itself, and Escape closes only the examination', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const L = (window as unknown as Win).__lima;
+    L.jump({ view: 'classic', coins: 20000, life: { day: 5, started: 2, date: new Date().toISOString().slice(0, 10), issues: [{ id: 'mastitis', since: 5 }] }, modal: { kind: 'animals', tab: 'health' } });
+  });
+  await page.getByRole('button', { name: 'Examine the cow up close' }).click();
+  await page.getByRole('button', { name: /Start the examination/ }).click();
+  await expect(page.locator('.ex-kicker')).toContainText('Step 1 of 2 · Udder');
+  await expect(page.locator('.ex-kicker')).toContainText('Step 2 of 2 · Milk', { timeout: 12_000 });
+  await expect(page.locator('.ex-side')).toBeVisible({ timeout: 12_000 });
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Examine the cow' })).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: 'Animals' })).toBeVisible();
+});
