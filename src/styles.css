@@ -3435,6 +3435,72 @@ button.pp-card:active { transform: scale(0.98); }
 .hud-day b { color: #fff; font-size: 12.5px; }
 .hud-day.is-done { background: rgba(46, 139, 71, 0.8); }
 
+/* Special events (src/events): happening now, special days, regions in need, donate */
+.ev-note { margin: 0 0 8px; font-size: 10.5px; line-height: 1.45; opacity: 0.85; }
+.ev-inline { padding: 0; border: 0; background: none; font: inherit; font-weight: 800; color: var(--brown); text-decoration: underline; cursor: pointer; }
+.ev-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+.ev-group-h { margin: 0; font-size: 9.5px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; opacity: 0.6; }
+.ev-row, .ev-day {
+  display: grid; grid-template-columns: 30px 1fr auto auto; align-items: center; gap: 10px; padding: 7px 10px;
+  border-radius: 11px; background: #fffaf1; border: 1px solid var(--brown-10);
+}
+.ev-row.is-now { border-color: rgba(255, 174, 0, 0.55); background: #fff6df; }
+.ev-row.is-done { opacity: 0.8; }
+.ev-icon { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: #fff; font-size: 17px; }
+.ev-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ev-text b { font-size: 11.5px; line-height: 1.25; }
+.ev-text b i { font-style: normal; }
+.ev-text small { font-size: 10px; line-height: 1.35; opacity: 0.8; }
+.ev-text .ev-task { opacity: 1; font-weight: 700; color: var(--green-text); }
+.ev-status { padding: 2px 8px; border-radius: 100px; font-style: normal; font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px; background: var(--brown-05); }
+.ev-status.is-now { background: #ffe7a6; color: #7a4a00; }
+.ev-status.is-done { background: #e3f3da; color: #2e7a2a; }
+.ev-row .ach-claim, .ev-row .set-link, .ev-day .ach-claim, .ev-day .set-link { height: 26px; padding: 0 11px; font-size: 10px; }
+.ev-go { font-weight: 700; }
+.ev-days { display: flex; flex-direction: column; gap: 5px; padding-bottom: 8px; }
+.ev-day { grid-template-columns: 62px 1fr auto; }
+.ev-day.is-on { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); background: #fff6df; }
+.ev-date { display: flex; flex-direction: column; align-items: center; padding: 4px 0; border-radius: 8px; background: #fff; }
+.ev-date b { font-size: 12px; }
+.ev-date small { font-size: 9px; font-weight: 700; opacity: 0.7; }
+.ev-badge { display: grid; place-items: center; flex-shrink: 0; width: 30px; height: 30px; border-radius: 9px; background: #fff3dc; font-size: 17px; }
+.ev-badge.is-big { width: 40px; height: 40px; font-size: 22px; }
+.ev-crises { display: flex; flex-wrap: wrap; gap: 4px; }
+.ev-crisis { padding: 2px 7px; border-radius: 100px; font-style: normal; font-size: 9.5px; font-weight: 700; background: #fcefe8; color: #9a3a26; }
+.ev-crisis.is-floods, .ev-crisis.is-cyclones { background: #e5f0fb; color: #1f5d93; }
+.ev-crisis.is-conflict { background: #efe9f6; color: #5b3d86; }
+.ev-level.is-3 { color: #9a3a26; background: #fcefe8; }
+.ev-level.is-2, .ev-level.is-1 { color: #7a4a00; background: #fff1cf; }
+.ev-tag-focus { color: #7a4a00; background: #ffe7a6; }
+.ev-story { margin: 0; font-size: 10.5px; line-height: 1.4; }
+.ev-goal { display: flex; flex-direction: column; gap: 3px; }
+.ev-goal small { font-size: 10px; font-weight: 700; opacity: 0.8; }
+.ev-meter { position: relative; display: block; height: 7px; border-radius: 100px; background: var(--brown-10); overflow: hidden; }
+.ev-meter i { position: absolute; inset: 0 auto 0 0; border-radius: 100px; background: linear-gradient(90deg, #8fd16d, var(--green-text)); }
+.ev-regions, .ev-orgs { padding-bottom: 10px; }
+.ev-detail { display: flex; flex-direction: column; gap: 8px; padding-bottom: 10px; }
+.ev-back { align-self: flex-start; height: 26px; font-size: 10px; font-weight: 700; }
+.ev-detail-head { display: flex; align-items: center; gap: 10px; }
+.ev-detail-head .pt-who b { font-size: 14px; }
+.ev-facts { display: grid; grid-template-columns: 110px 1fr; gap: 4px 10px; margin: 0; font-size: 10.5px; line-height: 1.4; }
+.ev-facts dt { font-weight: 800; opacity: 0.7; }
+.ev-facts dd { margin: 0; }
+.ev-double { font-style: normal; color: #b46d00; }
+.ev-packs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.ev-pack { display: flex; flex-direction: column; gap: 4px; padding: 9px 10px; border-radius: 12px; background: #fffaf1; border: 1px solid var(--brown-10); }
+.ev-pack > b { font-size: 11px; line-height: 1.25; }
+.ev-pack > small { flex: 1; font-size: 10px; line-height: 1.35; opacity: 0.8; }
+.ev-pack-foot { display: flex; align-items: baseline; justify-content: space-between; }
+.ev-price { font-size: 13px; font-weight: 800; }
+.ev-pack-foot small { font-size: 10px; font-weight: 700; color: var(--green-text); }
+.ev-pack .ach-claim { height: 26px; font-size: 10.5px; }
+.ev-pack .ach-claim:disabled { opacity: 0.5; filter: grayscale(0.6); }
+.ev-org-mark {
+  display: grid; place-items: center; flex-shrink: 0; min-width: 34px; height: 30px; padding: 0 5px; border-radius: 8px;
+  background: var(--brand); color: #fff; font-size: 9.5px; font-weight: 900; letter-spacing: 0.2px;
+}
+.ev-donate { display: inline-flex; align-items: center; text-decoration: none; }
+
 /* ---------- the Kakuma special event (src/events) ---------- */
 /* the pop-up on the farm's bottom left, below the left column; the day and the build button move right of it */
 .kk-pop {

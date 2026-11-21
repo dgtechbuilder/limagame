@@ -2,8 +2,9 @@ import type { ShopTab, StepId } from './data';
 import { STORY } from './first/data';
 import { CHECK_DAYS, currentDay } from './trials/model';
 import { dayNumber } from './rounds/farms';
-import type { AchTab, Action, AnimalsTab, ClimateTab, FsPhase, GameState, GlossaryTab, KakumaTab, MarketTab, Modal, StoreTab, PartnersTab, PowerTab, SecurityTab, SettingsTab, WalletTab, FinanceTab } from './state';
+import type { AchTab, Action, AnimalsTab, ClimateTab, EventsTab, FsPhase, GameState, GlossaryTab, KakumaTab, MarketTab, Modal, StoreTab, PartnersTab, PowerTab, SecurityTab, SettingsTab, WalletTab, FinanceTab } from './state';
 import { BRANDS, type BrandId } from './partners/data';
+import { REGIONS, type RegionId } from './events/regions';
 
 /* Web addresses: every screen has its own address after the # (…/limagame/#/settings/display), so a player can
    type one to go there, reload without losing their place, and use the browser's Back and Forward.
@@ -28,6 +29,8 @@ const MARKET_TABS: Record<MarketTab, string> = { sell: 'sell', restaurant: 'rest
 const STORE_TABS: Record<StoreTab, string> = { store: 'store', harvest: 'harvest', produce: 'produce' };
 const SECURITY: Record<SecurityTab, string> = { protect: 'protect', risk: 'risks', reports: 'night-reports' };
 const GLOSSARY: Record<GlossaryTab, string> = { basics: 'basics', feed: 'fertilizer', protect: 'sprays', pests: 'pests', seed: 'seeds', tools: 'tools', machines: 'tractors', water: 'water-and-storage', animals: 'animals', power: 'power-and-climate' };
+const EVENTS: Record<EventsTab, string> = { now: 'happening-now', days: 'special-days', regions: 'regions', donate: 'donate' };
+const REGION_WORD: Record<RegionId, string> = { horn: 'horn-of-africa', sahel: 'sahel', southern: 'southern-africa', lakechad: 'lake-chad', madagascar: 'madagascar', sudan: 'sudan' };
 const KAKUMA: Record<KakumaTab, string> = { about: 'about', foods: 'foods', life: 'food-and-life', donate: 'donate' };
 const BRAND_WORD = Object.fromEntries(BRANDS.map(b => [b.id, b.id])) as Record<BrandId, string>;
 const SHOP: Record<ShopTab, string> = { food: 'food', fertilizer: 'fertilizer', tank: 'water-tanks', equipment: 'equipment' };
@@ -103,6 +106,8 @@ function modalPath(s: GameState, m: Modal): string {
       return `/storehouse/${STORE_TABS[m.tab ?? 'store']}`;
     case 'glossary':
       return `/farm-words/${GLOSSARY[m.tab ?? 'basics']}`;
+    case 'events':
+      return `/events/${EVENTS[m.tab ?? 'now']}${m.tab === 'regions' && m.region ? `/${REGION_WORD[m.region]}` : ''}`;
     case 'kakuma':
       return `/kakuma/${KAKUMA[m.tab ?? 'about']}`;
     default:
@@ -135,7 +140,8 @@ const say = (text: string): Action[] => [{ type: 'toast', text }];
 const NOT_FOUND = 'There is no page at that address.';
 
 /** A screen that opens on top, from its address; null when the address is not one. */
-function modalFor(s: GameState, parts: string[]): Modal | null | 'bad' {
+function modalFor(s: GameState, path: string[]): Modal | null | 'bad' {
+  let parts = path;
   const [first, second] = parts;
   const tab = <T extends string>(map: Record<T, string>): T | 'bad' | undefined => (second === undefined ? undefined : (key(map, second) ?? 'bad'));
   if (first === 'settings') {
@@ -197,6 +203,15 @@ function modalFor(s: GameState, parts: string[]): Modal | null | 'bad' {
     const t = tab(GLOSSARY);
     return t === 'bad' || parts.length > 2 ? 'bad' : { kind: 'glossary', tab: t ?? 'basics' };
   }
+  // Special events; /donate and /regions are short addresses for their sections
+  if (first === 'donate' || first === 'regions') parts = ['events', ...parts];
+  if (parts[0] === 'events') {
+    const t = parts[1] === undefined ? 'now' : key(EVENTS, parts[1]);
+    if (!t || parts.length > 3) return 'bad';
+    if (parts[2] === undefined) return { kind: 'events', tab: t };
+    const region = t === 'regions' ? (key(REGION_WORD, parts[2]) ?? REGIONS.find(r => r.id === parts[2])?.id) : undefined;
+    return region ? { kind: 'events', tab: 'regions', region } : 'bad';
+  }
   if (first === 'kakuma') {
     const t = tab(KAKUMA);
     return t === 'bad' || parts.length > 2 ? 'bad' : { kind: 'kakuma', tab: t ?? 'about' };
@@ -237,8 +252,8 @@ export function routeTo(s: GameState, raw: string): Action[] {
   /* ---------- the first session ---------- */
   if (phase !== 'done') {
     // the menu and Settings are open during the first session, as their buttons are; so is Partners, for a partner
-    // visiting before they play
-    if (modal) return modal.kind === 'menu' || modal.kind === 'settings' || modal.kind === 'partners' || modal.kind === 'glossary' || modal.kind === 'kakuma' ? [{ type: 'open', modal }] : say('Finish checking your first crops to open the farm.');
+    // visiting before they play, the Kakuma event, and the Donate page (it links to real organisations)
+    if (modal) return modal.kind === 'menu' || modal.kind === 'settings' || modal.kind === 'partners' || modal.kind === 'glossary' || modal.kind === 'kakuma' || (modal.kind === 'events' && modal.tab === 'donate') ? [{ type: 'open', modal }] : say('Finish checking your first crops to open the farm.');
     const close: Action[] = s.modal ? [{ type: 'close' }, { type: 'close' }] : [];
     const step = (to: FsPhase, page?: number): Action[] => [...close, { type: 'fs', phase: to, page }];
     // the step the player is on (e.g. Back from the menu to it)

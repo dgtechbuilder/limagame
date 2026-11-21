@@ -9,6 +9,9 @@ import { DIESEL_PRICE, DRIVER_WAGE, FARMER_PAY_X, PAY_EFFICIENCY, TOOLS, bizOf, 
 import { STORY, SHAMBAS, FARM_UPDATE } from '../src/first/data';
 import { DEFAULT_PRICES, profitPerBag } from '../src/state';
 
+// the currency is kept for the whole test process: put it back so later files see the default (as country.spec.ts does)
+test.afterEach(() => setCountry(''));
+
 /* Money: savings, investments and profit tracking (src/finance), the tractor business's pay and its 90% rule, and
    prices that make sense (a figure kept in real shillings is never shown 10 times too large). */
 
