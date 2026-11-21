@@ -11,11 +11,11 @@ const openSettings = async (page: Page) => {
 const section = async (page: Page, name: string) => page$(page).getByRole('button', { name, exact: true }).click();
 const choose = (page: Page, group: string, option: string) => page$(page).getByRole('radiogroup', { name: group }).getByRole('radio', { name: option, exact: true }).click();
 
-test('Settings: five sections with Back, Menu and Farm; Back returns to the farm', async ({ page }) => {
+test('Settings: six sections with Back, Menu and Farm; Back returns to the farm', async ({ page }) => {
   await boot(page);
   await scenario(page, 'tractor');
   await openSettings(page);
-  for (const s of ['My farmer', 'Game', 'Display', 'Controller', 'Help & data']) await expect(page$(page).getByRole('button', { name: s, exact: true })).toBeVisible();
+  for (const s of ['My farmer', 'Game', 'Display', 'Tractor', 'Controller', 'Help & data']) await expect(page$(page).getByRole('button', { name: s, exact: true })).toBeVisible();
   for (const nav of ['Back', 'Main menu', 'Back to my farm']) await expect(page$(page).getByRole('button', { name: nav, exact: true })).toBeVisible();
   await page$(page).getByRole('button', { name: 'Back', exact: true }).click();
   await expect(page$(page)).toBeHidden();
@@ -104,4 +104,26 @@ test('Reset progress starts again but keeps the settings', async ({ page }) => {
   const s = await state(page);
   expect(s.farmer).toBeNull();
   expect(s.settings.art).toBe('original');
+});
+
+test('Tractor: speed, steering, touch controls, sounds, dust and smoke for the business drive, saved and in the address', async ({ page }) => {
+  await boot(page);
+  await scenario(page, 'tractor');
+  expect((await state(page)).settings.tractor).toMatchObject({ speed: 'normal', steer: 'medium', controls: 'tap', sound: 'normal', effects: 'lots', shake: true, guides: true });
+  await openSettings(page);
+  await section(page, 'Tractor');
+  await expect(page).toHaveURL(/#\/settings\/tractor$/);
+  await choose(page, 'Driving speed', 'Gentle');
+  await choose(page, 'Steering sensitivity', 'High');
+  await choose(page, 'Touch controls', 'Buttons');
+  await choose(page, 'Tractor sounds', 'Quiet');
+  await choose(page, 'Dust and smoke', 'Some');
+  await choose(page, 'Shake on hits', 'Off');
+  await choose(page, 'Row guides', 'Off');
+  await expect(page$(page).getByText('Slow and steady')).toBeVisible();
+  const want = { speed: 'gentle', steer: 'high', controls: 'buttons', sound: 'quiet', effects: 'some', shake: false, guides: false };
+  await expect.poll(async () => (await state(page)).settings.tractor).toMatchObject(want);
+  // kept after a reload
+  await boot(page, false);
+  expect((await state(page)).settings.tractor).toMatchObject(want);
 });

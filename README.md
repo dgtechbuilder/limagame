@@ -225,8 +225,9 @@ src/
   risk/                    money at risk: config.ts (every number to tune), model.ts (the list, from the save), RiskHud.tsx (the button)
   tractor/                 from Wakala Agent: the tractor drive before planting: data.ts, sim.ts (no DOM), Tractor.tsx;
                            the tractor screen: hub.ts (training, condition, diesel), TractorHub.tsx
-  business/                the tractor business (see below): model.ts every rule and number, drive.ts the ten-second
-                           drive, Business.tsx and DriveGame.tsx the screens, Cast.tsx and cast/ the brand characters
+  business/                the tractor business (see below): model.ts every rule and number, drive.ts the day's
+                           drive (DayDrive.tsx, driveArt.ts, driveAudio.ts; tune.ts Settings → Tractor), Business.tsx
+                           the screens, Cast.tsx and cast/ the brand characters
   climate/                 climate tracking: model.ts (every factor, the ledger, rating, levels), track.ts (which
                            actions record what, and the end-of-day payment), land.ts (land farmed, bare or idle,
                            and what a credit pays), Tag.tsx (climate tags on choices), sample.ts (design review)
@@ -734,11 +735,12 @@ Agent** in the **Narok hub territory**, with no land and no machine: they scout 
 hub's tractor (or pass it to a partner), drive the tractor at every stop, and build a book of business dense and
 reliable enough to be financed into a tractor of their own. Code: `src/business/model.ts` (every rule and number, no
 screens; every value the brief calls tunable is a named constant), `src/business/drive.ts` (the minigame's rules),
-`src/business/Business.tsx` and `src/business/DriveGame.tsx` (the screens), `src/business/Cast.tsx` and `cast/` (the
+`src/business/Business.tsx` and `src/business/DayDrive.tsx` (the screens; `driveArt.ts` paints the drive,
+`driveAudio.ts` makes its sounds, `tune.ts` holds Settings → Tractor), `src/business/Cast.tsx` and `cast/` (the
 brand's five characters).
 
 ![Campbell scouts a farm](docs/business-campbell.webp)
-![The ten-second drive at a farm](docs/business-drive.webp)
+![The drive at a farm](docs/business-drive.webp)
 ![The day's result with the efficiency score and the SER](docs/business-result.webp)
 
 **A day** (the *Today* tab)
@@ -776,19 +778,32 @@ brand's five characters).
   the rest clear the floor: the farmer waits, the booking does not close, and the day's counted acres are halved.
   The brief's real-world v1 values (1.0 and 4.0 acres a km) are scaled to the game's sprawling 13 km map: `SER =
   { floor: 0.1, healthy: 0.3 }`, tunable (the median day sits near 0.25).
-- **Start the day: drive the tractor at every stop.** The tractor drives each leg along the roads on the map; at
-  each farm the **ten-second drive** opens (`DriveGame.tsx`, rules in `drive.ts`):
-  - **A field job** (plough, harrow, ridge, plant, spread, harvest): the farmer's field from above, four passes of
-    the implement tall, with a rock, a tree or a stump in the way. Tap and hold where the tractor should go (or steer
-    with the arrow keys): the implement works a swath behind it. The **field efficiency** is the share of the field
-    worked when the time is up; a tidy serpentine makes 85–95% in about seven seconds; knocks stop the tractor.
-  - **A transport job** (the trailer): a haulage run down a murram road with potholes, puddles and ruts, three
-    lanes, ten bags on the trailer. Tap a lane (or the arrow keys) to miss them; every hit drops a bag.
+- **Start the day: drive the whole route without a break** (`DayDrive.tsx`, rules in `drive.ts`). One game runs
+  from the yard to the last farm and home. Across the top, a **green line** runs Yard → farm → farm → Yard (spaced by
+  the road between them) with a little tractor that moves along it as the player drives, filling the line behind it;
+  each farm's score appears beside its name. Below it the scenes slide from one to the next:
+  - **The road between farms**: the murram road from above, with farms, trees and a homestead rolling by. Tap a lane
+    (or ▲ ▼, or the arrow keys) to dodge potholes, puddles, ruts and stones. Nothing to lose, but every bump is felt.
+  - **A field job** (plough, harrow, ridge, plant, spread, harvest): the farmer's field from above with its crop rows
+    (stubble, clods, hedges of green crop or gold maize), four passes of the implement tall, with a tree, a rock or a
+    stump and a scatter of small stones, the farm's trees, palms, pond or barn round it. Tap and hold where the
+    tractor should go (or steer with the arrow keys): the implement turns the rows behind it (furrows, fine tilth,
+    ridges, seedlings, fertiliser, stubble) along its real path. The **field efficiency** is the share of the field
+    worked when the time is up. Small stones are kicked aside and slow the tractor; trees, rocks and stumps stop it.
+    The time a field allows follows the tractor's speed (about 25 seconds at the normal pace).
+  - **A transport job** (the trailer): the same road with ten bags on the trailer; every hit drops a bag.
+  - **Effects and sound**: exhaust smoke, dust behind the implement, and on a hit a burst of dust, chips, sparks or
+    leaves, a black puff from the stack, a shake and a word (*CLONK!*, *CRUNCH!*, *SPLASH!*); a synthesised diesel
+    engine, a sound for every knock, a horn (📢 or Space) and the clock's last ticks.
+  - **Settings → Tractor** (⚙ on the drive opens it): driving speed (gentle to fast), steering sensitivity, touch
+    controls (tap to steer, or ◀ ▶ buttons with the tractor driving itself), tractor sounds, dust and smoke, shake on
+    hits, and row guides.
   - **Let the driver do it** hands the stop to the hub driver at the brief's **65–75% field efficiency on small,
     irregular plots** (`BASELINE` = 0.7), which is exactly the planned job. A drive at or above the baseline closes
     the job; a better one saves up to 25% of its diesel and, at 90% or more, pays 15 points for *a clean drive*; one
     under 80% of the baseline leaves the job **unfinished**: the hire is cut to the share done and the booking does
-    not close. The drives are seeded by the day and the farm, and the main menu pauses them.
+    not close. The drive then carries on to the next farm. The fields are seeded by the day and the farm, and the
+    main menu or any page opened over the drive pauses it.
 - **The result.** The efficiency score (the shortest route's km against the player's) as before, now with the
   day's **SER** beside it, the farmers helped, clean drives, a **neighbourhood synchronised** (three or more farms
   booked on the same activity the same day: +30 points), anything dropped or unfinished, the money (hire, partner
@@ -1942,12 +1957,10 @@ player's saved game or events.
   game opens, so it is ready when the farm does. The Poppins font no longer holds up the first picture.
 - **The tractor business and its drive minigame** (`tests/perf.spec.ts`, the CPU slowed 4× over the software
   renderer): the business is its own chunk (about 31 KB compressed, the five characters' pictures included), fetched
-  when it opens; the brand fonts load only then. While the tractor drives a road leg on the map, its position is set
-  straight on a composited element each frame (no React re-render, the SVG map underneath not repainted): about 18
-  frames a second here. The ten-second drive draws one small canvas (420 × 224 or less, at 2×): the field's
-  background is painted once, only the cells the implement just worked are repainted, and the clock and the count
-  are written straight into the HUD, not through React state: about 23 frames a second here, with no long task
-  over 140 ms. A real phone rasterises on its GPU, so both run far smoother there.
+  when it opens; the brand fonts load only then. The day's drive draws one canvas (520 × 202, at 2×): each field's
+  background and its worked look are painted once when the field slides in, the implement reveals the worked look
+  strip by strip, the road is one repeating strip, and the clock, the count and the little tractor on the route line
+  are written straight into the page, not through React state. A real phone rasterises on its GPU, so both run far smoother there.
 - A service worker (`public/sw.js`, published game only) keeps the game on the phone: a second visit opens without
   downloading it again, and the game plays on a weak signal. The page is fetched fresh when there is a connection,
   so an update shows at once.

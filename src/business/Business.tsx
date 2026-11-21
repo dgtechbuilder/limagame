@@ -82,8 +82,9 @@ import {
   type Pt,
   type ReqKey,
 } from './model';
-import { newDrive, type Drive, type DriveResult } from './drive';
-import { DriveGame } from './DriveGame';
+import type { DriveResult } from './drive';
+import { DayDrive, type DayDriveApi, type DriveStop } from './DayDrive';
+import { tractorSettings } from './tune';
 import { Face, Says } from './Cast';
 import { kshReal, kshText, withMoney } from '../money';
 import { sfx } from '../sfx';
@@ -194,7 +195,7 @@ export function Business({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
         </div>
       </div>
 
-      {tab === 'today' && <Today key={b.day} b={b} name={name} dispatch={dispatch} onDone={r => setResult(r)} signal={farmSignal(s)} />}
+      {tab === 'today' && <Today key={b.day} b={b} name={name} dispatch={dispatch} onDone={r => setResult(r)} signal={farmSignal(s)} settings={s.settings} paused={!!s.modal} />}
       {tab === 'hub' && <Hub b={b} dispatch={dispatch} />}
       {tab === 'calendar' && <Calendar b={b} name={name} />}
       {tab === 'trend' && (
@@ -234,7 +235,7 @@ function Welcome({ name, onGo }: { name: string; onGo: () => void }) {
             <b>Get paid.</b> Farmers pay {FARMER_PAY_X}× the market hire (ploughing: {ksh(hireOf('plough'))} an acre, not {kshReal(TOOLS.plough.marketKsh)}), but only for a route at least {Math.round(PAY_EFFICIENCY * 100)}% efficient. Under {Math.round(PAY_EFFICIENCY * 100)}, they pay back the hire and the day is a loss.
           </li>
           <li>
-            <b>Drive.</b> Ten seconds at the wheel per stop. Beat the hub driver’s {Math.round(BASELINE * 100)}% for a cleaner job.
+            <b>Drive.</b> You drive the whole route: the road to each farm, the job there, and home. Beat the hub driver’s {Math.round(BASELINE * 100)}% for a cleaner job.
           </li>
           <li>
             <b>Grow.</b> {PAYG.tiers[0].counted} counted acres at {Math.round(PAYG.fulfilment * 100)}% fulfilment earns a {PAYG.tiers[0].hp}HP tractor on Pay-As-You-Go.
@@ -275,22 +276,24 @@ function Graduation({ b, name, onSign, onLater }: { b: Biz; name: string; onSign
 
 /* A day in three steps. Book: tap a farm, read Campbell's scan and deliver its advice, then give each job to the
    tractor or a partner. Route: tap the farms in the order the tractor will drive to them, along the roads; there is no
-   route line and no km while planning. Run: the tractor drives each leg on the map, and at each farm the player drives
-   it for ten seconds (Drive.tsx); then the day's result, with the efficiency score and the two numbers. */
+   route line and no km while planning. Run: the player drives the whole day without a break (DayDrive.tsx): the road to
+   each farm, the job there, and the road home, with a green line at the top showing the tractor moving from farm to
+   farm; then the day's result, with the efficiency score and the two numbers. */
 
 type Step = 'book' | 'route';
 
 interface Run {
   stops: string[];
-  /** the leg being driven: 0 is yard → first stop, stops.length is the way home */
-  leg: number;
-  phase: 'leg' | 'drive' | 'home';
+  /** the stop being driven to or worked at; stops.length is the way home */
+  at: number;
+  phase: 'road' | 'work' | 'home';
   drives: Drives;
-  drive: Drive | null;
   last: string | null;
+  /** what the drive needs, fixed when the day starts */
+  plan: { stops: DriveStop[]; legs: number[] };
 }
 
-function Today({ b, name, dispatch, onDone, signal }: { b: Biz; name: string; dispatch: Dispatch<Action>; onDone: (r: DayResult) => void; signal: FarmSignal }) {
+function Today({ b, name, dispatch, onDone, signal, settings, paused }: { b: Biz; name: string; dispatch: Dispatch<Action>; onDone: (r: DayResult) => void; signal: FarmSignal; settings: GameState['settings']; paused: boolean }) {
   const requests = useMemo(() => requestsFor(b), [b]);
   const map = useMemo(() => mapFor(b.day), [b.day]);
   const [bookings, setBookings] = useState<Bookings>({});
@@ -326,23 +329,19 @@ function Today({ b, name, dispatch, onDone, signal }: { b: Biz; name: string; di
     setRoute(r => [...r, id]);
   };
 
-  // the day on the map: the tractor drives each leg along the roads, and the player drives it at each stop
-  const legs = useMemo(() => (run ? legsOf(map, run.stops) : []), [map, run?.stops]);
-  const legRun = useMemo(() => (run && run.phase === 'leg' ? { leg: legs[run.leg], at: run.leg } : null), [legs, run?.leg, run?.phase]);
-  const start = () => setRun({ stops: plan.stops, leg: 0, phase: 'leg', drives: {}, drive: null, last: null });
-  const arrive = () => {
-    setRun(r => {
-      if (!r || r.phase !== 'leg') return r;
-      if (r.leg >= r.stops.length) return { ...r, phase: 'home' };
-      const farm = r.stops[r.leg];
+  // the day: the player drives the whole route in one go, the road to each farm and the job there
+  const game = useRef<DayDriveApi | null>(null);
+  const start = () => {
+    const stops: DriveStop[] = plan.stops.map(farm => {
       const job = requests.filter(k => bookings[k] === 'me' && clientKey(k) === farm).map(partOf);
       const tool = job.find(x => x.activity !== 'transport')?.tool ?? job[0]?.tool ?? 'plough';
-      return { ...r, phase: 'drive', drive: newDrive(`${b.day}:${farm}`, tool, rig.tractor) };
+      return { id: farm, name: clientOf(farm).name, job: jobText(requests, bookings, farm), tool, seed: `${b.day}:${farm}` };
     });
+    setRun({ stops: plan.stops, at: 0, phase: 'road', drives: {}, last: null, plan: { stops, legs: legsOf(map, plan.stops) } });
   };
-  const driven = (farm: string, e: number, detail: string) => {
-    setRun(r => (r ? { ...r, phase: 'leg', leg: r.leg + 1, drives: { ...r.drives, [farm]: e }, drive: null, last: detail } : r));
-  };
+  const onStage = (at: number, phase: 'road' | 'work') => setRun(r => (r ? { ...r, at, phase } : r));
+  const driven = (farm: string, d: DriveResult) => setRun(r => (r ? { ...r, drives: { ...r.drives, [farm]: d.e }, last: d.detail } : r));
+  const finished = () => setRun(r => (r ? { ...r, phase: 'home' } : r));
   useEffect(() => {
     if (!run || run.phase !== 'home') return;
     dispatch({ type: 'bizRun', bookings, route, drives: run.drives });
@@ -357,12 +356,12 @@ function Today({ b, name, dispatch, onDone, signal }: { b: Biz; name: string; di
   };
 
   const scan = pick ? scanFarm(b, pick, requests) : null;
-  const atFarm = run?.phase === 'drive' ? clientOf(run.stops[run.leg]) : null;
+  const atFarm = run?.phase === 'work' ? clientOf(run.stops[run.at]) : null;
   const line = run
-    ? run.phase === 'drive'
-      ? `${atFarm!.name}'s farm: take the wheel, ${name}. Ten seconds: work every strip once.`
+    ? run.phase === 'work'
+      ? `${atFarm!.name}'s farm: take the wheel, ${name}. Work every row once, round the stones and trees.`
       : run.last
-        ? `${run.last} On to ${run.leg < run.stops.length ? clientOf(run.stops[run.leg]).name : 'the yard'}.`
+        ? `${run.last} On to ${run.at < run.stops.length ? clientOf(run.stops[run.at]).name : 'the yard'}.`
         : `On the road, ${name}: ${run.stops.length} farm${run.stops.length === 1 ? '' : 's'}. Let's test your route.`
     : step === 'route'
       ? plan.unrouted.length
@@ -383,8 +382,7 @@ function Today({ b, name, dispatch, onDone, signal }: { b: Biz; name: string; di
   return (
     <>
       <div className="biz-map" style={{ left: MAP_PX.x, top: MAP_PX.y, width: MAP_PX.w, height: MAP_PX.h }}>
-        <TerritoryMap map={map} requests={requests} bookings={bookings} route={step === 'route' ? route : []} step={step} pick={pick} onPick={tapFarm} advised={b.advised} run={legRun} onArrive={arrive} />
-        <TractorOnRoad run={legRun} onArrive={arrive} />
+        <TerritoryMap map={map} requests={requests} bookings={bookings} route={step === 'route' ? route : []} step={step} pick={pick} onPick={tapFarm} advised={b.advised} running={!!run} />
         {step === 'route' && !run && (
           <ol className="biz-route" aria-label="Your route">
             <li className="is-yard">Yard</li>
@@ -401,8 +399,21 @@ function Today({ b, name, dispatch, onDone, signal }: { b: Biz; name: string; di
             <li className="is-yard">Yard</li>
           </ol>
         )}
-        {run?.phase === 'drive' && run.drive && atFarm && (
-          <DriveGame key={`${run.leg}`} drive={run.drive} farm={atFarm.name} job={jobText(requests, bookings, atFarm.id)} onDone={(r: DriveResult) => driven(atFarm.id, r.e, r.detail)} />
+        {run && (
+          <DayDrive
+            stops={run.plan.stops}
+            legs={run.plan.legs}
+            tractor={rig.tractor}
+            settings={tractorSettings(settings.tractor)}
+            reduceMotion={settings.reduceMotion}
+            paused={paused}
+            seed={`day:${b.day}`}
+            api={game}
+            onStage={onStage}
+            onFarm={driven}
+            onFinish={finished}
+            onSettings={() => dispatch({ type: 'open', modal: { kind: 'settings', tab: 'tractor' } })}
+          />
         )}
       </div>
 
@@ -410,16 +421,16 @@ function Today({ b, name, dispatch, onDone, signal }: { b: Biz; name: string; di
         {run ? (
           <div className="biz-farm">
             <p className="biz-farm-title">
-              <b>{run.phase === 'drive' ? `Stop ${run.leg + 1}: ${atFarm!.name}` : run.leg < run.stops.length ? `To ${clientOf(run.stops[run.leg]).name}` : 'Back to the yard'}</b>
+              <b>{run.phase === 'work' ? `Stop ${run.at + 1}: ${atFarm!.name}` : run.at < run.stops.length ? `To ${clientOf(run.stops[run.at]).name}` : 'Back to the yard'}</b>
             </p>
-            {run.phase === 'drive' && atFarm ? (
+            {run.phase === 'work' && atFarm ? (
               <>
                 <p className="biz-route-tip">{jobText(requests, bookings, atFarm.id)}</p>
                 <p className="biz-route-tip">
                   Drive for a cleaner job, or hand it to the hub driver ({Math.round(BASELINE * 100)}%). Under {Math.round(BASELINE * 0.8 * 100)}% is left unfinished.
                 </p>
                 <div className="biz-route-tools">
-                  <button type="button" className="biz-link" onClick={() => driven(atFarm.id, BASELINE, `The hub driver did ${atFarm.name}'s job.`)}>
+                  <button type="button" className="biz-link" onClick={() => game.current?.skip()}>
                     Let the driver do it
                   </button>
                 </div>
@@ -427,7 +438,7 @@ function Today({ b, name, dispatch, onDone, signal }: { b: Biz; name: string; di
             ) : (
               <p className="biz-route-tip">
                 {run.stops.map((id, i) => (
-                  <span key={id} className={`biz-stop${i < run.leg ? ' is-done' : i === run.leg ? ' is-now' : ''}`}>
+                  <span key={id} className={`biz-stop${i < run.at ? ' is-done' : i === run.at ? ' is-now' : ''}`}>
                     {i + 1} {clientOf(id).name.replace('Mama ', '')}
                     {run.drives[id] !== undefined && <i> {pct(run.drives[id])}</i>}
                   </span>
@@ -567,7 +578,7 @@ function Today({ b, name, dispatch, onDone, signal }: { b: Biz; name: string; di
           )}
           {run ? (
             <GoldButton font={12} height={34} style={{ flex: 1, opacity: 0.5 }} ariaLabel="On the road">
-              {run.phase === 'drive' ? 'Driving…' : 'On the road…'}
+              {run.phase === 'work' ? 'Driving…' : 'On the road…'}
             </GoldButton>
           ) : step === 'book' ? (
             mine.length ? (
@@ -661,21 +672,15 @@ function Meter({ label, value, frac, warn, good, note }: { label: string; value:
 
 /* ---------------- the map ---------------- */
 
-/** How the drive plays on the map: the tractor keeps a steady speed along the roads. */
-const DRIVE_PX_S = 300;
-interface Leg {
-  pts: Pt[];
-  ms: number;
-}
-/** Each leg of the day's drive as road points: yard → stops in order → yard. */
-function legsOf(map: BizMap, stops: string[]): Leg[] {
-  const out: Leg[] = [];
+/** The length of each leg of the day's drive along the roads, in map pixels: yard → stops in order → yard. */
+function legsOf(map: BizMap, stops: string[]): number[] {
+  const out: number[] = [];
   let from = YARD;
   for (const id of [...stops, YARD]) {
     const pts = legPoints(map, from, id);
     let px = 0;
     for (let i = 1; i < pts.length; i++) px += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
-    out.push({ pts, ms: Math.max(250, Math.round((px / DRIVE_PX_S) * 1000)) });
+    out.push(px);
     from = id;
   }
   return out;
@@ -703,8 +708,7 @@ function TerritoryMap({
   pick,
   onPick,
   advised,
-  run,
-  onArrive,
+  running,
 }: {
   map: BizMap;
   requests: ReqKey[];
@@ -715,15 +719,13 @@ function TerritoryMap({
   pick: string | null;
   onPick: (id: string) => void;
   advised: Record<string, boolean>;
-  /** the leg the tractor is driving now */
-  run: { leg: Leg; at: number } | null;
-  onArrive: () => void;
+  /** the day is being driven: the map is not tappable */
+  running: boolean;
 }) {
   const today = new Set(requests.map(clientKey));
   const mine = myFarms(bookings);
   const yard = map.at[YARD];
   const terr = map.territory;
-  void onArrive;
   return (
     <svg viewBox={`0 0 ${MAP_PX.w} ${MAP_PX.h}`} width={MAP_PX.w} height={MAP_PX.h} role="group" aria-label={`The ${TERRITORY.hub} territory: the farms around the yard, and the roads between them`}>
       <rect width={MAP_PX.w} height={MAP_PX.h} rx={12} fill="#9fcf6a" />
@@ -779,7 +781,7 @@ function TerritoryMap({
         const done = keys.length > 0 && keys.every(k => bookings[k]);
         const n = route.indexOf(c.id);
         // on the route step only the tractor's own farms can be tapped, each once
-        const tappable = on && !run && (step === 'book' || (isMine && n < 0));
+        const tappable = on && !running && (step === 'book' || (isMine && n < 0));
         const badge = step === 'route' ? (isMine ? (n >= 0 ? String(n + 1) : '?') : '') : String(keys.length);
         return (
           <g
@@ -821,67 +823,6 @@ function TerritoryMap({
 
     </svg>
   );
-}
-
-/** The tractor on the road: an element over the map moved every frame by the leg animation (a composited transform,
-    so the map underneath is not repainted), not by React. */
-function TractorOnRoad({ run, onArrive }: { run: { leg: Leg; at: number } | null; onArrive: () => void }) {
-  const el = useLeg(run, onArrive);
-  if (!run) return null;
-  const p = run.leg.pts[0];
-  return (
-    <div ref={el} className="biz-tractor" aria-hidden="true" style={{ transform: `translate(${p.x}px,${p.y}px)` }}>
-      <svg viewBox="-14 -14 28 28" width={28} height={28}>
-        <circle r={13} fill="#fff" stroke="#3d2614" strokeWidth={2} />
-        <rect x={-8} y={-5} width={11} height={7} rx={1.5} fill="#3e8e3a" />
-        <rect x={1} y={-9} width={6} height={6} rx={1} fill="#3e8e3a" />
-        <circle cx={-5} cy={4} r={4} fill="#333" />
-        <circle cx={5} cy={4.5} r={3} fill="#333" />
-      </svg>
-    </div>
-  );
-}
-
-/** Drives a leg: the tractor's transform is set straight on its element each frame (no re-render), and onArrive
-    fires once at the end. */
-function useLeg(run: { leg: Leg; at: number } | null, onArrive: () => void) {
-  const el = useRef<HTMLDivElement>(null);
-  const arrive = useRef(onArrive);
-  arrive.current = onArrive;
-  const leg = run?.leg ?? null;
-  useEffect(() => {
-    if (!leg) return;
-    const { pts, ms } = leg;
-    const start = performance.now();
-    let raf = 0;
-    const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / ms);
-      const p = pointAlong(pts, t);
-      if (el.current) el.current.style.transform = `translate(${p.x.toFixed(1)}px,${p.y.toFixed(1)}px)`;
-      if (t < 1) raf = requestAnimationFrame(tick);
-      else arrive.current();
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [leg]);
-  return el;
-}
-
-/** Where the tractor is along a leg's points after a share t (0 to 1) of its length. */
-function pointAlong(pts: Pt[], t: number): Pt {
-  if (pts.length < 2) return pts[0] ?? { x: 0, y: 0 };
-  let total = 0;
-  for (let i = 1; i < pts.length; i++) total += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
-  let left = t * total;
-  for (let i = 1; i < pts.length; i++) {
-    const seg = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
-    if (left <= seg) {
-      const f = seg ? left / seg : 1;
-      return { x: pts[i - 1].x + (pts[i].x - pts[i - 1].x) * f, y: pts[i - 1].y + (pts[i].y - pts[i - 1].y) * f };
-    }
-    left -= seg;
-  }
-  return pts[pts.length - 1];
 }
 
 /* ---------------- the day's result ---------------- */

@@ -47,7 +47,7 @@ import {
   type Bookings,
   type Crop,
   type ReqKey, URGENT, traitsOf, urgencyOf } from '../src/business/model';
-import { BAGS, DRIVE_SECS, FIELD_W, HAUL_Y, newFieldDrive, newHaulDrive, stepField, stepHaul } from '../src/business/drive';
+import { BAGS, FIELD_W, HAUL_X, fieldSecs, newFieldDrive, newHaulDrive, stepField, stepHaul } from '../src/business/drive';
 import { initialState, reducer } from '../src/state';
 import { boot, state, type Win } from './helpers';
 
@@ -366,7 +366,7 @@ test('graduation into a PAYG tractor: counted acres and fulfilment, then capacit
   expect(old.tools).toEqual(['plough', 'trailer']);
 });
 
-test('the ten-second drive: a tidy serpentine beats the hub driver, a lazy one does not; the haulage run loses a bag a pothole', () => {
+test('the drive: a tidy serpentine beats the hub driver, a lazy one does not; stones are kicked aside; the haulage run loses a bag a pothole', () => {
   const tidy = newFieldDrive('test', 'plough', 'standard');
   const rows = Math.round(tidy.h / tidy.swath);
   // a serpentine down the rows, stepping round whatever is in the way
@@ -377,7 +377,7 @@ test('the ten-second drive: a tidy serpentine beats the hub driver, a lazy one d
     const x0 = dir > 0 ? 14 : FIELD_W - 14;
     const x1 = dir > 0 ? FIELD_W - 14 : 14;
     wps.push([x0, y]);
-    const inRow = tidy.obs.filter(o => Math.abs(o.y - y) < o.r + 16).sort((a, b) => (a.x - b.x) * dir);
+    const inRow = tidy.obs.filter(o => o.kind !== 'stone' && Math.abs(o.y - y) < o.r + 16).sort((a, b) => (a.x - b.x) * dir);
     for (const o of inRow) {
       // step to whichever side has room, far enough out for the tractor's turning circle
       const up = o.y - (o.r + 30);
@@ -393,10 +393,25 @@ test('the ten-second drive: a tidy serpentine beats the hub driver, a lazy one d
     if (wi >= wps.length) break;
     stepField(tidy, 1 / 60, { target: t, hold: true, keys: {} });
   }
-  if (!tidy.done) stepField(tidy, DRIVE_SECS, { target: null, hold: false, keys: {} });
+  while (!tidy.done) stepField(tidy, 0.05, { target: null, hold: false, keys: {} });
   expect(tidy.hits).toBe(0);
   expect(tidy.done!.e).toBeGreaterThan(BASELINE);
-  expect(tidy.done!.secs).toBeLessThanOrEqual(DRIVE_SECS);
+  expect(tidy.done!.secs).toBeLessThanOrEqual(tidy.secs);
+  // stones in the way were kicked aside (they never block a cell), and the field has some
+  expect(tidy.obs.some(o => o.kind === 'stone')).toBe(true);
+  expect(tidy.obs.filter(o => o.kind === 'stone').every(o => o.vx === 0 && o.vy === 0)).toBe(true);
+  // a slower tractor (Settings → Tractor) is given more time for the same field; a faster one less
+  const slow = newFieldDrive('test', 'plough', 'standard', { speed: 0.7, steer: 1 });
+  const fast = newFieldDrive('test', 'plough', 'standard', { speed: 1.5, steer: 1 });
+  expect(slow.speed).toBeLessThan(tidy.speed);
+  expect(slow.secs).toBeGreaterThan(tidy.secs);
+  expect(fast.secs).toBeLessThan(tidy.secs);
+  expect(tidy.secs).toBe(fieldSecs(tidy.swath, tidy.speed));
+  expect(newFieldDrive('test', 'plough', 'standard', { speed: 1, steer: 0.75 }).secs).toBeGreaterThan(tidy.secs);
+  // the turning circle is the same at every speed; a sharper steering setting tightens it
+  expect(slow.speed / slow.turn).toBeCloseTo(tidy.speed / tidy.turn);
+  const sharp = newFieldDrive('test', 'plough', 'standard', { speed: 1, steer: 1.3 });
+  expect(sharp.speed / sharp.turn).toBeLessThan(tidy.speed / tidy.turn);
   const lazy = newFieldDrive('test', 'plough', 'standard');
   while (!lazy.done) stepField(lazy, 1 / 60, { target: null, hold: false, keys: {} });
   expect(lazy.done!.e).toBe(0);
@@ -408,7 +423,7 @@ test('the ten-second drive: a tidy serpentine beats the hub driver, a lazy one d
   const dodge = newHaulDrive('test', 'standard');
   // a driver who leaves a lane when a hole is close enough ahead to be hit, for a free lane beside it
   while (!dodge.done) {
-    const blocked = new Set(dodge.holes.filter(h => !h.hit && h.y < HAUL_Y + 16 && h.y > HAUL_Y - 100).map(h => h.lane));
+    const blocked = new Set(dodge.holes.filter(h => !h.hit && h.x > HAUL_X - 14 && h.x < HAUL_X + 70).map(h => h.lane));
     if (blocked.has(dodge.lane)) {
       const free = [dodge.lane - 1, dodge.lane + 1, 0, 1, 2].filter(l => l >= 0 && l < 3 && !blocked.has(l));
       if (free.length) dodge.lane = free[0];
@@ -418,6 +433,12 @@ test('the ten-second drive: a tidy serpentine beats the hub driver, a lazy one d
   // a driver who looks ahead keeps far more of the load than one who does not, and beats the hub driver
   expect(dodge.done!.e).toBeGreaterThan(idle.done!.e);
   expect(dodge.done!.e).toBeGreaterThanOrEqual(BASELINE);
+  // the empty road between farms: bumps are felt, but there is nothing to lose
+  const empty = newHaulDrive('test', 'standard', undefined, { load: false, secs: 5 });
+  while (!empty.done) stepHaul(empty, 1 / 60);
+  expect(empty.bags).toBe(BAGS);
+  expect(empty.done!.e).toBe(1);
+  expect(empty.done!.secs).toBe(5);
 });
 
 test('levels, partners and the fleet open as the business grows', () => {
@@ -507,20 +528,30 @@ test('the tractor business screen: book farms, order the route, run the day', as
   await expect(page.locator('.biz-map polyline')).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Start the day', exact: true }).click();
-  // at each of the three stops the tractor can be driven for ten seconds; here the hub driver takes two and the
-  // player drives one with the keyboard (the clock sped up), then the day's result
+  // the whole day is one drive that never stops: the road to each farm and the job there, with the green route line
+  // at the top. Here the hub driver takes two jobs and the player drives one with the keyboard (the clock sped up),
+  // then the day's result
+  const drv = page.locator('.drv');
+  await expect(drv).toHaveAttribute('data-stage', 'road');
+  await expect(page.locator('.drv-route .drv-node')).toHaveCount(5);
+  await expect(page.locator('.drv-mini')).toBeVisible();
   const driver = page.getByRole('button', { name: 'Let the driver do it', exact: true });
   await expect(driver).toBeVisible({ timeout: 20_000 });
+  await expect(drv).toHaveAttribute('data-stage', 'work');
   await driver.click();
-  await expect(page.locator('.drv')).toHaveCount(0);
-  await expect(page.locator('.drv')).toBeVisible({ timeout: 20_000 });
+  // the drive carries on to the next farm: the same game, never closed
+  await expect(drv).toHaveAttribute('data-stage', 'road', { timeout: 20_000 });
+  await expect(drv).toHaveCount(1);
+  await expect(page.locator('.drv-node small').first()).toHaveText('70%');
+  await expect(drv).toHaveAttribute('data-stage', 'work', { timeout: 20_000 });
   await page.evaluate(() => (window as unknown as Win).__lima.driveClock(4));
   await page.locator('.drv-canvas').focus();
   await page.keyboard.down('ArrowUp');
   await page.waitForTimeout(900);
   await page.keyboard.up('ArrowUp');
   await expect(page.locator('.drv-stat')).not.toHaveText(/^0%|^10 of 10/);
-  await expect(page.locator('.drv')).toHaveCount(0, { timeout: 20_000 });
+  await expect(drv).toHaveAttribute('data-stage', 'road', { timeout: 20_000 });
+  await expect(page.locator('.drv-node small')).toHaveCount(2);
   await page.evaluate(() => (window as unknown as Win).__lima.driveClock(1));
   await expect(driver).toBeVisible({ timeout: 20_000 });
   await driver.click();

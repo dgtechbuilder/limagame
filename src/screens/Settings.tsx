@@ -13,11 +13,12 @@ import { setSoundOn, sfx } from '../sfx';
 import { COUNTRIES, countryOf, money } from '../money';
 import { activeFamily, captureInput, connectedPads, onPadPress, onPads, type PadInfo } from '../input/gamepad';
 import { FAMILY_NAME, padKey, padLabel, padSettings, type PadAction, type PadFamily, type PadMap, type PadSettings } from '../input/pad';
+import { tractorSettings, type TractorSettings } from '../business/tune';
 import { clearSave, initialState, type Action, type GameState, type Settings, type SettingsTab } from '../state';
 
-/* Settings: a full page with five sections. Every control changes the game straight away and is kept on this device.
+/* Settings: a full page with six sections. Every control changes the game straight away and is kept on this device.
    Farmer: rename and change look. Game: character style, farm view, read aloud. Display: graphics, motion, full
-   screen. Controller: the controller connected, its button names, Confirm on the bottom or right, dead zone, rumble,
+   screen. Tractor: the business drive's speed, steering, touch controls, sounds, dust and smoke. Controller: the controller connected, its button names, Confirm on the bottom or right, dead zone, rumble,
    and setting up the buttons of a controller the browser does not know. Help & data: about the game and its name, the intro, design review, and reset (which keeps these settings). */
 
 type Props = { s: GameState; dispatch: Dispatch<Action>; tab?: SettingsTab };
@@ -26,6 +27,7 @@ const TABS: { id: SettingsTab; label: string; icon: string }[] = [
   { id: 'farmer', label: 'My farmer', icon: '☺' },
   { id: 'game', label: 'Game', icon: '✦' },
   { id: 'display', label: 'Display', icon: '☀' },
+  { id: 'tractor', label: 'Tractor', icon: '🚜' },
   { id: 'controller', label: 'Controller', icon: '🎮' },
   { id: 'help', label: 'Help & data', icon: '?' },
 ];
@@ -95,6 +97,7 @@ export function SettingsPage({ s, dispatch, tab: startTab }: Props) {
           {tab === 'farmer' && <FarmerTab s={s} dispatch={dispatch} />}
           {tab === 'game' && <GameTab s={s} dispatch={dispatch} set={set} />}
           {tab === 'display' && <DisplayTab s={s} dispatch={dispatch} set={set} />}
+          {tab === 'tractor' && <TractorTab s={s} dispatch={dispatch} set={set} />}
           {tab === 'controller' && <ControllerTab s={s} dispatch={dispatch} set={set} />}
           {tab === 'help' && <HelpTab s={s} dispatch={dispatch} />}
         </section>
@@ -345,6 +348,87 @@ function DisplayTab({ s, dispatch, set }: Props & { set: (p: Partial<Settings>) 
             { id: 'on', label: 'On' },
           ]}
         />
+      </Row>
+    </div>
+  );
+}
+
+/* ---------------- Tractor ---------------- */
+
+/* How the tractor handles in the tractor business's drive (business/DayDrive.tsx): its speed, its steering, the touch
+   controls, its sounds, and its dust and smoke. A change applies at the next stop of a drive under way. */
+function TractorTab({ s, set }: Props & { set: (p: Partial<Settings>) => void }) {
+  const t = tractorSettings(s.settings.tractor);
+  const setT = (patch: Partial<TractorSettings>) => set({ tractor: { ...t, ...patch } });
+  const onOff = (v: boolean) => (v ? 'on' : 'off');
+  return (
+    <div className="set-rows">
+      <Row title="Driving speed" body={{ gentle: 'Slow and steady: the most time to steer. Each field allows more time to match.', normal: 'A steady working pace.', quick: 'A brisker pace: less time per field, quicker turns.', fast: 'Flat out: for experienced drivers.' }[t.speed]}>
+        <Seg
+          label="Driving speed"
+          value={t.speed}
+          onChange={speed => setT({ speed })}
+          options={[
+            { id: 'gentle', label: 'Gentle' },
+            { id: 'normal', label: 'Normal' },
+            { id: 'quick', label: 'Quick' },
+            { id: 'fast', label: 'Fast' },
+          ]}
+        />
+      </Row>
+      <Row title="Steering sensitivity" body={{ low: 'Wide, smooth turns and slow lane changes.', medium: 'The standard tractor’s turning circle.', high: 'Tight, sharp turns and quick lane changes.' }[t.steer]}>
+        <Seg
+          label="Steering sensitivity"
+          value={t.steer}
+          onChange={steer => setT({ steer })}
+          options={[
+            { id: 'low', label: 'Low' },
+            { id: 'medium', label: 'Medium' },
+            { id: 'high', label: 'High' },
+          ]}
+        />
+      </Row>
+      <Row title="Touch controls" body={t.controls === 'tap' ? 'Tap and hold where the tractor should go; tap a lane on the road.' : 'Steering buttons: the tractor drives itself forward, you steer with ◀ ▶ (▲ ▼ on the road).'}>
+        <Seg
+          label="Touch controls"
+          value={t.controls}
+          onChange={controls => setT({ controls })}
+          options={[
+            { id: 'tap', label: 'Tap to steer' },
+            { id: 'buttons', label: 'Buttons' },
+          ]}
+        />
+      </Row>
+      <Row title="Tractor sounds" body={s.settings.sound === false ? 'Sound effects are off (Game): turn them on to hear the tractor.' : 'The engine, the clonk of a rock, the crunch of a tree, the horn.'}>
+        <Seg
+          label="Tractor sounds"
+          value={t.sound}
+          onChange={sound => setT({ sound })}
+          options={[
+            { id: 'off', label: 'Off' },
+            { id: 'quiet', label: 'Quiet' },
+            { id: 'normal', label: 'Normal' },
+            { id: 'loud', label: 'Loud' },
+          ]}
+        />
+      </Row>
+      <Row title="Dust and smoke" body="Exhaust smoke, dust behind the implement, and the burst of dust, chips and leaves when you hit something.">
+        <Seg
+          label="Dust and smoke"
+          value={t.effects}
+          onChange={effects => setT({ effects })}
+          options={[
+            { id: 'off', label: 'Off' },
+            { id: 'some', label: 'Some' },
+            { id: 'lots', label: 'Lots' },
+          ]}
+        />
+      </Row>
+      <Row title="Shake on hits" body={s.settings.reduceMotion ? 'Reduce motion is on (Display), so the view stays still.' : 'The view shakes when the tractor hits a rock, a tree or a pothole.'}>
+        <Seg label="Shake on hits" value={onOff(t.shake)} onChange={v => setT({ shake: v === 'on' })} options={[{ id: 'off', label: 'Off' }, { id: 'on', label: 'On' }]} />
+      </Row>
+      <Row title="Row guides" body="Faint lines on the field where each pass of the implement should go.">
+        <Seg label="Row guides" value={onOff(t.guides)} onChange={v => setT({ guides: v === 'on' })} options={[{ id: 'off', label: 'Off' }, { id: 'on', label: 'On' }]} />
       </Row>
     </div>
   );

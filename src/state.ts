@@ -1,4 +1,5 @@
 import { DEFAULT_PAD, type PadSettings } from './input/pad';
+import { DEFAULT_TRACTOR, type TractorSettings } from './business/tune';
 import { farmSignal } from './business/signal';
 import { idBlock, lockBlock } from './unlock/model';
 import { evidenceReduce, trackEvidence, type EvidenceAction, type EvidenceState } from './evidence/model';
@@ -193,8 +194,10 @@ export interface Settings {
   night?: 'auto' | 'day' | 'night';
   /** game controllers (Xbox, PlayStation, Nintendo and others): button names, swaps, rumble, own button setup */
   pad?: PadSettings;
+  /** the tractor business's drive: speed, steering, touch controls, its sounds and its dust and smoke (business/tune.ts) */
+  tractor?: TractorSettings;
 }
-export type SettingsTab = 'farmer' | 'game' | 'display' | 'controller' | 'help';
+export type SettingsTab = 'farmer' | 'game' | 'display' | 'tractor' | 'controller' | 'help';
 export type ClimateTab = 'overview' | 'land' | 'areas' | 'emissions' | 'water' | 'tank' | 'credits' | 'shocks' | 'activity';
 /** My Progress (the achievements page): the journey of certification levels, the modules, today, badges, certificates */
 export type AchTab = 'journey' | 'modules' | 'today' | 'badges' | 'certificates';
@@ -209,7 +212,7 @@ export type StoreTab = 'store' | 'harvest' | 'produce';
 /** the Farm words page: the Farm basics lessons, or one section of words (src/learn/glossary.ts) */
 export type GlossaryTab = 'basics' | SectionId;
 export type KakumaTab = 'about' | 'foods' | 'life' | 'donate';
-export const DEFAULT_SETTINGS: Settings = { art: 'anime', graphics: 'auto', reduceMotion: false, voice: false, sound: true, upgradeNotes: true, country: '', night: 'auto', pad: DEFAULT_PAD };
+export const DEFAULT_SETTINGS: Settings = { art: 'anime', graphics: 'auto', reduceMotion: false, voice: false, sound: true, upgradeNotes: true, country: '', night: 'auto', pad: DEFAULT_PAD, tractor: DEFAULT_TRACTOR };
 
 /** Stage index: 0–5 = the farming step being worked on, 6 = harvested and selling, 7 = season sold. */
 export const SELLING = 6;
