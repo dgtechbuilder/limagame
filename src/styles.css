@@ -1000,10 +1000,17 @@ button.card:active { transform: scale(0.98); }
 .hud-task-text b { font-size: 14px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hud-task-text i { font-style: normal; font-size: 10.5px; font-weight: 600; opacity: 0.75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* bottom left: day and load */
-.hud-status { position: absolute; left: 80px; bottom: 14px; z-index: 5; display: flex; gap: 6px; pointer-events: none; }
+/* bottom left: one stack, bottom up: the day and load, today's build, today's lesson (it never overlaps itself; it moves
+   right of the special event's card while that shows) */
+.hud-dock {
+  position: absolute; left: 80px; bottom: 12px; z-index: 6; display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+  max-width: 300px; pointer-events: none;
+}
+.hud-dock > * { pointer-events: auto; }
+.hud-status { display: flex; gap: 6px; pointer-events: none; }
+.hud-status:empty { display: none; }
 .hud-status span {
-  padding: 4px 10px; border-radius: 100px; background: rgba(40, 30, 20, 0.58); color: #fff; font-size: 11px; font-weight: 800;
+  padding: 3px 10px; border-radius: 100px; background: rgba(40, 30, 20, 0.58); color: #fff; font-size: 11px; font-weight: 800; white-space: nowrap;
 }
 .hud-status span.is-carry { background: rgba(47, 155, 20, 0.85); }
 
@@ -1016,10 +1023,10 @@ button.card:active { transform: scale(0.98); }
 .hud-hint::after { content: ''; position: absolute; left: 50%; bottom: -6px; margin-left: -6px; border: 6px solid transparent; border-bottom: 0; border-top-color: #fff; }
 .hud-check {
   position: absolute; z-index: 6; transform: translate(-50%, -100%); padding: 7px 14px; border-radius: 100px; white-space: nowrap;
-  background: linear-gradient(#ffcf4d, #f39c12); color: #fff; font-size: 12.5px; font-weight: 900; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+  background: linear-gradient(#ffcf4d, #f39c12); color: var(--ink-on-gold); font-size: 12.5px; font-weight: 900;
   box-shadow: 0 0 0 2.5px #fff, 0 4px 10px rgba(0, 0, 0, 0.3); animation: pop-up 0.2s ease both;
 }
-.hud-check:disabled { background: #b9a88f; }
+.hud-check:disabled { background: #d8cbb6; color: var(--ink-2); }
 /* clearing and planting: a button on each plot, then the timer */
 .hud-plot {
   position: absolute; z-index: 6; transform: translate(-50%, 0); display: flex; align-items: center; gap: 6px;
@@ -1042,25 +1049,29 @@ button.card:active { transform: scale(0.98); }
 /* the daily tidy-up: the button by a bush or rock, and the chip bottom right */
 .hud-plot.is-tidy.is-bush { background: linear-gradient(#7fd35a, #2f9b14); }
 .hud-plot.is-tidy.is-rock { background: linear-gradient(#b9b9b0, #7d7d75); }
+.hud-daily {
+  position: absolute; right: 76px; bottom: 12px; z-index: 5; display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+}
 .hud-tidy {
-  position: absolute; right: 80px; bottom: 14px; z-index: 5; display: flex; flex-direction: column; gap: 3px;
-  padding: 5px 10px 6px; border-radius: 12px; text-align: left; color: #5b3418;
-  background: #fff4dd; box-shadow: 0 0 0 2.5px #c9824a, 0 4px 10px rgba(0, 0, 0, 0.25);
-  animation: pop 0.25s ease both, tidy-nudge 3s ease-in-out 1s infinite;
+  position: relative; display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 4px 0 10px; border-radius: 100px;
+  text-align: left; color: #5b3418; background: rgba(255, 244, 221, 0.96); box-shadow: 0 0 0 1.5px #c9824a, 0 2px 6px rgba(0, 0, 0, 0.22);
+  animation: pop 0.25s ease both;
 }
 .hud-tidy:active { transform: scale(0.96); }
-.hud-tidy-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.hud-tidy-head b { font-size: 11.5px; font-weight: 900; white-space: nowrap; }
-.hud-tidy-head i { font-style: normal; font-size: 11px; font-weight: 800; }
-.hud-tidy-row { display: flex; gap: 6px; }
+.hud-tidy-head { font-size: var(--text-label); font-weight: 900; letter-spacing: 0.03em; text-transform: uppercase; white-space: nowrap; }
+.hud-tidy-streak { font-style: normal; font-size: 10px; font-weight: 800; padding-right: 4px; }
+.hud-tidy-row { display: flex; gap: 4px; }
 .hud-tidy-row > span {
-  display: flex; align-items: center; gap: 3px; padding: 1px 7px 1px 3px; border-radius: 100px;
+  display: flex; align-items: center; gap: 2px; height: 18px; padding: 0 6px 0 3px; border-radius: 100px;
   background: #f1d7a8; font-size: 11px; font-weight: 800; white-space: nowrap;
 }
+.hud-tidy-row > span svg { width: 14px; height: 14px; }
 .hud-tidy-row > span.is-full { background: #d6f0c4; color: #23720f; }
-.hud-tidy.is-done { background: #eefbe8; color: #23720f; box-shadow: 0 0 0 2.5px #2f9b14, 0 4px 10px rgba(0, 0, 0, 0.2); animation: pop 0.25s ease both; }
+.hud-tidy.is-done { background: rgba(238, 251, 232, 0.96); color: #23720f; box-shadow: 0 0 0 1.5px #2f9b14, 0 2px 6px rgba(0, 0, 0, 0.2); }
 @keyframes tidy-nudge { 0%, 88%, 100% { transform: none; } 92% { transform: rotate(-3deg); } 96% { transform: rotate(3deg); } }
 @media (prefers-reduced-motion: reduce) { .hud-tidy { animation: none; } }
+.hud-tidy:not(.is-done) { animation: pop 0.25s ease both, tidy-nudge 4s ease-in-out 1s infinite; }
+@media (prefers-reduced-motion: reduce) { .hud-tidy:not(.is-done) { animation: none; } }
 /* jobs done by hand (src/onsite): the task card while a job is in hand, its drop button, the button at the spot, and
    the animal chores chip beside the tidy-up */
 .hud-task.is-job { box-shadow: 0 0 0 3px #2b7fb8, 0 4px 10px rgba(0, 0, 0, 0.25); background: #eef7ff; }
@@ -1074,7 +1085,6 @@ button.card:active { transform: scale(0.98); }
 }
 .hud-plot.is-job { background: linear-gradient(#5cb6f0, #2b7fb8); }
 .hud-plot.is-job .hud-job-icon { display: grid; place-items: center; width: 28px; height: 28px; font-size: 17px; background: rgba(255, 255, 255, 0.92); border-radius: 100px; }
-.hud-chores { right: 196px; }
 .hud-timer {
   position: absolute; z-index: 6; transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; gap: 1px;
   pointer-events: none; animation: pop-up 0.2s ease both;
@@ -1088,8 +1098,10 @@ button.card:active { transform: scale(0.98); }
 @keyframes pop-up { from { opacity: 0; transform: translate(-50%, -100%) scale(0.94); } }
 @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
 .world-check { z-index: 12; background: rgba(30, 50, 20, 0.35); }
-/* in the farm world, notices sit under the task card */
-.stage:has(.world) .toast { top: 72px; }
+/* in the farm world, notices sit under the top cards (the task card, and the harvest card's at-risk tab); over a
+   check or another full screen on the farm they go top left, like over any pop-up */
+.stage:has(.world) .toast { top: 94px; }
+.stage:has(.world-check) .toast { --tx: 0; left: 44px; top: 8px; translate: 0 0; max-width: 270px; overflow: hidden; text-overflow: ellipsis; }
 
 /* ================================================================== */
 /* From Wakala Agent: the fix, the safety kit, Mama Achieng, the tractor */
@@ -1102,9 +1114,9 @@ button.card:active { transform: scale(0.98); }
   box-shadow: 0 0 0 2px #e7b98a, 0 4px 10px rgba(0, 0, 0, 0.25); animation: pop 0.25s ease both;
 }
 .voice-bubble b { color: #a14d1f; font-weight: 800; }
-.voice-bubble.is-top { right: 56px; top: 8px; width: 236px; }
+.voice-bubble.is-top { right: 24px; top: 44px; width: max-content; max-width: 320px; }
 .voice-bubble.is-side { left: 670px; top: 46px; width: 170px; }
-.voice-bubble.is-sign { transform: translate(-50%, -100%); width: 220px; text-align: center; pointer-events: none; animation: none; }
+.voice-bubble.is-sign { transform: translate(-50%, -100%); width: max-content; max-width: 320px; text-align: center; pointer-events: none; animation: none; }
 .voice-bubble.is-panel { position: static; animation: none; }
 .voice-bubble.is-small { font-size: 10px; padding: 5px 9px; }
 
@@ -1937,7 +1949,7 @@ button.card:active { transform: scale(0.98); }
 @media (prefers-reduced-motion: reduce) { .theft-dot { animation: none; } }
 
 .award-pop {
-  position: absolute; left: 50%; top: 112px; translate: -50% 0; z-index: 49; pointer-events: none;
+  position: absolute; left: 50%; top: 132px; translate: -50% 0; z-index: 49; pointer-events: none;
   display: flex; align-items: center; gap: 10px; padding: 8px 16px 8px 12px; border-radius: 14px;
   background: linear-gradient(180deg, #fff8ea, #fde3b4); color: var(--brown);
   box-shadow: 0 0 0 2.5px var(--gold), 0 8px 18px rgba(0, 0, 0, 0.3);
@@ -2308,14 +2320,14 @@ button.card:active { transform: scale(0.98); }
 /* the tag over a billboard on the 3D farm: dark glass, a gold rim, the brand, and a gold "See offer" chip */
 .hud-bill {
   position: absolute; z-index: 6; translate: -50% 0; display: flex; align-items: center; gap: 6px;
-  padding: 3px 3px 3px 4px; border-radius: 100px; border: 1.5px solid #d4a843;
-  background: linear-gradient(180deg, rgba(40, 44, 52, 0.95), rgba(16, 18, 22, 0.95)); color: #fff;
+  padding: 2px 2px 2px 3px; border-radius: 100px; border: 1px solid #d4a843;
+  background: linear-gradient(180deg, rgba(40, 44, 52, 0.92), rgba(16, 18, 22, 0.92)); color: #fff;
   font: inherit; font-size: 11px; white-space: nowrap; cursor: pointer;
-  box-shadow: 0 0 0 2px var(--brand), 0 5px 14px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
   animation: pop 0.25s ease both;
 }
 .hud-bill > i {
-  font-style: normal; font-size: 11px; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; color: #e9c46a;
+  font-style: normal; font-size: var(--text-label); font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: #e9c46a;
 }
 .hud-bill b { font-weight: 700; }
 .hud-bill span {
@@ -2516,54 +2528,81 @@ button.card:active { transform: scale(0.98); }
 }
 .stake.is-check span { width: 14px; height: 14px; font-size: 10px; }
 .hud-risk {
-  position: absolute; top: 10px; left: calc(50% + 158px); z-index: 6; display: flex; align-items: center; gap: 6px;
-  height: 40px; padding: 3px 12px 3px 4px; border-radius: 12px; background: #fff1ee; color: #a3271b; text-align: left;
-  box-shadow: 0 0 0 3px #d9473a, 0 4px 10px rgba(0, 0, 0, 0.28); animation: pop 0.25s ease both, risk-pulse 2.4s ease-in-out 0.4s infinite;
+  position: relative; display: flex; align-items: center; gap: 6px; align-self: stretch; margin: 0 10px; height: 26px;
+  padding: 5px 8px 0 5px; border-radius: 0 0 10px 10px; background: #d9473a; color: #fff; text-align: left;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.28); animation: risk-pulse 2.4s ease-in-out 0.4s infinite;
 }
-.hud-risk:active { transform: scale(0.96); }
+.hud-money:not(:has(.hud-harvest)) .hud-risk { margin: 0; padding-top: 0; height: 30px; border-radius: 10px; }
+.hud-risk:active { transform: scale(0.97); }
 .hud-risk-icon {
-  flex-shrink: 0; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center;
-  background: #d9473a; color: #fff; font-size: 18px; font-weight: 900;
+  flex-shrink: 0; width: 16px; height: 16px; border-radius: 100px; display: grid; place-items: center;
+  background: #fff; color: #c0392b; font-size: 11px; font-weight: 900;
 }
-.hud-risk-text { display: flex; flex-direction: column; line-height: 1.05; }
-.hud-risk-text b { font-size: 15px; font-weight: 900; white-space: nowrap; }
-.hud-risk-text i { font-style: normal; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; }
-.hud-risk.is-clear { background: #eefbe8; color: #23720f; box-shadow: 0 0 0 3px #2f9b14, 0 4px 10px rgba(0, 0, 0, 0.22); animation: pop 0.25s ease both; }
-.hud-risk.is-clear .hud-risk-icon { background: #2f9b14; }
-.hud-risk.is-clear .hud-risk-text b { font-size: 13px; }
+.hud-risk-text { flex: 1; display: flex; align-items: baseline; gap: 4px; min-width: 0; line-height: 1; }
+.hud-risk-text b { font-size: 13px; font-weight: 900; white-space: nowrap; }
+.hud-risk-text i { font-style: normal; font-size: var(--text-label); font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+.hud-risk-go { font-size: 15px; font-weight: 900; line-height: 1; opacity: 0.9; }
+.hud-risk.is-clear { background: #2f9b14; animation: none; }
+.hud-risk.is-clear .hud-risk-icon { color: #2f9b14; }
+.hud-risk.is-clear .hud-risk-text b { font-size: 12px; }
 .hud-risk.is-saved { animation: risk-saved 0.9s ease both; }
 .hud-risk-saved {
   position: absolute; left: 50%; top: 100%; transform: translateX(-50%); margin-top: 6px; padding: 3px 10px; border-radius: 100px;
   background: #2f9b14; color: #fff; font-size: 12px; font-weight: 900; white-space: nowrap; pointer-events: none;
   animation: risk-float 2.6s ease both;
 }
-@keyframes risk-pulse { 0%, 100% { box-shadow: 0 0 0 3px #d9473a, 0 4px 10px rgba(0, 0, 0, 0.28); } 50% { box-shadow: 0 0 0 5px rgba(217, 71, 58, 0.55), 0 4px 10px rgba(0, 0, 0, 0.28); } }
-@keyframes risk-saved { 0% { transform: scale(1); } 30% { transform: scale(1.14); background: #eefbe8; } 100% { transform: scale(1); } }
+@keyframes risk-pulse { 0%, 100% { box-shadow: 0 3px 8px rgba(0, 0, 0, 0.28); } 50% { box-shadow: 0 0 0 3px rgba(217, 71, 58, 0.45), 0 3px 8px rgba(0, 0, 0, 0.28); } }
+@keyframes risk-saved { 0% { transform: scale(1); } 30% { transform: scale(1.08); background: #2f9b14; } 100% { transform: scale(1); } }
 @keyframes risk-float { 0% { opacity: 0; transform: translate(-50%, -8px); } 12% { opacity: 1; transform: translate(-50%, 0); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, 18px); } }
 @media (prefers-reduced-motion: reduce) { .hud-risk, .hud-risk.is-saved, .hud-risk-saved { animation: none; } }
 .reduce-motion .hud-risk, .reduce-motion .hud-risk-saved { animation: none; }
 
 .risk-layer { z-index: 40; display: grid; place-items: center; }
+/* the money sheets (harvest estimate, money at risk): a cream panel, a coloured kicker, one big title, a plain lead,
+   three stat boxes, white rows, and one gold button bottom right */
 .risk-sheet {
-  position: relative; width: 470px; max-height: 360px; overflow: auto; padding: 16px 18px 14px; border-radius: 16px;
+  position: relative; width: 500px; max-height: 370px; overflow: auto; padding: var(--space-4) var(--space-4) var(--space-3); border-radius: 18px;
   background: #fff8ec; color: #5b3418; box-shadow: 0 0 0 3px #c9824a, 0 10px 28px rgba(0, 0, 0, 0.35); animation: pop 0.25s ease both;
 }
 .risk-sheet > .x-btn { position: absolute; right: 10px; top: 10px; }
-.risk-kicker { margin: 0; font-size: 10.5px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; color: #c0392b; }
-.risk-total { margin: 2px 0 2px; font-size: 22px; font-weight: 900; }
-.risk-lead { margin: 0 34px 10px 0; font-size: 11.5px; font-weight: 700; line-height: 1.3; color: var(--brown-70, #7a5a3f); }
-.risk-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
-.risk-list button {
-  width: 100%; display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 11px; text-align: left;
-  background: #fff; color: inherit; box-shadow: 0 0 0 2px #ecc9a6;
+.risk-kicker { margin: 0; font-size: var(--text-label); font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; color: #c0392b; }
+.risk-total { margin: 2px 36px 4px 0; font-size: 22px; font-weight: 900; line-height: 1.15; }
+.risk-lead { margin: 0 36px var(--space-3) 0; font-size: var(--text-body-sm); font-weight: 600; line-height: 1.4; color: var(--ink-2); }
+.sheet-stats { display: flex; gap: var(--space-2); margin: 0 0 var(--space-3); }
+.sheet-stats > span {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: var(--space-2) 10px; border-radius: 12px;
+  background: #eefbe8; box-shadow: inset 0 0 0 2px #bfe3ad;
 }
-.risk-list button:hover { box-shadow: 0 0 0 2px #d9473a; }
+.sheet-stats small { font-size: var(--text-label); font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); line-height: 1.25; }
+.sheet-stats b { font-size: var(--text-subhead); font-weight: 900; color: #2f7d12; white-space: nowrap; }
+.sheet-stats em { font-style: normal; font-size: var(--text-caption); font-weight: 600; line-height: 1.3; color: #a3271b; }
+.sheet-stats > span.is-loss { background: #fff1ee; box-shadow: inset 0 0 0 2px #f0b9b1; }
+.sheet-stats > span.is-loss b { color: #b8281c; }
+.sheet-stats > span.is-soft { background: #fff8f6; box-shadow: inset 0 0 0 1.5px #f3d0ca; }
+.sheet-stats > span.is-soft b { color: #c0574b; }
+.sheet-stats.is-clear > span.is-loss { background: #eefbe8; box-shadow: inset 0 0 0 2px #bfe3ad; }
+.sheet-stats.is-clear > span.is-loss b { color: #2f7d12; }
+.sheet-foot {
+  position: sticky; bottom: calc(-1 * var(--space-3)); display: flex; justify-content: flex-end; margin: 0 calc(-1 * var(--space-4)) calc(-1 * var(--space-3));
+  padding: var(--space-3) var(--space-4); background: linear-gradient(rgba(255, 248, 236, 0), #fff8ec 35%);
+}
+.sheet-go {
+  height: 36px; padding: 0 var(--space-4); border-radius: 12px; background: #ffc94d; color: var(--ink-on-gold);
+  font-size: var(--text-body-sm); font-weight: 900; box-shadow: 0 3px 0 #c98a00;
+}
+.sheet-go:active { transform: translateY(2px); box-shadow: 0 1px 0 #c98a00; }
+.risk-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--space-2); }
+.risk-list button {
+  width: 100%; display: flex; align-items: center; gap: 10px; padding: var(--space-2) var(--space-3); border-radius: 12px; text-align: left;
+  background: #fff; color: inherit; box-shadow: inset 0 0 0 2px #ecc9a6;
+}
+.risk-list button:hover { box-shadow: inset 0 0 0 2px #d9473a; }
 .risk-list button:active { transform: scale(0.985); }
-.risk-farm { flex: 1; display: flex; flex-direction: column; }
-.risk-farm b { font-size: 13.5px; font-weight: 900; }
-.risk-farm i, .risk-amount i { font-style: normal; font-size: 10.5px; font-weight: 700; color: #8a6a4d; }
+.risk-farm { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.risk-farm b { font-size: var(--text-subhead); font-weight: 900; }
+.risk-farm i, .risk-amount i { font-style: normal; font-size: var(--text-caption); font-weight: 600; color: var(--ink-2); }
 .risk-amount { display: flex; flex-direction: column; align-items: flex-end; }
-.risk-amount b { font-size: 15px; font-weight: 900; color: #b8281c; }
+.risk-amount b { font-size: var(--text-subhead); font-weight: 900; color: #b8281c; }
 .risk-go { font-size: 22px; font-weight: 900; color: #c9824a; }
 .risk-shocks { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 11.5px; font-weight: 700; }
 .risk-shocks small { width: 100%; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.06em; color: #8a6a4d; }
@@ -3062,15 +3101,18 @@ a.ach-claim.pj-mail { display: inline-flex; align-items: center; text-decoration
 .hud-pill .hud-wallet { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
 /* the day's build chip, bottom left above the status line */
 .hud-build {
-  position: absolute; left: 80px; bottom: 44px; z-index: 6; max-width: 260px;
+  position: relative; max-width: 260px;
   display: flex; align-items: center; gap: 6px; padding: 4px 12px 4px 6px; border-radius: 100px;
   background: rgba(255, 248, 234, 0.95); border: 2px solid var(--gold); color: var(--ink);
   font-size: 11px; font-weight: 700; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25); text-align: left;
 }
 .hud-build i { font-style: normal; font-size: 16px; }
 .hud-build small { display: block; font-size: 10px; font-weight: 600; color: var(--ink-2); }
-.hud-moon { position: absolute; left: 50%; bottom: 8px; translate: -50% 0; z-index: 5; padding: 2px 10px; border-radius: 100px; background: rgba(12, 22, 44, 0.75); color: #dfe8ff; font-size: 11px; font-weight: 700; pointer-events: none; }
-.world.is-night .hud-status span, .world.is-night .hud-tidy { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25); }
+.hud-moon {
+  position: absolute; right: calc(100% + 14px); top: 30px; height: 24px; display: inline-flex; align-items: center; padding: 0 8px;
+  border-radius: 7px; background: rgba(12, 22, 44, 0.75); color: #dfe8ff; font-size: 11px; font-weight: 700; white-space: nowrap; pointer-events: none;
+}
+.world.is-night .hud-status span, .world.is-night .hud-tidy, .world.is-night .hud-moon { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25); }
 .hud-power { left: 12px; top: 322px; }
 .hud-power > svg { background: radial-gradient(circle at 50% 35%, #ffe27a, #e0a312); }
 .hud-power.is-on > svg { background: radial-gradient(circle at 50% 35%, #a6f07a, #3f9a1c); }
@@ -3362,8 +3404,8 @@ a.ach-claim.pj-mail { display: inline-flex; align-items: center; text-decoration
 .basics-box li b { display: flex; align-items: center; white-space: nowrap; }
 .basics-more { margin-left: auto; padding: 1px 8px; border-radius: 100px; background: #2f7fc1; color: #fff; font-size: var(--text-label); font-weight: 700; }
 .hud-basics {
-  position: absolute; left: 50%; top: 70px; z-index: 6; transform: translateX(-50%); display: flex; align-items: center; gap: 8px;
-  max-width: 330px; padding: 5px 12px 5px 6px; border-radius: 100px; background: rgba(31, 79, 120, 0.9); color: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  position: relative; display: flex; align-items: center; gap: 8px;
+  max-width: 280px; padding: 4px 12px 4px 4px; border-radius: 100px; background: rgba(31, 79, 120, 0.92); color: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
   font-size: var(--text-caption); font-weight: 600; text-align: left; animation: rise 0.3s ease both;
 }
 .hud-basics i { font-style: normal; width: 24px; height: 24px; border-radius: 100px; display: grid; place-items: center; background: #fff; font-size: 14px; }
@@ -3381,44 +3423,34 @@ a.ach-claim.pj-mail { display: inline-flex; align-items: center; text-decoration
 .update-card .update-crops { margin-top: 4px; gap: 4px; }
 .update-card .update-crops li { padding-top: 0; padding-bottom: 0; }
 .update-card .update-crops li svg { height: 34px; }
-/* ---------------- harvest estimate (src/risk/harvest.ts): beside the farmer's portrait, styled like the task card ---------------- */
+/* ---------------- harvest estimate (src/risk/harvest.ts): beside the farmer's portrait, styled like the task card,
+   with the money at risk today attached under it as a tab (one card, one number for each idea) ---------------- */
+.hud-money { position: absolute; left: 84px; top: 8px; z-index: 6; width: 188px; display: flex; flex-direction: column; animation: pop 0.25s ease both; }
 .hud-harvest {
-  position: absolute; left: 84px; top: 8px; z-index: 5; display: flex; align-items: center; gap: 8px;
-  max-width: 196px; height: 54px; padding: 4px 12px 4px 4px; border-radius: 12px; text-align: left;
+  position: relative; z-index: 1; display: flex; align-items: center; gap: 8px; width: 100%;
+  height: 50px; padding: 4px 10px 4px 4px; border-radius: 12px; text-align: left;
   background: #fff4dd; box-shadow: 0 0 0 3px #c9824a, 0 4px 10px rgba(0, 0, 0, 0.25); color: #5b3418;
-  animation: pop 0.25s ease both;
 }
 .hud-harvest:active { transform: scale(0.97); }
 .hud-harvest-icon {
-  flex-shrink: 0; width: 46px; height: 46px; border-radius: 9px; display: grid; place-items: center;
+  flex-shrink: 0; width: 42px; height: 42px; border-radius: 9px; display: grid; place-items: center;
   background: #f1d7a8; box-shadow: inset 0 0 0 2px #d9a76a;
 }
 .hud-harvest-icon img { object-fit: contain; }
 .hud-harvest-text { display: flex; flex-direction: column; line-height: 1.1; min-width: 0; }
-.hud-harvest-text i { font-style: normal; font-size: 11px; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; opacity: 0.75; white-space: nowrap; }
+.hud-harvest-text i { font-style: normal; font-size: var(--text-label); font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-2); white-space: nowrap; }
 .hud-harvest-text b { font-size: 16px; font-weight: 900; color: #2f7d12; white-space: nowrap; }
-.hud-harvest-risk { font-size: 10px; font-weight: 800; color: #2f7d12; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hud-harvest.is-risky .hud-harvest-risk { color: #c0392b; }
-@media (prefers-reduced-motion: reduce) { .hud-harvest { animation: none; } }
-.reduce-motion .hud-harvest { animation: none; }
+.hud-harvest-sub { font-size: var(--text-label); font-weight: 700; color: var(--ink-3); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .hud-money { animation: none; } }
+.reduce-motion .hud-money { animation: none; }
 
 .harvest-sheet .risk-kicker { color: #2f7d12; }
-.harvest-split { display: flex; gap: 6px; margin: 0 0 10px; }
-.harvest-split span {
-  flex: 1; display: flex; flex-direction: column; gap: 1px; padding: 6px 9px; border-radius: 10px; background: #eefbe8; box-shadow: 0 0 0 2px #bfe3ad;
-}
-.harvest-split small { font-size: 9.5px; font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase; color: #8a6a4d; }
-.harvest-split b { font-size: 15px; font-weight: 900; color: #2f7d12; }
-.harvest-split span.is-loss { background: #fff1ee; box-shadow: 0 0 0 2px #f0b9b1; }
-.harvest-split span.is-loss b { color: #b8281c; }
-.harvest-split.is-clear span.is-loss { background: #eefbe8; box-shadow: 0 0 0 2px #bfe3ad; }
-.harvest-split.is-clear span.is-loss b { color: #2f7d12; }
+.harvest-list { display: grid; grid-template-columns: 1fr 1fr; }
 .harvest-list li {
-  display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 11px; background: #fff; box-shadow: 0 0 0 2px #ecc9a6;
+  display: flex; align-items: center; gap: 10px; padding: var(--space-2) var(--space-3); border-radius: 12px; background: #fff; box-shadow: inset 0 0 0 2px #ecc9a6;
 }
 .risk-amount b.is-income { color: #2f7d12; }
 .risk-amount i.is-loss { color: #b8281c; }
-.harvest-go { display: block; margin: 10px 0 0 auto; }
 
 /* ---------------- an activity opening (components/ActivityLoading.tsx): a card with a spinning wheel ---------------- */
 .act-loading { z-index: 30; display: grid; place-items: center; background: rgba(12, 20, 8, 0.35); animation: act-in 0.12s ease both; }
@@ -3628,21 +3660,21 @@ button.pp-card:active { transform: scale(0.98); }
 /* ---------- the Kakuma special event (src/events) ---------- */
 /* the pop-up on the farm's bottom left, below the left column; the day and the build button move right of it */
 .kk-pop {
-  position: absolute; left: 12px; bottom: 6px; z-index: 6; width: 206px; box-sizing: border-box;
-  display: flex; flex-direction: column; gap: 0; padding: 5px 10px 6px; border-radius: 12px;
+  position: absolute; left: 12px; bottom: 12px; z-index: 6; width: 244px; box-sizing: border-box;
+  display: grid; grid-template-columns: 1fr auto; align-items: center; column-gap: 8px; padding: 5px 8px 6px 10px; border-radius: 12px;
   background: linear-gradient(135deg, #fff6e3, #ffe6bd); color: #5b3418; text-align: left;
   box-shadow: 0 0 0 2px #e8742a, 0 4px 10px rgba(0, 0, 0, 0.28); animation: rise 0.3s ease both;
 }
 .kk-pop.is-on { box-shadow: 0 0 0 2.5px #2f9b14, 0 4px 10px rgba(0, 0, 0, 0.28); }
-.kk-pop-tag { align-self: flex-start; padding: 0 6px; border-radius: 100px; background: #e8742a; color: #fff; font-size: 8.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; line-height: 14px; }
+.kk-pop-tag { grid-column: 1 / -1; justify-self: start; padding: 0 6px; border-radius: 100px; background: #e8742a; color: #fff; font-size: var(--text-label); font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; line-height: 14px; }
 .kk-pop.is-on .kk-pop-tag { background: #2f9b14; }
-.kk-pop-title { font-size: 12.5px; font-weight: 900; line-height: 1.25; margin-top: 2px; }
-.kk-pop-wfp { font-size: 9px; font-weight: 700; color: #1f6fb2; line-height: 1.2; }
-.kk-pop-line { font-size: 10px; font-weight: 700; white-space: nowrap; line-height: 1.2; color: #a2470f; }
+.kk-pop-title { grid-column: 1 / -1; font-size: 12.5px; font-weight: 900; line-height: 1.25; margin-top: 2px; white-space: nowrap; }
+.kk-pop-wfp { grid-column: 1; grid-row: 3; font-size: var(--text-label); font-weight: 700; color: #1f6fb2; line-height: 1.3; white-space: nowrap; }
+.kk-pop-line { grid-column: 1; font-size: var(--text-label); font-weight: 800; white-space: nowrap; line-height: 1.3; color: #a2470f; }
 .kk-pop.is-on .kk-pop-line { color: #23720f; }
-.kk-pop-foot { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 2px; }
+.kk-pop-foot { display: contents; }
 .kk-pop-go {
-  flex-shrink: 0; height: 22px; padding: 0 10px; border-radius: 100px; background: linear-gradient(#ffc93c, #f0a312);
+  grid-column: 2; grid-row: 3 / span 2; flex-shrink: 0; height: 26px; padding: 0 10px; border-radius: 100px; background: linear-gradient(#ffc93c, #f0a312);
   color: #5b3418; font-size: 10.5px; font-weight: 900; box-shadow: var(--gold-inset), 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 .kk-pop-go:active { transform: scale(0.96); }
@@ -3650,7 +3682,7 @@ button.pp-card:active { transform: scale(0.98); }
   position: absolute; right: -7px; top: -7px; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center;
   background: #5b3418; color: #fff; font-size: 13px; font-weight: 800; line-height: 1; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
-.world.has-event .hud-status, .world.has-event .hud-build { left: 230px; }
+.world.has-event .hud-dock { left: 268px; }
 .hud-kakuma { left: 12px; top: 322px; }
 .hud-kakuma-icon {
   width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-size: 22px; text-shadow: none;

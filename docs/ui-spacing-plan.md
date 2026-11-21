@@ -241,6 +241,22 @@ frame, no text under 10px and at most one gold button in view.
     Training is re-laid out as four cards (title, two lines, when and where, price and *Book a seat*). My Progress ›
     Modules puts the module's name on its own line under its status.
 
+**Phase 4: the farm, decluttered** ✅
+
+13. ✅ **One money card.** The harvest estimate and the money at risk were two cards with two different numbers (*−KSh 20k
+    if not fixed* on one, *KSh 10k at risk* on the other) and the at-risk card sat on the *Day 1/30* pill. Now the
+    at-risk figure is a red tab hanging from the harvest card: one number (today's), the same one the at-risk list,
+    the harvest sheet and the cheer use. The sheets say how it grows (*Grows each day it is left: up to −KSh 20k*).
+14. ✅ **Nothing under the task card.** The Farm basics lesson chip moved from under the task card into one bottom-left
+    stack with today's build and the cycle's day (it never overlaps itself, and moves right of the event card).
+15. ✅ **Smaller daily chips.** *Animal chores* and *Daily tidy-up* are one line each (26px), stacked bottom right.
+    *Night* is a small chip under the day, top right, instead of floating bottom centre.
+16. ✅ **The event card** is three short lines with a *Join ›* button beside them (was four lines and a row of its own).
+17. ✅ **In the world**: Mama Achieng's bubble and a sign's *Check* button never reach into the top band of cards; the
+    *Check* button is dark text on gold; the billboard tag is smaller.
+18. ✅ **The money sheets** (harvest estimate, money at risk) share one style, the reference for the rest: a coloured
+    kicker, one 22px title, a plain lead, three stat boxes, white rows, one gold button bottom right (sticky).
+
 **Already done**: *Partners › Partner with us* and *Shortlist* follow this plan (cards with a title, one line and a
 status; details on a tap; spacing 4 / 8 / 12 / 16; text 10px and up; solid text colours).
 ![Partner with us](ui-audit/partner-with-us.webp)

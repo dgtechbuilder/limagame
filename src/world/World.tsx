@@ -1067,15 +1067,6 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         <TractorBtnIcon />
         <span>{anchors.riding ? 'GET OFF' : 'TRACTOR'}</span>
       </button>
-      {build && !anchors.riding && !job && (
-        <button type="button" className="hud-build" onClick={() => dispatch({ type: 'open', modal: build.go })} aria-label={`Today: ${build.title}`}>
-          <i aria-hidden="true">{build.icon}</i>
-          <span>
-            {build.title}
-            <small>Day {farmDay} · tap to start</small>
-          </span>
-        </button>
-      )}
       {anchors.riding && t?.phase === 'growing' && (
         <button type="button" className="hud-rig" onClick={() => setCare({ kind: 'rig' })} aria-label="Change the tractor or tool">
           Change tool
@@ -1110,6 +1101,12 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
             +
           </button>
         </span>
+        {/* night: a small chip under the day, out of the way of the farm */}
+        {nightMode && (
+          <span className="hud-moon" aria-label={`Night${lit ? ': the farm lights are on' : ''}`}>
+            🌙 Night{lit ? ' · lights on' : powerHasLights ? ' · lights off' : ''}
+          </span>
+        )}
       </div>
       <button type="button" className="hud-round hud-climate" onClick={() => dispatch({ type: 'open', modal: { kind: 'climate' } })} aria-label={`Climate: emissions, water, soil and credits${grade ? ` (rating ${grade.grade})` : ''}`}>
         <ClimateIcon />
@@ -1176,6 +1173,8 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       </button>
       )}
 
+      {/* the daily chips, bottom right: small, one line each (the animals' care, then the tidy-up) */}
+      <div className="hud-daily">
       {/* the cows' and hens' care, every day: tap to walk to the next chore at the pen or the coop */}
       {chores && choresAll > 0 && (
         <button
@@ -1184,9 +1183,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
           onClick={goToChores}
           aria-label={choresDone === choresAll ? 'Animal chores done today' : `Animal chores: cows ${chores.cows.done} of ${chores.cows.all}, hens ${chores.hens.done} of ${chores.hens.all}. Tap to walk to the next one.`}
         >
-          <span className="hud-tidy-head">
-            <b>{choresDone === choresAll ? '✓ Animals cared for' : 'Animal chores'}</b>
-          </span>
+          <b className="hud-tidy-head">{choresDone === choresAll ? '✓ Animals cared for' : 'Animal chores'}</b>
           <span className="hud-tidy-row">
             <span className={chores.cows.done === chores.cows.all ? 'is-full' : ''}>
               🐄 {chores.cows.done}/{chores.cows.all}
@@ -1197,10 +1194,46 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
           </span>
         </button>
       )}
+      {/* the daily tidy-up: today's bushes and rocks; tap to walk to the nearest one */}
+      {tidyOn && (
+        <button
+          type="button"
+          className={`hud-tidy${tidy.done === TIDY_TOTAL ? ' is-done' : ''}`}
+          onClick={goToTidy}
+          aria-label={
+            tidy.done === TIDY_TOTAL
+              ? `Daily tidy-up done${tidyStreak(s.tidy, date) > 1 ? `, ${tidyStreak(s.tidy, date)} days in a row` : ''}`
+              : `Daily tidy-up: ${tidy.bushes} of ${TIDY.bushes} bushes and ${tidy.rocks} of ${TIDY.rocks} rocks cleared. Tap to walk to the nearest.`
+          }
+        >
+          <b className="hud-tidy-head">{tidy.done === TIDY_TOTAL ? '✓ Farm tidy' : 'Daily tidy-up'}</b>
+          <span className="hud-tidy-row">
+            <span className={tidy.bushes === TIDY.bushes ? 'is-full' : ''}>
+              <TidyGlyph kind="bush" /> {tidy.bushes}/{TIDY.bushes}
+            </span>
+            <span className={tidy.rocks === TIDY.rocks ? 'is-full' : ''}>
+              <TidyGlyph kind="rock" /> {tidy.rocks}/{TIDY.rocks}
+            </span>
+          </span>
+          {tidyStreak(s.tidy, date) > 0 && <i className="hud-tidy-streak">🧹{tidyStreak(s.tidy, date)}</i>}
+        </button>
+      )}
+      </div>
+
+      {/* bottom left, one stack that never overlaps: today's lesson, today's build, then the day and what the farmer
+          carries (moved right of the special event's card while it shows) */}
+      <div className="hud-dock">
       {/* the first days: today's Farm basics lesson, until it is read */}
       <BasicsChip day={lifeOf(s.life).day} read={s.basics ?? []} />
-
-      {/* the day, and what the farmer carries */}
+      {build && !anchors.riding && !job && (
+        <button type="button" className="hud-build" onClick={() => dispatch({ type: 'open', modal: build.go })} aria-label={`Today: ${build.title}`}>
+          <i aria-hidden="true">{build.icon}</i>
+          <span>
+            {build.title}
+            <small>Day {farmDay} · tap to start</small>
+          </span>
+        </button>
+      )}
       <div className="hud-status">
         {t && t.phase === 'growing' && (
           <span>
@@ -1215,32 +1248,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         {s.field.carry && <span className="is-carry">Carrying: {CARRY_NAME[s.field.carry].toLowerCase()}</span>}
       </div>
 
-      {/* the daily tidy-up: today's bushes and rocks; tap to walk to the nearest one */}
-      {tidyOn && (
-        <button
-          type="button"
-          className={`hud-tidy${tidy.done === TIDY_TOTAL ? ' is-done' : ''}`}
-          onClick={goToTidy}
-          aria-label={
-            tidy.done === TIDY_TOTAL
-              ? `Daily tidy-up done${tidyStreak(s.tidy, date) > 1 ? `, ${tidyStreak(s.tidy, date)} days in a row` : ''}`
-              : `Daily tidy-up: ${tidy.bushes} of ${TIDY.bushes} bushes and ${tidy.rocks} of ${TIDY.rocks} rocks cleared. Tap to walk to the nearest.`
-          }
-        >
-          <span className="hud-tidy-head">
-            <b>{tidy.done === TIDY_TOTAL ? '✓ Farm tidy' : 'Daily tidy-up'}</b>
-            {tidyStreak(s.tidy, date) > 0 && <i>🧹{tidyStreak(s.tidy, date)}</i>}
-          </span>
-          <span className="hud-tidy-row">
-            <span className={tidy.bushes === TIDY.bushes ? 'is-full' : ''}>
-              <TidyGlyph kind="bush" /> {tidy.bushes}/{TIDY.bushes}
-            </span>
-            <span className={tidy.rocks === TIDY.rocks ? 'is-full' : ''}>
-              <TidyGlyph kind="rock" /> {tidy.rocks}/{TIDY.rocks}
-            </span>
-          </span>
-        </button>
-      )}
+      </div>
         </>
       )}
 
@@ -1338,27 +1346,22 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       )}
 
       {hint && (
-        <div key={hint.id} className="hud-hint" style={{ left: Math.min(STAGE_W - 120, Math.max(120, anchors.farmer.x)), top: Math.max(56, anchors.farmer.y - 34) }}>
+        <div key={hint.id} className="hud-hint" style={{ left: Math.min(STAGE_W - 120, Math.max(120, anchors.farmer.x)), top: Math.max(HUD_TOP_CLEAR + 30, anchors.farmer.y - 34) }}>
           {hint.text}
         </div>
       )}
 
       {signVoice && anchors.sign?.visible && !overlay && (
-        <p className="voice-bubble is-sign" role="note" style={{ left: Math.min(STAGE_W - 130, Math.max(130, anchors.sign.x)), top: anchors.sign.y - 40 }}>
+        <p className="voice-bubble is-sign" role="note" style={{ left: Math.min(STAGE_W - 170, Math.max(170, anchors.sign.x)), top: signTop(anchors.sign.y) - 40 }}>
           <b>{signVoice.name}:</b> {signVoice.say}
         </p>
       )}
       {showCheck && anchors.sign?.visible && (
-        <button type="button" data-pad-primary className="hud-check" style={{ left: anchors.sign.x, top: anchors.sign.y }} disabled={wait > 0} onClick={() => openCheck(signFarm)}>
+        <button type="button" data-pad-primary className="hud-check" style={{ left: Math.min(STAGE_W - 90, Math.max(90, anchors.sign.x)), top: signTop(anchors.sign.y) }} disabled={wait > 0} onClick={() => openCheck(signFarm)}>
           {wait > 0 ? `Look again in ${wait}s` : `Check ${farmName(signFarm)}`}
         </button>
       )}
 
-      {nightMode && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
-        <span className="hud-moon" aria-label={`Night${lit ? ': the farm lights are on' : ''}`}>
-          🌙 Night{lit ? ' · lights on' : powerHasLights ? ' · lights off' : ''}
-        </span>
-      )}
 
       {hub && (
         <div className="abs world-check" style={{ inset: 0 }}>
@@ -1726,6 +1729,12 @@ export function TaskGlyph({ icon }: { icon: TaskIcon }) {
   }
 }
 
+/** The top band of the farm HUD (the task card, the harvest card and the money): bubbles in the world stay under it. */
+const HUD_TOP_CLEAR = 88;
+/** Where the sign's Check button sits: on the sign, but never so high that it or Mama Achieng's bubble above it reaches
+    into the HUD's top band (they covered the task card when the sign was near the top of the screen). */
+const signTop = (y: number) => Math.max(y, HUD_TOP_CLEAR + 72);
+
 /** The tag over a partner billboard the farmer walked up to: tap it for the brand's offer. */
 function BillboardTag({ bill, dispatch }: { bill: NonNullable<Anchors['bill']>; dispatch: Dispatch<Action> }) {
   const b = slotBrand(bill.slot)!;
@@ -1734,7 +1743,7 @@ function BillboardTag({ bill, dispatch }: { bill: NonNullable<Anchors['bill']>; 
     <button
       type="button"
       className="hud-bill"
-      style={{ left: Math.min(STAGE_W - 80, Math.max(80, bill.x)), top: Math.min(STAGE_H - 40, Math.max(84, bill.y)), ['--brand' as string]: b.color, ['--accent' as string]: b.accent }}
+      style={{ left: Math.min(STAGE_W - 80, Math.max(80, bill.x)), top: Math.min(STAGE_H - 40, Math.max(HUD_TOP_CLEAR + 30, bill.y)), ['--brand' as string]: b.color, ['--accent' as string]: b.accent }}
       onClick={() => openOffer(dispatch, bill.slot, b.id)}
       aria-label={`${b.name} billboard: see the offer`}
     >

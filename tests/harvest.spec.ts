@@ -8,8 +8,8 @@ import { harvestEstimate, withTodayFixed } from '../src/risk/harvest';
 import { FULL, emptyField, needOf, type Field } from '../src/world/field';
 
 /* Harvest estimate: the button beside the farmer's portrait shows what the harvest is likely to bring in if it goes
-   well, the way the player is farming, and under it what they are likely to lose if the problems now are not put
-   right. */
+   well, the way the player is farming, and the money at risk today hangs from it as a tab: one number, the same one
+   the at-risk list shows. Its sheet shows how far that grows if the problems are never put right. */
 
 function planted(cycle: number): { t: Trial; f: Field } {
   const plan = setChoice(COMMON_PLAN, 'pest', 'scout');
@@ -95,7 +95,14 @@ test('the button beside the portrait, its risk line, and the sheet with each far
   const r = riskOf(est.trial, est.field, dayNumber());
   const h = harvestEstimate(est.trial, r)!;
   await expect(btn.locator('b')).toHaveText(moneyCompact(h.income));
-  await expect(btn.locator('.hud-harvest-risk')).toContainText(h.atRisk > 0 ? `${moneyCompact(h.atRisk)} if not fixed` : 'Nothing at risk now');
+  await expect(btn).toContainText('if it goes well');
+  // one number for what is at risk: the tab attached under the card shows today's, the same total the list shows
+  const tab = page.locator('.hud-money .hud-risk');
+  await expect(tab).toContainText(`${moneyCompact(r.total)} at risk today`);
+  const tabBox = await tab.boundingBox();
+  expect(tabBox!.y).toBeGreaterThanOrEqual(box!.y + box!.height - 4);
+  expect(tabBox!.x).toBeGreaterThanOrEqual(box!.x);
+  expect(tabBox!.x + tabBox!.width).toBeLessThanOrEqual(box!.x + box!.width);
 
   await btn.click();
   const sheet = page.getByRole('dialog', { name: 'Harvest estimate' });
@@ -103,7 +110,9 @@ test('the button beside the portrait, its risk line, and the sheet with each far
   await expect(sheet).toContainText(`${money(h.income)} if it goes well`);
   await expect(sheet.locator('.harvest-list li')).toHaveCount(est.trial.plans.length);
   if (h.atRisk > 0) {
-    await expect(sheet.locator('.harvest-split .is-loss')).toContainText(money(h.atRisk));
+    // today's risk, the same as the tab, and how far it grows if it is never put right
+    await expect(sheet.locator('.harvest-split .is-loss')).toContainText(money(r.total));
+    if (h.atRisk > r.total) await expect(sheet.locator('.harvest-split .is-loss')).toContainText(`up to −${money(h.atRisk)}`);
     await sheet.getByRole('button', { name: 'See what is at risk' }).click();
     await expect(sheet).toBeHidden();
     await expect(page.getByRole('dialog', { name: 'Money at risk' })).toBeVisible();

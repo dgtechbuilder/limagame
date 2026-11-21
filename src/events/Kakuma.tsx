@@ -283,8 +283,8 @@ export function KakumaPopup({ s, dispatch }: { s: GameState; dispatch: Dispatch<
       <small className="kk-pop-wfp">With the World Food Programme</small>
       <span className="kk-pop-foot">
         <span className="kk-pop-line">{phase === 'on' ? 'On until 30 Nov' : `Starts in ${daysToGo()} day${daysToGo() === 1 ? '' : 's'}`}</span>
-        <button type="button" className="kk-pop-go" onClick={open}>
-          Join the event
+        <button type="button" className="kk-pop-go" onClick={open} aria-label="Join the event">
+          Join ›
         </button>
       </span>
     </div>
