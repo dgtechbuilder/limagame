@@ -1060,12 +1060,12 @@ button.card:active { transform: scale(0.98); }
 .hud-daily {
   position: absolute; right: 76px; bottom: 12px; z-index: 5; display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
 }
-.hud-tidy {
+.hud-tidy, .hud-csa {
   position: relative; display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 4px 0 10px; border-radius: 100px;
   text-align: left; color: #5b3418; background: rgba(255, 244, 221, 0.96); box-shadow: 0 0 0 1.5px #c9824a, 0 2px 6px rgba(0, 0, 0, 0.22);
   animation: pop 0.25s ease both;
 }
-.hud-tidy:active { transform: scale(0.96); }
+.hud-tidy:active, .hud-csa:active { transform: scale(0.96); }
 .hud-tidy-head { font-size: var(--text-label); font-weight: 900; letter-spacing: 0.03em; text-transform: uppercase; white-space: nowrap; }
 .hud-tidy-streak { font-style: normal; font-size: 10px; font-weight: 800; padding-right: 4px; }
 .hud-tidy-row { display: flex; gap: 4px; }
@@ -1075,9 +1075,9 @@ button.card:active { transform: scale(0.98); }
 }
 .hud-tidy-row > span svg { width: 14px; height: 14px; }
 .hud-tidy-row > span.is-full { background: #d6f0c4; color: #23720f; }
-.hud-tidy.is-done { background: rgba(238, 251, 232, 0.96); color: #23720f; box-shadow: 0 0 0 1.5px #2f9b14, 0 2px 6px rgba(0, 0, 0, 0.2); }
+.hud-csa.is-done, .hud-tidy.is-done { background: rgba(238, 251, 232, 0.96); color: #23720f; box-shadow: 0 0 0 1.5px #2f9b14, 0 2px 6px rgba(0, 0, 0, 0.2); }
 @keyframes tidy-nudge { 0%, 88%, 100% { transform: none; } 92% { transform: rotate(-3deg); } 96% { transform: rotate(3deg); } }
-@media (prefers-reduced-motion: reduce) { .hud-tidy { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .hud-tidy, .hud-csa { animation: none; } }
 .hud-tidy:not(.is-done) { animation: pop 0.25s ease both, tidy-nudge 4s ease-in-out 1s infinite; }
 @media (prefers-reduced-motion: reduce) { .hud-tidy:not(.is-done) { animation: none; } }
 /* jobs done by hand (src/onsite): the task card while a job is in hand, its drop button, the button at the spot, and
@@ -4351,6 +4351,6 @@ button.pp-card:active { transform: scale(0.98); }
 .csa-result-btns .set-link { height: 34px; }
 
 /* the farm's CLIMATE-SMART chip, with the daily chips */
-.hud-tidy.hud-csa { box-shadow: 0 0 0 1.5px #6fb04a, 0 2px 6px rgba(0, 0, 0, 0.22); background: rgba(240, 250, 230, 0.97); color: #2e5e1d; }
+.hud-csa:not(.is-done) { box-shadow: 0 0 0 1.5px #6fb04a, 0 2px 6px rgba(0, 0, 0, 0.22); background: rgba(240, 250, 230, 0.97); color: #2e5e1d; }
 .hud-csa .hud-tidy-row > span.is-hot { background: #fde0c8; color: #9a3d12; }
 .hud-csa .hud-tidy-row > span.is-cool { background: #d6f0c4; color: #23720f; }

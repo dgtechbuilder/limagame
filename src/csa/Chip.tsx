@@ -21,7 +21,7 @@ export function CsaChip({ s, dispatch, now }: { s: GameState; dispatch: Dispatch
   return (
     <button
       type="button"
-      className={`hud-tidy hud-csa${done ? ' is-done' : ''}`}
+      className={`hud-csa${done ? ' is-done' : ''}`}
       onClick={() => dispatch({ type: 'open', modal: { kind: 'climate', tab: 'csa', practice: id, daily: true } })}
       aria-label={`Climate-smart: today's drill, ${practiceOf(id).name}${done ? ', done' : ''}. Field clock: ${clock.label}: ${clock.tip}`}
       title={clock.tip}
