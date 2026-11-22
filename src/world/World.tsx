@@ -1459,8 +1459,10 @@ function stopPoint(st: JobStop, w: FarmWorld): { x: number; z: number; face: { x
   return { x: p.x + fz * st.x + fx * st.z, z: p.z - fx * st.x + fz * st.z, face: { x: p.x, z: p.z } };
 }
 
-/** The partner billboard the farmer is close to (and that shows on screen): its offer tag goes over it. */
-const BILL_REACH = 7.5;
+/** The partner billboard the farmer is standing under (and that shows on screen): its offer tag goes over it.
+    A world unit is about a metre (the farmer stands ~1.65 tall); the pole keeps the farmer 0.8 away, so the tag
+    shows only from right beneath the board, within a metre of its pole. */
+const BILL_REACH = 1.0;
 function billboardNear(w: FarmWorld): Anchors['bill'] {
   const me = w.farmerAt();
   for (const bb of BILLBOARDS) {
