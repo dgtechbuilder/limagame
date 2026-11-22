@@ -693,7 +693,8 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     }
     if (p === 'hire') return setHub(hireInfo(st).ready ? 'hire' : 'yard');
     if (p === 'market') return onMarket();
-    if (p === 'restaurant') return dispatch({ type: 'open', modal: { kind: 'market', tab: 'restaurant' } });
+    // the restaurant opens on its shop floor: customers walk in and order (src/shop)
+    if (p === 'restaurant') return dispatch({ type: 'open', modal: { kind: 'serve', shop: 'restaurant' } });
     // the greenhouse opens on the bed that needs the farmer most (pick, then water, then plant); the storehouse on its
     // Harvest when a bed is ripe
     if (p === 'greenhouse' || p === 'storehouse') {
@@ -741,12 +742,13 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     say('The ploughing has begun');
   }
 
-  /** The Sell stall: the six farms' harvest when it is all in, otherwise the market stall (25 kg of the store a day). */
+  /** The Sell stall: the six farms' harvest when it is all in, otherwise the market stall's shop floor (customers
+      walk in and buy from the store, 25 kg a day: src/shop). */
   function onMarket() {
     const st = sRef.current;
     const tr = st.trial;
     const d = fieldDay(tr, dayNumber());
-    if (!tr || tr.phase !== 'growing' || d <= CHECK_DAYS || !allHarvested(st.field, tr)) return dispatch({ type: 'open', modal: { kind: 'market' } });
+    if (!tr || tr.phase !== 'growing' || d <= CHECK_DAYS || !allHarvested(st.field, tr)) return dispatch({ type: 'open', modal: { kind: 'serve', shop: 'market' } });
     dispatch({ type: 'trialHarvest' });
     window.setTimeout(() => dispatch({ type: 'trials', open: true }), 1400);
   }
@@ -1526,9 +1528,9 @@ function placeButton(p: Place, carry: GameState['field']['carry']): { label: str
     case 'hire':
       return { label: 'Start training', sub: 'Tractor yard', aria: 'Start training at the tractor yard', icon: 'tractor' };
     case 'market':
-      return { label: 'Open the market', sub: 'Sell your harvest', aria: 'Open the market', icon: 'corn' };
+      return { label: 'Open the market', sub: 'Serve customers', aria: 'Open the market', icon: 'corn' };
     case 'restaurant':
-      return { label: 'Open the restaurant', sub: 'Cook meals from your harvest', aria: 'Open the restaurant', emoji: '🍲' };
+      return { label: 'Open the restaurant', sub: 'Cook and serve meals', aria: 'Open the restaurant', emoji: '🍲' };
     case 'house':
       return { label: 'Go to sleep', sub: 'End the day', aria: 'Go to sleep', icon: 'sleep' };
     case 'mission':

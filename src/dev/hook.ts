@@ -12,6 +12,7 @@ import { LAYOUTS } from '../tractor/data';
 import { simClock } from '../tractor/sim';
 import { driveClock } from '../business/drive';
 import { miniClock } from '../minifarm/sim';
+import { shopClock } from '../shop/model';
 import { sfxLog } from '../sfx';
 import { wakalaCase, type WakalaCase } from '../trials/samples';
 import { PLACES } from '../world/engine';
@@ -75,6 +76,10 @@ export function install(get: () => GameState, dispatch: Dispatch<Action>) {
     /** the tractor game's 30 seconds run this many times faster */
     miniClock(scale: number) {
       miniClock.scale = scale;
+    },
+    /** the shop floor's customers and cooking run this many times faster */
+    shopClock(scale: number) {
+      shopClock.scale = scale;
     },
   };
   (window as unknown as { __lima: typeof api }).__lima = api;

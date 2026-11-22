@@ -54,6 +54,8 @@ const SCREENS = [
   '/partners/offers', '/partners/placements', '/partners/partner-with-us', '/partners/shortlist',
   ...['food', 'fertilizer', 'water-tanks', 'equipment'].map(t => `/shop/${t}`),
   '/steps/planting', '/loan-calculator', '/loan-calculator/quote', '/sale', '/storage', '/farm-info', '/results', '/rewards', '/training',
+  // the shop floor: the stall and the restaurant played (src/shop)
+  '/serve/market', '/serve/restaurant',
 ];
 
 test('every screen keeps its boxes and buttons inside the stage’s rounded frame', async ({ page }) => {

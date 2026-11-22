@@ -25,6 +25,7 @@ const FinancePage = lazyPage(() => import('./finance/Finance').then(m => m.Finan
 const PowerPage = lazyPage(() => import('./power/Power').then(m => m.PowerPage), 1);
 const TractorGamePage = lazyPage(() => import('./minifarm/MiniFarm').then(m => m.TractorGamePage), 1);
 const MarketPage = lazyPage(() => import('./produce/Market').then(m => m.MarketPage), 1);
+const ShopFloor = lazyPage(() => import('./shop/Shop').then(m => m.ShopFloor), 1);
 const EventsPage = lazyPage(() => import('./events/Events').then(m => m.EventsPage), 1);
 const GreenhousePage = lazyPage(() => import('./greenhouse/Greenhouse').then(m => m.GreenhousePage), 1);
 const StorehousePage = lazyPage(() => import('./storehouse/Storehouse').then(m => m.StorehousePage), 1);
@@ -357,6 +358,11 @@ export default function App() {
         {m?.kind === 'market' && (
           <Suspense fallback={<ActivityLoading label="Opening the market…" />}>
             <MarketPage s={s} dispatch={dispatch} />
+          </Suspense>
+        )}
+        {m?.kind === 'serve' && (
+          <Suspense fallback={<ActivityLoading label={m.shop === 'market' ? 'Opening the market…' : 'Opening the restaurant…'} />}>
+            <ShopFloor key={m.shop} s={s} dispatch={dispatch} kind={m.shop} />
           </Suspense>
         )}
         {m?.kind === 'tractorGame' && (

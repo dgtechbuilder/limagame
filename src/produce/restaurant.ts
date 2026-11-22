@@ -7,7 +7,7 @@
 import { nutritionOf, type Nutrition } from '../nutrition/data';
 import { MARKET, PRODUCE, growCost, produceOf, rawValue, type MealSale, type ProduceId, type ProduceState } from './model';
 
-export type DishId = 'ugali-sukuma' | 'githeri' | 'beans-ugali' | 'pepper-stew' | 'kachumbari' | 'strawberry-cup' | 'juice';
+export type DishId = 'ugali-sukuma' | 'githeri' | 'beans-ugali' | 'pepper-stew' | 'kachumbari' | 'strawberry-cup' | 'juice' | 'stuffed-capsicum' | 'maize-bread';
 
 export interface Dish {
   id: DishId;
@@ -31,6 +31,8 @@ export const DISHES: Dish[] = [
   { id: 'kachumbari', name: 'Kachumbari', icon: '🍅', what: 'Fresh tomato, cucumber and chilli salad: vitamin C beside any meal.', plate: { tomatoes: 0.1, cucumber: 0.05, chillies: 0.01 }, price: 4, cooking: 1 },
   { id: 'strawberry-cup', name: 'Strawberry cup', icon: '🍓', what: 'Fresh strawberries in a cup: most of a day’s vitamin C.', plate: { strawberries: 0.15 }, price: 6, cooking: 0.5 },
   { id: 'juice', name: 'Strawberry and cucumber juice', icon: '🧃', what: 'A big cup of fresh strawberry juice, made longer with cucumber.', plate: { strawberries: 0.1, cucumber: 0.2 }, price: 6, cooking: 1 },
+  { id: 'stuffed-capsicum', name: 'Baked stuffed capsicum', icon: '🫑', what: 'Capsicum filled with beans and tomato, baked in the oven: protein, iron and vitamin C.', plate: { capsicum: 0.1, drybeans: 0.05, tomatoes: 0.04 }, price: 9, cooking: 2.5 },
+  { id: 'maize-bread', name: 'Baked maize bread', icon: '🍞', what: 'A loaf of the storehouse’s maize flour, baked in the oven: energy for the day.', plate: { flour: 0.12 }, price: 5, cooking: 1.5 },
 ];
 export const dishOf = (id: DishId) => DISHES.find(d => d.id === id)!;
 
