@@ -103,6 +103,8 @@ function describe(a: Action, prev: GameState, next: GameState): { kind: WalletKi
       return { kind: 'produce', label: a.text };
     case 'task':
       return { kind: 'farm', label: `Farm Moja: ${a.name}` };
+    case 'csaDone':
+      return { kind: 'reward', label: 'Climate Smart Agriculture practice' };
     case 'completeSale':
       return { kind: 'harvest', label: 'Farm Moja harvest sold' };
     case 'trialNew':

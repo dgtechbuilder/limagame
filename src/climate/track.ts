@@ -16,6 +16,7 @@ import { achClock } from '../achievements/track';
 import { daysBetween } from '../achievements/model';
 import { dayText } from '../training/data';
 import { money } from '../money';
+import { practiceOf } from '../csa/data';
 import { PAY, areasDelta, areasOf, coinsFor, landOf, landWords, payRate } from './land';
 import {
   creditsOf,
@@ -210,6 +211,14 @@ export function trackClimate(prev: GameState, s: GameState, a: Action): GameStat
     }
     case 'roundResult': {
       if (!prev.rounds.done[a.id] || prev.rounds.day !== a.day) shock(a.hazard, a.right);
+      break;
+    }
+    // Climate Smart Agriculture: today's drill earns climate credits, for each star (src/csa)
+    case 'csaDone': {
+      const d0 = prev.csa?.drill?.days ?? 0;
+      const d1 = s.csa?.drill;
+      if (!d1 || d1.days <= d0 || !d1.credits) break;
+      log(`Climate-smart drill · ${practiceOf(a.id).name} (${'★'.repeat(d1.stars ?? 0)})`, 'csa', { credits: d1.credits });
       break;
     }
     // The farm world: work by hand or from the tractor seat

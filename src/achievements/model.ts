@@ -69,6 +69,9 @@ export interface AchView {
   owned: number;
   /** climate credits earned */
   credits: number;
+  /** Climate Smart Agriculture (src/csa): practices played to two stars or more, and daily drills done */
+  csaPractised: number;
+  csaDrills: number;
   /** farmer courses booked (learning credits in My Progress) */
   courses: number;
 }
@@ -129,6 +132,7 @@ export const DAY_ONE: Achievement[] = [
   day1('first-drive', 'tractor', 'First furrow', 'Finish a tractor drive', '🚜', v => v.stats.drives),
   day1('first-biz', 'business', 'Open for business', 'Run your first tractor business day', '📒', v => v.bizDays),
   day1('first-credit', 'climate', 'Climate starter', 'Earn your first climate credit', '🍃', v => v.credits),
+  day1('first-csa', 'climate', 'Climate-smart starter', 'Practise one climate-smart practice to two stars', '🌿', v => v.csaPractised),
 ];
 
 export const ACHIEVEMENTS: Achievement[] = [
@@ -225,6 +229,17 @@ export const ACHIEVEMENTS: Achievement[] = [
     ['Climate friend', 10, 'Earn 10 climate credits'],
     ['Climate steward', 30, 'Earn 30 climate credits'],
     ['Climate champion', 100, 'Earn 100 climate credits'],
+  ]),
+  // Climate Smart Agriculture (src/csa): the practices, and the daily drill
+  ...tiers('csa', 'climate', '🌿', v => v.csaPractised, [
+    ['Climate-smart learner', 3, 'Practise 3 climate-smart practices to two stars'],
+    ['Climate-smart farmer', 5, 'Practise 5 climate-smart practices to two stars'],
+    ['Climate-smart master', 7, 'Practise all 7 climate-smart practices to two stars'],
+  ]),
+  ...tiers('csa-drill', 'climate', '🕖', v => v.csaDrills, [
+    ['Daily drill', 3, 'Do 3 daily climate-smart drills'],
+    ['Drill habit', 10, 'Do 10 daily climate-smart drills'],
+    ['Field-smart', 30, 'Do 30 daily climate-smart drills'],
   ]),
 ];
 

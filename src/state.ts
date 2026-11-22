@@ -81,6 +81,9 @@ import { GIFT_POINTS, KG_PER_MEAL, STORE_GIFT_KG, addGift, giftOf, kakumaOf, kak
 import type { SfxKind } from './sfx';
 import { money } from './money';
 import { clearPiece, tidyFor, TIDY_TOTAL, type TidyState } from './tidy/model';
+import { finishRun, type CsaState } from './csa/model';
+import { practiceOf, type CsaId } from './csa/data';
+import { trackCsa } from './csa/track';
 import { JOBS_MAX, onFarm, treatJob, type Job, type JobSpec } from './onsite/model';
 import { PAYG, SHOP, activitiesDone, bizOf, contractDay, demoSlots, farmerAccepts, graduation, hireOutDay, offersFor, partnerBlock, partnerOf, planDay, requestsFor, runDay, scanFarm, shopBlock, type Biz, type Bookings, type Crop, type Drives, type FleetItem, type PartnerId } from './business/model';
 import {
@@ -103,7 +106,8 @@ import {
 
 export type Modal =
   | { kind: 'menu' }
-  | { kind: 'climate'; tab?: ClimateTab }
+  /** practice: a Climate Smart Agriculture lesson open on the page (src/csa); daily: opened as today's drill */
+  | { kind: 'climate'; tab?: ClimateTab; practice?: CsaId; daily?: boolean }
   | { kind: 'achievements'; tab?: AchTab }
   | { kind: 'welcome' }
   | { kind: 'settings'; tab?: SettingsTab }
@@ -214,7 +218,7 @@ export interface Settings {
   data?: 'auto' | 'on' | 'off';
 }
 export type SettingsTab = 'farmer' | 'game' | 'display' | 'tractor' | 'controller' | 'help';
-export type ClimateTab = 'overview' | 'land' | 'areas' | 'emissions' | 'water' | 'tank' | 'credits' | 'shocks' | 'activity';
+export type ClimateTab = 'overview' | 'csa' | 'land' | 'areas' | 'emissions' | 'water' | 'tank' | 'credits' | 'shocks' | 'activity';
 /** My Progress (the achievements page): the journey of certification levels, the modules, today, badges, certificates */
 export type AchTab = 'journey' | 'modules' | 'today' | 'badges' | 'certificates';
 export type PartnersTab = 'offers' | 'placements' | 'join' | 'shortlist';
@@ -357,6 +361,8 @@ export interface GameState {
   tidy?: TidyState;
   /** jobs waiting to be done by hand on the 3D farm: walk to each spot and work there (src/onsite; missing in older saves) */
   jobs?: Job[];
+  /** Climate Smart Agriculture: the practices learned and their skills, the daily drill, the field clock (src/csa; missing in older saves) */
+  csa?: Partial<CsaState>;
   collectedDay: Record<string, string>; // milk/eggs → date last collected
   /** the cows and the hens: care, health, problems, the coop (src/livestock) */
   life?: Partial<LifeState>;
@@ -618,6 +624,8 @@ export type Action =
       tractor?: boolean;
       /** the tractor type and tool that did them */
       rig?: { tractor: TractorId; tool: ImplId; job: PlotJob };
+      /** the hour on the phone's clock when the work was done (the field clock, src/csa); the farm world sends it */
+      hour?: number;
     }
   /** put a seed, fertilizer or sprayer on a plot of a farm (another plot with it swaps) */
   | { type: 'plotSet'; farm: number; plot: number; kind: PlotKind; value: string }
@@ -658,6 +666,8 @@ export type Action =
   | { type: 'tidyDay' }
   /** one of today's bushes or rocks cleared in the farm world */
   | { type: 'tidyClear'; id: string }
+  /** a Climate Smart Agriculture practice game finished (src/csa): its score, and whether it was today's drill */
+  | { type: 'csaDone'; id: CsaId; score: number; daily?: boolean }
   /** My Progress: claim a certification level's reward */
   | { type: 'levelClaim'; id: string }
   /** partners: get a brand's offer (its code is kept in Messages) */
@@ -758,7 +768,7 @@ export function reducer(s: GameState, a: Action): GameState {
   if (next === s) return s;
   const kind = soundOf(s, next, a);
   // an action that finished something counts today as a day played (the streak)
-  const tracked = trackFinance(s, trackWallet(s, trackSystems(s, trackEvidence(s, trackAchievements(s, trackLife(s, trackWater(s, trackClimate(s, next, a), a), a), a, kind !== null), a), a), a));
+  const tracked = trackFinance(s, trackWallet(s, trackSystems(s, trackEvidence(s, trackAchievements(s, trackLife(s, trackCsa(s, trackWater(s, trackClimate(s, next, a), a), a), a), a, kind !== null), a), a), a));
   return kind ? { ...tracked, sfx: { id: ++sfxId, kind } } : tracked;
 }
 
@@ -785,7 +795,7 @@ function trackFinance(prev: GameState, next: GameState): GameState {
 /** Flows: finishing one of these ends a whole piece of play. */
 const FLOWS = new Set<Action['type']>(['checkDone', 'achClaimAll', 'completeSale', 'trialHarvest', 'bizRun', 'bizHireOut', 'bizContract', 'bizGraduate', 'tractorDone']);
 /** Actions: finishing one of these is one thing done. Some only count when they earned something (their message). */
-const ACTIONS = new Set<Action['type']>(['achClaim', 'achDaily', 'levelClaim', 'partnerSave', 'buy', 'sell', 'bookTraining', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo', 'tidyClear', 'animalCare', 'animalPrevent', 'checkFix', 'coopBuild', 'shedBuild', 'herdBuy', 'securityBuy', 'powerInstall', 'powerFuel', 'tractorHub', 'produceSell', 'restaurantCook', 'shopSell', 'shopMeal', 'ghPlant', 'ghWater', 'ghHarvest', 'storeMake', 'shedChoose', 'kakumaGive', 'kakumaGiveStore', 'give']);
+const ACTIONS = new Set<Action['type']>(['achClaim', 'achDaily', 'levelClaim', 'partnerSave', 'buy', 'sell', 'bookTraining', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo', 'tidyClear', 'csaDone', 'animalCare', 'animalPrevent', 'checkFix', 'coopBuild', 'shedBuild', 'herdBuy', 'securityBuy', 'powerInstall', 'powerFuel', 'tractorHub', 'produceSell', 'restaurantCook', 'shopSell', 'shopMeal', 'ghPlant', 'ghWater', 'ghHarvest', 'storeMake', 'shedChoose', 'kakumaGive', 'kakumaGiveStore', 'give']);
 const EARNED = new Set<Action['type']>(['roundResult', 'trialCheck', 'fieldMark']);
 const FS_ORDER: FsPhase[] = ['create', 'story', 'walk1', 'update', 'review1', 'walkRetry', 'retry', 'walk2', 'review2', 'done'];
 
@@ -803,6 +813,8 @@ function soundOf(s: GameState, next: GameState, a: Action): SfxKind | null {
   if (FLOWS.has(a.type)) return 'flow';
   // the last bush or rock of the day finishes the whole tidy-up
   if (a.type === 'tidyClear' && (next.tidy?.cleared.length ?? 0) === TIDY_TOTAL) return 'flow';
+  // the daily climate-smart drill done is a whole flow
+  if (a.type === 'csaDone' && (next.csa?.drill?.days ?? 0) > (s.csa?.drill?.days ?? 0)) return 'flow';
   if (ACTIONS.has(a.type)) return 'action';
   if (a.type === 'prescribe') return a.right ? 'action' : null;
   if (a.type === 'animalFix') return lifeOf(next.life).issues.length < lifeOf(s.life).issues.length ? 'action' : null;
@@ -1985,6 +1997,18 @@ function play(s: GameState, a: Action): GameState {
         ...(r.finished
           ? { toast: toast(`Farm tidy! +${money(r.coins)} · +${r.points} points${r.tidy.streak > 1 ? ` · ${r.tidy.streak}-day tidy streak` : ''}`) }
           : {}),
+      };
+    }
+    case 'csaDone': {
+      const r = finishRun(s.csa, a.id, a.score, achClock.today(), !!a.daily);
+      const name = practiceOf(a.id).name;
+      const bits = [r.coins ? `+${money(r.coins)}` : '', r.points ? `+${r.points} points` : '', r.credits ? `+${r.credits} climate credits` : '', r.levelUp ? `skill: ${r.levelUp}` : ''].filter(Boolean);
+      return {
+        ...s,
+        csa: r.csa,
+        coins: s.coins + r.coins,
+        points: s.points + r.points,
+        toast: toast(`${r.drill ? 'Today’s drill done' : name}: ${'★'.repeat(r.stars) || 'no stars yet'}${bits.length ? ` · ${bits.join(' · ')}` : ''}`),
       };
     }
     case 'give': {

@@ -19,9 +19,12 @@ import { PLACES } from '../world/engine';
 import { PLOTS, signOf, tileCenter } from '../world/field';
 import { tidyItems } from '../tidy/model';
 import { achClock } from '../achievements/track';
+import { fieldClock } from '../csa/model';
 import { jobFor } from '../onsite/model';
 
 export function install(get: () => GameState, dispatch: Dispatch<Action>) {
+  // the field clock (src/csa) stands at 10 am in the play-tests, an hour that changes nothing, unless a test sets it
+  fieldClock.hour = () => 10;
   const jump = (state: Partial<GameState>) => dispatch({ type: 'reset', state: { ...initialState, ...REVIEW_BASE, ...state } });
   const callOf = (hazard: HazardId) => {
     const call = HAZARDS[hazard].call;
@@ -80,6 +83,10 @@ export function install(get: () => GameState, dispatch: Dispatch<Action>) {
     /** the shop floor's customers and cooking run this many times faster */
     shopClock(scale: number) {
       shopClock.scale = scale;
+    },
+    /** the field clock's hour (src/csa): a play-test sets the hour work on the farm is done at; null: the phone's own */
+    fieldHour(hour: number | null) {
+      fieldClock.hour = hour === null ? () => new Date().getHours() : () => hour;
     },
   };
   (window as unknown as { __lima: typeof api }).__lima = api;

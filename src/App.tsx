@@ -346,7 +346,7 @@ export default function App() {
         {m?.kind === 'menu' && <MainMenu s={s} dispatch={dispatch} />}
         {m?.kind === 'welcome' && <WelcomeModal s={s} dispatch={dispatch} />}
         {m?.kind === 'settings' && <SettingsPage s={s} dispatch={dispatch} tab={m.tab} />}
-        {m?.kind === 'climate' && <ClimatePage s={s} dispatch={dispatch} tab={m.tab} />}
+        {m?.kind === 'climate' && <ClimatePage s={s} dispatch={dispatch} tab={m.tab} practice={m.practice} daily={m.daily} />}
         {m?.kind === 'achievements' && <AchievementsPage s={s} dispatch={dispatch} tab={m.tab} />}
         {m?.kind === 'partners' && <PartnersPage s={s} dispatch={dispatch} tab={m.tab} brand={m.brand} />}
         {m?.kind === 'animals' && (

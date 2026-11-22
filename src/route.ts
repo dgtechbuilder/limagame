@@ -2,6 +2,7 @@ import type { ShopTab, StepId } from './data';
 import { STORY } from './first/data';
 import { CHECK_DAYS, currentDay } from './trials/model';
 import { dayNumber } from './rounds/farms';
+import { PRACTICES, practiceOf } from './csa/data';
 import type { AchTab, Action, AnimalsTab, ClimateTab, EventsTab, FsPhase, GameState, GlossaryTab, KakumaTab, MarketTab, Modal, StoreTab, PartnersTab, PowerTab, SecurityTab, SettingsTab, WalletTab, FinanceTab } from './state';
 import { BRANDS, type BrandId } from './partners/data';
 import { REGIONS, type RegionId } from './events/regions';
@@ -18,7 +19,7 @@ const STORY_PAGES = STORY.length;
 
 // friendly words in the address ↔ the ids in the code
 const SETTINGS: Record<SettingsTab, string> = { farmer: 'my-farmer', game: 'game', display: 'display', tractor: 'tractor', controller: 'controller', help: 'help' };
-const CLIMATE: Record<ClimateTab, string> = { overview: 'overview', land: 'land-and-pay', areas: 'farm-areas', emissions: 'emissions', water: 'water-and-soil', tank: 'water-tank', credits: 'credits', shocks: 'shocks', activity: 'activity' };
+const CLIMATE: Record<ClimateTab, string> = { overview: 'overview', csa: 'climate-smart-agriculture', land: 'land-and-pay', areas: 'farm-areas', emissions: 'emissions', water: 'water-and-soil', tank: 'water-tank', credits: 'credits', shocks: 'shocks', activity: 'activity' };
 const ACH: Record<AchTab, string> = { journey: 'journey', modules: 'modules', today: 'today', badges: 'badges', certificates: 'certificates' };
 const PARTNERS: Record<PartnersTab, string> = { offers: 'offers', placements: 'placements', join: 'partner-with-us', shortlist: 'shortlist' };
 const ANIMALS: Record<AnimalsTab, string> = { today: 'today', health: 'health', water: 'water', coop: 'coop', shed: 'cow-shed', herd: 'herd' };
@@ -78,7 +79,7 @@ function modalPath(s: GameState, m: Modal): string {
     case 'settings':
       return `/settings/${SETTINGS[settingsTab(s, m.tab)]}`;
     case 'climate':
-      return `/climate/${CLIMATE[m.tab ?? 'overview']}`;
+      return `/climate/${CLIMATE[m.tab ?? 'overview']}${m.tab === 'csa' && m.practice ? `/${practiceOf(m.practice).slug}` : ''}`;
     case 'achievements':
       return `/progress/${ACH[m.tab ?? 'journey']}`;
     case 'partners':
@@ -153,7 +154,13 @@ function modalFor(s: GameState, path: string[]): Modal | null | 'bad' {
   }
   if (first === 'climate') {
     const t = tab(CLIMATE);
-    return t === 'bad' ? 'bad' : { kind: 'climate', tab: t ?? 'overview' };
+    if (t === 'bad' || parts.length > 3) return 'bad';
+    // a Climate Smart Agriculture lesson: /climate/climate-smart-agriculture/half-moons
+    if (parts[2] !== undefined) {
+      const p = t === 'csa' ? PRACTICES.find(x => x.slug === parts[2]) : undefined;
+      return p ? { kind: 'climate', tab: 'csa', practice: p.id } : 'bad';
+    }
+    return { kind: 'climate', tab: t ?? 'overview' };
   }
   // My Progress; its old address (/achievements/…) still opens it
   if (first === 'progress' || first === 'achievements') {
