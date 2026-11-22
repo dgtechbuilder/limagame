@@ -1,3 +1,4 @@
+import { LoadGuard } from '../net/LoadGuard';
 import { Suspense, useEffect, useMemo, useRef, useState, type Dispatch, type PointerEvent as RPointerEvent } from 'react';
 import { KakumaPopup } from '../events/Kakuma';
 import { kakumaOf, kakumaPhase } from '../events/model';
@@ -74,12 +75,12 @@ import { ActivityLoading } from '../components/ActivityLoading';
 import { lazyPage, prefetchActivities } from '../prefetch';
 
 // from Wakala Agent: the screens after a right call, at the shed and at the Hire spot, loaded when first opened
-const Prescribe = lazyPage(() => import('../care/Prescribe').then(m => m.Prescribe), 0);
-const Spray = lazyPage(() => import('../care/Spray').then(m => m.Spray), 0);
-const Tractor = lazyPage(() => import('../tractor/Tractor').then(m => m.Tractor), 0);
-const PlotScreen = lazyPage(() => import('../plots/PlotBoard').then(m => m.PlotScreen), 0);
-const TractorPick = lazyPage(() => import('../plots/TractorPick').then(m => m.TractorPick), 0);
-const TractorHub = lazyPage(() => import('../tractor/TractorHub').then(m => m.TractorHub), 0);
+const Prescribe = lazyPage(() => import('../care/Prescribe'), m => m.Prescribe, 0);
+const Spray = lazyPage(() => import('../care/Spray'), m => m.Spray, 0);
+const Tractor = lazyPage(() => import('../tractor/Tractor'), m => m.Tractor, 0);
+const PlotScreen = lazyPage(() => import('../plots/PlotBoard'), m => m.PlotScreen, 0);
+const TractorPick = lazyPage(() => import('../plots/TractorPick'), m => m.TractorPick, 0);
+const TractorHub = lazyPage(() => import('../tractor/TractorHub'), m => m.TractorHub, 0);
 
 /** Design review (?review=1): the farm world opens straight into one of these (GameState.worldDemo). */
 export type WorldDemo = 'check' | 'prescribe' | 'spray' | 'tractor' | 'tractor-summary' | 'rig' | 'board';
@@ -1367,9 +1368,11 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
 
       {hub && (
         <div className="abs world-check" style={{ inset: 0 }}>
+          <LoadGuard onBack={() => setHub(null)}>
           <Suspense fallback={<ActivityLoading label="Opening the tractor yard…" />}>
             <TractorHub s={s} dispatch={dispatch} section={hub} onSection={setHub} hire={hireInfo(s)} onHire={startHire} onDrive={driveTractor} onClose={() => setHub(null)} />
           </Suspense>
+          </LoadGuard>
         </div>
       )}
 
@@ -1412,7 +1415,9 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
 
       {care && t && (
         <div className="abs world-check" style={{ inset: 0 }}>
-          <Suspense fallback={<ActivityLoading label={CARE_LOADING[care.kind]} />}>{careScreen(care, t)}</Suspense>
+          <LoadGuard onBack={() => setCare(null)}>
+            <Suspense fallback={<ActivityLoading label={CARE_LOADING[care.kind]} />}>{careScreen(care, t)}</Suspense>
+          </LoadGuard>
         </div>
       )}
     </div>

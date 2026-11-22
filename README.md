@@ -78,6 +78,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [Design review mode](#design-review-mode)
 - [Saving, events and privacy](#saving-events-and-privacy)
 - [Performance on low-cost phones](#performance-on-low-cost-phones)
+- [Playing on a weak, slow or missing signal](#playing-on-a-weak-slow-or-missing-signal)
 - [Tests](#tests)
 - [Assumptions and open decisions](#assumptions-and-open-decisions)
 
@@ -157,6 +158,10 @@ src/
   sfx.ts                   the two sound effects, made in the browser (nothing downloaded)
   speech.ts                Read aloud: the phone's own voice (speechSynthesis)
   assets.ts                image paths (art exported from Figma into public/assets)
+  net/                     a weak, slow or missing signal: connection.ts (online, Data saver), outbox.ts (batched
+                           sending), LoadGuard.tsx (the not-downloaded card), offline.ts (the service worker's side)
+  prefetch.ts              activities fetched ahead of time, and retried when a download fails
+  fonts/                   Poppins (latin, 400–700), kept with the game
   styles.css               design tokens (colours, gold button, panels) and component styles
   input/
     gamepad.ts             game controllers, live: read every frame, turned into keys, focus moves and presses
@@ -209,6 +214,7 @@ src/
     Rounds.tsx, Inspect.tsx, scene.tsx   the rounds, a bed's check, and the drawn pictures
     trial.ts               a six-farm check: what a farm shows today, from its own plan
     photos.ts, photos/     real photos from Wikimedia Commons by situation, credits.json + CREDITS.md (see photos/README.md)
+    photos-lite/           their light copies for Data saver (scripts/lite-photos.py)
   world/                   the 3D farm world (see below): field.ts the work by hand and the task card (no three.js),
                            engine.ts the scene, models.ts the low-poly models, toon.ts the cel shading, World.tsx the HUD
   trials/                  the six farms (see below): model.ts holds every number; Trials.tsx the screens (loaded when
@@ -2106,14 +2112,16 @@ player's saved game or events.
   `round_part_viewed`, `round_call`); `tractor_ride` (getting on the tractor, with its type and tool); and the
   farm-world events from Wakala Agent (see [From Wakala Agent](#from-wakala-agent)). Each has a
   timestamp and time since the first event. They are kept on the device (`lima-events`, last 300) and, only
-  if `VITE_EVENTS_URL` is set at build time, sent with `navigator.sendBeacon`.
+  if `VITE_EVENTS_URL` is set at build time, sent in batches through the outbox (see
+  [Playing on a weak, slow or missing signal](#playing-on-a-weak-slow-or-missing-signal)): the endpoint receives a
+  `POST` whose body is a JSON **array** of events.
 - **No personal data is sent.** Events never include the farmer's name. There are no accounts, cookies or
-  third-party scripts; the only outside request is the Poppins font from Google Fonts.
+  third-party scripts, and no outside requests at all: the Poppins font is kept with the game (`src/fonts/`).
 
 ## Performance on low-cost phones
 
 - Field rounds are a separate chunk (about 17 KB compressed) loaded when opened; they add about 3 KB to the first load.
-- The first screen needs about **100 KB** of compressed code; it does not wait for the farm art.
+- The first screen needs about **340 KB** of compressed code (React and the game's rules); it does not wait for the farm art.
 - The farm map is **86 KB** at 1× and **194 KB** at 2× (phones with sharp screens pick 2×).
 - All first-session crop art is SVG drawn in code: no images to download.
 - Checked with the CPU slowed 6×: taps respond in 0.3–0.6 s and the crop-recovery animation holds ~60 fps.
@@ -2148,8 +2156,61 @@ player's saved game or events.
   strip by strip, the road is one repeating strip, and the clock, the count and the little tractor on the route line
   are written straight into the page, not through React state. A real phone rasterises on its GPU, so both run far smoother there.
 - A service worker (`public/sw.js`, published game only) keeps the game on the phone: a second visit opens without
-  downloading it again, and the game plays on a weak signal. The page is fetched fresh when there is a connection,
-  so an update shows at once.
+  downloading it again, and the game plays with no signal. See the next section.
+
+## Playing on a weak, slow or missing signal
+
+Many players farm far from a good signal: 2G or a satellite link, data that costs money, hours with no signal at all.
+The game itself runs on the phone (rules, saving, the 3D farm), so the network is needed for only two things:
+downloading the game's files, and the few messages it sends. Both are built for a bad link (`src/net/`,
+`public/sw.js`, `tests/network.spec.ts`, `tests/offline-sw.spec.ts`).
+
+**Downloading the game, and keeping it** (`public/sw.js`, `vite.config.ts`, `src/net/offline.ts`)
+
+| What | How |
+| --- | --- |
+| The file list | Each build writes the exact list of the game's files into the service worker: *core* (the entry code, the 3D farm's code and engine, the stylesheet, the font, the 1× backgrounds), *rest* (every other activity and picture), the crop photos (full and light) and the files in `public/` with a hash of each. |
+| First visit | Once the page has loaded, the core is kept on the phone, two files at a time, so a dropped signal costs one file, not the lot (about 0.6 MB compressed). On a normal link the rest follows a little after the farm opens (about 1 MB). |
+| Second visit | Everything kept is served from the phone with **no request at all**: hashed build files never change, and a `public/` file is fetched again only when the build says its content changed (no revalidation round trip per picture). |
+| The page itself | From the network if it answers within **3 seconds** (so an update shows at once); otherwise the copy kept on the phone, while the network copy keeps loading for next time. With no signal, the kept copy. |
+| Updates | A new version keeps the files of the version before it too, so a game still open on the old one carries on; anything older is cleared. |
+| Download for offline | *Settings → Display → Play offline* shows how much of the game is on the phone and has a **Download** button: the whole game and the crop photos (up to 11 MB, or 4 MB with the light photos on Data saver), for a player who reaches Wi-Fi now and then. |
+| The font | Poppins is kept with the game (`src/fonts/`, 4 × 8 KB), not fetched from Google Fonts: two fewer servers to reach (each a DNS lookup and a TLS handshake, seconds on a satellite link). |
+
+**When a download fails** (`src/prefetch.ts`, `src/net/LoadGuard.tsx`)
+
+- Each activity's code is tried three times (at once, after 1 s, after 3 s). Chrome remembers a failed `import()` for as
+  long as the page is open, so a retry asks for the same file under a new address (`?retry=N`, which the service
+  worker and the server ignore).
+- If it still fails, the screen shows a card instead of a blank screen: *The signal is weak* or *No signal just now*,
+  your farm is saved on this phone, **Try again** and **Back to the farm**. It tries again by itself the moment the
+  phone is back online. If a second try fails with a signal, the button opens the game again (the address keeps the
+  screen, and progress is saved).
+- If the game was updated while it was open (the old files are gone from the server), it reloads once to the new one.
+- Any crash while drawing shows *Something went wrong — your farm is saved* with **Open again**, never a blank page.
+- After 5 seconds of *Opening…*, the card adds *Weak signal: still downloading*, so a slow link does not look frozen.
+- A crop photo that fails shows *Photo did not load. Tap to try again*; while it loads, a soft placeholder.
+
+**Sending: the outbox** (`src/net/outbox.ts`)
+
+- Everything the game sends (events, a partner application) goes into an outbox kept on the phone (`lima-outbox`)
+  until the server takes it: a dropped signal, a timeout (20 s) or closing the game loses nothing.
+- **Batched**: events go up to 50 in one request, every 30 s while the game is open (2 minutes on Data saver), at once
+  when the phone comes back online, and with `sendBeacon` when the game is hidden or closed.
+- **Patient**: a failed send waits 5 s, 10 s, 20 s… up to 10 minutes before the next try; nothing is tried offline. A
+  `4xx` (other than 408 and 429) is dropped rather than retried forever. At most 500 events wait; a form is never dropped.
+- A partner application is sent on its own and says so: *Sending…*, then *with the TemoLima team*, or *No good signal
+  just now. It is saved on this phone and sends by itself when there is a connection* (email and copy still work).
+
+**Data saver** (`src/net/connection.ts`; *Settings → Display → Data saver*: Auto, On, Off)
+
+- *Auto* turns on when the phone asks to save data (Android's Data Saver) or reports a 2G-speed link (the Network
+  Information API; other browsers count as a normal link).
+- On Data saver: the 1× farm pictures instead of the 2× (half the download), the **light crop photos** (480 × 336,
+  about a third of the size: `src/rounds/photos-lite/`, made by `python3 scripts/lite-photos.py`), only the farm's own
+  activities fetched ahead of time (the rest when opened), nothing more downloaded by itself, and events sent less often.
+- Going offline and coming back are each said once (*No signal: the game keeps playing, and your farm is saved on this
+  phone.* / *Back online.*). *Play offline* in Settings shows the connection as the phone reports it.
 
 ## Tests
 
@@ -2182,6 +2243,8 @@ Some tests use no browser: they call the game's rules directly.
 | `onsite.spec.ts` | jobs done by hand: nothing paid until the last spot, refusals and dropping, every spot clear of the places, a right fix given by hand, the chores chip at the pen, a service round the tractor |
 | `shop.spec.ts` | the shop floor: orders from the store and the day's limits, two bags kept apart, packing scored, paying and tipping, walking out, closing; the kitchen's recipe, burning and packing; served in the browser from the farm |
 | `nutrition.spec.ts` | each crop's nutrition; the daily sales cycle (25 kg a day, a mix, its profit, turned off); the restaurant's plates; harvests that say how many they feed; the restaurant, nutrition table and markers in the browser |
+| `network.spec.ts` | a weak or missing signal: the *not downloaded yet* card and Try again, offline and back online, the outbox's batches and retries, Data saver |
+| `offline-sw.spec.ts` | the service worker on the built game (`npm run build` first): opening with no signal, the page from the phone on a 20 s link, *Download for offline* |
 | `unlock.spec.ts` | options that open as you grow: two on day 1, three on day 2, five on day 3 or Level 3, across every buying decision, and the power yard's picker |
 
 They run on every pull request (`.github/workflows/tests.yml`), with one retry on CI; the report and screenshots are

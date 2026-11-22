@@ -4,7 +4,7 @@ import { GoldButton } from '../components/ui';
 import { CloseX } from '../components/Success';
 import { useVoice } from '../art/style';
 import { speak } from '../speech';
-import { photoByKey } from '../rounds/photos';
+import { photoByKey, photoSrc } from '../rounds/photos';
 import { Field, FIELD_H, FIELD_W, FarmerFigure, Hut, Kale, Tree } from './art';
 import { CallIcon } from './Review';
 import { ksh, say, STORY, STORY_CHORE_S, STORY_STEP_S, type Cheer, type Look, type StoryChore, type StoryPage } from './data';
@@ -158,7 +158,7 @@ export function Story({ name, look, page: at, onPage, onDone }: { name: string; 
             <>
               {/* a close look, in a real photo: the caterpillar in the leaf funnel */}
               <span className="story-zoom">
-                <img src={ARMYWORM.url} alt="" draggable={false} />
+                <img src={photoSrc(ARMYWORM)} alt="" draggable={false} />
               </span>
               <span className="story-credit">
                 Photo: {ARMYWORM.author} · {ARMYWORM.license}

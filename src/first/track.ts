@@ -1,6 +1,8 @@
 /* Event log for the first session, so drop-off between moments can be measured.
-   Events are kept on the device (last 300) and, if VITE_EVENTS_URL is set at build time,
-   sent there with sendBeacon (fire-and-forget, survives closing the tab). */
+   Events are kept on the device (last 300) and, if VITE_EVENTS_URL is set at build time, sent there in batches
+   through the outbox (src/net/outbox.ts), which keeps them through a weak or missing signal. */
+
+import { enqueue } from '../net/outbox';
 
 export interface LimaEvent {
   name: string;
@@ -38,13 +40,7 @@ export function track(name: string, data: Record<string, unknown> = {}) {
   } catch {
     /* storage blocked: still try to send */
   }
-  if (URL_ && navigator.sendBeacon) {
-    try {
-      navigator.sendBeacon(URL_, JSON.stringify(e));
-    } catch {
-      /* offline: the local copy is kept */
-    }
-  }
+  if (URL_) enqueue(URL_, e, 'batch');
 }
 
 export function clearEvents() {

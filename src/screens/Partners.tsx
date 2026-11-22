@@ -6,6 +6,8 @@ import { engagement } from '../partners/track';
 import { BrandMark } from '../partners/ui';
 import { AREAS, PARTNER_EMAIL, PARTNER_FORM_URL, RULES, WAYS, applicationText, areaOf, shortlistText, wayOf, type AreaId, type PartnerApplication, type WayToPartner } from '../partners/catalogue';
 import { REWARDS } from '../data';
+import { enqueue, onSent } from '../net/outbox';
+import { online } from '../net/connection';
 import type { Action, GameState, PartnersTab } from '../state';
 
 /* Partners: for players, the offers from the brands that sponsor the game (Get offer shows what it gives, then the
@@ -480,7 +482,10 @@ function ApplyForm({ dispatch, start, onClose }: { dispatch: Dispatch<Action>; s
   }));
   const [tried, setTried] = useState(false);
   const [sent, setSent] = useState<PartnerApplication | null>(null);
-  const [post, setPost] = useState<'sending' | 'sent' | 'failed' | null>(null);
+  const [post, setPost] = useState<'sending' | 'sent' | 'queued' | null>(null);
+  // the application goes through the outbox (src/net/outbox.ts): kept on the phone and sent by itself once there is a signal
+  const unlisten = useRef<() => void>(() => {});
+  useEffect(() => () => unlisten.current(), []);
   const [copied, setCopied] = useState<'yes' | 'no' | null>(null);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -522,17 +527,16 @@ function ApplyForm({ dispatch, start, onClose }: { dispatch: Dispatch<Action>; s
     dispatch({ type: 'partnerApply', app });
     setSent(app);
     if (!PARTNER_FORM_URL) return;
-    setPost('sending');
-    try {
-      const r = await fetch(PARTNER_FORM_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ ...app, category: areaOf(app.area).label, waysToPartner: app.ways.map(id => wayOf(id)?.name) }),
-      });
-      setPost(r.ok ? 'sent' : 'failed');
-    } catch {
-      setPost('failed');
-    }
+    const id = enqueue(PARTNER_FORM_URL, { ...app, category: areaOf(app.area).label, waysToPartner: app.ways.map(w => wayOf(w)?.name) }, 'single');
+    let done = false;
+    unlisten.current = onSent(id, () => {
+      done = true;
+      setPost('sent');
+    });
+    if (done) return;
+    setPost(online() ? 'sending' : 'queued');
+    // a weak signal: after a few seconds, say it is safe on the phone rather than leave a spinner up
+    window.setTimeout(() => setPost(p => (p === 'sending' ? 'queued' : p)), 8_000);
   };
 
   if (sent) {
@@ -564,8 +568,8 @@ function ApplyForm({ dispatch, start, onClose }: { dispatch: Dispatch<Action>; s
               ? 'Sending your application…'
               : post === 'sent'
                 ? `Your application is with the TemoLima team. We will reply to ${sent.email}.`
-                : post === 'failed'
-                  ? 'It could not be sent just now. It is saved on this device: email or copy it below.'
+                : post === 'queued'
+                  ? 'No good signal just now. It is saved on this phone and sends by itself when there is a connection. You can also email or copy it below.'
                   : PARTNER_EMAIL
                     ? 'Your application is ready. Email it to the TemoLima team to send it.'
                     : 'Your application is saved on this device. Copy it and send it to the TemoLima team.'}

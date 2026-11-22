@@ -210,6 +210,8 @@ export interface Settings {
   pad?: PadSettings;
   /** the tractor business's drive: speed, steering, touch controls, its sounds and its dust and smoke (business/tune.ts) */
   tractor?: TractorSettings;
+  /** Data saver (src/net/connection.ts): auto follows the phone (its data saver, or a 2G-speed link); on always saves data */
+  data?: 'auto' | 'on' | 'off';
 }
 export type SettingsTab = 'farmer' | 'game' | 'display' | 'tractor' | 'controller' | 'help';
 export type ClimateTab = 'overview' | 'land' | 'areas' | 'emissions' | 'water' | 'tank' | 'credits' | 'shocks' | 'activity';
