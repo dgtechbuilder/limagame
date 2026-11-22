@@ -59,6 +59,8 @@ import { WaterButton } from '../water/WaterButton';
 import { EvidenceAsk } from '../evidence/Ask';
 import type { RiskItem } from '../risk/model';
 import { achClock } from '../achievements/track';
+import { CsaChip } from '../csa/Chip';
+import { fieldClock } from '../csa/model';
 import { TIDY, TIDY_TOTAL, tidyCount, tidyLeft, tidyStreak, type TidyItem } from '../tidy/model';
 import { FARM_PERIOD_DAYS, careOpen, coopOpen, lifeOf, shedOpen } from '../livestock/model';
 import { tankOf } from '../water/model';
@@ -195,7 +197,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     const w = new FarmWorld(canvas.current!, {
       mark: (farm, job, bits, tractor, rig) => {
         noteCare(farm, job, bits);
-        dispatch({ type: 'fieldMark', farm, job, bits, tractor, rig });
+        dispatch({ type: 'fieldMark', farm, job, bits, tractor, rig, hour: fieldClock.hour() });
       },
       carry: item => {
         // from Wakala Agent: the safety kit and the product before a spray job
@@ -1175,7 +1177,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       </button>
       )}
 
-      {/* the daily chips, bottom right: small, one line each (the animals' care, then the tidy-up) */}
+      {/* the daily chips, bottom right: small, one line each (the animals' care, the tidy-up, the climate-smart drill) */}
       <div className="hud-daily">
       {/* the cows' and hens' care, every day: tap to walk to the next chore at the pen or the coop */}
       {chores && choresAll > 0 && (
@@ -1220,6 +1222,8 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
           {tidyStreak(s.tidy, date) > 0 && <i className="hud-tidy-streak">🧹{tidyStreak(s.tidy, date)}</i>}
         </button>
       )}
+      {/* Climate Smart Agriculture: today's drill and the field clock (src/csa) */}
+      {s.fs.phase === 'done' && <CsaChip s={s} dispatch={dispatch} now={now} />}
       </div>
 
       {/* bottom left, one stack that never overlaps: today's lesson, today's build, then the day and what the farmer

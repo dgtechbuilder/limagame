@@ -68,7 +68,7 @@ export const ZERO: Footprint = { co2: 0, stored: 0, water: 0, pollution: 0, soil
 /** One recorded change: emissions by source, and the rest of the footprint. */
 export type Delta = Partial<Omit<Footprint, 'co2'>> & { emit?: Partial<Record<Source, number>>; credits?: number };
 
-export type Where = 'season' | 'farms' | 'field' | 'tractor' | 'market' | 'checks' | 'land';
+export type Where = 'season' | 'farms' | 'field' | 'tractor' | 'market' | 'checks' | 'land' | 'csa';
 
 export interface ClimateEntry {
   id: number;

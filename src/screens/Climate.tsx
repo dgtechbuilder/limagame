@@ -28,16 +28,20 @@ import { capacityOf, tankOf, useToday } from '../water/model';
 import { WATER } from '../water/config';
 import { ledgerOf } from '../credits/ledger';
 import type { Action, ClimateTab, GameState } from '../state';
+import { CsaLesson, CsaTab } from '../csa/Csa';
+import { practiceOf, type CsaId } from '../csa/data';
 
-/* The Climate page: everything the game tracks about the climate, in seven sections. Overview (rating, level,
-   credits, the key figures), Land & pay (land farmed, bare and idle today, and the daily payments for credits), Farm areas (every area evaluated:
+/* The Climate page: everything the game tracks about the climate, and the Climate Smart Agriculture module. Overview
+   (rating, level, credits, the key figures), Climate Smart Agriculture (seven practices learned and practised by
+   hand, the daily drill, the field clock: src/csa), Land & pay (land farmed, bare and idle today, and the daily payments for credits), Farm areas (every area evaluated:
    the six farms, Farm Moja, the forest, the pen, the animals, the pond, the homestead),
    Emissions (by source, by season), Water & soil, Climate shocks, and Activity (each recorded job). Opened from the CLIMATE button on the farm, or the main menu. */
 
-type Props = { s: GameState; dispatch: Dispatch<Action>; tab?: ClimateTab };
+type Props = { s: GameState; dispatch: Dispatch<Action>; tab?: ClimateTab; practice?: CsaId; daily?: boolean };
 
 const TABS: { id: ClimateTab; label: string; icon: string }[] = [
   { id: 'overview', label: 'Overview', icon: '◎' },
+  { id: 'csa', label: 'Climate Smart Agriculture', icon: '🌿' },
   { id: 'land', label: 'Land & pay', icon: '🌱' },
   { id: 'areas', label: 'Farm areas', icon: '🗺' },
   { id: 'emissions', label: 'Emissions', icon: '☁' },
@@ -96,7 +100,7 @@ function Empty({ children }: { children: ReactNode }) {
 
 /* ---------------- the page ---------------- */
 
-export function ClimatePage({ s, dispatch, tab: startTab }: Props) {
+export function ClimatePage({ s, dispatch, tab: startTab, practice, daily }: Props) {
   // the tab is part of the address (#/climate/emissions), so it lives in the game state
   const tab: ClimateTab = startTab ?? 'overview';
   const setTab = (t: ClimateTab) => dispatch({ type: 'open', modal: { kind: 'climate', tab: t } });
@@ -111,10 +115,15 @@ export function ClimatePage({ s, dispatch, tab: startTab }: Props) {
     <div className="abs settings-page climate-page" style={{ inset: 0 }} role="dialog" aria-modal="true" aria-label="Climate">
       <div className="scrim" onClick={close} />
       <div className="fs-panel set-panel" style={{ left: 24, top: 46, width: 826, height: 334 }}>
+        {/* a Climate Smart Agriculture lesson fills the page: learn, practise, result (src/csa) */}
+        {tab === 'csa' && practice ? (
+          <CsaLesson key={`${practice}:${daily ? 'd' : ''}`} s={s} dispatch={dispatch} id={practice} daily={daily} />
+        ) : (
+        <>
         <nav className="set-tabs cl-tabs" aria-label="Climate sections">
           <p className="set-heading">Climate</p>
           {TABS.map(t => (
-            <button key={t.id} type="button" className={`set-tab${tab === t.id ? ' is-on' : ''}`} aria-current={tab === t.id ? 'page' : undefined} onClick={() => setTab(t.id)}>
+            <button key={t.id} type="button" className={`set-tab${tab === t.id ? ' is-on' : ''}${t.id === 'csa' ? ' is-csa' : ''}`} aria-current={tab === t.id ? 'page' : undefined} onClick={() => setTab(t.id)}>
               <i aria-hidden="true">{t.icon}</i>
               {t.label}
             </button>
@@ -126,6 +135,7 @@ export function ClimatePage({ s, dispatch, tab: startTab }: Props) {
         </nav>
         <section className="set-content cl-content" aria-label={TABS.find(t => t.id === tab)!.label}>
           {tab === 'overview' && <Overview s={s} go={setTab} />}
+          {tab === 'csa' && <CsaTab s={s} dispatch={dispatch} />}
           {tab === 'land' && <LandPay s={s} dispatch={dispatch} />}
           {tab === 'areas' && <Areas s={s} />}
           {tab === 'emissions' && <Emissions s={s} />}
@@ -135,11 +145,14 @@ export function ClimatePage({ s, dispatch, tab: startTab }: Props) {
           {tab === 'shocks' && <Shocks s={s} dispatch={dispatch} />}
           {tab === 'activity' && <Activity s={s} />}
         </section>
+        </>
+        )}
       </div>
       <NavBar horizontal onBack={close} hideHome={s.fs.phase !== 'done'} style={{ right: 62, top: 8 }} />
       <CloseX className="page-x" onClick={close} />
       <p className="set-title-bar">
         <span aria-hidden="true">🌍</span> Climate · <b>{TABS.find(t => t.id === tab)!.label}</b>
+        {tab === 'csa' && practice && <> · <b>{practiceOf(practice).name}</b></>}
       </p>
     </div>
   );
@@ -494,7 +507,7 @@ function Shocks({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
 
 /* ---------------- Activity ---------------- */
 
-const WHERE: Record<Where, string> = { season: 'Farm Moja', farms: 'Six farms', field: 'Field work', tractor: 'Tractor', market: 'Market', checks: 'Checks', land: 'Farm areas' };
+const WHERE: Record<Where, string> = { season: 'Farm Moja', farms: 'Six farms', field: 'Field work', tractor: 'Tractor', market: 'Market', checks: 'Checks', land: 'Farm areas', csa: 'Climate-smart' };
 
 function Activity({ s }: { s: GameState }) {
   const log = s.climate.log;

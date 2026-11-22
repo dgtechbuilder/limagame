@@ -22,6 +22,7 @@ import {
   type AchView,
 } from './model';
 import { dueLevels } from '../progress/model';
+import { csaOf, practised } from '../csa/model';
 
 /** The day the game counts in (tests set their own). */
 export const achClock = { today: () => localDay() };
@@ -40,6 +41,8 @@ export function viewOf(s: GameState, a: AchState, today: string): AchView {
     helped: s.biz?.helped ?? 0,
     owned: s.biz?.owned.length ?? 0,
     credits: s.climate.credits,
+    csaPractised: practised(csaOf(s.csa)),
+    csaDrills: csaOf(s.csa).drill.days,
     courses: (s.trainings ?? []).length,
   };
 }

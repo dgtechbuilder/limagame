@@ -53,6 +53,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [Theft, and keeping the farm safe](#theft-and-keeping-the-farm-safe)
 - [The evidence layer](#the-evidence-layer)
 - [Climate tracking](#climate-tracking)
+- [Climate Smart Agriculture](#climate-smart-agriculture)
 - [The wallet](#the-wallet)
 - [Money: savings, investments and profit](#money-savings-investments-and-profit)
 - [The power system](#the-power-system)
@@ -98,6 +99,8 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 | **Every week** | **Six farms**: a different plan on each farm, one day of checks each real day (or all now), then the harvests compared. The plan that worked becomes their recipe for the next cycle. |
 | **Any time** | Plays seasons of maize on Farm Moja: six farming steps, harvest timing, storage, processing, selling, results, rewards. |
 | **Any time** | Opens **Climate** to see what their farming did to the climate, the water and the soil, and the climate credits it earned. |
+| **Any time** | **Climate › Climate Smart Agriculture**: learns seven practices used in Kenya and West Africa (half-moons, saving water, the right time of day, zaï pits, push-pull, kisiki hai, drought-tolerant seed with intercropping) and practises each one by hand in its own game. |
+| **Every day** | The **CLIMATE-SMART** chip on the farm: today's drill (one practice a day) and the **field clock**, which says what the hour on the phone is good for. Watering a dry farm by hand at midday loses water to the sun; in the cool it earns points. |
 | **From day 2** | Looks after the **cows and hens** every day (feed, water, milk, eggs, cleaning), treats their diseases by their signs, and **keeps the farm safe from thieves** at night. The **Animal chores** chip walks the farmer to each chore at the pen or the coop, where it is done by hand. |
 | **Every job** | **Does the work on the farm**: buying the inverter, building the coop, servicing the tractor or feeding the hens closes the page and the farmer walks there, then works at each spot (round the tractor, every corner of the coop, each light pole) before it counts. See [Jobs done by hand on the farm](#jobs-done-by-hand-on-the-farm). |
 | **Days 1 to 7** | **Builds a solar power system**, one part a day, each with its own mini-game: panels, inverter, battery, lights, generator, diesel, then switches it on. It powers the pump, the milk cooler, the lights, the house and the workshop. |
@@ -220,6 +223,10 @@ src/
                            fertilizer and sprayer); TractorPick.tsx (the tractor's type and tool)
   strategy/                climate-smart rows: data.ts (every dimension and option), model.ts, StrategyBoard.tsx
   water/                   the tank, the animals, the shared catchment, crop cover: config.ts, model.ts, track.ts, WaterPanel.tsx
+  csa/                     Climate Smart Agriculture (see below): data.ts the seven practices in words, rules.ts the games'
+                           rules (no DOM), model.ts skills, the daily drill, the field clock and what skills do on the farm,
+                           track.ts the field clock on farm work, Csa.tsx the module's tab and lessons, Chip.tsx the farm's
+                           chip, games/ one hands-on game for each practice
   credits/ledger.ts        every kind of credit (CO₂, water) earned and paid
   livestock/               the cows and the hens: config.ts (every number: care, coop, prevention, diseases), model.ts
                            (care, health, problems, a night), track.ts (the nights, day 2), Animals.tsx (the page),
@@ -1475,8 +1482,9 @@ work from the seat in the farm world (by the share of tiles driven); each tracto
 treatments, follow-ups and wrong fixes; a contractor's diesel for tractor-hire farms nobody ploughed; harvests (food grown
 and lost); and the trip to market (storage, milling, transport). A harvest closes a season in the history.
 
-**The page** has seven sections: *Overview* (a climate rating A–E, the climate level and credits, eight key figures and
-the biggest source with what to change), *Land & pay* and *Farm areas* (below), *Emissions* (by source and by season), *Water & soil*, *Climate shocks* and
+**The page** has these sections: *Overview* (a climate rating A–E, the climate level and credits, eight key figures and
+the biggest source with what to change), *Climate Smart Agriculture* (the module: see
+[Climate Smart Agriculture](#climate-smart-agriculture)), *Land & pay* and *Farm areas* (below), *Emissions* (by source and by season), *Water & soil*, *Climate shocks* and
 *Activity* (every recorded job, newest first).
 
 **In the game**: the climate effect shows beside each choice: on the six farms' plan options, the Farm Moja task
@@ -1525,6 +1533,50 @@ Moja stays one acre.
 All factors are in one table in `src/climate/model.ts` (`FACTORS` and the plan, task and market tables), like the six
 farms' numbers: illustrative estimates for learning until an agronomist reviews them; the N₂O share cites the IPCC
 2006 guidelines. `tests/climate.spec.ts` plays the tracking and the page.
+
+## Climate Smart Agriculture
+
+**Climate › Climate Smart Agriculture** (`#/climate/climate-smart-agriculture`) is a module of seven practices that
+keep a harvest coming when the rains fail, the heat rises and pests spread, while storing carbon. Each one is used by
+farmers in Kenya and in West Africa, and each is **learned, then practised by hand in its own game**, not in a form:
+
+| Practice | Used in | The game |
+| --- | --- | --- |
+| **Half-moons** (demi-lunes) | Kajiado, Laikipia, Makueni; Niger, Burkina Faso, Mali, Senegal | The slope from above: pick which way each half-moon opens, dig nine along the contour, let it rain and watch the runoff. Only the open side uphill holds the water; rows staggered under the gaps of the row above catch what slips past. Then manure and seed in the ones holding water, and grow the season. |
+| **Saving water** | Roof tanks, bucket drip and mulch across Kenya; drip in market gardens in Senegal, Ghana, Nigeria | A tomato plant through a hot day and night: bare soil or mulch, over the leaves, at the roots or drip, 6 am, 1 pm or 5 pm, 2 to 10 L. The soil's water is charted hour by hour against the wilting line. Keep it alive on the least water. |
+| **The right time of day** | Everywhere: work from first light, rest from noon | Drag the hour under a moving sky (the sun, the heat, the wind, the bees, the dew, the share of water the sun takes) and do six jobs at the hour picked: water, transplant, spray, weed, pick greens, harvest dry grain. |
+| **Zaï pits** | Machakos, Makueni, Kitui; Burkina Faso, Niger (tassa), Mali | A crusted field in the dry season: dig, manure, bring the first rain (it fills the pits and runs off the crust), then sow. Seed in a dry pit is lost; digging after the rain is too late. |
+| **Push-pull** | Western Kenya (icipe) and East Africa; striga and fall armyworm across West Africa | Paint desmodium and Brachiaria grass on a maize field (drag to paint), then the moths fly in: the edge grass pulls most in, desmodium drives the rest back out into it; maize with no desmodium beside it gets striga. Either one alone leaves gaps. |
+| **Kisiki hai** (FMNR) | Baringo, Makueni and the dry counties; Niger, Senegal, Mali, Burkina Faso, Ghana | Four living stumps: keep the 3 to 5 tall, straight, strong stems on each and cut the thin, crooked and broken ones, then let five years pass. |
+| **Drought-tolerant seed and intercropping** | Eastern Kenya; the Sahel, Ghana, Nigeria | Three forecasts (short rains, good long rains, a false start): choose the crop, what goes between the rows and when to plant, and watch the season's rain against what the crops need. Planting into dry soil before a false start kills the seed. |
+
+A lesson is three steps: **Learn** (what it is, where it is used, how, step by step, and why it is climate-smart),
+**Practise** (the game) and the **Result** (stars, what to remember, and the reward). Every practice has its own
+address (`#/climate/climate-smart-agriculture/half-moons`).
+
+**Skills.** Each practice has a skill (New, Learner, Practised, Skilled, Expert). A run with two stars or more adds to
+it, a few points a day per practice, and so does the daily drill. The first time a practice is done pays money and
+points; a new best pays points for each star.
+
+**In the day-to-day running of the farm:**
+
+- **Today's drill.** One practice a day (they take turns), from the **CLIMATE-SMART** chip with the daily chips on the
+  3D farm, or the module's tab. Done with a star or more, it pays money and points once a day, climate credits for each
+  star (in Climate › Activity as *Climate-smart*, paid with the night's credits), and keeps a drill streak.
+- **The field clock.** The chip shows what the hour on the phone's own clock is good for (cool morning: water and weed;
+  midday heat: rest in the shade; evening: water and plant; night: rest). Work by hand on the farm is weighed against
+  it: a dry farm watered by hand between 11 am and 4 pm loses 40% more water from the tank to the sun, and work done in
+  the cool hours earns points. Midday or night work brings a tip, once a day.
+- **Skills help the farm.** Saving water and the right time of day, practised, cut the water the rows draw from the tank
+  each day (up to 25% at Expert in both). Half-moons, zaï pits and drought-tolerant seed at Skilled each take 4% off
+  crop cover's price. The tab's *On your farm* box lists what is working and what is still to win.
+- **Badges** in My Progress (the Climate module): practices at two stars (3, 5, all 7) and daily drills (3, 10, 30).
+- **Farm words** has each practice's card (half-moons, zaï pits, push-pull, desmodium, kisiki hai, intercropping, the
+  field clock).
+
+Every number is in `src/csa/model.ts` (`CSA`) and `src/csa/rules.ts`; the practices' words are in `src/csa/data.ts`.
+`tests/csa.spec.ts` plays each game's rules, the skills and the drill, the field clock on a watered farm, and the
+module in the browser.
 
 ## The wallet
 
@@ -2182,6 +2234,7 @@ Some tests use no browser: they call the game's rules directly.
 | `onsite.spec.ts` | jobs done by hand: nothing paid until the last spot, refusals and dropping, every spot clear of the places, a right fix given by hand, the chores chip at the pen, a service round the tractor |
 | `shop.spec.ts` | the shop floor: orders from the store and the day's limits, two bags kept apart, packing scored, paying and tipping, walking out, closing; the kitchen's recipe, burning and packing; served in the browser from the farm |
 | `nutrition.spec.ts` | each crop's nutrition; the daily sales cycle (25 kg a day, a mix, its profit, turned off); the restaurant's plates; harvests that say how many they feed; the restaurant, nutrition table and markers in the browser |
+| `csa.spec.ts` | Climate Smart Agriculture: the seven games' rules, skills and the daily drill paid once, the skills' water and crop-cover savings, the field clock on a farm watered at midday or in the cool, the half-moons played to three stars, every practice's address, the farm's chip |
 | `unlock.spec.ts` | options that open as you grow: two on day 1, three on day 2, five on day 3 or Level 3, across every buying decision, and the power yard's picker |
 
 They run on every pull request (`.github/workflows/tests.yml`), with one retry on CI; the report and screenshots are
@@ -2195,6 +2248,9 @@ kept with the run for 14 days.
 - **Field-round advice** (ash or sand for armyworm, soapy water for aphids, top-dressing, drainage after floods, what to
   do after hail, when each crop is ready to pick) needs agronomist review, and so do the crop calendar (21 real days
   stand in for a whole season) and the rotation. Round points are illustrative.
+- **Climate Smart Agriculture** (`src/csa`): the practices' steps, places, yields and the games' numbers (water a litre
+  reaches the roots, moths pulled and pushed, the seasons' rain and the crops' needs) are for learning and need an
+  agronomist's review; the field clock's hours are for a hot, dry-season day near the equator.
 - **TemoLima AI** is a rule-based stand-in that reads the season's numbers; it does not call an AI service.
 - **Rewards** are saved in the game but nothing is sent to a partner; there is no redemption backend.
 - **Missed checks** cost harvest on the six farms (see `DAMAGE` in `src/trials/model.ts`); a problem left unresolved

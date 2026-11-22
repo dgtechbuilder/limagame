@@ -4175,3 +4175,164 @@ button.pp-card:active { transform: scale(0.98); }
 .sf-sum .is-bad b { color: #b8432f; }
 .reduce-motion .sf-station, .reduce-motion .sf-flash { animation: none; }
 @media (prefers-reduced-motion: reduce) { .sf-station, .sf-flash { animation: none; } }
+
+/* ================================================================== */
+/* Climate Smart Agriculture (src/csa): the module's tab, a lesson,    */
+/* the seven practice games, and the farm's CLIMATE-SMART chip          */
+/* ================================================================== */
+/* the Climate page's tabs scroll when they do not fit; the module's tab is green and may take two lines */
+.cl-tabs { overflow-y: auto; }
+.cl-tabs .set-tab { flex-shrink: 0; height: 30px; }
+.cl-tabs .set-tab.is-csa { height: auto; min-height: 30px; padding: 4px 10px; line-height: 1.15; background: #e3f2d3; border-color: #9fcf7e; color: #2e5e1d; }
+.cl-tabs .set-tab.is-csa.is-on { background: #f3fbe9; border-color: #4f9d2f; box-shadow: 0 2px 0 rgba(47, 125, 34, 0.35); }
+
+.csa-tab { display: flex; flex-direction: column; gap: 7px; }
+.csa-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.csa-intro { max-width: 370px; }
+.csa-head-stats { display: flex; gap: 6px; flex-shrink: 0; }
+.csa-head-stats span { display: flex; flex-direction: column; align-items: center; min-width: 58px; padding: 4px 6px; border-radius: var(--radius-md); background: #fff8ea; font-size: 9px; color: var(--ink-2); text-align: center; line-height: 1.2; }
+.csa-head-stats b { font-size: 15px; color: var(--ink); }
+.csa-drill {
+  display: flex; align-items: center; gap: 10px; padding: 6px 12px; border-radius: var(--radius-md); text-align: left;
+  border: 1.5px solid #6fb04a; background: linear-gradient(90deg, #eaf7dd, #fff8ea); color: var(--ink); font: inherit;
+}
+.csa-drill > i { font-style: normal; font-size: 22px; }
+.csa-drill span { flex: 1; display: flex; flex-direction: column; }
+.csa-drill b { font-size: var(--text-body-sm); }
+.csa-drill small { font-size: 10px; color: var(--ink-2); }
+.csa-drill em { font-style: normal; font-weight: 800; font-size: 11px; color: #2e6b35; }
+.csa-drill.is-done { border-color: var(--brown-20); background: #fff8ea; }
+.csa-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.csa-card {
+  display: flex; flex-direction: column; gap: 3px; padding: 7px 8px; border-radius: var(--radius-md); text-align: left; min-width: 0;
+  border: 1.5px solid var(--brown-20); background: #fff8ea; color: var(--ink); font: inherit; transition: transform 0.12s ease;
+}
+.csa-card:hover { background: #fffdf6; }
+.csa-card:active { transform: scale(0.98); }
+.csa-card.is-today { border-color: #6fb04a; box-shadow: 0 0 0 1.5px #6fb04a inset; }
+.csa-card-top { display: flex; align-items: center; gap: 6px; }
+.csa-card-top i { font-style: normal; font-size: 17px; }
+.csa-card-top b { font-size: 11px; line-height: 1.15; }
+.csa-card > small { font-size: 9.5px; line-height: 1.3; color: var(--ink-2); min-height: 24px; }
+.csa-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+.csa-card-foot em { font-style: normal; font-size: 10px; font-weight: 800; color: #2e6b35; }
+.csa-skill { display: inline-flex; flex-direction: column; gap: 2px; min-width: 64px; }
+.csa-skill b { font-size: 9px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-2); }
+.csa-meter { display: block; width: 64px; height: 5px; border-radius: 99px; background: var(--brown-10); overflow: hidden; }
+.csa-meter span { display: block; height: 100%; border-radius: 99px; background: #4f9d2f; }
+.csa-stars { display: inline-flex; gap: 1px; }
+.csa-stars i { font-style: normal; color: #d9c7a8; }
+.csa-stars i.is-on { color: var(--gold); text-shadow: 0 1px 0 var(--gold-edge); }
+.csa-stars.is-sm i { font-size: 12px; }
+.csa-stars.is-lg i { font-size: 38px; animation: pop 0.3s ease both; }
+.csa-stars.is-lg i:nth-child(2) { animation-delay: 0.12s; }
+.csa-stars.is-lg i:nth-child(3) { animation-delay: 0.24s; }
+.csa-farm { padding: 6px 10px; border-radius: var(--radius-md); background: #fff8ea; }
+.csa-farm ul { list-style: none; margin: 3px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.csa-farm li { font-size: 10px; line-height: 1.35; color: var(--ink-3); }
+.csa-farm li.is-on { color: var(--ink); }
+.csa-farm li i { font-style: normal; display: inline-block; width: 16px; }
+
+/* a lesson: it fills the page */
+.csa-lesson { position: relative; flex: 1; display: flex; flex-direction: column; gap: 6px; padding: 8px 12px 10px; min-width: 0; background: var(--cream); }
+.csa-lesson-head { display: flex; align-items: center; gap: 10px; height: 30px; flex-shrink: 0; }
+.csa-lesson-head .set-link { height: 28px; flex-shrink: 0; }
+.csa-lesson-title { display: flex; align-items: baseline; gap: 6px; min-width: 0; flex: 1; white-space: nowrap; overflow: hidden; }
+.csa-lesson-title i { font-style: normal; font-size: 18px; align-self: center; }
+.csa-lesson-title b { font-size: var(--text-subhead); }
+.csa-lesson-title small { font-size: 10px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; }
+.csa-tag { flex-shrink: 0; padding: 2px 8px; border-radius: 99px; background: #4f9d2f; color: #fff; font-size: var(--text-label); font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; }
+.csa-steps { display: flex; gap: 3px; margin: 0; padding: 0; list-style: none; flex-shrink: 0; }
+.csa-steps li { padding: 3px 7px; border-radius: 99px; background: var(--brown-10); font-size: 9.5px; font-weight: 700; color: var(--ink-3); }
+.csa-steps li.is-on { background: var(--gold); color: var(--ink-on-gold); }
+
+.csa-learn { flex: 1; display: grid; grid-template-columns: 1.35fr 1fr; gap: 12px; min-height: 0; }
+.csa-learn-main, .csa-learn-side { display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+.csa-what { margin: 0; font-size: var(--text-body-sm); line-height: 1.45; }
+.csa-how { list-style: none; counter-reset: how; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.csa-how li { display: flex; align-items: center; gap: 8px; padding: 3px 8px; border-radius: var(--radius-sm); background: #fff8ea; font-size: 10.5px; line-height: 1.3; }
+.csa-how li i { font-style: normal; font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
+.csa-how li::before { counter-increment: how; content: counter(how); font-size: 9px; font-weight: 800; color: var(--ink-3); width: 8px; }
+.csa-where { display: flex; flex-direction: column; gap: 4px; padding: 6px 8px; border-radius: var(--radius-md); background: #fff8ea; }
+.csa-where p { margin: 0; font-size: 10px; line-height: 1.35; color: var(--ink-2); }
+.csa-where b { color: var(--ink); margin-right: 2px; }
+.csa-why { padding: 6px 8px; border-radius: var(--radius-md); background: #e3f2d3; font-size: 10px; color: #2e5e1d; }
+.csa-why ul { margin: 2px 0 0; padding-left: 14px; line-height: 1.4; }
+.csa-task { margin: 0; font-size: 10.5px; line-height: 1.35; }
+.csa-go { height: 34px; padding: 0 16px; font: inherit; font-size: var(--text-body-sm); font-weight: 800; letter-spacing: 0.02em; }
+.csa-learn-side .csa-go { margin-top: auto; }
+
+/* a game: the drawn field on the left, the tools on the right */
+.csa-game { flex: 1; display: flex; gap: 10px; min-height: 0; }
+.csa-stage { flex: 0 0 600px; height: 260px; border-radius: var(--radius-md); overflow: hidden; box-shadow: 0 0 0 1.5px var(--brown-20); background: #fff; }
+.csa-svg { display: block; width: 600px; height: 260px; font-family: var(--font); user-select: none; -webkit-user-select: none; }
+.csa-paint { touch-action: none; }
+.csa-side { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; overflow-y: auto; }
+.csa-step { margin: 0; font-size: var(--text-label); font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase; color: #2e6b35; }
+.csa-tools { display: flex; flex-direction: column; gap: 4px; }
+.csa-tool {
+  display: flex; align-items: center; gap: 6px; min-height: 28px; padding: 3px 8px; border-radius: var(--radius-sm);
+  border: 1.5px solid var(--brown-20); background: #fff8ea; color: var(--ink); font: inherit; font-size: 11px; font-weight: 700; text-align: left;
+}
+.csa-tool.is-on { border-color: var(--gold); background: #fff1c7; box-shadow: 0 2px 0 rgba(200, 137, 0, 0.35); }
+.csa-tool:disabled { opacity: 0.45; }
+.csa-shape { font-size: 18px; line-height: 1; color: #7a4b27; }
+.csa-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; }
+.csa-pick > small { width: 38px; flex-shrink: 0; font-size: 8.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.03em; color: var(--ink-3); }
+.csa-pick.is-wrap > small { width: 100%; }
+.csa-pick .csa-tool { min-height: 24px; padding: 2px 7px; font-size: 10px; }
+.csa-say { margin: 0; padding: 5px 7px; border-radius: var(--radius-sm); background: #fff8ea; font-size: 10px; line-height: 1.4; color: var(--ink); }
+.csa-say.is-good { background: #e3f2d3; color: #24561a; }
+.csa-say.is-bad { background: #fbe3d8; color: #8a2f20; }
+.csa-count { margin: 0; font-size: 9.5px; color: var(--ink-3); }
+.csa-side .csa-go { margin-top: auto; flex-shrink: 0; }
+.csa-again { flex-shrink: 0; }
+.csa-job { margin: 0; font-size: var(--text-body); font-weight: 800; }
+.csa-slider { display: flex; flex-direction: column; gap: 2px; font-size: 11px; }
+.csa-slider b { font-size: 16px; }
+.csa-slider input { width: 100%; accent-color: #e08a1e; }
+.csa-slider small { display: flex; justify-content: space-between; font-size: 9px; color: var(--ink-3); }
+.csa-slider small i { font-style: normal; }
+.csa-picks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.csa-picks li { font-size: 10px; padding: 2px 6px; border-radius: var(--radius-sm); background: #fff8ea; }
+.csa-picks li.is-good { background: #e3f2d3; }
+.csa-picks li.is-bad { background: #fbe3d8; }
+/* the drawings' words and the things to tap */
+.csa-svg text { fill: #4a2a10; }
+.csa-svg-note { font-size: 11px; font-weight: 700; }
+.csa-svg-note.is-bad { fill: #b23a26 !important; }
+.csa-svg-note.is-light { fill: #fff !important; }
+.csa-svg-tick { font-size: 9px; fill: #7d5440 !important; }
+.csa-svg-title { font-size: 14px; font-weight: 800; }
+.csa-slope-tag text { font-size: 10px; font-weight: 800; letter-spacing: 0.06em; fill: #6b402b; }
+.csa-clock-time { font-size: 18px; font-weight: 800; }
+.csa-clock-line { font-size: 11px; }
+.csa-job-icon { font-size: 30px; }
+.csa-bee { font-size: 13px; }
+.csa-key text { font-size: 11px; }
+.csa-spot { cursor: pointer; }
+.csa-spot circle { fill: rgba(255, 255, 255, 0.55); stroke: #7a4b27; stroke-width: 1.5; stroke-dasharray: 2 2; }
+.csa-spot:hover circle { fill: #fff; }
+.csa-spot.is-off circle { opacity: 0.25; }
+.csa-moon, .csa-pit, .csa-stem, .csa-cell { cursor: pointer; }
+.csa-stem:hover path:first-child { stroke: rgba(255, 174, 0, 0.35); }
+.csa-spot:focus, .csa-moon:focus, .csa-pit:focus, .csa-stem:focus, .csa-cell:focus { outline: none; }
+.csa-spot:focus-visible circle, .csa-pit:focus-visible ellipse, .csa-cell:focus-visible rect { stroke: #ffae00; stroke-width: 3; }
+
+/* the result */
+.csa-result { position: relative; flex: 1; display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; align-items: center; padding: 0 8px; }
+.csa-result-main { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; }
+.csa-result-score { margin: 0; font-size: var(--text-display); font-weight: 800; }
+.csa-result-sum { margin: 0; font-size: 11px; line-height: 1.45; color: var(--ink-2); max-width: 380px; }
+.csa-remember { margin: 6px 0 0; padding: 6px 10px; border-radius: var(--radius-md); background: #e3f2d3; font-size: 11px; line-height: 1.4; color: #24561a; max-width: 400px; }
+.csa-result-side { display: flex; flex-direction: column; gap: 10px; }
+.csa-pay { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.csa-pay li { padding: 5px 10px; border-radius: var(--radius-sm); background: #fff8ea; font-size: 11px; font-weight: 600; }
+.csa-pay li.is-up { background: #e3f2d3; color: #24561a; }
+.csa-result-btns { display: flex; gap: 8px; align-items: center; }
+.csa-result-btns .set-link { height: 34px; }
+
+/* the farm's CLIMATE-SMART chip, with the daily chips */
+.hud-tidy.hud-csa { box-shadow: 0 0 0 1.5px #6fb04a, 0 2px 6px rgba(0, 0, 0, 0.22); background: rgba(240, 250, 230, 0.97); color: #2e5e1d; }
+.hud-csa .hud-tidy-row > span.is-hot { background: #fde0c8; color: #9a3d12; }
+.hud-csa .hud-tidy-row > span.is-cool { background: #d6f0c4; color: #23720f; }

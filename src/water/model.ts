@@ -6,6 +6,7 @@ import { FACTORS } from '../climate/model';
 import { emptyField, setupLeft, type Field } from '../world/field';
 import { rowEffect, strategiesOf, chosen } from '../strategy/model';
 import { WATER, coverPlanOf, type DrawPolicy, type Herd, type WaterBuyId } from './config';
+import { coverOff, waterCut, type CsaState } from '../csa/model';
 
 export interface WaterDay {
   label: string;
@@ -68,6 +69,8 @@ export interface WaterHost {
   inventory: string[];
   trial: Trial | null;
   field: Field;
+  /** Climate Smart Agriculture skills (src/csa): saving water cuts the rows' use; soil-water practices cut crop cover */
+  csa?: Partial<CsaState>;
 }
 
 /** The tank's size: the farm's own, and every tank bought in the Shop. */
@@ -80,8 +83,9 @@ export const rainIn = (f: Forecast) => Math.round((FORECASTS[f].rain / 7) * WATE
 /** Litres a day the animals drink. */
 export const animalsUse = (h: Herd) => Math.round(h.cows * WATER.animals.cow.litres + h.hens * WATER.animals.hen.litres);
 
-/** Litres a day the farms' rows use from the tank: their watering habits and mulches, over the cycle, on sown farms. */
-export function farmsUse(s: Pick<WaterHost, 'trial' | 'field'>): number {
+/** Litres a day the farms' rows use from the tank: their watering habits and mulches, over the cycle, on sown farms;
+    less with the farmer's skill in saving water and the right time of day (src/csa). */
+export function farmsUse(s: Pick<WaterHost, 'trial' | 'field' | 'csa'>): number {
   const t = s.trial;
   if (!t || t.phase !== 'growing') return 0;
   const f = s.field.cycle === t.cycle ? s.field : emptyField(t.cycle);
@@ -91,7 +95,7 @@ export function farmsUse(s: Pick<WaterHost, 'trial' | 'field'>): number {
     // a can of water a row a day by hand, and what the row's habits add or save over the cycle
     for (const st of strategiesOf(t, farm)) litres += Math.max(0, WATER.rowCan + rowEffect(st, t.forecast).water / CHECK_DAYS);
   });
-  return Math.round(litres);
+  return Math.round(litres * (1 - waterCut(s.csa)));
 }
 
 /** The farm's use today, by what uses it. */
@@ -175,6 +179,9 @@ export function coverQuote(s: WaterHost, plan?: string) {
     if (wise) lines.push({ label: `${wise} of ${rows.length} rows keep water in the soil`, off: (c.smartRows.off * wise) / rows.length });
   }
   if (tank.policy === 'fair') lines.push({ label: 'Draws its fair share of the dam', off: c.fairShare.off });
+  // Climate Smart Agriculture: skills that keep water in the soil (half-moons, zaï pits, drought-tolerant seed)
+  const smart = coverOff(s.csa);
+  if (smart.off) lines.push({ label: `Climate-smart skills: ${smart.names.join(', ')}`, off: smart.off });
   const off = Math.min(c.maxOff, lines.reduce((n, x) => n + x.off, 0));
   const base = Math.round(c.premiumPerFarm * farms * (c.forecast[f] ?? 1) * coverPlanOf(plan).price);
   return { base, off, premium: Math.round(base * (1 - off)), lines, forecast: f };
