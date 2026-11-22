@@ -9,27 +9,30 @@ import { FarmMap } from './components/FarmMap';
 import { FarmLoading } from './world/Loading';
 import { ActivityLoading } from './components/ActivityLoading';
 import { lazyPage, prefetchActivities } from './prefetch';
+import { LoadGuard } from './net/LoadGuard';
+import { lowData, online, onNetChange, setDataPref } from './net/connection';
+import { startOutbox } from './net/outbox';
 import { img } from './assets';
 
 // the field rounds are loaded only when opened, so the first session stays as small as before
-const Rounds = lazyPage(() => import('./rounds/Rounds').then(m => m.Rounds), 1);
-const Trials = lazyPage(() => import('./trials/Trials').then(m => m.Trials), 1);
-const Business = lazyPage(() => import('./business/Business').then(m => m.Business), 1);
-const World = lazy(() => import('./world/World').then(m => ({ default: m.World })));
+const Rounds = lazyPage(() => import('./rounds/Rounds'), m => m.Rounds, 1);
+const Trials = lazyPage(() => import('./trials/Trials'), m => m.Trials, 1);
+const Business = lazyPage(() => import('./business/Business'), m => m.Business, 1);
+const World = lazyPage(() => import('./world/World'), m => m.World, null);
 // the animals' and security pages are loaded when first opened
-const AnimalsPage = lazyPage(() => import('./livestock/Animals').then(m => m.AnimalsPage), 1);
-const ChecksPage = lazyPage(() => import('./inspect/Checks').then(m => m.ChecksPage), 1);
-const SecurityPage = lazyPage(() => import('./security/Security').then(m => m.SecurityPage), 1);
-const WalletPage = lazyPage(() => import('./wallet/Wallet').then(m => m.WalletPage), 1);
-const FinancePage = lazyPage(() => import('./finance/Finance').then(m => m.FinancePage), 1);
-const PowerPage = lazyPage(() => import('./power/Power').then(m => m.PowerPage), 1);
-const TractorGamePage = lazyPage(() => import('./minifarm/MiniFarm').then(m => m.TractorGamePage), 1);
-const MarketPage = lazyPage(() => import('./produce/Market').then(m => m.MarketPage), 1);
-const ShopFloor = lazyPage(() => import('./shop/Shop').then(m => m.ShopFloor), 1);
-const EventsPage = lazyPage(() => import('./events/Events').then(m => m.EventsPage), 1);
-const GreenhousePage = lazyPage(() => import('./greenhouse/Greenhouse').then(m => m.GreenhousePage), 1);
-const StorehousePage = lazyPage(() => import('./storehouse/Storehouse').then(m => m.StorehousePage), 1);
-const KakumaPage = lazyPage(() => import('./events/Kakuma').then(m => m.KakumaPage), 1);
+const AnimalsPage = lazyPage(() => import('./livestock/Animals'), m => m.AnimalsPage, 1);
+const ChecksPage = lazyPage(() => import('./inspect/Checks'), m => m.ChecksPage, 1);
+const SecurityPage = lazyPage(() => import('./security/Security'), m => m.SecurityPage, 1);
+const WalletPage = lazyPage(() => import('./wallet/Wallet'), m => m.WalletPage, 1);
+const FinancePage = lazyPage(() => import('./finance/Finance'), m => m.FinancePage, 1);
+const PowerPage = lazyPage(() => import('./power/Power'), m => m.PowerPage, 1);
+const TractorGamePage = lazyPage(() => import('./minifarm/MiniFarm'), m => m.TractorGamePage, 1);
+const MarketPage = lazyPage(() => import('./produce/Market'), m => m.MarketPage, 1);
+const ShopFloor = lazyPage(() => import('./shop/Shop'), m => m.ShopFloor, 1);
+const EventsPage = lazyPage(() => import('./events/Events'), m => m.EventsPage, 1);
+const GreenhousePage = lazyPage(() => import('./greenhouse/Greenhouse'), m => m.GreenhousePage, 1);
+const StorehousePage = lazyPage(() => import('./storehouse/Storehouse'), m => m.StorehousePage, 1);
+const KakumaPage = lazyPage(() => import('./events/Kakuma'), m => m.KakumaPage, 1);
 // design review (?review=1) only: its sample screens are computed when it is opened, never for players
 const ReviewPicker = lazy(() => import('./review/Review').then(m => ({ default: m.ReviewPicker })));
 import { WelcomeModal } from './screens/Meta';
@@ -118,6 +121,9 @@ export default function App() {
   const [s, dispatch] = useGame();
   // money is shown in the currency of the player's country (src/money.ts): set before anything below is drawn
   setCountry(s.settings.country);
+  // Data saver (Settings → Display; src/net/connection.ts): set before anything below picks a picture
+  setDataPref(s.settings.data);
+  const goHome = () => dispatch({ type: 'home' });
   // every event carries the player's programme tags (src/evidence)
   trackContext.tags = evidenceOf(s.evidence).tags;
   // a programme link (?cohort=CODE or ?programme=CODE) tags the player once
@@ -177,11 +183,27 @@ export default function App() {
   useEffect(() => {
     if (review) return;
     const id = window.setTimeout(() => {
-      void import('./world/World').then(() => window.setTimeout(prefetchActivities, 1500));
+      // (a failed fetch here is fine: the farm retries its own download when it opens, src/prefetch.ts)
+      import('./world/World').then(() => window.setTimeout(prefetchActivities, 1500), () => undefined);
       const pic = new Image();
-      pic.src = (window.devicePixelRatio || 1) > 1 ? img.bgWorld2x : img.bgWorld;
+      pic.src = (window.devicePixelRatio || 1) > 1 && !lowData() ? img.bgWorld2x : img.bgWorld;
     }, 2000);
     return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // A weak or missing signal (src/net): what an earlier visit could not send goes now, and the player hears once when
+  // the phone goes offline (the game keeps playing; everything is saved on the phone) and when it is back.
+  useEffect(() => {
+    if (review) return;
+    startOutbox();
+    let was = online();
+    return onNetChange(() => {
+      const now = online();
+      if (now === was) return;
+      was = now;
+      dispatch({ type: 'toast', text: now ? 'Back online.' : 'No signal: the game keeps playing, and your farm is saved on this phone.' });
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -296,25 +318,27 @@ export default function App() {
           <>
             {/* the farm stays underneath the rounds and the six farms, so it keeps its place */}
             {s.view === 'world' ? (
+              <LoadGuard full>
               <Suspense fallback={<FarmLoading />}>
                 {/* a new farm is built when the character style or the graphics change */}
                 <World key={`${s.settings.art}-${s.settings.graphics}`} s={s} dispatch={dispatch} paused={s.roundsOpen || s.trialsOpen || s.bizOpen || !!m} />
               </Suspense>
+              </LoadGuard>
             ) : (
               !s.roundsOpen && !s.trialsOpen && !s.bizOpen && <FarmScene s={s} dispatch={dispatch} />
             )}
             {s.roundsOpen ? (
-              <Suspense fallback={<><FarmMap /><ActivityLoading full label="Opening the field rounds…" /></>}>
+              <LoadGuard onBack={goHome}><Suspense fallback={<><FarmMap /><ActivityLoading full label="Opening the field rounds…" /></>}>
                 <Rounds s={s} dispatch={dispatch} />
-              </Suspense>
+              </Suspense></LoadGuard>
             ) : s.trialsOpen ? (
-              <Suspense fallback={<><FarmMap /><ActivityLoading full label="Opening Mission…" /></>}>
+              <LoadGuard onBack={goHome}><Suspense fallback={<><FarmMap /><ActivityLoading full label="Opening Mission…" /></>}>
                 <Trials s={s} dispatch={dispatch} />
-              </Suspense>
+              </Suspense></LoadGuard>
             ) : s.bizOpen ? (
-              <Suspense fallback={<><FarmMap /><ActivityLoading full label="Opening the business…" /></>}>
+              <LoadGuard onBack={goHome}><Suspense fallback={<><FarmMap /><ActivityLoading full label="Opening the business…" /></>}>
                 <Business s={s} dispatch={dispatch} />
-              </Suspense>
+              </Suspense></LoadGuard>
             ) : null}
           </>
         )}
@@ -326,69 +350,69 @@ export default function App() {
         {m?.kind === 'achievements' && <AchievementsPage s={s} dispatch={dispatch} tab={m.tab} />}
         {m?.kind === 'partners' && <PartnersPage s={s} dispatch={dispatch} tab={m.tab} brand={m.brand} />}
         {m?.kind === 'animals' && (
-          <Suspense fallback={<ActivityLoading label="Opening the animals…" />}>
+          <LoadGuard onBack={goHome}><Suspense fallback={<ActivityLoading label="Opening the animals…" />}>
             <AnimalsPage s={s} dispatch={dispatch} tab={m.tab} />
-          </Suspense>
+          </Suspense></LoadGuard>
         )}
         {m?.kind === 'security' && (
-          <Suspense fallback={<ActivityLoading label="Opening security…" />}>
+          <LoadGuard onBack={goHome}><Suspense fallback={<ActivityLoading label="Opening security…" />}>
             <SecurityPage s={s} dispatch={dispatch} tab={m.tab} />
-          </Suspense>
+          </Suspense></LoadGuard>
         )}
         {m?.kind === 'wallet' && (
-          <Suspense fallback={<ActivityLoading label="Opening your wallet…" />}>
+          <LoadGuard onBack={goHome}><Suspense fallback={<ActivityLoading label="Opening your wallet…" />}>
             <WalletPage s={s} dispatch={dispatch} tab={m.tab} />
-          </Suspense>
+          </Suspense></LoadGuard>
         )}
         {m?.kind === 'finance' && (
-          <Suspense fallback={<ActivityLoading label="Opening your money…" />}>
+          <LoadGuard onBack={goHome}><Suspense fallback={<ActivityLoading label="Opening your money…" />}>
             <FinancePage s={s} dispatch={dispatch} tab={m.tab} />
-          </Suspense>
+          </Suspense></LoadGuard>
         )}
         {m?.kind === 'checks' && (
-          <Suspense fallback={<ActivityLoading label="Opening the farm checks…" />}>
+          <LoadGuard onBack={goHome}><Suspense fallback={<ActivityLoading label="Opening the farm checks…" />}>
             <ChecksPage key={m.subject ?? 'all'} s={s} dispatch={dispatch} subject={m.subject} />
-          </Suspense>
+          </Suspense></LoadGuard>
         )}
         {m?.kind === 'power' && (
-          <Suspense fallback={<ActivityLoading label="Opening the power yard…" />}>
+          <LoadGuard onBack={goHome}><Suspense fallback={<ActivityLoading label="Opening the power yard…" />}>
             <PowerPage s={s} dispatch={dispatch} tab={m.tab} />
-          </Suspense>
+          </Suspense></LoadGuard>
         )}
         {m?.kind === 'market' && (
-          <Suspense fallback={<ActivityLoading label="Opening the market…" />}>
+          <LoadGuard onBack={goHome}><Suspense fallback={<ActivityLoading label="Opening the market…" />}>
             <MarketPage s={s} dispatch={dispatch} />
-          </Suspense>
+          </Suspense></LoadGuard>
         )}
         {m?.kind === 'serve' && (
-          <Suspense fallback={<ActivityLoading label={m.shop === 'market' ? 'Opening the market…' : 'Opening the restaurant…'} />}>
+          <LoadGuard onBack={goHome}><Suspense fallback={<ActivityLoading label={m.shop === 'market' ? 'Opening the market…' : 'Opening the restaurant…'} />}>
             <ShopFloor key={m.shop} s={s} dispatch={dispatch} kind={m.shop} />
-          </Suspense>
+          </Suspense></LoadGuard>
         )}
         {m?.kind === 'tractorGame' && (
-          <Suspense fallback={<ActivityLoading label="Opening the tractor game…" />}>
+          <LoadGuard onBack={goHome}><Suspense fallback={<ActivityLoading label="Opening the tractor game…" />}>
             <TractorGamePage dispatch={dispatch} />
-          </Suspense>
+          </Suspense></LoadGuard>
         )}
         {m?.kind === 'greenhouse' && (
-          <Suspense fallback={<ActivityLoading label="Opening the greenhouse…" />}>
+          <LoadGuard onBack={goHome}><Suspense fallback={<ActivityLoading label="Opening the greenhouse…" />}>
             <GreenhousePage s={s} dispatch={dispatch} bed={m.bed} />
-          </Suspense>
+          </Suspense></LoadGuard>
         )}
         {m?.kind === 'storehouse' && (
-          <Suspense fallback={<ActivityLoading label="Opening the storehouse…" />}>
+          <LoadGuard onBack={goHome}><Suspense fallback={<ActivityLoading label="Opening the storehouse…" />}>
             <StorehousePage s={s} dispatch={dispatch} tab={m.tab ?? 'store'} />
-          </Suspense>
+          </Suspense></LoadGuard>
         )}
         {m?.kind === 'events' && (
-          <Suspense fallback={<ActivityLoading label="Opening special events…" />}>
+          <LoadGuard onBack={goHome}><Suspense fallback={<ActivityLoading label="Opening special events…" />}>
             <EventsPage s={s} dispatch={dispatch} tab={m.tab} region={m.region} />
-          </Suspense>
+          </Suspense></LoadGuard>
         )}
         {m?.kind === 'kakuma' && (
-          <Suspense fallback={<ActivityLoading label="Opening the Kakuma event…" />}>
+          <LoadGuard onBack={goHome}><Suspense fallback={<ActivityLoading label="Opening the Kakuma event…" />}>
             <KakumaPage s={s} dispatch={dispatch} tab={m.tab} />
-          </Suspense>
+          </Suspense></LoadGuard>
         )}
         {m?.kind === 'shop' && <ShopModal s={s} tab={m.tab} dispatch={dispatch} />}
         {m?.kind === 'steps' && <StepsModal s={s} step={m.step} dispatch={dispatch} />}

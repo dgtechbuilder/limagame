@@ -14,6 +14,8 @@ import { COUNTRIES, countryOf, money } from '../money';
 import { activeFamily, captureInput, connectedPads, onPadPress, onPads, type PadInfo } from '../input/gamepad';
 import { FAMILY_NAME, padKey, padLabel, padSettings, type PadAction, type PadFamily, type PadMap, type PadSettings } from '../input/pad';
 import { tractorSettings, type TractorSettings } from '../business/tune';
+import { linkLabel, lowData, onNetChange, online, slowLink } from '../net/connection';
+import { keptStatus, onWarm, warmGame, type KeptStatus } from '../net/offline';
 import { clearSave, initialState, type Action, type GameState, type Settings, type SettingsTab } from '../state';
 
 /* Settings: a full page with six sections. Every control changes the game straight away and is kept on this device.
@@ -286,6 +288,63 @@ function GameTab({ s, dispatch, set }: Props & { set: (p: Partial<Settings>) => 
   );
 }
 
+/* ---------------- Display: Play offline (src/net/offline.ts) ---------------- */
+
+const pct = (k?: { kept: number; total: number }) => (k && k.total ? Math.floor((k.kept / k.total) * 100) : 0);
+
+/** How much of the game is on the phone, and a button to keep all of it (with the crop photos) while there is Wi-Fi. */
+function OfflineRow() {
+  const [kept, setKept] = useState<KeptStatus | null | undefined>(undefined);
+  const [busy, setBusy] = useState<number | null>(null);
+  const [, setNet] = useState(0);
+  useEffect(() => {
+    let live = true;
+    void keptStatus().then(k => live && setKept(k));
+    const offWarm = onWarm((p, k) => {
+      if (!live) return;
+      if (p.finished) {
+        setBusy(null);
+        if (k) setKept(k);
+      } else setBusy(Math.floor((p.done / Math.max(1, p.total)) * 100));
+    });
+    const offNet = onNetChange(() => setNet(n => n + 1));
+    return () => {
+      live = false;
+      offWarm();
+      offNet();
+    };
+  }, []);
+  const photos = lowData() ? kept?.lite : kept?.photos;
+  const all = pct(kept?.game) >= 100 && pct(photos) >= 100;
+  const body =
+    kept === undefined
+      ? `${linkLabel()}. Checking what is on this phone…`
+      : kept === null
+        ? `${linkLabel()}. Your farm is always saved on this phone.`
+        : busy !== null
+          ? `Downloading for offline: ${busy}%. Keep the game open.`
+          : all
+            ? `${linkLabel()}. The whole game is on this phone: it plays with no signal.`
+            : `${linkLabel()}. ${pct(kept.game)}% of the game is on this phone${photos?.total ? `, ${pct(photos)}% of the crop photos` : ''}. Download the rest where there is Wi-Fi.`;
+  return (
+    <Row title="Play offline" body={body}>
+      {kept && !all && (
+        <button
+          type="button"
+          className="ach-claim"
+          disabled={busy !== null || !online()}
+          onClick={() => {
+            setBusy(0);
+            void warmGame({ photos: true }).then(ok => !ok && setBusy(null));
+          }}
+        >
+          {busy !== null ? `${busy}%` : lowData() ? 'Download (up to 4 MB)' : 'Download (up to 11 MB)'}
+        </button>
+      )}
+    </Row>
+  );
+}
+
 /* ---------------- Display ---------------- */
 
 function DisplayTab({ s, dispatch, set }: Props & { set: (p: Partial<Settings>) => void }) {
@@ -315,6 +374,24 @@ function DisplayTab({ s, dispatch, set }: Props & { set: (p: Partial<Settings>) 
           ]}
         />
       </Row>
+      <Row
+        title="Data saver"
+        body={
+          { auto: `Saves data by itself when your phone asks to or the signal is slow (2G).${slowLink() ? ' On now.' : ''}`, on: 'Lighter pictures and photos, and only what you open is downloaded. For costly or slow data.', off: 'Sharp pictures, and the whole game downloaded ahead so it opens at once.' }[st.data ?? 'auto']
+        }
+      >
+        <Seg
+          label="Data saver"
+          value={st.data ?? 'auto'}
+          onChange={data => set({ data })}
+          options={[
+            { id: 'auto', label: 'Auto' },
+            { id: 'on', label: 'On' },
+            { id: 'off', label: 'Off' },
+          ]}
+        />
+      </Row>
+      <OfflineRow />
       <Row title="Night mode" body={{ auto: 'Night falls on the farm from 7 pm to 6 am, by your phone’s clock.', day: 'Always day on the farm.', night: 'Always night: the farm’s lights (Power) light the way.' }[st.night ?? 'auto']}>
         <Seg
           label="Night mode"

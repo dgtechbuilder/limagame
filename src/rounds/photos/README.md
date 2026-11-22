@@ -18,7 +18,9 @@ round. One photo then serves every bed that meets that situation.
    list of situations that use them is `NORMAL` in `src/rounds/photos.ts`.
 4. Add an entry to `credits.json` with the same key (`title`, `page`, `author`, `license`, `licenseUrl`) and a row to
    `CREDITS.md`. The game shows the author and licence on the photo.
-5. Run `npm run build`. Photos are found at build time; no code change is needed.
+5. Run `python3 scripts/lite-photos.py` (needs Pillow) to make its light copy in `src/rounds/photos-lite/` (480 × 336,
+   about a third of the size), shown on Data saver. A photo without one shows the full copy.
+6. Run `npm run build`. Photos are found at build time; no code change is needed.
 
 `<part>` is `crop`, `pests`, `soil`, `water` or `farm`. `<crop>` is `maize`, `beans`, `kale` or `tomato`.
 

@@ -733,6 +733,14 @@ button.card:active { transform: scale(0.98); }
 /* a real photo, or the drawn picture, fills the same frame */
 .rr-photo-wrap { position: relative; display: block; width: 100%; height: 100%; }
 .rr-photo { display: block; width: 100%; height: 100%; object-fit: cover; background: #e8dcc4; }
+.rr-photo-wrap.is-loading .rr-photo { background: linear-gradient(100deg, #e8dcc4 30%, #f3ead8 50%, #e8dcc4 70%) 0 0 / 300% 100%; animation: rr-shimmer 1.4s linear infinite; }
+.rr-photo-wrap.is-failed .rr-photo { visibility: hidden; }
+.reduce-motion .rr-photo-wrap.is-loading .rr-photo { animation: none; }
+@keyframes rr-shimmer { to { background-position: -150% 0; } }
+.rr-photo-retry {
+  position: absolute; inset: 0; display: grid; place-items: center; padding: 8px; border: 0; border-radius: inherit;
+  background: #e8dcc4; color: #4a3a1a; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+}
 .rr-ring { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .rr-flag { position: absolute; inset: 0; border: 4px solid #ffb005; border-radius: inherit; pointer-events: none; animation: rowpulse 1s ease-in-out infinite; }
 
@@ -3467,6 +3475,16 @@ a.ach-claim.pj-mail { display: inline-flex; align-items: center; text-decoration
 }
 @keyframes act-in { from { opacity: 0; } }
 .reduce-motion .act-loading-wheel { animation-duration: 1.6s; }
+
+/* a weak or missing signal (src/net): the "still downloading" line, the "not downloaded yet" card, the crash card */
+.act-loading-text { display: flex; flex-direction: column; gap: 2px; max-width: 300px; }
+.act-loading-text small, .net-fail-text small { font-size: 12px; font-weight: 500; line-height: 1.35; color: #4a4a3a; }
+.net-fail { z-index: 31; }
+.net-fail-card { align-items: flex-start; max-width: 380px; padding: 14px 20px; }
+.net-fail-icon { font-size: 26px; line-height: 1; }
+.net-fail-text { display: flex; flex-direction: column; gap: 4px; }
+.net-fail-actions { display: flex; align-items: center; gap: 14px; margin-top: 8px; }
+.net-crash { position: fixed; inset: 0; display: grid; place-items: center; background: #0b150c; padding: 16px; }
 
 /* ======================================================================================================== */
 /* Pop-ups on the wooden frames (docs/ui-spacing-plan.md, Phase 2): Shop, Farming steps, Storage, Harvest     */
