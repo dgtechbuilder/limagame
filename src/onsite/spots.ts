@@ -11,18 +11,22 @@ export interface Spot {
 
 const at = (x: number, z: number, fx?: number, fz?: number): Spot => ({ x, z, ...(fx !== undefined && fz !== undefined ? { face: { x: fx, z: fz } } : {}) });
 
+/** The cow feeder: on the pen's front fence (z -11.6), in the bay between two posts, half in the pen and half out. */
+export const FEEDER = { x: -14.82, z: -11.6 };
+
 /** The cow pen (fenced: the farmer works over the fence) and its feed store by the gate. */
 export const PEN = {
   feedStore: at(-8.4, -10.6, -8.4, -12.2),
-  trough: at(-15.0, -10.8, -15.0, -13.6),
+  // at the east end of the feeder, outside the fence, so the camera behind the farmer sees the feed go in
+  trough: at(FEEDER.x + 1.2, -10.75, FEEDER.x + 0.3, FEEDER.z),
   milk: at(-13.2, -10.8, -13.2, -12.4),
   west: at(-19.0, -10.8, -19.0, -13.0),
   east: at(-11.1, -16.4, -13.0, -16.4),
   shed: at(-11.1, -18.8, -17.4, -18.4),
 };
-/** Where a cow comes to be milked, inside the fence; and where the herd gathers at the trough. */
+/** Where a cow comes to be milked, inside the fence; and where the herd gathers at the feeder (heads over it). */
 export const COW_MILK = { x: -13.2, z: -12.5 };
-export const COW_TROUGH = { x: -15.0, z: -13.0 };
+export const COW_TROUGH = { x: FEEDER.x, z: -12.3 };
 
 /** The chicken coop, its run and its feed bin. */
 export const COOP = {
