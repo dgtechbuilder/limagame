@@ -24,6 +24,7 @@ import { PRODUCTS, depositBlock, financeOf, payoutOf, settle, type FinanceState,
 import { POWER, partOptionOf, stepOf, type LoadId, type StepId as PowerStepId } from './power/config';
 import { fuelTankL, loadsAvailable, powerOf, stepBlock, type PowerState } from './power/model';
 import { HUB, hubOf, levelOf as hubLevel, lessonOf, type HubSection, type HubState } from './tractor/hub';
+import { DRILLS, drillOf } from './tractor/training';
 import { PRODUCE, produceOf, sell as sellProduce, sellTo, stock, type ProduceId, type ProduceState } from './produce/model';
 import { cook as cookMeal, dishOf, RESTAURANT, type DishId } from './produce/restaurant';
 import { harvestLine, nutritionOf, peopleDays } from './nutrition/data';
@@ -141,6 +142,8 @@ export type Modal =
   | { kind: 'wallet'; tab?: WalletTab }
   /** money: savings, investments and profit tracking (src/finance) */
   | { kind: 'finance'; tab?: FinanceTab }
+  /** Tracking: how successful the farm is: the sustainability score and every figure behind it (src/tracking) */
+  | { kind: 'tracking'; tab?: TrackingTab }
   /** the power system: building it over the first 7 days, today's energy, what it does for the farm (src/power) */
   | { kind: 'power'; tab?: PowerTab }
   /** the market stall: up to 25 kg of the store sold a day, the restaurant beside it, and what the food is worth to
@@ -233,6 +236,7 @@ export type SecurityTab = 'protect' | 'risk' | 'reports';
 export type WalletTab = 'history' | 'climate' | 'summary';
 export type FinanceTab = 'overview' | 'savings' | 'invest' | 'profit';
 export type PowerTab = 'build' | 'today' | 'impact' | 'history';
+export type TrackingTab = 'overview' | 'sustainability' | 'climate' | 'water' | 'soil' | 'power' | 'money' | 'harvest' | 'animals';
 export type MarketTab = 'sell' | 'restaurant' | 'nutrition' | 'sales';
 export type StoreTab = 'store' | 'harvest' | 'produce';
 /** the Farm words page: the Farm basics lessons, or one section of words (src/learn/glossary.ts) */
@@ -719,7 +723,7 @@ export type Action =
   | { type: 'powerLoad'; id: LoadId; on: boolean }
   | { type: 'powerFuel'; litres: number }
   /** the tractor screen: a section's mini-game done (score 0 to 1) */
-  | { type: 'tractorHub'; section: HubSection; score: number; id?: string; litres?: number; label?: string }
+  | { type: 'tractorHub'; section: HubSection; score: number; id?: string; litres?: number; label?: string; /** Train: the drill passed (src/tractor/training.ts) */ drill?: string }
   /** the market stall: kg of each produce to sell */
   | { type: 'produceSell'; items: Partial<Record<ProduceId, number>> }
   /** the market stall: sell what is left of the day's 25 kg by itself when the day ends (the daily sales cycle) */
@@ -2094,9 +2098,18 @@ function hubAction(s: GameState, a: Extract<Action, { type: 'tractorHub' }>): Ga
   const pts = Math.round((HUB.points[a.section as keyof typeof HUB.points] ?? 0) * score);
   switch (a.section) {
     case 'train': {
-      const xp = h.xp + Math.round(30 * score);
+      const d = a.drill ? drillOf(a.drill) : undefined;
+      // a drill pays in full the first time it is passed, and for a better score; a repeat pays a third, no points
+      const prev = d ? (h.drills[d.id] ?? 0) : 0;
+      const better = !d || score > prev;
+      const xp = h.xp + Math.round((better ? 30 : 10) * score);
+      const got = better ? pts : 0;
+      const drills = d ? { ...h.drills, [d.id]: Math.max(prev, score) } : h.drills;
+      // the station's stars: how much of the school is passed
+      const trainBest = d ? DRILLS.reduce((n, x) => n + (drills[x.id] ?? 0), 0) / DRILLS.length : best.train;
       const up = hubLevel(xp) > hubLevel(h.xp);
-      return { ...s, points: s.points + pts, hub: { ...h, xp, done, best, log: log(`Practice drive: ${Math.round(score * 100)}%`) }, ...gainXp(s, 0.04), toast: toast(up ? `Driver level ${hubLevel(xp)}: the tractor drives ${Math.round(hubLevel(xp) * HUB.speedPerLevel * 100)}% faster · +${pts} points` : `Practice drive done · +${Math.round(30 * score)} experience · +${pts} points`) };
+      const what = d ? `${d.verb}: passed` : 'Practice drive done';
+      return { ...s, points: s.points + got, hub: { ...h, xp, done, best: { ...best, train: Math.max(h.best.train ?? 0, trainBest ?? 0) }, drills, log: log(d ? `Train, ${d.verb.toLowerCase()}: ${Math.round(score * 100)}%` : `Practice drive: ${Math.round(score * 100)}%`) }, ...gainXp(s, 0.04), toast: toast(up ? `Driver level ${hubLevel(xp)}: the tractor drives ${Math.round(hubLevel(xp) * HUB.speedPerLevel * 100)}% faster${got ? ` · +${got} points` : ''}` : `${what} · +${xp - h.xp} experience${got ? ` · +${got} points` : ''}`) };
     }
     case 'learn': {
       const l = a.id ? lessonOf(a.id) : undefined;

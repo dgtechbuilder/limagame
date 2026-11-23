@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { CoachSays, Coach, Confetti, FloatUp, IconArt, QuizArt, iconFor, type ArtId, type Mood } from './fun';
+import { CoachSays, Coach, Confetti, FloatUp, IconArt, QuizArt, iconFor, shuffled, type ArtId, type Mood } from './fun';
+import { OrderTrack, type TrackPt } from './OrderTrack';
+import { Workshop } from './workshop/Workshop';
+import type { HandsQuestion } from './workshop/kit';
 
 /* The mini-games: short hands-on moments behind every new job (the power system's parts, the tractor's sections,
    building the coop and the cow shed, the greenhouse's beds, the storehouse's sauces and jams). One frame for all of them: what to do,
@@ -17,14 +20,16 @@ export type GameSpec =
   | { type: 'tap'; scene: Scene; spots: Pt[]; decoys?: Pt[]; seconds: number; ordered?: boolean; verb: string; mark?: string; hidden?: boolean; spotMark?: string; decoyMark?: string }
   /** connect each cable to its terminal */
   | { type: 'wires'; pairs: { label: string; color: string }[] }
-  /** tap the steps in the right order (each step gets a picture from its words, or from icons) */
-  | { type: 'order'; steps: string[]; icons?: string[] }
+  /** put the steps in the right order: tap them, or drag them from the list onto the track's checkpoints; the track
+      zooms in to show each checkpoint's clue (each step gets a picture from its words, or from icons). With scene
+      'tractor' the track runs round a big tractor drawing, a checkpoint at the part each step is about. */
+  | { type: 'order'; steps: string[]; icons?: string[]; scene?: 'tractor'; track?: TrackPt[]; start?: { x: number; y: number } }
   /** answer the questions: each with a drawing (art) or a picture from its words */
   | { type: 'quiz'; questions: QuizQuestion[] }
+  /** hands-on questions: each a small job on a drawing, with parts to drag in and out, levers and a pedal to drive */
+  | { type: 'workshop'; questions: HandsQuestion[] }
   /** turn something to face the right way: a slider, and a meter of how well it faces */
   | { type: 'aim'; target: number; label: string }
-  /** drive down a lane and steer round the cones */
-  | { type: 'steer'; seconds: number; speed?: number }
   /** switch on loads without going over what the system makes */
   | { type: 'balance'; loads: { id: string; name: string; kwh: number; need: boolean }[]; supply: number };
 
@@ -60,7 +65,7 @@ export function MiniGame({ title, kicker, task, spec, onDone, onClose, doneLabel
   return (
     <div className="mg" role="dialog" aria-modal="true" aria-label={`${title}: mini-game`}>
       <div className="scrim" />
-      <div className="mg-card">
+      <div className={`mg-card${spec.type === 'order' ? ' is-wide' : spec.type === 'workshop' ? ' is-wide is-workshop' : ''}`}>
         <header className="mg-head">
           {kicker && <small>{kicker}</small>}
           <b>{title}</b>
@@ -133,10 +138,10 @@ function Game({ spec, onEnd }: { spec: GameSpec; onEnd: (score: number, data?: s
       return <Order spec={spec} onEnd={onEnd} />;
     case 'quiz':
       return <Quiz spec={spec} onEnd={onEnd} />;
+    case 'workshop':
+      return <Workshop questions={spec.questions} onEnd={onEnd} />;
     case 'aim':
       return <Aim spec={spec} onEnd={onEnd} />;
-    case 'steer':
-      return <Steer spec={spec} onEnd={onEnd} />;
     case 'balance':
       return <Balance spec={spec} onEnd={onEnd} />;
   }
@@ -410,11 +415,6 @@ function Tap({ spec, onEnd }: Of<'tap'>) {
 
 /* ---------------- wires ---------------- */
 
-/** A fixed shuffle (the same every time, so a retry is fair). */
-function shuffled<T>(xs: T[], salt = 3): T[] {
-  return xs.map((x, i) => ({ x, k: (i * 7 + salt * 5) % 11 })).sort((a, b) => a.k - b.k).map(o => o.x);
-}
-
 function Wires({ spec, onEnd }: Of<'wires'>) {
   const right = useMemo(() => shuffled(spec.pairs.map((p, i) => ({ ...p, i }))), [spec]);
   const [pick, setPick] = useState<number | null>(null);
@@ -456,78 +456,10 @@ function Wires({ spec, onEnd }: Of<'wires'>) {
   );
 }
 
-/* ---------------- order ---------------- */
+/* ---------------- order (minigames/OrderTrack.tsx) ---------------- */
 
 function Order({ spec, onEnd }: Of<'order'>) {
-  const cards = useMemo(() => shuffled(spec.steps.map((t, i) => ({ t, i, icon: spec.icons?.[i] ?? iconFor(t, '🔹') })), 5), [spec]);
-  const [done, setDone] = useState(0);
-  const [wrong, setWrong] = useState(0);
-  const [shake, setShake] = useState<number | null>(null);
-  const [streak, setStreak] = useState(0);
-  const [pop, setPop] = useState(0);
-  const total = spec.steps.length;
-  const tap = (i: number) => {
-    if (i !== done) {
-      setWrong(w => w + 1);
-      setStreak(0);
-      setShake(i);
-      window.setTimeout(() => setShake(null), 350);
-      return;
-    }
-    setDone(done + 1);
-    setStreak(x => x + 1);
-    setPop(p => p + 1);
-    if (done + 1 === total) window.setTimeout(() => onEnd(Math.max(0.2, 1 - wrong / total)), 700);
-  };
-  // the tractor rolls along the road, a checkpoint for each step
-  const at = (k: number) => 16 + (k / total) * 300;
-  return (
-    <div className="mg-order">
-      <div className="mg-road-wrap">
-        <svg viewBox="0 0 340 46" className="mg-road" aria-hidden="true">
-          <rect x={0} y={26} width={340} height={14} rx={7} fill="#c9a37a" />
-          <line x1={8} x2={332} y1={33} y2={33} stroke="#fdedd4" strokeWidth={2} strokeDasharray="8 8" />
-          {spec.steps.map((_, k) => (
-            <g key={k} transform={`translate(${at(k + 1)},33)`}>
-              <circle r={7} fill={k < done ? '#2f9b14' : '#fff8ea'} stroke={k < done ? '#1d6b0c' : '#c9a37a'} strokeWidth={2} />
-              <text y={3.5} fontSize={8} textAnchor="middle" fill={k < done ? '#fff' : '#86604c'} fontWeight={800}>
-                {k + 1}
-              </text>
-            </g>
-          ))}
-          <text x={at(total) + 12} y={24} fontSize={16}>
-            🏁
-          </text>
-          <g className={`mg-road-tractor${shake !== null ? ' is-stall' : ''}`} style={{ transform: `translate(${at(done)}px, 0)` }}>
-            <text y={26} fontSize={20} textAnchor="middle" transform="scale(-1,1)">
-              🚜
-            </text>
-          </g>
-        </svg>
-        <span className="mg-pop-at" style={{ left: `${((at(done) + 4) / 340) * 100}%` }}>
-          {pop > 0 && (
-            <FloatUp key={pop} tone={streak >= 3 ? 'gold' : 'good'}>
-              {streak >= 3 ? `🔥 ${streak} in a row` : '✓ Next!'}
-            </FloatUp>
-          )}
-        </span>
-      </div>
-      <p className="mg-progress">
-        Tap the steps in order · {done} of {total}
-        {wrong > 0 && <b className="mg-time is-bad">{wrong} wrong</b>}
-      </p>
-      <div className="mg-cards">
-        {cards.map(c => (
-          <button key={c.i} type="button" className={`mg-card-btn${c.i < done ? ' is-done' : ''}${shake === c.i ? ' is-wrong' : ''}`} disabled={c.i < done} onClick={() => tap(c.i)}>
-            <span className="mg-card-icon" aria-hidden="true">
-              {c.i < done ? <b>{c.i + 1}</b> : c.icon}
-            </span>
-            <span className="mg-card-text">{c.t}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
+  return <OrderTrack spec={spec} onEnd={onEnd} />;
 }
 
 /* ---------------- quiz ---------------- */
@@ -668,76 +600,6 @@ function Aim({ spec, onEnd }: Of<'aim'>) {
       <button type="button" className="gold-btn mg-big" onClick={() => onEnd(out)}>
         Fix the frame here
       </button>
-    </div>
-  );
-}
-
-/* ---------------- steer ---------------- */
-
-function Steer({ spec, onEnd }: Of<'steer'>) {
-  const [lane, setLane] = useState(1);
-  const [t, setT] = useState(0);
-  const [hits, setHits] = useState(0);
-  const cones = useMemo(() => Array.from({ length: Math.round(spec.seconds * 1.4) }, (_, i) => ({ at: 1.2 + i * 0.72, lane: (i * 5 + Math.floor(i / 3)) % 3 })), [spec.seconds]);
-  const hit = useRef(new Set<number>());
-  const laneRef = useRef(lane);
-  laneRef.current = lane;
-  const ended = useRef(false);
-  const speed = spec.speed ?? 1;
-  useFrames(dt => {
-    setT(x => {
-      const n = x + dt * speed;
-      cones.forEach((c, i) => {
-        const y = (n - c.at) * 160;
-        if (y > 150 && y < 175 && c.lane === laneRef.current && !hit.current.has(i)) {
-          hit.current.add(i);
-          setHits(h => h + 1);
-        }
-      });
-      if (n >= spec.seconds && !ended.current) {
-        ended.current = true;
-        window.setTimeout(() => onEnd(Math.max(0, 1 - hit.current.size * 0.15)), 300);
-      }
-      return n;
-    });
-  }, !ended.current);
-  useEffect(() => {
-    const k = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft') e.preventDefault(), setLane(l => Math.max(0, l - 1));
-      if (e.key === 'ArrowRight') e.preventDefault(), setLane(l => Math.min(2, l + 1));
-    };
-    window.addEventListener('keydown', k);
-    return () => window.removeEventListener('keydown', k);
-  }, []);
-  return (
-    <div className="mg-steer">
-      <p className="mg-progress">
-        Steer round the cones · {hits} hit<b className="mg-time">{Math.max(0, Math.ceil(spec.seconds - t))} s</b>
-      </p>
-      <svg viewBox="0 0 240 200" className="mg-scene is-lane" aria-hidden="true">
-        <rect width={240} height={200} fill="#9a6b3e" />
-        {[80, 160].map(x => (
-          <line key={x} x1={x} x2={x} y1={0} y2={200} stroke="#e8d2a6" strokeWidth={2} strokeDasharray="10 12" strokeDashoffset={-t * 160} />
-        ))}
-        {cones.map((c, i) => {
-          const y = (t - c.at) * 160;
-          if (y < -20 || y > 220) return null;
-          return <polygon key={i} points={`${c.lane * 80 + 40},${y - 14} ${c.lane * 80 + 28},${y + 10} ${c.lane * 80 + 52},${y + 10}`} fill={hit.current.has(i) ? '#999' : '#ff7a1a'} stroke="#fff" strokeWidth={2} />;
-        })}
-        <g transform={`translate(${lane * 80 + 40},170)`}>
-          <rect x={-16} y={-14} width={32} height={30} rx={5} fill="#2b8a4a" />
-          <rect x={-22} y={4} width={9} height={16} rx={3} fill="#222" />
-          <rect x={13} y={4} width={9} height={16} rx={3} fill="#222" />
-        </g>
-      </svg>
-      <div className="mg-actions">
-        <button type="button" className="gold-btn mg-big" onPointerDown={() => setLane(l => Math.max(0, l - 1))} aria-label="Steer left">
-          ◀ Left
-        </button>
-        <button type="button" className="gold-btn mg-big" onPointerDown={() => setLane(l => Math.min(2, l + 1))} aria-label="Steer right">
-          Right ▶
-        </button>
-      </div>
     </div>
   );
 }

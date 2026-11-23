@@ -97,16 +97,18 @@ export interface CoopOption {
   disease: number;
   /** how it looks on the 3D farm */
   look: 'basic' | 'secure';
+  /** its size on the ground in metres (width × depth) and how tall, shown with its photo so the coops compare at a glance */
+  size: { w: number; d: number; tall: string };
 }
 
 /** Simplest first, by price (an upgrade pays the difference): the first two from day 1, the third from day 2, the last
     two from day 3 (src/unlock/model.ts). */
 export const COOPS: CoopOption[] = [
-  { id: 'shelter', name: 'Night shelter', does: 'A roof on poles over a few perches: dry at night, but open on every side.', price: 600, room: 10, eggs: 0.05, theft: 0.15, predators: 0.3, disease: 0.05, look: 'basic' },
-  { id: 'basic', name: 'Simple coop', does: 'Timber walls, an iron-sheet roof, perches and four nest boxes.', price: 1500, room: 20, eggs: 0.15, theft: 0.4, predators: 0.6, disease: 0.1, look: 'basic' },
-  { id: 'mobile', name: 'Movable coop', does: 'A coop on wheels, moved to fresh grass each week: clean ground, fewer worms, manure spread for you.', price: 2500, room: 15, eggs: 0.2, theft: 0.35, predators: 0.7, disease: 0.35, look: 'basic' },
-  { id: 'secure', name: 'Raised coop with wire mesh', does: 'Off the ground on posts, a slatted floor, wire mesh all round and a padlock.', price: 4000, room: 60, eggs: 0.25, theft: 0.75, predators: 0.9, disease: 0.45, look: 'secure' },
-  { id: 'layers', name: 'Layer house', does: 'A block house with wire windows, a nest box for every four hens, feeders and a locked door.', price: 8000, room: 60, eggs: 0.35, theft: 0.85, predators: 0.95, disease: 0.55, look: 'secure' },
+  { id: 'shelter', name: 'Night shelter', does: 'A roof on poles over a few perches: dry at night, but open on every side.', price: 600, room: 10, eggs: 0.05, theft: 0.15, predators: 0.3, disease: 0.05, look: 'basic', size: { w: 2, d: 1.5, tall: 'chest high' } },
+  { id: 'basic', name: 'Simple coop', does: 'Timber walls, an iron-sheet roof, perches and four nest boxes.', price: 1500, room: 20, eggs: 0.15, theft: 0.4, predators: 0.6, disease: 0.1, look: 'basic', size: { w: 3, d: 2, tall: 'head high' } },
+  { id: 'mobile', name: 'Movable coop', does: 'A light coop you drag or wheel to fresh grass each week: clean ground, fewer worms, manure spread for you.', price: 2500, room: 15, eggs: 0.2, theft: 0.35, predators: 0.7, disease: 0.35, look: 'basic', size: { w: 3, d: 1.5, tall: 'waist high' } },
+  { id: 'secure', name: 'Raised coop with wire mesh', does: 'Off the ground on posts, a slatted floor, wire mesh all round and a padlock.', price: 4000, room: 60, eggs: 0.25, theft: 0.75, predators: 0.9, disease: 0.45, look: 'secure', size: { w: 5, d: 3, tall: 'on 1 m posts' } },
+  { id: 'layers', name: 'Layer house', does: 'A block house with wire windows, a nest box for every four hens, feeders and a locked door.', price: 8000, room: 60, eggs: 0.35, theft: 0.85, predators: 0.95, disease: 0.55, look: 'secure', size: { w: 6, d: 4, tall: 'walk-in' } },
 ];
 export const coopOption = (id: CoopId | null | undefined) => COOPS.find(c => c.id === id) ?? null;
 /** Hens with no coop roost in the trees: some of their eggs are laid in the bush and lost. */

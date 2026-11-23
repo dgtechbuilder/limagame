@@ -255,11 +255,16 @@ function Prop({ id }: { id: Station }) {
     case 'train':
       return (
         <g>
-          <rect x={-58} y={-58} width={116} height={40} rx={8} fill="#b98a55" />
-          {[-44, -22, 0, 22, 44].map((x, i) => (
-            <polygon key={x} points={`${x},${-50 + (i % 2) * 14} ${x - 6},${-38 + (i % 2) * 14} ${x + 6},${-38 + (i % 2) * 14}`} fill="#ff7a1a" stroke="#fff" strokeWidth={1.5} />
-          ))}
-          <path d="M-50 -30 Q-33 -52 -11 -30 T33 -30 T52 -40" stroke="#fff" strokeWidth={1.5} strokeDasharray="4 4" fill="none" opacity={0.8} />
+          {/* a practice field from above: a ploughed row up the middle, rocks and a tree in the way */}
+          <rect x={-58} y={-58} width={116} height={40} rx={8} fill="#c79f62" />
+          <rect x={-10} y={-58} width={20} height={40} fill="#5f3a1d" />
+          <line x1={-12} x2={-12} y1={-56} y2={-20} stroke="#fff" strokeWidth={1.2} strokeDasharray="4 3" opacity={0.8} />
+          <line x1={12} x2={12} y1={-56} y2={-20} stroke="#fff" strokeWidth={1.2} strokeDasharray="4 3" opacity={0.8} />
+          <ellipse cx={20} cy={-46} rx={6} ry={4.5} fill="#8e9196" />
+          <ellipse cx={-26} cy={-30} rx={5} ry={4} fill="#8e9196" />
+          <circle cx={-44} cy={-46} r={9} fill="#2f6b2a" />
+          <circle cx={-46} cy={-48} r={5} fill="#3f8a35" />
+          <circle cx={44} cy={-28} r={8} fill="#2f6b2a" />
         </g>
       );
     case 'learn':

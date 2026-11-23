@@ -59,6 +59,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [Money: savings, investments and profit](#money-savings-investments-and-profit)
 - [The power system](#the-power-system)
 - [Night mode](#night-mode)
+- [Tracking and the sustainability score](#tracking-and-the-sustainability-score)
 - [The tractor screen](#the-tractor-screen)
 - [The coop and the cow shed](#the-coop-and-the-cow-shed)
 - [The shed's options](#the-sheds-options)
@@ -201,7 +202,8 @@ src/
   greenhouse/              the greenhouse where Farm 7 was (four beds under glass): model.ts, Greenhouse.tsx
   storehouse/              the storehouse where Farm 8 was (store, harvest, produce): model.ts, Storehouse.tsx
   systems/track.ts         the newer systems through the days: power, gutters, drip, wilting, tractor wear, morning news
-  minigames/MiniGame.tsx   the mini-games: timing, hold-to-fill, tap the spots, wires, order, quiz, aim, steer, balance
+  minigames/MiniGame.tsx   the mini-games: timing, hold-to-fill, tap the spots, wires, order, quiz, aim, steer, balance,
+                           workshop (workshop/: the hands-on tractor lessons, their scenes and kit)
   minifarm/                the tractor game: sim.ts (the rules, no DOM), MiniFarm.tsx (the page and its canvas)
   components/Page.tsx      a page with sections down the left (Wallet, Power, Market, Greenhouse, Storehouse, Tractor)
   training/data.ts         farmer training courses and bookings
@@ -239,7 +241,8 @@ src/
   credits/ledger.ts        every kind of credit (CO₂, water) earned and paid
   livestock/               the cows and the hens: config.ts (every number: care, coop, prevention, diseases), model.ts
                            (care, health, problems, a night), track.ts (the nights, day 2), Animals.tsx (the page),
-                           HudButtons.tsx (ANIMALS and SECURITY), rand.ts (seeded nights)
+                           HudButtons.tsx (ANIMALS and SECURITY), rand.ts (seeded nights); photos.ts, photos/ and
+                           photos-lite/ a real photo of each coop (credits.json + CREDITS.md)
   security/                theft: config.ts (what is taken, every measure and what it cuts), model.ts (tonight's risks,
                            a night's thefts, the harvest and store less theft), Security.tsx (the page)
   evidence/                the decision log, programme tags, "tried it on your own farm?": model.ts, Ask.tsx
@@ -1074,6 +1077,7 @@ reload without losing their place, bookmark a page, and use the browser's **Back
 | `#/events/regions/<region>` (`horn-of-africa`, `sahel`, `southern-africa`, `lake-chad`, `madagascar`, `sudan`) | One region in need, and its relief packs |
 | `#/donate` · `#/regions` | Short addresses for Donate (open before the farm too) and Regions |
 | `#/money/overview` · `savings` · `investments` · `profit` | Money: what the farmer is worth, savings, investments, profit by part of the farm |
+| `#/tracking/overview` · `sustainability` · `climate` · `water` · `soil-and-inputs` · `power` · `profit-and-costs` · `harvests` · `animals-and-safety` | Tracking: the sustainability score and every figure behind it (`#/sustainability` is a short address) |
 | `#/market` · `#/market/restaurant` · `nutrition` · `sales` | The market stall, the restaurant, nutrition, every sale (`#/restaurant` and `#/nutrition` work too) |
 | `#/serve/market` · `#/serve/restaurant` | The shop floor: serving customers at the stall, or in the restaurant's kitchen |
 
@@ -1401,6 +1405,10 @@ first, with *Do it* (overdue in red). Each check opens the examination screen wi
   layer house: [Options that open as you grow](#options-that-open-as-you-grow)), such as a **simple coop** (room for 20, +15% eggs) or a **raised coop with wire mesh** (room for 60,
   +25% eggs, fewer coop diseases); with its door shut it keeps out most thieves and predators. With no coop, hens roost
   in the trees and lose 30% of their eggs in the bush. It stands in the 3D farm once built (a pile of timber before).
+  Each card shows a **real photo** of that kind of coop on an African smallholding (Uganda, Senegal and elsewhere;
+  Wikimedia Commons, credited on the photo) with its **size**: metres, how tall, and its footprint drawn to
+  one scale against the largest (`size` in `COOPS`; photos in `src/livestock/photos/coop/`, see
+  [`src/livestock/photos/CREDITS.md`](src/livestock/photos/CREDITS.md)).
 - **Herd:** cows and hens are bought at a price (a cow KSh 80,000, a hen KSh 700) and sold for 80% of it; the water
   panel's herd uses the same prices. The 3D farm shows as many as the farm has: a stolen hen is gone from the yard.
 
@@ -1718,7 +1726,23 @@ of the game:
 **Settings › Display › Night mode**: *Auto* (night on the farm from 7 pm to 6 am by the phone's clock), *Day* or
 *Night*. At night the sky goes dark blue, the moon lights the farm, the farmer carries a lantern, the farmhouse windows
 glow, and once the power system's lights are lit the poles light the paths (`setNight`, `setPower` in the engine).
-A chip at the bottom says *Night · lights on* or *off*.
+There is no night chip on the farm's HUD: its place beside the money holds the sustainability score (below).
+
+## Tracking and the sustainability score
+
+The farm's home screen shows a **sustainability score out of 100** beside the money (🌱 *54/100*), where the night chip
+was; its border is green (65+), amber (50–64) or red (under 50). Tapping it opens **Tracking** (`#/tracking/…`,
+`src/tracking`), a page for how successful the farm is: *Overview*, *Sustainability* (the score's eight parts),
+*Climate*, *Water*, *Soil* (land cover, pollution, sprays, nitrogen), *Power*, *Profit* (money in and out, expenses
+against the harvest, return on inputs, cost per bag), *Harvests* (each cycle's bags and profit, food lost) and *Animals*
+(health, milk, eggs, losses, thefts). **Mission** has a *Sustainability* section too: the switch beside its title.
+
+The score is a weighted average of eight parts, each 0 to 100 (`sustainability()` in `src/tracking/model.ts`):
+climate and carbon 20% (the climate rating, or carbon kept against emitted before the first harvest), water 15% (rain
+caught against water used, dry days, rationing), soil and land 15% (soil points, plot-days left bare), power efficiency
+15% (solar share, needs met, parts built), chemicals and pollution 10%, climate-smart practice 10% (practices learned,
+shocks handled, the drill streak), money 10% (profit margin and money kept back) and animal welfare 5%. A part with
+nothing to go on yet is left out and the others share its weight. It can be hidden in **Settings › Home screen**.
 
 ## The tractor screen
 
@@ -1736,7 +1760,7 @@ returns to the yard. Each station is a mini-game:
 | --- | --- | --- |
 | Yard | walk round the yard to the stations | — |
 | Train | steer round the cones down the practice lane | experience: each driver level (60, 150, 300) drives 5% faster |
-| Learn | three lessons of questions (parts, safety, soil) | points; the why after each answer |
+| Learn | three hands-on lessons (parts, safety, soil): each question is a job on a working tractor ([the workshop](#the-workshop-hands-on-lessons)) | points; the why after each job |
 | Safety check | the walk-round in the right order | points |
 | Service | tap each service point in order | condition +10 to +35 (KSh 1,500; 30% less with workshop power) |
 | Repair | fix the three faults, leave the parts that are fine | condition back to 60–100% (KSh 6,000; 30% less with power) |
@@ -1924,10 +1948,34 @@ store, and the old addresses (`#/new-farms/7`, `/8`) open the greenhouse and the
 
 ## Mini-games
 
-`src/minigames/MiniGame.tsx`: one frame (what to do, the game, then stars and a score from 0 to 1), nine games:
+`src/minigames/MiniGame.tsx`: one frame (what to do, the game, then stars and a score from 0 to 1), ten games:
 **timing** (press in the green), **hold** (hold to fill, let go at the line), **tap** (tap the right spots before the
-time runs out, in order or not, decoys cost points), **wires**, **order**, **quiz**, **aim**, **steer** and
-**balance**. Every game is played with taps or a held press (keyboard too).
+time runs out, in order or not, decoys cost points), **wires**, **order**, **quiz**, **aim**, **steer**, **balance**
+and **workshop**. Every game is played with taps, drags or a held press (keyboard too).
+
+### The workshop: hands-on lessons
+
+The tractor's Learn lessons (`src/minigames/workshop`) are not picked from a list: every question is a small job on a
+working tractor, and the answer is found by doing it. The player drags parts in and out with a finger (or taps a part
+to fit it and taps again to take it out), works switches and levers, and holds a pedal to drive and see what moves.
+
+| Question | The job |
+| --- | --- |
+| Which part turns the mower? | Fit the PTO shaft, the steering wheel or the fuel cap into the gap, switch the PTO on, mow the grass. Only the shaft turns the blades; reaching for a turning shaft is a wrong try |
+| What do the linkage arms do? | Hitch the plough with the arms, a tyre pump or a fan, pull the lift lever and carry the plough to the field |
+| Where does the engine's heat go? | Fit the radiator, battery or seat, start the engine and watch the gauge; rub the chaff off the radiator's fins |
+| Across a steep slope… | Turn the tractor (seen from above) and drive to the shed; a view from behind shows the lean, and across the slope it rolls |
+| Before getting off… | Tool down, PTO off, hand brake on, engine off with the switches, then drag the farmer down; stepping down too soon shows what goes wrong |
+| Who rides on the tractor? | Drag the friends and the child off the mudguard, bonnet and drawbar; drive to the gate. Passengers fall off at the first bump |
+| Driving on wet soil… | Drag the sun to let days pass; drive on wet soil and the wheels sink and the soil's air spaces are squashed |
+| Ploughing too deep… | Set the plough's depth (lever or drag the blade) and plough the strip; too deep turns up pale subsoil and lets carbon out |
+| Tyre pressure for the field… | Let air out on the gauge from road to field pressure and drive across; hard tyres leave a deep rut, flat ones fold |
+
+A try that goes wrong is shown, then counted: a question done with no wrong tries is worth full marks, one wrong try
+two thirds, more a third. Tips fade after a few seconds so they never cover the drawing; the why comes with the job
+done. Each scene's question, options, task and why live in `src/tractor/hub.ts` (`LESSONS`); the scenes in
+`workshop/scenes.tsx`, built from the kit in `workshop/kit.tsx` (the bench, dragging, the pedal, switches, levers and
+the side-on tractor). Play-tested in `tests/workshop.spec.ts`.
 
 **The game layer** (`src/minigames/fun.tsx`) is shared by every quiz, form and test in the game:
 
@@ -1939,8 +1987,16 @@ time runs out, in order or not, decoys cost points), **wires**, **order**, **qui
 - **Quiz**: a picture beside each question, answers as picture cards (A, B, C; keys 1–3 work), the answers shuffled
   so the right one is not always first, a ⚡ clock for a quick answer, a 🔥 streak, confetti and a float-up for a
   right answer, a shake for a wrong one. The score is still the share answered right.
-- **Order**: each step has a picture, and a tractor rolls along a road of numbered checkpoints to the flag as the
-  steps go in; a wrong step stalls it.
+- **Order** (`src/minigames/OrderTrack.tsx`): the steps sit in a list on the side, each with its picture; the
+  track fills the rest of the card, big. Tap a step to send it to the next checkpoint, or drag it onto the track.
+  The checkpoint to start at glows (*▶ Start here*, then *▶ Next*); the ones after it are greyed out and refuse a
+  drop (it costs nothing, and the tip says where to start); a wrong step costs a share of the score as before.
+  The track zooms (+ / − / ⤢, the mouse wheel, a pinch, the + − 0 keys, or a tap on a checkpoint) and pans with a
+  drag: close up, every checkpoint shows the picture of the step that belongs there, and the one tapped shows its
+  clue in words. In the tractor's **safety check** the track runs round a big drawn tractor, a checkpoint on the
+  part each step is about (on foot in front, under the bonnet, the wheels and the hitch, the seat, the levers, the
+  key), and the farmer walks it; the exhaust puffs once the engine is started. Other order games (the battery bank,
+  the storehouse's recipes) put the checkpoints on a winding farm road that a big drawn tractor drives.
 - **Results**: the stars pop in one by one, with confetti for two or three stars.
 - **The care screens** (the spray kit and product at the shed, choosing the fix, the tractor's hitch and fill-up)
   give each answer a picture, shake a wrong one and throw confetti for the right one; a right crop call in field
