@@ -8,6 +8,7 @@ import { padStick } from '../input/gamepad';
 import { RIDE_SPEED, TRACTOR_EDGE, type ImplId } from '../tractor/data';
 import { slotBrand, type SlotId } from '../partners/data';
 import { TIDY, type TidyItem } from '../tidy/model';
+import { FEEDER } from '../onsite/spots';
 import { JOB_INFO, ROUTINE, TRACTOR_PLOT, toolJobs, toolName, type PlotJob, type TractorId } from '../plots/data';
 import { CHECK_DAYS, CROP_WORDS, checkKey, cropOf, farmName, harvestFarm, hazardFor, plotGrowth, type Trial, type TrialHazard } from '../trials/model';
 import {
@@ -305,6 +306,10 @@ export class FarmWorld {
   private jobTool: string | null = null;
   /** a part or a tool on the farmer's back, on the way to where it goes */
   private crateOn = false;
+  /** the feed in the cow feeder: a heap that rises while it is poured and goes down as the cows eat */
+  private feed = new THREE.Mesh(G.box, new THREE.MeshLambertMaterial({ color: '#f2c81e' }));
+  private feedLevel = 0.2;
+  private pouring = 0;
   private lastHint = 0;
   private inPlace: Place | null = null;
   private atSign = -1;
@@ -334,7 +339,7 @@ export class FarmWorld {
   private badgeTex: Record<string, THREE.Texture> = {};
 
   // animals and helpers
-  private cows: { m: ReturnType<typeof makeQuadruped>; at: THREE.Vector2; to: THREE.Vector2; wait: number; hold?: number }[] = [];
+  private cows: { m: ReturnType<typeof makeQuadruped>; at: THREE.Vector2; to: THREE.Vector2; wait: number; hold?: number; look?: number }[] = [];
   private hens: { m: ReturnType<typeof makeChicken>; at: THREE.Vector2; to: THREE.Vector2; wait: number; hold?: number }[] = [];
   private goat = makeQuadruped('goat');
   private goatState = { farm: -1, at: new THREE.Vector2(), to: new THREE.Vector2(), leaving: 0 };
@@ -604,7 +609,11 @@ export class FarmWorld {
     smooth.push(...place(pond(), at(18.4, 0, 0)));
     // the water tank on its stand at the pond's lower-right edge, above the mini forest, its pump pipe running down into the pond
     smooth.push(...place(waterTank(1.6), at(WATER_TANK.x, 0, WATER_TANK.z)));
-    smooth.push(...place(trough(), at(-15, 0, -13.6)));
+    // the cow feeder sits on the pen's front fence, in the open bay (fence(..., 3)): poured from outside, eaten from inside
+    smooth.push(...place(trough(), at(FEEDER.x, 0, FEEDER.z)));
+    this.feed.position.set(FEEDER.x, 0.4, FEEDER.z);
+    this.feed.castShadow = true;
+    this.scene.add(this.feed);
     // the chicken coop is built by the player from day 2 (buildCoops: a pile of timber until then)
     // fences: the yard, and the cow pen
     smooth.push(...fence(-22.4, -21.2, 22.4, -21.2));
@@ -612,7 +621,7 @@ export class FarmWorld {
     smooth.push(...fence(2.4, 17.6, 22.4, 17.6));
     smooth.push(...fence(-22.4, -21.2, -22.4, 17.6));
     smooth.push(...fence(22.4, -21.2, 22.4, 17.6));
-    smooth.push(...fence(-21.4, -11.6, -12.0, -11.6));
+    smooth.push(...fence(-21.4, -11.6, -12.0, -11.6, 3));
     smooth.push(...fence(-12.0, -11.6, -12.0, -20.4));
     smooth.push(...fence(-12.0, -20.4, -21.4, -20.4));
     smooth.push(...fence(-21.4, -20.4, -21.4, -11.6));
@@ -694,7 +703,7 @@ export class FarmWorld {
       { x0: -3.5, x1: 3.5, z0: -21.0, z1: -16.2 },
       { x0: -20.6, x1: -16.9, z0: -2.8, z1: 2.8 },
       { x0: -2.3, x1: 2.3, z0: 14.7, z1: 16.6 },
-      { x0: -21.6, x1: -11.7, z0: -20.6, z1: -11.3 },
+      { x0: -21.6, x1: -11.7, z0: -20.6, z1: -11.15 },
       { x0: 6.9, x1: 9.5, z0: -19.4, z1: -17.4 },
     );
     this.obstacles.push({ x: WATER_TANK.x, z: WATER_TANK.z, r: 1.1 });
@@ -1874,13 +1883,47 @@ export class FarmWorld {
     const dx = f.x - this.pos.x;
     const dz = f.z - this.pos.y;
     if (Math.hypot(dx, dz) > 0.05) this.heading = Math.atan2(dx, dz);
+    if (Math.hypot(f.x - FEEDER.x, f.z - FEEDER.z) < 0.8 && (fx === 'hay' || fx === 'water')) {
+      // at the feeder: a stream from the bucket into the box, and (feeding) the heap rises
+      this.pour(fx, 4);
+      if (fx === 'hay') this.pouring = 0.45;
+      return;
+    }
     const bx = this.pos.x + (f.x - this.pos.x) * 0.6;
     const bz = this.pos.y + (f.z - this.pos.y) * 0.6;
     this.burst(fx, bx + (Math.random() - 0.5) * 0.4, bz + (Math.random() - 0.5) * 0.4, 2);
   }
 
+  /** Feed or water poured from the bucket in the farmer's hand: an arc that lands in the feeder. */
+  private pour(fx: Fx, n: number) {
+    const col = fx === 'water' ? ['#56b9f0', '#a8defa'] : ['#e8c867', '#b8d46a', '#d4a94a', '#8fbf3a'];
+    const c = new THREE.Color();
+    const fwd = new THREE.Vector2(Math.sin(this.heading), Math.cos(this.heading));
+    const fly = 0.42;
+    for (let k = 0; k < n; k++) {
+      const i = this.pNext++ % this.pData.length;
+      const d = this.pData[i];
+      d.p.set(this.pos.x + fwd.x * 0.45, 1.1, this.pos.y + fwd.y * 0.45);
+      const tx = FEEDER.x + (Math.random() - 0.5) * 1.1;
+      const tz = FEEDER.z + (Math.random() - 0.5) * 0.4;
+      // up a little, then down into the box (gravity 7, see animateParticles)
+      d.v.set((tx - d.p.x) / fly, 0.4, (tz - d.p.z) / fly);
+      d.life = fly + 0.05;
+      d.s = fx === 'water' ? 0.1 : 0.14;
+      c.set(col[k % col.length]);
+      this.parts.setColorAt(i, c);
+    }
+    if (this.parts.instanceColor) this.parts.instanceColor.needsUpdate = true;
+  }
+
   /** A job's spot is done: a little burst of what was worked. */
   jobFinished(at: { x: number; z: number }, fx: Fx) {
+    if (Math.hypot(at.x - FEEDER.x, at.z - FEEDER.z) < 0.8 && (fx === 'hay' || fx === 'water')) {
+      this.pour(fx, 12);
+      if (fx === 'hay') this.feedLevel = 1;
+      this.dirty = true;
+      return;
+    }
     this.burst(fx, at.x, at.z, 10);
     this.dirty = true;
   }
@@ -1901,12 +1944,15 @@ export class FarmWorld {
   gather(group: 'cows' | 'hens', x: number, z: number, secs = 6) {
     const herd = group === 'cows' ? this.cows : this.hens;
     const shown = herd.filter(a => a.m.root.visible);
-    const n = group === 'cows' ? 1 + (Math.abs(x + 15) < 0.5 ? 1 : 0) : shown.length;
+    const atFeeder = group === 'cows' && Math.abs(x - FEEDER.x) < 0.5 && Math.abs(z - FEEDER.z) < 1.5;
+    const n = group === 'cows' ? 1 + (atFeeder ? 1 : 0) : shown.length;
     shown.slice(0, n).forEach((a, i) => {
       const spread = group === 'cows' ? 0.9 : 0.55;
       a.to.set(x + (i - (n - 1) / 2) * spread + (group === 'hens' ? (Math.random() - 0.5) * 0.6 : 0), z + (group === 'hens' ? (Math.random() - 0.5) * 0.6 : 0));
       a.wait = 0;
       a.hold = secs;
+      // at the feeder a cow turns to the fence and puts her head over the box
+      (a as { look?: number }).look = atFeeder ? Math.atan2(FEEDER.x - a.to.x, FEEDER.z - a.to.y) : undefined;
     });
   }
 
@@ -1991,6 +2037,7 @@ export class FarmWorld {
     this.arrow.visible = !!a && !this.hideArrow;
     if (a) this.arrow.position.set(a.x, 2.0 + Math.sin(time * 4) * 0.18, a.z);
     this.arrow.rotation.y = time * 1.5;
+    this.animateFeed(dt);
     this.ringLife = Math.max(0, this.ringLife - dt);
     this.ring.visible = this.ringLife > 0;
     if (this.ring.visible) {
@@ -2001,7 +2048,7 @@ export class FarmWorld {
     if (!this.renderer.shadowMap.autoUpdate) this.renderer.shadowMap.needsUpdate = this.shadowTick++ % 2 === 0;
     this.renderer.render(this.scene, this.camera);
     this.cpu.drawn++;
-    this.busy = this.walking > 0.01 || this.work > 0 || !!this.hire || this.ringLife > 0 || this.pData.some(d => d.life > 0);
+    this.busy = this.walking > 0.01 || this.work > 0 || this.pouring > 0 || !!this.hire || this.ringLife > 0 || this.pData.some(d => d.life > 0);
   }
 
   /** Auto graphics: while things move, if frames come slowly for a few seconds, draw less: first a computer's
@@ -2238,12 +2285,21 @@ export class FarmWorld {
   }
 
   private animateAnimals(dt: number, time: number) {
-    const wander = (a: { m: { root: THREE.Object3D }; at: THREE.Vector2; to: THREE.Vector2; wait: number; hold?: number }, area: Rect, speed: number) => {
-      // called over for a job (the trough, the milking spot): walk there and stay until the job is done
+    const wander = (a: { m: { root: THREE.Object3D }; at: THREE.Vector2; to: THREE.Vector2; wait: number; hold?: number; look?: number }, area: Rect, speed: number) => {
+      // called over for a job (the feeder, the milking spot): walk there and stay until the job is done
       if (a.hold && a.hold > 0) {
         a.hold -= dt;
+        if (a.hold <= 0) a.look = undefined;
         const d = new THREE.Vector2().subVectors(a.to, a.at);
-        if (d.length() < 0.1) return 0;
+        if (d.length() < 0.1) {
+          if (a.look !== undefined) {
+            let t = a.look - a.m.root.rotation.y;
+            while (t > Math.PI) t -= Math.PI * 2;
+            while (t < -Math.PI) t += Math.PI * 2;
+            a.m.root.rotation.y += t * Math.min(1, dt * 5);
+          }
+          return 0;
+        }
         d.normalize();
         a.at.addScaledVector(d, speed * 1.6 * dt);
         a.m.root.position.set(a.at.x, 0, a.at.y);
@@ -2268,7 +2324,7 @@ export class FarmWorld {
     };
     for (const c of this.cows) {
       const moving = wander(c, { x0: -20.4, x1: -13, z0: -19.4, z1: -12.6 }, 0.6);
-      c.m.head.rotation.x = moving ? 0 : 0.3 + Math.sin(time * 1.5 + c.at.x) * 0.15;
+      c.m.head.rotation.x = moving ? 0 : c.look !== undefined ? 0.75 + Math.sin(time * 3 + c.at.x) * 0.12 : 0.3 + Math.sin(time * 1.5 + c.at.x) * 0.15;
       c.m.legs.forEach((l, i) => (l.rotation.x = moving ? Math.sin(time * 6 + i * Math.PI) * 0.4 : 0));
     }
     for (const h of this.hens) {
@@ -2456,6 +2512,17 @@ export class FarmWorld {
         this.burst('dig', c.x, c.z, 4);
       }
     }
+  }
+
+  /** The heap in the feeder: rises while feed is poured, then the cows eat it down over a few minutes. */
+  private animateFeed(dt: number) {
+    if (this.pouring > 0) {
+      this.pouring -= dt;
+      this.feedLevel = Math.min(1, this.feedLevel + dt / 2.4);
+    } else this.feedLevel = Math.max(0.2, this.feedLevel - dt / 240);
+    const h = 0.04 + this.feedLevel * 0.42;
+    this.feed.scale.set(1.42 - (1 - this.feedLevel) * 0.1, h, 0.58);
+    this.feed.position.y = 0.4 + h / 2;
   }
 
   private animateParticles(dt: number) {
