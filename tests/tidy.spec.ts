@@ -115,7 +115,7 @@ test('in the farm world: walk up to a bush or rock, press the button, the timer 
   const bush = items.find(i => i.kind === 'bush')!;
   await page.evaluate(([x, z]) => (window as unknown as Win).__limaWorld!.spawn(x + 0.8, z + 0.4), [bush.x, bush.z]);
   await page.getByRole('button', { name: /Clear the bush/ }).click();
-  await page.evaluate(() => (window as unknown as Win).__limaWorld!.spawn(0, -13.4));
+  await page.evaluate(() => (window as unknown as Win).__limaWorld!.spawn(0, -12.5));
   await expect(page.locator('.hud-hint')).toContainText('Stay by the bush');
   expect((await state(page)).tidy.cleared).toEqual([]);
 

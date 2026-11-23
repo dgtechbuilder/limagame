@@ -225,6 +225,11 @@ export function cowHide() {
 export function zoneTexture(label: string, glyph: (g: CanvasRenderingContext2D) => void) {
   return textTex(256, 256, g => {
     g.clearRect(0, 0, 256, 256);
+    // a soft dark pad inside the corners: the square reads as a spot to stand on, on the pale path as on the grass
+    g.fillStyle = 'rgba(40,28,14,0.26)';
+    g.beginPath();
+    g.roundRect(26, 26, 204, 204, 22);
+    g.fill();
     g.strokeStyle = '#ffffff';
     g.lineWidth = 12;
     g.lineCap = 'round';
