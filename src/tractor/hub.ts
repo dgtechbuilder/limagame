@@ -112,6 +112,17 @@ export const lessonOf = (id: string) => LESSONS.find(l => l.id === id);
 export const SAFETY_STEPS = ['Walk round: nobody near the tractor', 'Check the oil and the water', 'Check the tyres and the hitch pins', 'Sit down and put the belt on', 'Gear in neutral, PTO off', 'Start the engine'];
 /** A picture for each safety step, in the same order. */
 export const SAFETY_ICONS = ['👀', '🛢️', '🛞', '💺', '🕹️', '🔑'];
+/** Where each safety step happens on the big tractor drawing (the order game's stage units, 400 × 184): the track
+    starts on foot in front of the tractor, goes round it, and ends in the seat with the key. */
+export const SAFETY_TRACK = [
+  { x: 342, y: 168, hint: 'On foot, all the way round' },
+  { x: 246, y: 70, hint: 'Under the bonnet' },
+  { x: 70, y: 150, hint: 'The wheels and the hitch pins' },
+  { x: 126, y: 54, hint: 'The seat' },
+  { x: 151, y: 72, hint: 'The levers' },
+  { x: 178, y: 58, hint: 'The key on the dash' },
+];
+export const SAFETY_START = { x: 376, y: 172 };
 
 /** Service: the points to grease and check, on the tractor drawing (stage coordinates of the mini-game). */
 export const SERVICE_SPOTS = [

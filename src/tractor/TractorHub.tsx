@@ -6,7 +6,7 @@ import { money } from '../money';
 import type { Action, GameState } from '../state';
 import { powerOf } from '../power/model';
 import { repairCut } from '../systems/track';
-import { HUB, LESSONS, SAFETY_ICONS, SAFETY_STEPS, SERVICE_SPOTS, cannotDrive, faultsFor, hubOf, levelOf, speedOf, type HubSection } from './hub';
+import { HUB, LESSONS, SAFETY_ICONS, SAFETY_START, SAFETY_STEPS, SAFETY_TRACK, SERVICE_SPOTS, cannotDrive, faultsFor, hubOf, levelOf, speedOf, type HubSection } from './hub';
 import { TractorYard, type Station, type StationInfo } from './Yard';
 import { TrainField } from './TrainField';
 import { DRILLS } from './training';
@@ -40,7 +40,7 @@ export function gameOf(section: HubSection, s: GameState, lesson: string): GameS
     case 'learn':
       return { type: 'quiz', questions: LESSONS.find(l => l.id === lesson)!.questions };
     case 'safety':
-      return { type: 'order', steps: SAFETY_STEPS, icons: SAFETY_ICONS };
+      return { type: 'order', steps: SAFETY_STEPS, icons: SAFETY_ICONS, scene: 'tractor', track: SAFETY_TRACK, start: SAFETY_START };
     case 'service':
       return { type: 'tap', scene: 'tractor', verb: 'Checked', spots: SERVICE_SPOTS, seconds: 20, ordered: true, mark: '✓' };
     case 'repair':
@@ -229,7 +229,7 @@ export function TractorHub({
         <MiniGame
           title={section === 'learn' ? LESSONS.find(l => l.id === lesson)!.title : sec.label}
           kicker="Tractor"
-          task={section === 'learn' ? 'Answer each question: the why comes after.' : section === 'safety' ? 'Tap the steps of the walk-round in the right order.' : section === 'service' ? 'Tap each service point in order before the time runs out.' : section === 'repair' ? 'Fix the three faults (⚠️) before the time runs out. Leave the parts that are fine (👍).' : 'Hold to pour the diesel and let go at the line.'}
+          task={section === 'learn' ? 'Answer each question: the why comes after.' : section === 'safety' ? 'Put the steps of the walk-round in the right order: tap one, or drag it onto the glowing checkpoint. Zoom in on the tractor to see where each step happens.' : section === 'service' ? 'Tap each service point in order before the time runs out.' : section === 'repair' ? 'Fix the three faults (⚠️) before the time runs out. Leave the parts that are fine (👍).' : 'Hold to pour the diesel and let go at the line.'}
           spec={game}
           onClose={() => setPlaying(false)}
           onDone={score => {

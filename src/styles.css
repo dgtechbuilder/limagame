@@ -3297,13 +3297,73 @@ a.ach-claim.pj-mail { display: inline-flex; align-items: center; text-decoration
 .mg-why.is-wrong { background: #fcefe8; }
 .mg-time.is-bad { background: #fcefe8; color: var(--bad); }
 
-/* order: a road with a checkpoint for each step; the tractor rolls on */
-.mg-road-wrap { position: relative; margin: -2px 0 4px; }
-.mg-road { display: block; width: 100%; height: 46px; overflow: visible; }
-.mg-road-tractor { transition: transform 0.45s cubic-bezier(0.3, 1.3, 0.5, 1); }
-.mg-road-tractor.is-stall text { animation: mgShake 0.3s; }
-.mg-pop-at { position: absolute; top: -6px; width: 0; height: 0; transition: left 0.45s; }
-.mg-pop-at .fun-float { top: 0; }
+/* order (minigames/OrderTrack.tsx): the steps in a list on the side, the track big beside them; it zooms */
+.mg-card.is-wide { width: 800px; max-height: calc(100% - 14px); padding: 8px 16px 12px; }
+.mg-order { position: relative; display: grid; grid-template-columns: 232px 1fr; gap: 12px; }
+.mg-order-side { display: flex; flex-direction: column; min-height: 0; }
+.mg-order-head { margin: 0 0 6px; font-size: var(--text-caption); font-weight: 800; }
+.mg-order-head small { font-weight: 600; color: var(--ink-3); margin-left: 4px; }
+.mg-order-list { display: flex; flex-direction: column; gap: 4px; max-height: 244px; overflow-y: auto; padding: 2px; }
+.mg-order .mg-card-btn { min-height: 34px; padding: 3px 8px 3px 5px; font-size: 11px; }
+.mg-order .mg-card-icon { width: 26px; height: 26px; font-size: 15px; }
+.mg-order .mg-card-btn { touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+.mg-order .mg-card-btn:disabled { cursor: default; }
+.mg-order .mg-card-btn.is-lifted { opacity: 0.35; border-style: dashed; }
+.mg-grip { flex-shrink: 0; width: 8px; height: 16px; background: radial-gradient(circle, var(--brown-20) 1.3px, transparent 1.6px) 0 0 / 4px 4px; }
+.mg-order-main { display: flex; flex-direction: column; min-width: 0; }
+.mg-order-main .mg-progress { margin-bottom: 4px; }
+.mg-stage-wrap { position: relative; width: 100%; aspect-ratio: 400 / 184; border-radius: 12px; overflow: hidden; background: #d7eef7; box-shadow: inset 0 0 0 2px var(--brown-20); }
+.mg-stage { display: block; width: 100%; height: 100%; touch-action: none; user-select: none; -webkit-user-select: none; cursor: zoom-in; }
+.mg-stage-wrap.is-zoomed .mg-stage { cursor: grab; }
+.mg-stage-wrap.is-panning .mg-stage { cursor: grabbing; }
+.mg-track-g { transition: transform 0.4s cubic-bezier(0.3, 0.9, 0.4, 1); }
+.mg-stage-wrap.is-panning .mg-track-g { transition: none; }
+.mg-track-bed { fill: none; stroke: #c9a37a; stroke-width: 11; stroke-linecap: round; opacity: 0.9; }
+.mg-stage-wrap.is-walk .mg-track-bed { stroke-width: 6; opacity: 0.6; }
+.mg-track-line { fill: none; stroke: #fdedd4; stroke-width: 1.6; stroke-dasharray: 4 4; stroke-linecap: round; }
+.mg-track-line.is-next { stroke: #ffd25c; stroke-width: 2.2; animation: mgMarch 0.8s linear infinite; }
+.mg-track-line.is-done { stroke: #2f9b14; stroke-width: 3.2; stroke-dasharray: none; }
+@keyframes mgMarch { to { stroke-dashoffset: -8; } }
+.mg-track-start circle { fill: #fff8ea; stroke: #86604c; stroke-width: 1.5; }
+.mg-track-start text { font-size: 6px; font-weight: 800; fill: #5b3b22; letter-spacing: 0.5px; paint-order: stroke; stroke: #fff8ea; stroke-width: 2px; }
+.mg-cp { cursor: pointer; outline: none; }
+.mg-cp-hit { fill: transparent; }
+.mg-cp-dot { fill: #fff8ea; stroke: #c9a37a; stroke-width: 1.6; transition: r 0.15s; }
+.mg-cp-num { font-size: 7.5px; font-weight: 800; fill: #86604c; pointer-events: none; }
+.mg-cp.is-locked { opacity: 0.62; }
+.mg-cp.is-locked .mg-cp-dot { fill: #e9ddcb; stroke: #a99178; stroke-dasharray: 2 1.5; }
+.mg-cp.is-next .mg-cp-dot { fill: #ffd25c; stroke: #a8612f; stroke-width: 2; }
+.mg-cp.is-next .mg-cp-num { fill: #5b3b22; }
+.mg-cp-glow { fill: rgba(255, 210, 92, 0.45); stroke: #ffd25c; stroke-width: 1.5; animation: mgGlow 1.1s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes mgGlow { 50% { transform: scale(1.35); opacity: 0.5; } }
+.mg-cp.is-done .mg-cp-dot { fill: #2f9b14; stroke: #1d6b0c; }
+.mg-cp.is-done .mg-cp-num { fill: #fff; }
+.mg-cp.is-over .mg-cp-dot { r: 10; stroke: #2f9b14; stroke-width: 3; }
+.mg-cp.is-nope .mg-cp-dot { stroke: var(--bad); stroke-width: 2.5; }
+.mg-cp:focus-visible .mg-cp-dot { stroke: var(--blue, #22ade2); stroke-width: 3; }
+.mg-cp-clue { pointer-events: none; }
+.mg-cp-bubble { fill: #fff8ea; stroke: #c9a37a; stroke-width: 1.5; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.25)); }
+.mg-cp.is-done .mg-cp-bubble { fill: #eef8e6; stroke: #2f9b14; }
+.mg-cp.is-focus .mg-cp-bubble { stroke: var(--gold); stroke-width: 2.5; }
+.mg-cp-tag { fill: #5b3b22; }
+.mg-cp-tag.is-clue { fill: rgba(43, 27, 14, 0.86); }
+.mg-cp-tagtext { font-size: 7.5px; font-weight: 800; fill: #fff; }
+.mg-mover { transition: transform 0.55s cubic-bezier(0.3, 1.25, 0.5, 1); pointer-events: none; }
+.mg-mover.is-stall > g { animation: mgShake 0.3s; }
+.mg-smoke circle { fill: #9a9a9a; opacity: 0; }
+.mg-bigtractor.is-running .mg-smoke circle { animation: mgPuff 1.2s ease-out infinite; }
+.mg-bigtractor.is-running .mg-smoke circle:nth-child(2) { animation-delay: 0.25s; }
+.mg-bigtractor.is-running .mg-smoke circle:nth-child(3) { animation-delay: 0.5s; }
+@keyframes mgPuff { 0% { opacity: 0.8; } 100% { opacity: 0; transform: translateY(-8px); } }
+.mg-zoom { position: absolute; right: 6px; top: 6px; display: flex; flex-direction: column; gap: 4px; }
+.mg-zoom button { width: 28px; height: 28px; border-radius: 8px; background: rgba(255, 248, 234, 0.94); border: 2px solid var(--brown-20); font-size: 16px; font-weight: 800; color: var(--ink); display: grid; place-items: center; line-height: 1; }
+.mg-zoom button:disabled { opacity: 0.45; cursor: default; }
+.mg-stage-tip { position: absolute; left: 6px; bottom: 6px; max-width: calc(100% - 12px); margin: 0; padding: 3px 9px; border-radius: 100px; background: rgba(43, 27, 14, 0.72); color: #fff; font-size: 10.5px; font-weight: 600; pointer-events: none; }
+.mg-pop-at { position: absolute; width: 0; height: 0; transition: left 0.45s, top 0.45s; pointer-events: none; }
+.mg-pop-at .fun-float { top: -26px; }
+.mg-ghost { position: absolute; z-index: 10; width: 220px; translate: -50% -60%; rotate: -3deg; display: flex; align-items: center; gap: 8px; padding: 5px 10px 5px 6px; border-radius: 10px; background: #fff8ea; border: 2px solid var(--gold); box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3); font-size: 11.5px; font-weight: 600; color: var(--ink); pointer-events: none; }
+.mg-ghost.is-over { border-color: var(--green); background: #eef8e6; }
+.mg-ghost.is-nope { border-color: var(--bad); }
 .mg-card-btn { display: flex; align-items: center; gap: 8px; padding: 5px 10px 5px 6px; transition: transform 0.12s, border-color 0.12s; }
 .mg-card-btn:hover:not(:disabled) { border-color: var(--gold); transform: translateY(-1px); }
 .mg-card-btn.is-done { animation: mgRight 0.35s ease; }
