@@ -236,7 +236,8 @@ src/
   credits/ledger.ts        every kind of credit (CO₂, water) earned and paid
   livestock/               the cows and the hens: config.ts (every number: care, coop, prevention, diseases), model.ts
                            (care, health, problems, a night), track.ts (the nights, day 2), Animals.tsx (the page),
-                           HudButtons.tsx (ANIMALS and SECURITY), rand.ts (seeded nights)
+                           HudButtons.tsx (ANIMALS and SECURITY), rand.ts (seeded nights); photos.ts, photos/ and
+                           photos-lite/ a real photo of each coop (credits.json + CREDITS.md)
   security/                theft: config.ts (what is taken, every measure and what it cuts), model.ts (tonight's risks,
                            a night's thefts, the harvest and store less theft), Security.tsx (the page)
   evidence/                the decision log, programme tags, "tried it on your own farm?": model.ts, Ask.tsx
@@ -1398,6 +1399,10 @@ first, with *Do it* (overdue in red). Each check opens the examination screen wi
   layer house: [Options that open as you grow](#options-that-open-as-you-grow)), such as a **simple coop** (room for 20, +15% eggs) or a **raised coop with wire mesh** (room for 60,
   +25% eggs, fewer coop diseases); with its door shut it keeps out most thieves and predators. With no coop, hens roost
   in the trees and lose 30% of their eggs in the bush. It stands in the 3D farm once built (a pile of timber before).
+  Each card shows a **real photo** of that kind of coop on an African smallholding (Uganda, Senegal and elsewhere;
+  Wikimedia Commons, credited on the photo) with its **size**: metres, how tall, and its footprint drawn to
+  one scale against the largest (`size` in `COOPS`; photos in `src/livestock/photos/coop/`, see
+  [`src/livestock/photos/CREDITS.md`](src/livestock/photos/CREDITS.md)).
 - **Herd:** cows and hens are bought at a price (a cow KSh 80,000, a hen KSh 700) and sold for 80% of it; the water
   panel's herd uses the same prices. The 3D farm shows as many as the farm has: a stolen hen is gone from the yard.
 
