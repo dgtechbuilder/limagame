@@ -61,6 +61,7 @@ import { EvidenceAsk } from '../evidence/Ask';
 import type { RiskItem } from '../risk/model';
 import { achClock } from '../achievements/track';
 import { CsaChip } from '../csa/Chip';
+import { bandOf, sustainability } from '../tracking/model';
 import { fieldClock } from '../csa/model';
 import { TIDY, TIDY_TOTAL, tidyCount, tidyLeft, tidyStreak, type TidyItem } from '../tidy/model';
 import { FARM_PERIOD_DAYS, careOpen, coopOpen, lifeOf, shedOpen } from '../livestock/model';
@@ -1020,7 +1021,12 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s.power, s.life, s.greenhouse, s.fs.phase, farmDay]);
   const shedKind: PlotKind | null = anchors.place === 'shed-seeds' ? 'seed' : anchors.place === 'shed-fertilizer' ? 'fert' : anchors.place === 'shed-sprayer' ? 'sprayer' : null;
-  const powerHasLights = !!pw.parts.lights;
+  // the sustainability score on the home screen (src/tracking): worked out again only when what it reads changes
+  const sus = useMemo(
+    () => sustainability(s, date).score,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [s.climate, s.tank, s.power, s.csa, s.wallet, s.finance, s.life, s.security, s.trialHistory, s.inventory, s.coins, date],
+  );
   const placeBtn = anchors.place ? placeButton(anchors.place, s.field.carry) : null;
   // at the greenhouse's door: what its beds need now
   const placeSub =
@@ -1125,11 +1131,18 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
           </button>
         </span>
         )}
-        {/* night: a small chip under the day, out of the way of the farm */}
-        {nightMode && (
-          <span className="hud-moon" aria-label={`Night${lit ? ': the farm lights are on' : ''}`}>
-            🌙 Night{lit ? ' · lights on' : powerHasLights ? ' · lights off' : ''}
-          </span>
+        {/* the sustainability score, out of 100: tap it for Tracking (src/tracking) */}
+        {hs('sustain') && (
+          <button
+            type="button"
+            className={`hud-sustain is-${bandOf(sus).tone}`}
+            onClick={() => dispatch({ type: 'open', modal: { kind: 'tracking', tab: 'sustainability' } })}
+            aria-label={`Sustainability score: ${sus} out of 100, ${bandOf(sus).word}. Open Tracking`}
+          >
+            <i aria-hidden="true">🌱</i>
+            <b>{sus}</b>
+            <small>/100</small>
+          </button>
         )}
       </div>
       {hs('climate') && (

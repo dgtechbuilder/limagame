@@ -5,7 +5,7 @@ import type { Settings } from '../state';
    Settings, Menu, the money, the tractor and the next task always stay. Everything hidden here is still in the Main
    menu, so nothing is lost. The left and right button columns close up over a hidden button (world/World.tsx). */
 
-export type HudKey = 'mission' | 'shop' | 'water' | 'climate' | 'partners' | 'day' | 'points' | 'chores' | 'tidy' | 'csa' | 'basics' | 'build' | 'status';
+export type HudKey = 'mission' | 'shop' | 'water' | 'climate' | 'partners' | 'day' | 'points' | 'sustain' | 'chores' | 'tidy' | 'csa' | 'basics' | 'build' | 'status';
 
 export type HudGroup = { title: string; items: { key: HudKey; label: string; body: string }[] };
 
@@ -25,6 +25,7 @@ export const HUD_GROUPS: HudGroup[] = [
     items: [
       { key: 'day', label: 'Day counter', body: 'The day of the farming period, beside the money.' },
       { key: 'points', label: 'Points', body: 'Your points and the + for Rewards.' },
+      { key: 'sustain', label: 'Sustainability score', body: 'How sustainable the farm is, out of 100. Tap it for Tracking.' },
     ],
   },
   {

@@ -106,12 +106,13 @@ test('the farm HUD: no two widgets touch, with the special event card, the day, 
   await page.waitForTimeout(600); // the chips' pop-in
   expect(await hudCollisions(page)).toEqual([]);
 
-  // at night the moon chip joins the money
+  // at night the farm darkens but the HUD keeps the sustainability score beside the money (no night chip)
   await page.evaluate(() => {
     const L = (window as unknown as Win).__lima;
     L.jump({ ...L.state, settings: { ...L.state.settings, night: 'night' } });
   });
-  await expect(page.locator('.hud-moon')).toBeVisible();
+  await expect(page.locator('.hud-sustain')).toBeVisible();
+  await expect(page.locator('.hud-moon')).toHaveCount(0);
   await page.waitForTimeout(600);
   expect(await hudCollisions(page)).toEqual([]);
 });
