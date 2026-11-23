@@ -10,7 +10,9 @@ import { capacityOf, tankOf, useToday } from '../water/model';
 import type { Action, AnimalsTab, GameState } from '../state';
 import { LockTag, OpenLine } from '../unlock/Lock';
 import { isOpen } from '../unlock/model';
-import { CARE, COOPS, ISSUES, LIFE, NO_COOP, PREVENT, SHEDS, coopOption, issueOf, shedOption, type CoopId, type Group, type IssueId, type ShedId } from './config';
+import { CARE, COOPS, ISSUES, LIFE, NO_COOP, PREVENT, SHEDS, coopOption, issueOf, shedOption, type CoopId, type CoopOption, type Group, type IssueId, type ShedId } from './config';
+import { coopPhoto } from './photos';
+import { PhotoPicture } from '../components/PhotoPicture';
 import {
   animalWater,
   careCost,
@@ -80,7 +82,12 @@ export function AnimalsPage({ s, dispatch, tab: startTab }: Props) {
       <div className="scrim" onClick={close} />
       <div className="fs-panel set-panel" style={{ left: 24, top: 46, width: 826, height: 334 }}>
         <nav className="set-tabs cl-tabs" aria-label="Animals sections">
-          <p className="set-heading">Animals</p>
+          <p className="set-heading lv-heading">
+            Animals
+            <span className="lv-day" title={open ? undefined : `Care starts on day ${LIFE.startDay}`}>
+              Day {l.day}
+            </span>
+          </p>
           {TABS.map(t => (
             <button key={t.id} type="button" className={`set-tab${tab === t.id ? ' is-on' : ''}`} aria-current={tab === t.id ? 'page' : undefined} onClick={() => setTab(t.id)}>
               <i aria-hidden="true">{t.icon}</i>
@@ -88,16 +95,12 @@ export function AnimalsPage({ s, dispatch, tab: startTab }: Props) {
               {t.id === 'health' && issues > 0 && <b className="lv-count">{issues}</b>}
             </button>
           ))}
-          <p className="set-foot">
+          <div className="set-foot lv-foot">
             <button type="button" className="set-link ck-link" onClick={() => dispatch({ type: 'open', modal: { kind: 'checks' } })}>
-              🔍 All farm checks
+              <span aria-hidden="true">🔍</span> All farm checks
             </button>
-            <br />
-            Farm day {l.day}
-            {open ? '' : ` · care starts on day ${LIFE.startDay}`}
-            <br />
-            Numbers are estimates for learning.
-          </p>
+            <span>Numbers are estimates for learning.</span>
+          </div>
         </nav>
         <section className="set-content cl-content" aria-label={TABS.find(t => t.id === tab)!.label}>
           {!open && tab !== 'coop' && tab !== 'shed' && <Locked />}
@@ -537,6 +540,7 @@ function Coop({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
           const gated = !isOpen(s, i);
           return (
             <div key={c.id} className={`lv-option${built ? ' is-on' : ''}${gated && !built ? ' is-gated' : ''}`} data-option={c.id}>
+              <CoopPicture id={c.id} name={c.name} size={c.size} />
               <p className="set-title">{c.name}</p>
               <p className="set-body">{c.does}</p>
               <ul className="lv-facts">
@@ -577,6 +581,26 @@ function Coop({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
           }}
         />
       )}
+    </div>
+  );
+}
+
+/** A coop's photo, with its size on it: the metres, how tall, and its footprint drawn to one scale for every coop
+    (the dashed box is the largest, the 6 × 4 m layer house), so the five compare at a glance. */
+function CoopPicture({ id, name, size }: { id: CoopId; name: string; size: CoopOption['size'] }) {
+  const photo = coopPhoto(id);
+  const m = (n: number) => n.toLocaleString('en-US');
+  const scale = 3.5;
+  return (
+    <div className={`lv-photo${photo ? '' : ' is-empty'}`}>
+      {photo && <PhotoPicture photo={photo} alt={`${name}: a real one on a small farm`} credit />}
+      <span className="lv-size" aria-label={`About ${m(size.w)} by ${m(size.d)} metres, ${size.tall}`}>
+        <svg width={6 * scale + 2} height={4 * scale + 2} viewBox={`0 0 ${6 * scale + 2} ${4 * scale + 2}`} aria-hidden="true">
+          <rect className="lv-scale" x={1} y={1} width={6 * scale} height={4 * scale} rx={1.5} />
+          <rect x={1} y={1 + (4 - size.d) * scale} width={size.w * scale} height={size.d * scale} rx={1.5} fill="currentColor" />
+        </svg>
+        {m(size.w)} × {m(size.d)} m · {size.tall}
+      </span>
     </div>
   );
 }

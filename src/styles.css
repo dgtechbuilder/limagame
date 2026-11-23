@@ -2928,6 +2928,17 @@ a.ach-claim.pj-mail { display: inline-flex; align-items: center; text-decoration
 .lv-option { padding: 8px 10px; border-radius: 12px; background: #fff8ea; border: 1px solid var(--brown-10); display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
 .lv-option.is-on { border: 1.5px solid #2f9b14; background: #f1f8e8; }
 .lv-facts { margin: 2px 0 4px; padding-left: 14px; font-size: 9px; line-height: 1.5; }
+/* a coop's photo on its card, with its size (Animals → Coop) */
+.lv-photo { position: relative; align-self: stretch; aspect-ratio: 2 / 1; margin: -2px -4px 4px; border-radius: 8px; overflow: hidden; background: #e8dcc4; }
+.lv-photo.is-empty { aspect-ratio: auto; background: none; overflow: visible; }
+.lv-photo .rr-credit { font-size: 7.5px; padding: 1px 5px; background: rgba(0, 0, 0, 0.5); }
+.lv-size {
+  position: absolute; left: 5px; top: 5px; display: inline-flex; align-items: center; gap: 5px; padding: 3px 7px 3px 4px;
+  border-radius: 100px; background: rgba(40, 24, 12, 0.72); color: #fff; font-size: 9px; font-weight: 700; white-space: nowrap;
+}
+.lv-photo.is-empty .lv-size { position: static; }
+.lv-size svg { display: block; color: #ffd27a; }
+.lv-size .lv-scale { fill: none; stroke: #fff; stroke-opacity: 0.55; stroke-dasharray: 2 1.5; }
 .lv-room { margin-top: 8px !important; max-width: none !important; }
 .lv-table { width: 100%; border-collapse: collapse; font-size: 9.5px; }
 .lv-table th, .lv-table td { text-align: left; padding: 4px 6px; border-top: 1px solid var(--brown-10); vertical-align: top; }
@@ -4170,6 +4181,19 @@ button.pp-card:active { transform: scale(0.98); }
 .ck-panel .cl-tip { margin: 0; }
 .ty-chip.ck-chip { cursor: pointer; background: linear-gradient(#ffe39a, #ffc94a); border-color: #c98b00; color: var(--ink-on-gold); }
 .ck-link { font-weight: 700; }
+/* The Animals sidebar: the farm day beside the heading; the foot pinned under the tabs (on a short screen the tabs scroll
+   behind it), with the checks button on one line across the column and the note under it. */
+.lv-heading { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-right: 2px; }
+.lv-day { padding: 2px 8px; border-radius: 100px; background: #fff8ea; border: 1px solid var(--brown-20); font-size: 10px; font-weight: 700; color: var(--ink-2); white-space: nowrap; }
+.lv-foot {
+  position: sticky; bottom: -12px; flex-shrink: 0; margin: auto -12px -12px; padding: 7px 12px 9px;
+  display: flex; flex-direction: column; gap: 4px; background: #f1dcbd; border-top: 1px solid var(--brown-20);
+  font-size: 9.5px; line-height: 1.3;
+}
+.lv-foot .ck-link {
+  display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; height: 28px; flex-shrink: 0;
+  padding: 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .lv-check.ck-inline { width: 100%; margin-bottom: 8px; }
 
 /* ---------------- the shop floor: the market stall and the restaurant, played (src/shop) ---------------- */
