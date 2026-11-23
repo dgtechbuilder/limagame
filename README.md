@@ -529,7 +529,7 @@ WASD. The **task card** at the top says what to do next; tap it and the farmer w
 - The HUD: the farmer and their level (top left) with the harvest card and its at-risk tab beside them, the task card
   (top centre, alone: nothing else sits under it), coins and points (top right; **+** opens the shop and the rewards,
   and a small *Night* chip shows under the day at night), the two rails of round buttons, one stack bottom left
-  (today's Farm basics lesson, today's build, then the cycle's day and what the farmer carries) and the small daily
+  (today's Farm basics lesson, today's build, then what the farmer carries or rides) and the small daily
   chips bottom right (*Animal chores*, *Daily tidy-up*: one line each). Mama Achieng's bubble and a sign's *Check*
   button stay under the top cards, whatever the camera does.
 - **Settings → Farm view** switches to the classic painted farm (Farm Moja seasons and the everyday field rounds),

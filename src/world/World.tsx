@@ -1234,7 +1234,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       {s.fs.phase === 'done' && <CsaChip s={s} dispatch={dispatch} now={now} />}
       </div>
 
-      {/* bottom left, one stack that never overlaps: today's lesson, today's build, then the day and what the farmer
+      {/* bottom left, one stack that never overlaps: today's lesson, today's build, then what the farmer
           carries (moved right of the special event's card while it shows) */}
       <div className="hud-dock">
       {/* the first days: today's Farm basics lesson, until it is read */}
@@ -1249,11 +1249,6 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         </button>
       )}
       <div className="hud-status">
-        {t && t.phase === 'growing' && (
-          <span>
-            Cycle {t.cycle} · {day > CHECK_DAYS ? 'harvest' : `day ${day} of ${CHECK_DAYS}`}
-          </span>
-        )}
         {anchors.riding && (
           <span className="is-carry">
             On the tractor{rig ? ` · ${tractorName(rig.tractor)} · ${toolName(rig.tool)}` : ''}
