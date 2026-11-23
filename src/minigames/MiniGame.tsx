@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { CoachSays, Coach, Confetti, FloatUp, IconArt, QuizArt, iconFor, shuffled, type ArtId, type Mood } from './fun';
 import { OrderTrack, type TrackPt } from './OrderTrack';
+import { Workshop } from './workshop/Workshop';
+import type { HandsQuestion } from './workshop/kit';
 
 /* The mini-games: short hands-on moments behind every new job (the power system's parts, the tractor's sections,
    building the coop and the cow shed, the greenhouse's beds, the storehouse's sauces and jams). One frame for all of them: what to do,
@@ -24,6 +26,8 @@ export type GameSpec =
   | { type: 'order'; steps: string[]; icons?: string[]; scene?: 'tractor'; track?: TrackPt[]; start?: { x: number; y: number } }
   /** answer the questions: each with a drawing (art) or a picture from its words */
   | { type: 'quiz'; questions: QuizQuestion[] }
+  /** hands-on questions: each a small job on a drawing, with parts to drag in and out, levers and a pedal to drive */
+  | { type: 'workshop'; questions: HandsQuestion[] }
   /** turn something to face the right way: a slider, and a meter of how well it faces */
   | { type: 'aim'; target: number; label: string }
   /** switch on loads without going over what the system makes */
@@ -61,7 +65,7 @@ export function MiniGame({ title, kicker, task, spec, onDone, onClose, doneLabel
   return (
     <div className="mg" role="dialog" aria-modal="true" aria-label={`${title}: mini-game`}>
       <div className="scrim" />
-      <div className={`mg-card${spec.type === 'order' ? ' is-wide' : ''}`}>
+      <div className={`mg-card${spec.type === 'order' ? ' is-wide' : spec.type === 'workshop' ? ' is-wide is-workshop' : ''}`}>
         <header className="mg-head">
           {kicker && <small>{kicker}</small>}
           <b>{title}</b>
@@ -134,6 +138,8 @@ function Game({ spec, onEnd }: { spec: GameSpec; onEnd: (score: number, data?: s
       return <Order spec={spec} onEnd={onEnd} />;
     case 'quiz':
       return <Quiz spec={spec} onEnd={onEnd} />;
+    case 'workshop':
+      return <Workshop questions={spec.questions} onEnd={onEnd} />;
     case 'aim':
       return <Aim spec={spec} onEnd={onEnd} />;
     case 'balance':
