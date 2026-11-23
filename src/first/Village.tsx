@@ -353,7 +353,7 @@ function MapLabel({ x, y, text, strong }: { x: number; y: number; text: string; 
   return (
     <g transform={`translate(${x},${y})`} pointerEvents="none">
       <rect x={-w / 2} y={-11} width={w} height={18} rx={9} fill={strong ? '#ffae00' : 'rgba(40,24,12,0.75)'} stroke={strong ? '#7a4a10' : 'none'} />
-      <text y={2} textAnchor="middle" fontSize={10} fontWeight={700} fill="#fff" fontFamily="Poppins, sans-serif">
+      <text y={2} textAnchor="middle" fontSize={8} fontWeight={700} fill="#fff" fontFamily="Poppins, sans-serif">
         {text}
       </text>
     </g>

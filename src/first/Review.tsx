@@ -276,7 +276,7 @@ export function Review({
       <FarmMap dim={0.42} world />
       <div className="abs" style={{ left: 336, top: -4, width: 203, height: 58 }}>
         <img src={img.plank} alt="" width={203} height={58} />
-        <span className="label abs" style={{ left: 0, right: 0, top: 21, textAlign: 'center', fontSize: 13 }}>
+        <span className="label abs" style={{ left: 0, right: 0, top: 21, textAlign: 'center', fontSize: 10 }}>
           {t(shamba.title)}
         </span>
       </div>

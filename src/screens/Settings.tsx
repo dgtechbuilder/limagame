@@ -150,14 +150,14 @@ function FarmerTab({ s, dispatch }: Props) {
           Name
         </label>
         <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-          <input id="set-name" className="name-input" style={{ marginTop: 0, height: 34, fontSize: 14 }} value={name} maxLength={14} autoComplete="off" onChange={e => setName(clean(e.target.value))} />
+          <input id="set-name" className="name-input" style={{ marginTop: 0, height: 34, fontSize: 11 }} value={name} maxLength={14} autoComplete="off" onChange={e => setName(clean(e.target.value))} />
           <GoldButton font={10} height={34} style={{ width: 96, flexShrink: 0, opacity: ready ? 1 : 0.5 }} onClick={save} ariaLabel="Save name">
             Save
           </GoldButton>
         </div>
         <div className="chips" role="group" aria-label="Name ideas" style={{ marginTop: 6 }}>
           {NAME_SUGGESTIONS.map(n => (
-            <button type="button" key={n} className={`name-chip${name === n ? ' is-on' : ''}`} style={{ minHeight: 26, padding: '3px 12px', fontSize: 11 }} onClick={() => setName(n)}>
+            <button type="button" key={n} className={`name-chip${name === n ? ' is-on' : ''}`} style={{ minHeight: 26, padding: '3px 12px', fontSize: 8.5 }} onClick={() => setName(n)}>
               {n}
             </button>
           ))}

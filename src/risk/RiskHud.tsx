@@ -209,7 +209,7 @@ export function RiskHud({
           kicker="While you were away"
           title={`${moneyCompact(away.to)} at risk`}
           tone="gold"
-          badge={<b style={{ color: '#fff', fontSize: 24 }}>!</b>}
+          badge={<b style={{ color: '#fff', fontSize: 19 }}>!</b>}
           lead={`Left alone, problems on your farms grew: ${moneyCompact(away.from)} at risk when you left, ${moneyCompact(away.to)} now${away.grew ? ` (${away.grew} grew)` : ''}. Deal with them before they grow again.`}
           actions={[
             { label: 'See what is at risk', onClick: () => (setAway(null), setOpen(true)) },

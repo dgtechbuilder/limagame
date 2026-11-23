@@ -43,13 +43,13 @@ export function TrendChart({ history }: { history: DayResult[] }) {
         {[0, 50, 100].map(v => (
           <g key={v}>
             <line x1={PAD.l} x2={W - PAD.r} y1={y(v)} y2={y(v)} stroke="#e7d6bd" strokeWidth={1} />
-            <text x={PAD.l - 6} y={y(v) + 3} textAnchor="end" fontSize={11} fill="#86604c">
+            <text x={PAD.l - 6} y={y(v) + 3} textAnchor="end" fontSize={8.5} fill="#86604c">
               {v}
             </text>
           </g>
         ))}
         {days.map((r, i) => (
-          <text key={r.day} x={x(i)} y={H - 8} textAnchor="middle" fontSize={11} fill="#86604c">
+          <text key={r.day} x={x(i)} y={H - 8} textAnchor="middle" fontSize={8.5} fill="#86604c">
             {i === 0 || i === days.length - 1 || i % 4 === 0 ? `D${r.day}` : ''}
           </text>
         ))}

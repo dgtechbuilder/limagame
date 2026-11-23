@@ -1,7 +1,7 @@
 import { useEffect, type CSSProperties, type ReactNode } from 'react';
 import { img } from '../assets';
 import { CheckBadge } from './Icons';
-import { Img } from './ui';
+import { Img, shrink } from './ui';
 import { NavBar } from './Nav';
 import { CloseX } from './Success';
 
@@ -52,7 +52,7 @@ export function ModalShell({
       <div className="scrim" onClick={onClose} />
       <div className="modal-frame" style={{ left: x, top: y, width: f.w, height: f.h }}>
         <img className="frame-img" src={f.src} alt="" draggable={false} />
-        <p className="modal-title" style={{ top: f.titleTop, fontSize: titleSize }}>{title}</p>
+        <p className="modal-title" style={{ top: f.titleTop, fontSize: shrink(titleSize) }}>{title}</p>
       </div>
       <div className="abs" style={{ inset: 0, pointerEvents: 'none', animation: 'pop 0.2s ease both' }}>
         <div style={{ pointerEvents: 'auto' }}>{children}</div>
@@ -157,7 +157,7 @@ export function TextSidebar({
               border: on ? '1px solid var(--select-ring)' : '1px solid transparent',
               background: on ? 'rgba(255,176,5,0.08)' : 'transparent',
               color: '#fff',
-              fontSize: 12,
+              fontSize: 9.5,
               fontWeight: 700,
               whiteSpace: 'nowrap',
             }}

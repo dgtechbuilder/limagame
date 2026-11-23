@@ -276,7 +276,7 @@ function Today({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
             <b>Buy diesel · {money(POWER.dieselPrice)} a litre</b>
             <small>For the generator on cloudy days, and the tractor (refuel it at the tractor)</small>
           </span>
-          <button type="button" className="gold-btn" style={{ height: 28, padding: '0 12px', fontSize: 11 }} disabled={p.fuel >= fuelTankL(s)} onClick={() => dispatch({ type: 'powerFuel', litres: 50 })}>
+          <button type="button" className="gold-btn" style={{ height: 28, padding: '0 12px', fontSize: 8.5 }} disabled={p.fuel >= fuelTankL(s)} onClick={() => dispatch({ type: 'powerFuel', litres: 50 })}>
             50 L · {money(50 * POWER.dieselPrice)}
           </button>
         </div>

@@ -105,7 +105,7 @@ export function SaleModal({ s, dispatch }: Props) {
                     <span className="field-box" style={{ height: 32 }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         <Img src={img.coin20} w={18} h={19} />
-                        <input id={`price-${f.key}`} inputMode="numeric" value={localNumber(p[f.key]).replace(/,/g, '')} aria-label={f.label} onChange={e => setPrice(f.key, e.target.value)} style={{ fontSize: 13 }} />
+                        <input id={`price-${f.key}`} inputMode="numeric" value={localNumber(p[f.key]).replace(/,/g, '')} aria-label={f.label} onChange={e => setPrice(f.key, e.target.value)} style={{ fontSize: 10 }} />
                       </span>
                       <EditIcon size={18} />
                     </span>

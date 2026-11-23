@@ -391,7 +391,7 @@ function Tap({ spec, onEnd }: Of<'tap'>) {
           return (
             <g key={p.i} transform={`translate(${p.x},${p.y})`}>
               <circle r={16} className={`mg-spot${done ? ' is-done' : ''}${spec.hidden ? ' is-hidden' : ''}`} />
-              <text y={5} textAnchor="middle" fontSize={14} pointerEvents="none">
+              <text y={5} textAnchor="middle" fontSize={11} pointerEvents="none">
                 {done ? (spec.mark ?? '✓') : p.real ? (spec.spotMark ?? (spec.hidden ? '?' : '')) : (spec.decoyMark ?? (spec.hidden ? '?' : ''))}
               </text>
               <rect x={-18} y={-18} width={36} height={36} fill="transparent" role="button" tabIndex={0} aria-label={p.label} onClick={() => hit(p)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), hit(p))} style={{ cursor: 'pointer' }} />
@@ -486,16 +486,16 @@ function Order({ spec, onEnd }: Of<'order'>) {
           {spec.steps.map((_, k) => (
             <g key={k} transform={`translate(${at(k + 1)},33)`}>
               <circle r={7} fill={k < done ? '#2f9b14' : '#fff8ea'} stroke={k < done ? '#1d6b0c' : '#c9a37a'} strokeWidth={2} />
-              <text y={3.5} fontSize={8} textAnchor="middle" fill={k < done ? '#fff' : '#86604c'} fontWeight={800}>
+              <text y={3.5} fontSize={7} textAnchor="middle" fill={k < done ? '#fff' : '#86604c'} fontWeight={800}>
                 {k + 1}
               </text>
             </g>
           ))}
-          <text x={at(total) + 12} y={24} fontSize={16}>
+          <text x={at(total) + 12} y={24} fontSize={12.5}>
             🏁
           </text>
           <g className={`mg-road-tractor${shake !== null ? ' is-stall' : ''}`} style={{ transform: `translate(${at(done)}px, 0)` }}>
-            <text y={26} fontSize={20} textAnchor="middle" transform="scale(-1,1)">
+            <text y={26} fontSize={16} textAnchor="middle" transform="scale(-1,1)">
               🚜
             </text>
           </g>

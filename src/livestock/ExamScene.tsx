@@ -499,7 +499,7 @@ function Trough({ mud, low }: { mud: boolean; low: boolean }) {
         <g>
           <path className="ex-drip" d="M416,233 c-2,3 -2,5 0,6 c2,-1 2,-3 0,-6 Z" fill="#8fd0ea" strokeWidth={0.8} />
           <path d="M440,232 l-2,6 M452,232 l1,5" fill="none" stroke="#5a3e24" strokeWidth={1} />
-          <text className="ex-hiss" x={400} y={190} fontSize={8} fontWeight={800} fill="#2f5a87" stroke="none" fontStyle="italic">
+          <text className="ex-hiss" x={400} y={190} fontSize={7} fontWeight={800} fill="#2f5a87" stroke="none" fontStyle="italic">
             sss…
           </text>
         </g>

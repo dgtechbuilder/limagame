@@ -139,7 +139,7 @@ function HarvestTab({ s, dispatch, day }: { s: GameState; dispatch: Dispatch<Act
               </small>
             </span>
             {st === 'ready' ? (
-              <button type="button" className="gold-btn" style={{ height: 30, padding: '0 14px', fontSize: 11 }} onClick={() => setPick(i)} aria-label={`Pick ${c!.name.toLowerCase()} from ${BED_NAMES[i].toLowerCase()}`}>
+              <button type="button" className="gold-btn" style={{ height: 30, padding: '0 14px', fontSize: 8.5 }} onClick={() => setPick(i)} aria-label={`Pick ${c!.name.toLowerCase()} from ${BED_NAMES[i].toLowerCase()}`}>
                 Pick
               </button>
             ) : (

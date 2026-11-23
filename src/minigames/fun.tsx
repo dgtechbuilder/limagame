@@ -234,7 +234,7 @@ export function QuizArt({ art }: { art: ArtId }) {
           <rect y={92} width={160} height={18} fill="#9a6b3e" />
           <MiniTractor x={66} y={92} s={1} hi={art} />
           {art !== 'radiator' && <rect x={128} y={76} width={26} height={14} rx={3} fill="#c0432f" />}
-          <text x={art === 'radiator' ? 16 : 124} y={art === 'radiator' ? 48 : 60} fontSize={18} textAnchor="middle">
+          <text x={art === 'radiator' ? 16 : 124} y={art === 'radiator' ? 48 : 60} fontSize={14} textAnchor="middle">
             👉
           </text>
         </>
@@ -250,7 +250,7 @@ export function QuizArt({ art }: { art: ArtId }) {
           <circle cx={52} cy={62} r={10} fill="#f2c230" />
           <circle cx={118} cy={56} r={22} fill="#fff" stroke="#6b402b" strokeWidth={3} />
           <path d="M118 56 L106 66" stroke="#c0432f" strokeWidth={3} strokeLinecap="round" />
-          <text x={118} y={44} fontSize={8} textAnchor="middle" fill="#6b402b" fontWeight={800}>
+          <text x={118} y={44} fontSize={7} textAnchor="middle" fill="#6b402b" fontWeight={800}>
             PSI
           </text>
         </>
@@ -262,7 +262,7 @@ export function QuizArt({ art }: { art: ArtId }) {
           <Sky />
           <path d="M0 110 L0 92 L160 40 L160 110 Z" fill="#7cb342" />
           <MiniTractor x={84} y={70} s={0.8} tilt={-18} />
-          <text x={30} y={46} fontSize={22}>
+          <text x={30} y={46} fontSize={17.5}>
             ⚠️
           </text>
         </>
@@ -274,10 +274,10 @@ export function QuizArt({ art }: { art: ArtId }) {
           <Sky />
           <rect y={92} width={160} height={18} fill="#9a6b3e" />
           <MiniTractor x={60} y={92} s={0.9} />
-          <text x={128} y={62} fontSize={22} textAnchor="middle">
+          <text x={128} y={62} fontSize={17.5} textAnchor="middle">
             🛑
           </text>
-          <text x={128} y={88} fontSize={14} textAnchor="middle">
+          <text x={128} y={88} fontSize={11} textAnchor="middle">
             🔑
           </text>
         </>
@@ -289,10 +289,10 @@ export function QuizArt({ art }: { art: ArtId }) {
           <Sky />
           <rect y={92} width={160} height={18} fill="#9a6b3e" />
           <MiniTractor x={70} y={92} s={1} />
-          <text x={86} y={46} fontSize={16} textAnchor="middle">
+          <text x={86} y={46} fontSize={12.5} textAnchor="middle">
             🧑‍🌾
           </text>
-          <text x={128} y={60} fontSize={22} textAnchor="middle">
+          <text x={128} y={60} fontSize={17.5} textAnchor="middle">
             ☝️
           </text>
         </>
@@ -309,7 +309,7 @@ export function QuizArt({ art }: { art: ArtId }) {
           <ellipse cx={50} cy={92} rx={20} ry={4} fill="#3e2714" />
           <ellipse cx={110} cy={92} rx={20} ry={4} fill="#3e2714" />
           <MiniTractor x={80} y={88} s={0.85} />
-          <text x={140} y={36} fontSize={18} textAnchor="middle">
+          <text x={140} y={36} fontSize={14} textAnchor="middle">
             🌧️
           </text>
         </>
@@ -323,10 +323,10 @@ export function QuizArt({ art }: { art: ArtId }) {
           <rect y={72} width={160} height={38} fill="#b98a55" />
           <path d="M70 52 L74 98" stroke="#555" strokeWidth={5} strokeLinecap="round" />
           <path d="M74 98 L96 92" stroke="#555" strokeWidth={5} strokeLinecap="round" />
-          <text x={124} y={92} fontSize={9} textAnchor="middle" fill="#5a3a20" fontWeight={800}>
+          <text x={124} y={92} fontSize={7} textAnchor="middle" fill="#5a3a20" fontWeight={800}>
             subsoil
           </text>
-          <text x={124} y={66} fontSize={9} textAnchor="middle" fill="#fdedd4" fontWeight={800}>
+          <text x={124} y={66} fontSize={7} textAnchor="middle" fill="#fdedd4" fontWeight={800}>
             topsoil
           </text>
           <MiniTractor x={40} y={52} s={0.6} />

@@ -312,7 +312,7 @@ function Profit({ s, f }: { s: GameState; f: FinanceState }) {
             const m = marginOf(line);
             return (
               <tr key={id} title={e.note}>
-                <th scope="row" style={{ fontSize: 10.5, textTransform: 'none', color: 'var(--ink)' }}>
+                <th scope="row" style={{ fontSize: 8, textTransform: 'none', color: 'var(--ink)' }}>
                   {e.icon} {e.label}
                 </th>
                 <td className="is-num pg-in">{money(line.in)}</td>
@@ -323,7 +323,7 @@ function Profit({ s, f }: { s: GameState; f: FinanceState }) {
             );
           })}
           <tr>
-            <th scope="row" style={{ fontSize: 10.5, textTransform: 'none', color: 'var(--ink)' }}>
+            <th scope="row" style={{ fontSize: 8, textTransform: 'none', color: 'var(--ink)' }}>
               🏦 Savings and investments earned
             </th>
             <td className="is-num" colSpan={2} />

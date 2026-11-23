@@ -177,7 +177,7 @@ export function ReviewPicker({ s, dispatch }: { s: GameState; dispatch: Dispatch
           </optgroup>
         ))}
       </select>
-      <a href="./" style={{ color: '#e9f3df', fontSize: 11 }}>Exit</a>
+      <a href="./" style={{ color: '#e9f3df', fontSize: 8.5 }}>Exit</a>
     </label>
   );
 }

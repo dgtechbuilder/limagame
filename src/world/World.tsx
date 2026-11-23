@@ -1531,7 +1531,7 @@ function PlotTimer({ at, start, ms, verb, what }: { at: { x: number; y: number }
         <circle r={R + 3} fill="#fff" stroke="#5b3418" strokeWidth={2} />
         <circle r={R} fill="none" stroke="#f1e2c8" strokeWidth={5} />
         <circle r={R} fill="none" stroke="#f39c12" strokeWidth={5} strokeDasharray={`${L * done} ${L}`} transform="rotate(-90)" />
-        <text y={5} textAnchor="middle" fontSize={14} fontWeight={900} fill="#5b3418">
+        <text y={5} textAnchor="middle" fontSize={11} fontWeight={900} fill="#5b3418">
           {left}
         </text>
       </svg>

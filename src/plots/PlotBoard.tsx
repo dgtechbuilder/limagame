@@ -197,7 +197,7 @@ export function PlotScreen({
       <FarmMap dim={0.42} />
       <div className="abs" style={{ left: 336, top: -4, width: 203, height: 58 }}>
         <img src={img.plank} alt="" width={203} height={58} />
-        <span className="label abs" style={{ left: 0, right: 0, top: 21, textAlign: 'center', fontSize: 11 }}>
+        <span className="label abs" style={{ left: 0, right: 0, top: 21, textAlign: 'center', fontSize: 8.5 }}>
           Farm inputs
         </span>
       </div>

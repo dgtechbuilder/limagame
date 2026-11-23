@@ -85,28 +85,28 @@ function LossChart({ spent, back }: { spent: number; back: number }) {
       <line x1={30} y1={base} x2={280} y2={base} stroke="#a8916f" strokeWidth={2} />
       {/* spent */}
       <rect x={52} y={base - hSpent} width={70} height={hSpent} rx={6} fill="#a0522d" />
-      <text x={87} y={base - hSpent + 22} textAnchor="middle" fontSize={15} fontWeight={800} fill="#fff">
+      <text x={87} y={base - hSpent + 22} textAnchor="middle" fontSize={12} fontWeight={800} fill="#fff">
         {k(spent)}
       </text>
-      <text x={87} y={base + 18} textAnchor="middle" fontSize={11} fontWeight={700} fill="#6b402b">
+      <text x={87} y={base + 18} textAnchor="middle" fontSize={8.5} fontWeight={700} fill="#6b402b">
         Spent so far
       </text>
       {/* back at this rate, and the loss above it */}
       <rect x={178} y={base - hSpent} width={70} height={hSpent - hBack} rx={6} fill="none" stroke="#c0392b" strokeWidth={2.5} strokeDasharray="7 5" />
-      <text x={213} y={base - hSpent + (hSpent - hBack) / 2 + 2} textAnchor="middle" fontSize={13} fontWeight={800} fill="#c0392b">
+      <text x={213} y={base - hSpent + (hSpent - hBack) / 2 + 2} textAnchor="middle" fontSize={10} fontWeight={800} fill="#c0392b">
         −{k(spent - back)}
       </text>
-      <text x={213} y={base - hSpent + (hSpent - hBack) / 2 + 18} textAnchor="middle" fontSize={10} fontWeight={700} fill="#c0392b">
+      <text x={213} y={base - hSpent + (hSpent - hBack) / 2 + 18} textAnchor="middle" fontSize={8} fontWeight={700} fill="#c0392b">
         lost
       </text>
       <rect x={178} y={base - hBack} width={70} height={hBack} rx={6} fill="#2f9b14" />
-      <text x={213} y={base - hBack + 18} textAnchor="middle" fontSize={13} fontWeight={800} fill="#fff">
+      <text x={213} y={base - hBack + 18} textAnchor="middle" fontSize={10} fontWeight={800} fill="#fff">
         {k(back)}
       </text>
-      <text x={213} y={base + 18} textAnchor="middle" fontSize={11} fontWeight={700} fill="#6b402b">
+      <text x={213} y={base + 18} textAnchor="middle" fontSize={8.5} fontWeight={700} fill="#6b402b">
         Harvest at this rate
       </text>
-      <text x={150} y={22} textAnchor="middle" fontSize={11} fontWeight={700} fill="#8a6a4a">
+      <text x={150} y={22} textAnchor="middle" fontSize={8.5} fontWeight={700} fill="#8a6a4a">
         Shillings, this season
       </text>
     </svg>

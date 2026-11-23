@@ -33,10 +33,13 @@ export function Img({
   );
 }
 
+/** Type scale: sizes passed as props are the old design sizes, drawn at 80% (rounded down to half a pixel, 7px at least). */
+export const shrink = (px: number) => (px <= 7 ? px : Math.max(7, Math.floor(px * 1.6) / 2));
+
 /** Gold price pill with the green cash note, e.g. "💵 $3.10": 12px bold, 28px tall (docs/ui-spacing-plan.md §4). */
 export function PriceChip({ price, width, font = 12 }: { price: number; width?: number | string; font?: number }) {
   return (
-    <span className="pp-price" style={{ width, fontSize: Math.max(12, font) }}>
+    <span className="pp-price" style={{ width, fontSize: shrink(Math.max(12, font)) }}>
       <img src={img.cash} alt="" width={14} height={14} />
       <span>{money(price)}</span>
     </span>
@@ -70,8 +73,8 @@ export function GoldButton({
       onClick={selected ? undefined : onClick}
       aria-pressed={selected || undefined}
       aria-label={ariaLabel}
-      // 10px at least: the label floor in docs/ui-spacing-plan.md
-      style={{ fontSize: font != null ? Math.max(10, font) : className ? undefined : 10, height, ...style }}
+      // 8px at least: the label floor in docs/ui-spacing-plan.md
+      style={{ fontSize: font != null ? shrink(Math.max(10, font)) : className ? undefined : 8, height, ...style }}
     >
       {children}
     </button>
