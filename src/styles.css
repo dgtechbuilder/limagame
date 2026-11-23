@@ -1397,12 +1397,12 @@ button.card:active { transform: scale(0.98); }
 }
 .set-title-bar b { color: var(--peach); }
 .set-tabs {
-  width: 168px; flex-shrink: 0; display: flex; flex-direction: column; gap: 6px;
-  padding: 16px 12px; background: #f1dcbd; border-right: 1.5px solid var(--brown-20);
+  width: 168px; flex-shrink: 0; display: flex; flex-direction: column; gap: 4px;
+  padding: 14px 12px 12px; background: #f1dcbd; border-right: 1.5px solid var(--brown-20);
 }
 .set-heading { margin: 0 0 6px 6px; font-size: 16px; font-weight: 700; }
 .set-tab {
-  display: flex; align-items: center; gap: 9px; height: 40px; padding: 0 12px;
+  display: flex; align-items: center; gap: 9px; height: 34px; flex-shrink: 0; padding: 0 12px;
   border-radius: 10px; border: 1.5px solid transparent; background: transparent;
   color: var(--brown); font: inherit; font-size: 13px; font-weight: 600; text-align: left;
 }
@@ -1412,6 +1412,11 @@ button.card:active { transform: scale(0.98); }
 .set-foot { margin: auto 0 0 6px; font-size: var(--text-caption); line-height: 1.4; color: var(--ink-3); }
 .set-content { flex: 1; padding: 14px 22px; overflow-y: auto; }
 .set-rows { display: flex; flex-direction: column; }
+/* Home screen: the farm's buttons in groups, each with Hide / Show */
+.set-group { display: flex; flex-direction: column; border-top: 1px solid var(--brown-20); }
+.set-group-head { margin: 12px 0 0; font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.set-group .set-row { padding: 9px 0; }
+.set-group .set-row:first-of-type { border-top: 0; }
 .set-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 13px 0; border-top: 1px solid var(--brown-20); }
 .set-row:first-child { border-top: 0; }
 .set-text { min-width: 0; }

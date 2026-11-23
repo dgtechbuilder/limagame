@@ -1,4 +1,4 @@
-import type { Dispatch } from 'react';
+import type { CSSProperties, Dispatch } from 'react';
 import { Page, Tile } from '../components/Page';
 import { money } from '../money';
 import { PRODUCE, PRODUCE_IDS, produceOf } from '../produce/model';
@@ -258,14 +258,14 @@ function Donate({ s, dispatch, phase }: { s: GameState; dispatch: Dispatch<Actio
 }
 
 /** The event's pop-up on the farm's bottom left, or, tucked away, a round button in the left column. Gone after the event. */
-export function KakumaPopup({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
+export function KakumaPopup({ s, dispatch, style }: { s: GameState; dispatch: Dispatch<Action>; style?: CSSProperties }) {
   const phase = kakumaPhase();
   if (phase === 'over') return null;
   const k = kakumaOf(s.kakuma);
   const open = () => dispatch({ type: 'open', modal: { kind: 'kakuma', tab: 'about' } });
   if (k.tucked)
     return (
-      <button type="button" className="hud-round hud-kakuma" onClick={() => dispatch({ type: 'kakumaTuck', tucked: false })} aria-label={`Kakuma special event, ${KAKUMA_EVENT.dates}: show`}>
+      <button type="button" className="hud-round hud-kakuma" style={style} onClick={() => dispatch({ type: 'kakumaTuck', tucked: false })} aria-label={`Kakuma special event, ${KAKUMA_EVENT.dates}: show`}>
         <span className="hud-kakuma-icon" aria-hidden="true">🌍</span>
         <span>KAKUMA</span>
         {phase === 'on' && <i className="hud-badge" aria-hidden="true">!</i>}

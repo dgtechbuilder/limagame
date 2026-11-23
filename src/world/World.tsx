@@ -75,6 +75,7 @@ import { FarmLoading } from './Loading';
 import { careJob, choresCount, choresLeft, jobsOf, type Job, type JobStop } from '../onsite/model';
 import { ActivityLoading } from '../components/ActivityLoading';
 import { lazyPage, prefetchActivities } from '../prefetch';
+import { LEFT_SLOTS, RIGHT_ORDER, RIGHT_SLOTS, hudShown, slotTop, type HudKey } from '../hud/prefs';
 
 // from Wakala Agent: the screens after a right call, at the shed and at the Hire spot, loaded when first opened
 const Prescribe = lazyPage(() => import('../care/Prescribe'), m => m.Prescribe, 0);
@@ -1031,6 +1032,12 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         ? `Opens on day ${GREENHOUSE.openDay}`
         : null;
 
+  // Settings → Home screen (src/hud/prefs.ts): the buttons the player hid are left out, and each column closes up
+  const hs = (k: HudKey) => hudShown(s.settings, k);
+  const rightShown = RIGHT_ORDER.filter(hs);
+  const rTop = (k: (typeof RIGHT_ORDER)[number]) => slotTop(RIGHT_SLOTS, RIGHT_ORDER.indexOf(k), rightShown.indexOf(k));
+  const kakumaTop = slotTop(LEFT_SLOTS, 4, hs('partners') ? 4 : 3);
+
   return (
     <div className={`abs world${nightMode ? ' is-night' : ''}${kakumaPhase() !== 'over' && !kakumaOf(s.kakuma).tucked ? ' has-event' : ''}`} style={{ inset: 0 }}>
       <canvas ref={canvas} className="world-canvas" width={STAGE_W} height={STAGE_H} />
@@ -1088,6 +1095,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
 
       {/* coins and points, and the day of the farming period beside the money */}
       <div className="hud-pills">
+        {hs('day') && (
         <button
           type="button"
           className={`hud-day${farmDay >= FARM_PERIOD_DAYS ? ' is-done' : ''}`}
@@ -1096,6 +1104,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         >
           Day&nbsp;<b>{Math.min(farmDay, FARM_PERIOD_DAYS)}</b>/{FARM_PERIOD_DAYS}
         </button>
+        )}
         <span className="hud-pill" title={`Money (${currency().name})`}>
           <img src={img.cash} alt="" width={26} height={26} />
           <b>
@@ -1107,6 +1116,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
             +
           </button>
         </span>
+        {hs('points') && (
         <span className="hud-pill is-points" title="Points: they unlock real partner discounts">
           <img src={img.star} alt="" width={22} height={22} />
           <b>{fmt(s.points)}</b>
@@ -1114,6 +1124,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
             +
           </button>
         </span>
+        )}
         {/* night: a small chip under the day, out of the way of the farm */}
         {nightMode && (
           <span className="hud-moon" aria-label={`Night${lit ? ': the farm lights are on' : ''}`}>
@@ -1121,26 +1132,34 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
           </span>
         )}
       </div>
-      <button type="button" className="hud-round hud-climate" onClick={() => dispatch({ type: 'open', modal: { kind: 'climate' } })} aria-label={`Climate: emissions, water, soil and credits${grade ? ` (rating ${grade.grade})` : ''}`}>
+      {hs('climate') && (
+      <button type="button" className="hud-round hud-climate" style={rTop('climate')} onClick={() => dispatch({ type: 'open', modal: { kind: 'climate' } })} aria-label={`Climate: emissions, water, soil and credits${grade ? ` (rating ${grade.grade})` : ''}`}>
         <ClimateIcon />
         <span>CLIMATE</span>
         {grade && <i className="hud-badge" aria-hidden="true">{grade.grade}</i>}
       </button>
-      <button type="button" className="hud-round hud-mission" onClick={() => dispatch({ type: 'trials', open: true })} aria-label="Mission: plan, progress and results of your farms">
+      )}
+      {hs('mission') && (
+      <button type="button" className="hud-round hud-mission" style={rTop('mission')} onClick={() => dispatch({ type: 'trials', open: true })} aria-label="Mission: plan, progress and results of your farms">
         <ClipboardIcon />
         <span>MISSION</span>
       </button>
-      <WaterButton s={s} dispatch={dispatch} />
+      )}
+      {hs('water') && <WaterButton s={s} dispatch={dispatch} style={rTop('water')} />}
+      {hs('partners') && (
       <button type="button" className="hud-round hud-partners" onClick={() => dispatch({ type: 'open', modal: { kind: 'partners' } })} aria-label="Partners: offers, placements and ways to partner with TemoLima">
         <PartnersIcon />
         <span>PARTNERS</span>
       </button>
+      )}
       {/* the Kakuma special event: a pop-up on the bottom left, or tucked into a round button under Partners */}
-      <KakumaPopup s={s} dispatch={dispatch} />
-      <button type="button" className="hud-round hud-shop" onClick={() => dispatch({ type: 'open', modal: { kind: 'shop', tab: 'food' } })} aria-label="Shop">
+      <KakumaPopup s={s} dispatch={dispatch} style={kakumaTop} />
+      {hs('shop') && (
+      <button type="button" className="hud-round hud-shop" style={rTop('shop')} onClick={() => dispatch({ type: 'open', modal: { kind: 'shop', tab: 'food' } })} aria-label="Shop">
         <img src={img.cart} alt="" width={30} height={30} />
         <span>SHOP</span>
       </button>
+      )}
 
       {/* the job in hand (src/onsite): it takes the task card's place until it is done or dropped */}
       {job && jobStop ? (
@@ -1188,7 +1207,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       {/* the daily chips, bottom right: small, one line each (the animals' care, the tidy-up, the climate-smart drill) */}
       <div className="hud-daily">
       {/* the cows' and hens' care, every day: tap to walk to the next chore at the pen or the coop */}
-      {chores && choresAll > 0 && (
+      {chores && choresAll > 0 && hs('chores') && (
         <button
           type="button"
           className={`hud-tidy hud-chores${choresDone === choresAll ? ' is-done' : ''}`}
@@ -1207,7 +1226,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         </button>
       )}
       {/* the daily tidy-up: today's bushes and rocks; tap to walk to the nearest one */}
-      {tidyOn && (
+      {tidyOn && hs('tidy') && (
         <button
           type="button"
           className={`hud-tidy${tidy.done === TIDY_TOTAL ? ' is-done' : ''}`}
@@ -1231,15 +1250,15 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         </button>
       )}
       {/* Climate Smart Agriculture: today's drill and the field clock (src/csa) */}
-      {s.fs.phase === 'done' && <CsaChip s={s} dispatch={dispatch} now={now} />}
+      {s.fs.phase === 'done' && hs('csa') && <CsaChip s={s} dispatch={dispatch} now={now} />}
       </div>
 
       {/* bottom left, one stack that never overlaps: today's lesson, today's build, then what the farmer
           carries (moved right of the special event's card while it shows) */}
       <div className="hud-dock">
       {/* the first days: today's Farm basics lesson, until it is read */}
-      <BasicsChip day={lifeOf(s.life).day} read={s.basics ?? []} />
-      {build && !anchors.riding && !job && (
+      {hs('basics') && <BasicsChip day={lifeOf(s.life).day} read={s.basics ?? []} />}
+      {build && !anchors.riding && !job && hs('build') && (
         <button type="button" className="hud-build" onClick={() => dispatch({ type: 'open', modal: build.go })} aria-label={`Today: ${build.title}`}>
           <i aria-hidden="true">{build.icon}</i>
           <span>
@@ -1248,6 +1267,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
           </span>
         </button>
       )}
+      {hs('status') && (
       <div className="hud-status">
         {anchors.riding && (
           <span className="is-carry">
@@ -1256,6 +1276,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         )}
         {s.field.carry && <span className="is-carry">Carrying: {CARRY_NAME[s.field.carry].toLowerCase()}</span>}
       </div>
+      )}
 
       </div>
         </>

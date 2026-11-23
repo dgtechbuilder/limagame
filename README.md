@@ -1144,13 +1144,14 @@ README says *coins*, it means this money. Points, litres, km, acres and days are
 ## Settings
 
 *Settings* (the **SETTINGS** button on the farm, the main menu, or the top bar in the first session) is a full page with
-five sections. Every control works at once and is saved on the device; *Reset progress* keeps them.
+its own sections. Every control works at once and is saved on the device; *Reset progress* keeps them.
 
 | Section | Controls |
 | --- | --- |
 | **My farmer** | rename the farmer; change the look (the farm, the rounds and the HUD all follow) |
 | **Game** | *Character style*: Retro anime or Original · *Farm view*: 3D farm or Classic · *Read aloud*: speaks the guide's lines and the game's messages with the phone's voice (a Kenyan English voice when the phone has one), with a Test button · *Sound effects*: on or off, with a button to hear each one · *Upgrade messages*: the dialog after a storage upgrade, on or off |
 | **Display** | *Graphics*: Auto (shadows and a picture sized to the phone, lighter by itself if it slows down; see [Performance](#performance-on-low-cost-phones)), High (always shadows, the sharpest picture), Low (no shadows, 1× resolution) · *Reduce motion*: ends every animation and transition at once · *Full screen* |
+| **Home screen** | which of the farm's buttons show, each with *Hide* / *Show*, plus *Hide all* and *Show all*. Side buttons: Mission, Shop, Water tank, Climate, Partners · top of the screen: the day counter, Points · daily chips and notes: Animal chores, Daily tidy-up, Climate-smart drill, Farm basics lesson, Today's build, Carrying and riding. Settings, Menu, the money, the tractor and the next task always stay, and anything hidden is still in the Main menu. The left and right button columns close up over a hidden button. The list is `src/hud/prefs.ts` |
 | **Controller** | the controllers connected, by name and make · *Use a controller*: on or off · *Button names*: Auto (as printed on the controller in use), Xbox, PlayStation or Nintendo · *Confirm button*: Bottom (Xbox, PlayStation) or Right (Nintendo style) · *Stick dead zone*: Small, Medium or Large · *Rumble* · a chart of every button, lit while held · *Set up buttons*: press each button in turn, for a controller the browser does not know (see [Game controllers](#game-controllers)) |
 | **Help & data** | How the farm works · Page addresses (what the address after the `#` does, with this page's) · Design review · Reset progress (asks twice) |
 
