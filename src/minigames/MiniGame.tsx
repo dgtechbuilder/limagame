@@ -26,8 +26,6 @@ export type GameSpec =
   | { type: 'quiz'; questions: QuizQuestion[] }
   /** turn something to face the right way: a slider, and a meter of how well it faces */
   | { type: 'aim'; target: number; label: string }
-  /** drive down a lane and steer round the cones */
-  | { type: 'steer'; seconds: number; speed?: number }
   /** switch on loads without going over what the system makes */
   | { type: 'balance'; loads: { id: string; name: string; kwh: number; need: boolean }[]; supply: number };
 
@@ -138,8 +136,6 @@ function Game({ spec, onEnd }: { spec: GameSpec; onEnd: (score: number, data?: s
       return <Quiz spec={spec} onEnd={onEnd} />;
     case 'aim':
       return <Aim spec={spec} onEnd={onEnd} />;
-    case 'steer':
-      return <Steer spec={spec} onEnd={onEnd} />;
     case 'balance':
       return <Balance spec={spec} onEnd={onEnd} />;
   }
@@ -598,76 +594,6 @@ function Aim({ spec, onEnd }: Of<'aim'>) {
       <button type="button" className="gold-btn mg-big" onClick={() => onEnd(out)}>
         Fix the frame here
       </button>
-    </div>
-  );
-}
-
-/* ---------------- steer ---------------- */
-
-function Steer({ spec, onEnd }: Of<'steer'>) {
-  const [lane, setLane] = useState(1);
-  const [t, setT] = useState(0);
-  const [hits, setHits] = useState(0);
-  const cones = useMemo(() => Array.from({ length: Math.round(spec.seconds * 1.4) }, (_, i) => ({ at: 1.2 + i * 0.72, lane: (i * 5 + Math.floor(i / 3)) % 3 })), [spec.seconds]);
-  const hit = useRef(new Set<number>());
-  const laneRef = useRef(lane);
-  laneRef.current = lane;
-  const ended = useRef(false);
-  const speed = spec.speed ?? 1;
-  useFrames(dt => {
-    setT(x => {
-      const n = x + dt * speed;
-      cones.forEach((c, i) => {
-        const y = (n - c.at) * 160;
-        if (y > 150 && y < 175 && c.lane === laneRef.current && !hit.current.has(i)) {
-          hit.current.add(i);
-          setHits(h => h + 1);
-        }
-      });
-      if (n >= spec.seconds && !ended.current) {
-        ended.current = true;
-        window.setTimeout(() => onEnd(Math.max(0, 1 - hit.current.size * 0.15)), 300);
-      }
-      return n;
-    });
-  }, !ended.current);
-  useEffect(() => {
-    const k = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft') e.preventDefault(), setLane(l => Math.max(0, l - 1));
-      if (e.key === 'ArrowRight') e.preventDefault(), setLane(l => Math.min(2, l + 1));
-    };
-    window.addEventListener('keydown', k);
-    return () => window.removeEventListener('keydown', k);
-  }, []);
-  return (
-    <div className="mg-steer">
-      <p className="mg-progress">
-        Steer round the cones · {hits} hit<b className="mg-time">{Math.max(0, Math.ceil(spec.seconds - t))} s</b>
-      </p>
-      <svg viewBox="0 0 240 200" className="mg-scene is-lane" aria-hidden="true">
-        <rect width={240} height={200} fill="#9a6b3e" />
-        {[80, 160].map(x => (
-          <line key={x} x1={x} x2={x} y1={0} y2={200} stroke="#e8d2a6" strokeWidth={2} strokeDasharray="10 12" strokeDashoffset={-t * 160} />
-        ))}
-        {cones.map((c, i) => {
-          const y = (t - c.at) * 160;
-          if (y < -20 || y > 220) return null;
-          return <polygon key={i} points={`${c.lane * 80 + 40},${y - 14} ${c.lane * 80 + 28},${y + 10} ${c.lane * 80 + 52},${y + 10}`} fill={hit.current.has(i) ? '#999' : '#ff7a1a'} stroke="#fff" strokeWidth={2} />;
-        })}
-        <g transform={`translate(${lane * 80 + 40},170)`}>
-          <rect x={-16} y={-14} width={32} height={30} rx={5} fill="#2b8a4a" />
-          <rect x={-22} y={4} width={9} height={16} rx={3} fill="#222" />
-          <rect x={13} y={4} width={9} height={16} rx={3} fill="#222" />
-        </g>
-      </svg>
-      <div className="mg-actions">
-        <button type="button" className="gold-btn mg-big" onPointerDown={() => setLane(l => Math.max(0, l - 1))} aria-label="Steer left">
-          ◀ Left
-        </button>
-        <button type="button" className="gold-btn mg-big" onPointerDown={() => setLane(l => Math.min(2, l + 1))} aria-label="Steer right">
-          Right ▶
-        </button>
-      </div>
     </div>
   );
 }
