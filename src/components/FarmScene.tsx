@@ -146,7 +146,7 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
       </div>
       <Img src={img.drop} w={14} h={14} style={{ position: 'absolute', left: 758, top: 50 }} />
 
-      <ProgressButton s={s} dispatch={dispatch} classic />
+      <ProgressButton s={s} dispatch={dispatch} />
       <button type="button" className="peach-btn abs" style={{ left: 779, top: 24, width: 56, height: 48.66 }} aria-label="Rewards and discounts" onClick={() => open({ kind: 'rewards' })}>
         <Img src={img.sack} w={32} h={32} />
       </button>
