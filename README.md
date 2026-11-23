@@ -1896,8 +1896,16 @@ time runs out, in order or not, decoys cost points), **wires**, **order**, **qui
 - **Quiz**: a picture beside each question, answers as picture cards (A, B, C; keys 1–3 work), the answers shuffled
   so the right one is not always first, a ⚡ clock for a quick answer, a 🔥 streak, confetti and a float-up for a
   right answer, a shake for a wrong one. The score is still the share answered right.
-- **Order**: each step has a picture, and a tractor rolls along a road of numbered checkpoints to the flag as the
-  steps go in; a wrong step stalls it.
+- **Order** (`src/minigames/OrderTrack.tsx`): the steps sit in a list on the side, each with its picture; the
+  track fills the rest of the card, big. Tap a step to send it to the next checkpoint, or drag it onto the track.
+  The checkpoint to start at glows (*▶ Start here*, then *▶ Next*); the ones after it are greyed out and refuse a
+  drop (it costs nothing, and the tip says where to start); a wrong step costs a share of the score as before.
+  The track zooms (+ / − / ⤢, the mouse wheel, a pinch, the + − 0 keys, or a tap on a checkpoint) and pans with a
+  drag: close up, every checkpoint shows the picture of the step that belongs there, and the one tapped shows its
+  clue in words. In the tractor's **safety check** the track runs round a big drawn tractor, a checkpoint on the
+  part each step is about (on foot in front, under the bonnet, the wheels and the hitch, the seat, the levers, the
+  key), and the farmer walks it; the exhaust puffs once the engine is started. Other order games (the battery bank,
+  the storehouse's recipes) put the checkpoints on a winding farm road that a big drawn tractor drives.
 - **Results**: the stars pop in one by one, with confetti for two or three stars.
 - **The care screens** (the spray kit and product at the shed, choosing the fix, the tractor's hitch and fill-up)
   give each answer a picture, shake a wrong one and throw confetti for the right one; a right crop call in field

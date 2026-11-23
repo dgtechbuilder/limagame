@@ -58,6 +58,11 @@ const ICONS: [RegExp, string][] = [
 ];
 
 /** A picture for an answer or a step, from its words; a plain dot when nothing matches. */
+/** A fixed shuffle (the same every time, so a retry is fair). */
+export function shuffled<T>(xs: T[], salt = 3): T[] {
+  return xs.map((x, i) => ({ x, k: (i * 7 + salt * 5) % 11 })).sort((a, b) => a.k - b.k).map(o => o.x);
+}
+
 export function iconFor(text: string, fallback = '🔸') {
   for (const [re, icon] of ICONS) if (re.test(text)) return icon;
   return fallback;

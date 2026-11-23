@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { CoachSays, Coach, Confetti, FloatUp, IconArt, QuizArt, iconFor, type ArtId, type Mood } from './fun';
+import { CoachSays, Coach, Confetti, FloatUp, IconArt, QuizArt, iconFor, shuffled, type ArtId, type Mood } from './fun';
+import { OrderTrack, type TrackPt } from './OrderTrack';
 
 /* The mini-games: short hands-on moments behind every new job (the power system's parts, the tractor's sections,
    building the coop and the cow shed, the greenhouse's beds, the storehouse's sauces and jams). One frame for all of them: what to do,
@@ -17,8 +18,10 @@ export type GameSpec =
   | { type: 'tap'; scene: Scene; spots: Pt[]; decoys?: Pt[]; seconds: number; ordered?: boolean; verb: string; mark?: string; hidden?: boolean; spotMark?: string; decoyMark?: string }
   /** connect each cable to its terminal */
   | { type: 'wires'; pairs: { label: string; color: string }[] }
-  /** tap the steps in the right order (each step gets a picture from its words, or from icons) */
-  | { type: 'order'; steps: string[]; icons?: string[] }
+  /** put the steps in the right order: tap them, or drag them from the list onto the track's checkpoints; the track
+      zooms in to show each checkpoint's clue (each step gets a picture from its words, or from icons). With scene
+      'tractor' the track runs round a big tractor drawing, a checkpoint at the part each step is about. */
+  | { type: 'order'; steps: string[]; icons?: string[]; scene?: 'tractor'; track?: TrackPt[]; start?: { x: number; y: number } }
   /** answer the questions: each with a drawing (art) or a picture from its words */
   | { type: 'quiz'; questions: QuizQuestion[] }
   /** turn something to face the right way: a slider, and a meter of how well it faces */
@@ -58,7 +61,7 @@ export function MiniGame({ title, kicker, task, spec, onDone, onClose, doneLabel
   return (
     <div className="mg" role="dialog" aria-modal="true" aria-label={`${title}: mini-game`}>
       <div className="scrim" />
-      <div className="mg-card">
+      <div className={`mg-card${spec.type === 'order' ? ' is-wide' : ''}`}>
         <header className="mg-head">
           {kicker && <small>{kicker}</small>}
           <b>{title}</b>
@@ -406,11 +409,6 @@ function Tap({ spec, onEnd }: Of<'tap'>) {
 
 /* ---------------- wires ---------------- */
 
-/** A fixed shuffle (the same every time, so a retry is fair). */
-function shuffled<T>(xs: T[], salt = 3): T[] {
-  return xs.map((x, i) => ({ x, k: (i * 7 + salt * 5) % 11 })).sort((a, b) => a.k - b.k).map(o => o.x);
-}
-
 function Wires({ spec, onEnd }: Of<'wires'>) {
   const right = useMemo(() => shuffled(spec.pairs.map((p, i) => ({ ...p, i }))), [spec]);
   const [pick, setPick] = useState<number | null>(null);
@@ -452,78 +450,10 @@ function Wires({ spec, onEnd }: Of<'wires'>) {
   );
 }
 
-/* ---------------- order ---------------- */
+/* ---------------- order (minigames/OrderTrack.tsx) ---------------- */
 
 function Order({ spec, onEnd }: Of<'order'>) {
-  const cards = useMemo(() => shuffled(spec.steps.map((t, i) => ({ t, i, icon: spec.icons?.[i] ?? iconFor(t, '🔹') })), 5), [spec]);
-  const [done, setDone] = useState(0);
-  const [wrong, setWrong] = useState(0);
-  const [shake, setShake] = useState<number | null>(null);
-  const [streak, setStreak] = useState(0);
-  const [pop, setPop] = useState(0);
-  const total = spec.steps.length;
-  const tap = (i: number) => {
-    if (i !== done) {
-      setWrong(w => w + 1);
-      setStreak(0);
-      setShake(i);
-      window.setTimeout(() => setShake(null), 350);
-      return;
-    }
-    setDone(done + 1);
-    setStreak(x => x + 1);
-    setPop(p => p + 1);
-    if (done + 1 === total) window.setTimeout(() => onEnd(Math.max(0.2, 1 - wrong / total)), 700);
-  };
-  // the tractor rolls along the road, a checkpoint for each step
-  const at = (k: number) => 16 + (k / total) * 300;
-  return (
-    <div className="mg-order">
-      <div className="mg-road-wrap">
-        <svg viewBox="0 0 340 46" className="mg-road" aria-hidden="true">
-          <rect x={0} y={26} width={340} height={14} rx={7} fill="#c9a37a" />
-          <line x1={8} x2={332} y1={33} y2={33} stroke="#fdedd4" strokeWidth={2} strokeDasharray="8 8" />
-          {spec.steps.map((_, k) => (
-            <g key={k} transform={`translate(${at(k + 1)},33)`}>
-              <circle r={7} fill={k < done ? '#2f9b14' : '#fff8ea'} stroke={k < done ? '#1d6b0c' : '#c9a37a'} strokeWidth={2} />
-              <text y={3.5} fontSize={7} textAnchor="middle" fill={k < done ? '#fff' : '#86604c'} fontWeight={800}>
-                {k + 1}
-              </text>
-            </g>
-          ))}
-          <text x={at(total) + 12} y={24} fontSize={12.5}>
-            🏁
-          </text>
-          <g className={`mg-road-tractor${shake !== null ? ' is-stall' : ''}`} style={{ transform: `translate(${at(done)}px, 0)` }}>
-            <text y={26} fontSize={16} textAnchor="middle" transform="scale(-1,1)">
-              🚜
-            </text>
-          </g>
-        </svg>
-        <span className="mg-pop-at" style={{ left: `${((at(done) + 4) / 340) * 100}%` }}>
-          {pop > 0 && (
-            <FloatUp key={pop} tone={streak >= 3 ? 'gold' : 'good'}>
-              {streak >= 3 ? `🔥 ${streak} in a row` : '✓ Next!'}
-            </FloatUp>
-          )}
-        </span>
-      </div>
-      <p className="mg-progress">
-        Tap the steps in order · {done} of {total}
-        {wrong > 0 && <b className="mg-time is-bad">{wrong} wrong</b>}
-      </p>
-      <div className="mg-cards">
-        {cards.map(c => (
-          <button key={c.i} type="button" className={`mg-card-btn${c.i < done ? ' is-done' : ''}${shake === c.i ? ' is-wrong' : ''}`} disabled={c.i < done} onClick={() => tap(c.i)}>
-            <span className="mg-card-icon" aria-hidden="true">
-              {c.i < done ? <b>{c.i + 1}</b> : c.icon}
-            </span>
-            <span className="mg-card-text">{c.t}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
+  return <OrderTrack spec={spec} onEnd={onEnd} />;
 }
 
 /* ---------------- quiz ---------------- */
