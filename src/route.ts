@@ -3,7 +3,7 @@ import { STORY } from './first/data';
 import { CHECK_DAYS, currentDay } from './trials/model';
 import { dayNumber } from './rounds/farms';
 import { PRACTICES, practiceOf } from './csa/data';
-import type { AchTab, Action, AnimalsTab, ClimateTab, EventsTab, FsPhase, GameState, GlossaryTab, KakumaTab, MarketTab, Modal, StoreTab, PartnersTab, PowerTab, SecurityTab, SettingsTab, WalletTab, FinanceTab } from './state';
+import type { AchTab, Action, AnimalsTab, ClimateTab, EventsTab, FsPhase, GameState, GlossaryTab, KakumaTab, MarketTab, Modal, StoreTab, PartnersTab, PowerTab, SecurityTab, SettingsTab, WalletTab, FinanceTab, TrackingTab } from './state';
 import { BRANDS, type BrandId } from './partners/data';
 import { REGIONS, type RegionId } from './events/regions';
 
@@ -25,6 +25,7 @@ const PARTNERS: Record<PartnersTab, string> = { offers: 'offers', placements: 'p
 const ANIMALS: Record<AnimalsTab, string> = { today: 'today', health: 'health', water: 'water', coop: 'coop', shed: 'cow-shed', herd: 'herd' };
 const WALLET: Record<WalletTab, string> = { history: 'history', climate: 'climate-payments', summary: 'summary' };
 const FINANCE: Record<FinanceTab, string> = { overview: 'overview', savings: 'savings', invest: 'investments', profit: 'profit' };
+const TRACKING: Record<TrackingTab, string> = { overview: 'overview', sustainability: 'sustainability', climate: 'climate', water: 'water', soil: 'soil-and-inputs', power: 'power', money: 'profit-and-costs', harvest: 'harvests', animals: 'animals-and-safety' };
 const POWER_TABS: Record<PowerTab, string> = { build: 'build', today: 'today', impact: 'impact', history: 'history' };
 const MARKET_TABS: Record<MarketTab, string> = { sell: 'sell', restaurant: 'restaurant', nutrition: 'nutrition', sales: 'sales' };
 const STORE_TABS: Record<StoreTab, string> = { store: 'store', harvest: 'harvest', produce: 'produce' };
@@ -98,6 +99,8 @@ function modalPath(s: GameState, m: Modal): string {
       return `/wallet/${WALLET[m.tab ?? 'history']}`;
     case 'finance':
       return `/money/${FINANCE[m.tab ?? 'overview']}`;
+    case 'tracking':
+      return `/tracking/${TRACKING[m.tab ?? 'overview']}`;
     case 'power':
       return `/power/${POWER_TABS[m.tab ?? 'build']}`;
     case 'market':
@@ -199,6 +202,12 @@ function modalFor(s: GameState, path: string[]): Modal | null | 'bad' {
     const t = tab(FINANCE);
     return t === 'bad' || parts.length > 2 ? 'bad' : { kind: 'finance', tab: t ?? 'overview' };
   }
+  if (first === 'tracking') {
+    const t = tab(TRACKING);
+    return t === 'bad' || parts.length > 2 ? 'bad' : { kind: 'tracking', tab: t ?? 'overview' };
+  }
+  // the sustainability score's short address
+  if (first === 'sustainability' && parts.length === 1) return { kind: 'tracking', tab: 'sustainability' };
   if (first === 'power') {
     const t = tab(POWER_TABS);
     return t === 'bad' || parts.length > 2 ? 'bad' : { kind: 'power', tab: t ?? 'build' };

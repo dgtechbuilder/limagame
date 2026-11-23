@@ -51,6 +51,9 @@ import {
   type TrialHazard,
 } from './model';
 import { money } from '../money';
+import { achClock } from '../achievements/track';
+import { bandOf, sustainability, weakest } from '../tracking/model';
+import { PartBars, ScoreRing } from '../tracking/Score';
 
 /* The six farms: plan → grow (a check of every farm each day) → harvest and compare.
    The first cycle is guided: two farms, Farm 1 grown a common way, Farm 2 with one change. */
@@ -91,9 +94,13 @@ export function Trials({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
   const t = (line: string) => say(line, name);
   const tr = s.trial;
   const close = () => dispatch({ type: 'trials', open: false });
+  // Mission's two sections: the farms (plan, grow, results) and the farm's sustainability
+  const [section, setSection] = useState<'farms' | 'sustain'>('farms');
+  const sus = sustainability(s, achClock.today());
 
   let title = 'Six farms';
   let body: ReactNode;
+  const titled = (x: string) => (section === 'sustain' ? 'Sustainability' : x);
   if (!tr) {
     title = s.trialHistory.length ? 'Six farms' : 'Two farms';
     body = <Intro s={s} dispatch={dispatch} t={t} />;
@@ -114,17 +121,65 @@ export function Trials({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
       <div className="abs" style={{ left: 336, top: -4, width: 203, height: 58 }}>
         <img src={img.plank} alt="" width={203} height={58} />
         <span className="label abs" style={{ left: 0, right: 0, top: 21, textAlign: 'center', fontSize: 12 }}>
-          {title}
+          {titled(title)}
         </span>
       </div>
       {tr && <span className="rr-roundtag">{cropsLine(tr)} · {FORECASTS[tr.forecast].label.split(':')[0]}</span>}
-      <NavBar horizontal onBack={close} style={{ right: 28, top: 8 }} />
-      {body}
+      <NavBar horizontal onBack={section === 'sustain' ? () => setSection('farms') : close} style={{ right: 28, top: 8 }} />
+      {/* Mission's two sections: the farms, and the farm's sustainability (src/tracking) */}
+      {s.modal ? null : section === 'farms' ? (
+        <button type="button" className={`ms-switch is-${bandOf(sus.score).tone}`} onClick={() => setSection('sustain')} aria-label={`Sustainability: ${sus.score} out of 100, ${bandOf(sus.score).word}. Open the section`}>
+          <small>Sustainability</small>
+          <span>
+            🌱 <b>{sus.score}</b>/100
+          </span>
+        </button>
+      ) : (
+        <button type="button" className="ms-switch is-back" onClick={() => setSection('farms')} aria-label="Back to the farms">
+          <small>Mission</small>
+          <span>🌽 Farms</span>
+        </button>
+      )}
+      {section === 'sustain' ? <SustainSection sus={sus} dispatch={dispatch} onBack={() => setSection('farms')} /> : body}
     </div>
   );
 }
 
 type Props = { dispatch: Dispatch<Action>; t: (line: string) => string };
+
+/* ---------------- the Sustainability section: the score out of 100 and its parts ---------------- */
+
+function SustainSection({ sus, dispatch, onBack }: { sus: ReturnType<typeof sustainability>; dispatch: Dispatch<Action>; onBack: () => void }) {
+  const band = bandOf(sus.score);
+  const next = weakest(sus.parts, 1)[0];
+  return (
+    <>
+      <div className="tr-card ms-sustain" role="region" aria-label="Sustainability">
+        <CloseX onClick={onBack} />
+        <div className="sus-head">
+          <ScoreRing score={sus.score} size={72} />
+          <span className="sus-head-text">
+            <b>
+              Sustainability: {sus.score}/100 · <span className={`sus-word is-${band.tone}`}>{band.word}</span>
+            </b>
+            <small>How long this farm can keep going: its climate, water, soil, power, chemicals, practices, money and animals. Every plan you make here moves it.</small>
+            {next && (
+              <small>
+                Next: <b>{next.tip}</b>
+              </small>
+            )}
+          </span>
+        </div>
+        <PartBars parts={sus.parts} />
+        <div className="tr-choice">
+          <GoldButton font={12} height={34} style={{ flex: 1 }} onClick={() => dispatch({ type: 'open', modal: { kind: 'tracking', tab: 'overview' } })}>
+            Open Tracking: every figure
+          </GoldButton>
+        </div>
+      </div>
+    </>
+  );
+}
 
 /* ---------------- start ---------------- */
 

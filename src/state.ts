@@ -139,6 +139,8 @@ export type Modal =
   | { kind: 'wallet'; tab?: WalletTab }
   /** money: savings, investments and profit tracking (src/finance) */
   | { kind: 'finance'; tab?: FinanceTab }
+  /** Tracking: how successful the farm is: the sustainability score and every figure behind it (src/tracking) */
+  | { kind: 'tracking'; tab?: TrackingTab }
   /** the power system: building it over the first 7 days, today's energy, what it does for the farm (src/power) */
   | { kind: 'power'; tab?: PowerTab }
   /** the market stall: up to 25 kg of the store sold a day, the restaurant beside it, and what the food is worth to
@@ -231,6 +233,7 @@ export type SecurityTab = 'protect' | 'risk' | 'reports';
 export type WalletTab = 'history' | 'climate' | 'summary';
 export type FinanceTab = 'overview' | 'savings' | 'invest' | 'profit';
 export type PowerTab = 'build' | 'today' | 'impact' | 'history';
+export type TrackingTab = 'overview' | 'sustainability' | 'climate' | 'water' | 'soil' | 'power' | 'money' | 'harvest' | 'animals';
 export type MarketTab = 'sell' | 'restaurant' | 'nutrition' | 'sales';
 export type StoreTab = 'store' | 'harvest' | 'produce';
 /** the Farm words page: the Farm basics lessons, or one section of words (src/learn/glossary.ts) */

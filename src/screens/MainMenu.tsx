@@ -35,6 +35,7 @@ export function MainMenu({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
         { label: 'My farm', note: 'Back to the farm', run: () => dispatch({ type: 'home' }) },
         { label: live ? `Special events (${live})` : 'Special events', note: 'Today’s events, special days, regions', run: () => open({ kind: 'events', tab: 'now' }) },
         { label: 'Mission', note: 'Plan, progress, results', run: () => dispatch({ type: 'trials', open: true }) },
+        { label: 'Tracking', note: 'Sustainability score, climate, water, power, profit', run: () => open({ kind: 'tracking', tab: 'overview' }) },
         { label: 'Field rounds', note: 'Check every bed', run: () => dispatch({ type: 'rounds', open: true }) },
         { label: 'Tractor', note: 'Pick a type and tool, work a plot', run: () => dispatch({ type: 'ride' }) },
         { label: 'Tractor game', note: 'Plough the mini farm in 30 seconds', run: () => open({ kind: 'tractorGame' }) },

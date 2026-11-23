@@ -58,6 +58,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [Money: savings, investments and profit](#money-savings-investments-and-profit)
 - [The power system](#the-power-system)
 - [Night mode](#night-mode)
+- [Tracking and the sustainability score](#tracking-and-the-sustainability-score)
 - [The tractor screen](#the-tractor-screen)
 - [The coop and the cow shed](#the-coop-and-the-cow-shed)
 - [The shed's options](#the-sheds-options)
@@ -1071,6 +1072,7 @@ reload without losing their place, bookmark a page, and use the browser's **Back
 | `#/events/regions/<region>` (`horn-of-africa`, `sahel`, `southern-africa`, `lake-chad`, `madagascar`, `sudan`) | One region in need, and its relief packs |
 | `#/donate` · `#/regions` | Short addresses for Donate (open before the farm too) and Regions |
 | `#/money/overview` · `savings` · `investments` · `profit` | Money: what the farmer is worth, savings, investments, profit by part of the farm |
+| `#/tracking/overview` · `sustainability` · `climate` · `water` · `soil-and-inputs` · `power` · `profit-and-costs` · `harvests` · `animals-and-safety` | Tracking: the sustainability score and every figure behind it (`#/sustainability` is a short address) |
 | `#/market` · `#/market/restaurant` · `nutrition` · `sales` | The market stall, the restaurant, nutrition, every sale (`#/restaurant` and `#/nutrition` work too) |
 | `#/serve/market` · `#/serve/restaurant` | The shop floor: serving customers at the stall, or in the restaurant's kitchen |
 
@@ -1675,7 +1677,23 @@ of the game:
 **Settings › Display › Night mode**: *Auto* (night on the farm from 7 pm to 6 am by the phone's clock), *Day* or
 *Night*. At night the sky goes dark blue, the moon lights the farm, the farmer carries a lantern, the farmhouse windows
 glow, and once the power system's lights are lit the poles light the paths (`setNight`, `setPower` in the engine).
-A chip at the bottom says *Night · lights on* or *off*.
+There is no night chip on the farm's HUD: its place beside the money holds the sustainability score (below).
+
+## Tracking and the sustainability score
+
+The farm's home screen shows a **sustainability score out of 100** beside the money (🌱 *54/100*), where the night chip
+was; its border is green (65+), amber (50–64) or red (under 50). Tapping it opens **Tracking** (`#/tracking/…`,
+`src/tracking`), a page for how successful the farm is: *Overview*, *Sustainability* (the score's eight parts),
+*Climate*, *Water*, *Soil* (land cover, pollution, sprays, nitrogen), *Power*, *Profit* (money in and out, expenses
+against the harvest, return on inputs, cost per bag), *Harvests* (each cycle's bags and profit, food lost) and *Animals*
+(health, milk, eggs, losses, thefts). **Mission** has a *Sustainability* section too: the switch beside its title.
+
+The score is a weighted average of eight parts, each 0 to 100 (`sustainability()` in `src/tracking/model.ts`):
+climate and carbon 20% (the climate rating, or carbon kept against emitted before the first harvest), water 15% (rain
+caught against water used, dry days, rationing), soil and land 15% (soil points, plot-days left bare), power efficiency
+15% (solar share, needs met, parts built), chemicals and pollution 10%, climate-smart practice 10% (practices learned,
+shocks handled, the drill streak), money 10% (profit margin and money kept back) and animal welfare 5%. A part with
+nothing to go on yet is left out and the others share its weight. It can be hidden in **Settings › Home screen**.
 
 ## The tractor screen
 
