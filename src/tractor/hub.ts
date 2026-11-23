@@ -1,6 +1,6 @@
 /* The tractor yard: the farm's own tractor, looked after and learned. Tapping the tractor (or walking to the Train
    spot beside it) opens the tractor screen with its sections, each a short mini-game: Train (drive the practice
-   course), Learn (the parts and the safe way to work), Safety check (the walk-round before starting), Service (oil
+   course: one row of a field per job, with the right implement), Learn (the parts and the safe way to work), Safety check (the walk-round before starting), Service (oil
    and grease), Repair (find what is wrong), Refuel (diesel from the farm's tank or the pump), Hire (the oxen or
    the tractor plough the farms whose plan hires them) and Drive (hop on).
 
@@ -45,14 +45,16 @@ export interface HubState {
   done: Partial<Record<HubSection, number>>;
   /** the best score (0 to 1) at each section's mini-game: the stars on its station in the yard */
   best: Partial<Record<HubSection, number>>;
+  /** Train: the best score (0 to 1) on each drill passed (training.ts DRILLS ids) */
+  drills: Partial<Record<string, number>>;
   /** the farm day of the last safety check */
   safetyDay: number | null;
   /** newest first */
   log: { day: number; text: string }[];
 }
 
-export const newHub = (): HubState => ({ xp: 0, lessons: [], condition: 100, fuel: HUB.tankL, done: {}, best: {}, safetyDay: null, log: [] });
-export const hubOf = (h: Partial<HubState> | undefined): HubState => ({ ...newHub(), ...(h ?? {}), done: { ...(h?.done ?? {}) }, best: { ...(h?.best ?? {}) } });
+export const newHub = (): HubState => ({ xp: 0, lessons: [], condition: 100, fuel: HUB.tankL, done: {}, best: {}, drills: {}, safetyDay: null, log: [] });
+export const hubOf = (h: Partial<HubState> | undefined): HubState => ({ ...newHub(), ...(h ?? {}), done: { ...(h?.done ?? {}) }, best: { ...(h?.best ?? {}) }, drills: { ...(h?.drills ?? {}) } });
 
 /** The driver's level, 0 to 3. */
 export const levelOf = (xp: number) => HUB.levels.filter(n => xp >= n).length;
