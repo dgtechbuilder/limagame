@@ -131,7 +131,7 @@ test('Tractor: speed, steering, touch controls, sounds, dust and smoke for the b
 test('Home screen: hide the farm’s buttons, the columns close up, Show all brings them back, and it is saved', async ({ page }) => {
   await boot(page);
   await scenario(page, 'tractor');
-  for (const c of ['.hud-mission', '.hud-shop', '.hud-water', '.hud-climate', '.hud-progress', '.hud-partners', '.hud-day', '.hud-pill.is-points']) await expect(page.locator(c)).toBeVisible();
+  for (const c of ['.hud-mission', '.hud-shop', '.hud-water', '.hud-climate', '.hud-partners', '.hud-day', '.hud-pill.is-points']) await expect(page.locator(c)).toBeVisible();
   const climateTop = await page.locator('.hud-climate').evaluate(e => e.getBoundingClientRect().top);
 
   await openSettings(page);
@@ -146,8 +146,8 @@ test('Home screen: hide the farm’s buttons, the columns close up, Show all bri
 
   for (const c of ['.hud-mission', '.hud-water', '.hud-partners', '.hud-pill.is-points']) await expect(page.locator(c)).toHaveCount(0);
   // what always stays
-  for (const name of ['Settings', 'Main menu']) await expect(page.getByRole('button', { name, exact: true }).first()).toBeVisible();
-  await expect(page.locator('.hud-tractor')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Settings', exact: true }).first()).toBeVisible();
+  for (const c of ['.hud-menu', '.hud-tractor']) await expect(page.locator(c)).toBeVisible();
   await expect(page.locator('.hud-task')).toBeVisible();
   // the right column closes up: Shop takes Mission's place, Climate moves up two places
   const top = (c: string) => page.locator(c).evaluate(e => e.getBoundingClientRect().top);

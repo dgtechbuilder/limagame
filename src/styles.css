@@ -944,7 +944,7 @@ button.card:active { transform: scale(0.98); }
 }
 
 /* top left: the farmer and their level, settings */
-.hud-avatar { position: absolute; left: 18px; top: 12px; width: 50px; height: 54px; z-index: 5; pointer-events: none; }
+.hud-avatar { position: absolute; left: 18px; top: 8px; width: 48px; height: 52px; z-index: 5; pointer-events: none; }
 .hud-hex {
   position: absolute; inset: 0; display: grid; place-items: center; overflow: hidden;
   clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
@@ -969,6 +969,8 @@ button.card:active { transform: scale(0.98); }
   background: radial-gradient(circle at 50% 35%, #f6a64b, #d9731f); box-shadow: 0 0 0 2.5px #fff3d6, 0 3px 6px rgba(0, 0, 0, 0.3);
 }
 .hud-round:active > svg, .hud-round:active > img { transform: scale(0.94); }
+/* the label: a tight line, so buttons stacked 60px apart keep a clear gap between one's label and the next circle */
+.hud-round > span:not([class]) { line-height: 12px; margin-top: 2px; }
 .hud-mission { right: 12px; top: 72px; }
 .hud-mission > svg { background: radial-gradient(circle at 50% 35%, #fff8e6, #f0dcb4); padding: 5px 8px; }
 .hud-shop { right: 12px; top: 134px; }
@@ -1008,14 +1010,15 @@ button.card:active { transform: scale(0.98); }
 .hud-task-text b { font-size: 14px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hud-task-text i { font-style: normal; font-size: 10.5px; font-weight: 600; opacity: 0.75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* bottom left: one stack, bottom up: the day and load, today's build, today's lesson (it never overlaps itself; it moves
+/* bottom left: one stack, bottom up: the load, today's build, today's lesson (it never overlaps itself; it moves
    right of the special event's card while that shows) */
 .hud-dock {
   position: absolute; left: 80px; bottom: 12px; z-index: 6; display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
   max-width: 300px; pointer-events: none;
 }
 .hud-dock > * { pointer-events: auto; }
-.hud-status { display: flex; gap: 6px; pointer-events: none; }
+/* one chip a line, so the row never grows into the daily chips on the right */
+.hud-status { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; pointer-events: none; }
 .hud-status:empty { display: none; }
 .hud-status span {
   padding: 3px 10px; border-radius: 100px; background: rgba(40, 30, 20, 0.58); color: #fff; font-size: 11px; font-weight: 800; white-space: nowrap;
@@ -1076,7 +1079,8 @@ button.card:active { transform: scale(0.98); }
 .hud-tidy-row > span svg { width: 14px; height: 14px; }
 .hud-tidy-row > span.is-full { background: #d6f0c4; color: #23720f; }
 .hud-csa.is-done, .hud-tidy.is-done { background: rgba(238, 251, 232, 0.96); color: #23720f; box-shadow: 0 0 0 1.5px #2f9b14, 0 2px 6px rgba(0, 0, 0, 0.2); }
-@keyframes tidy-nudge { 0%, 88%, 100% { transform: none; } 92% { transform: rotate(-3deg); } 96% { transform: rotate(3deg); } }
+/* a sideways nudge, not a tilt: a tilted chip swings its corners into the chips above and below it */
+@keyframes tidy-nudge { 0%, 88%, 100% { transform: none; } 92% { transform: translateX(-3px); } 96% { transform: translateX(3px); } }
 @media (prefers-reduced-motion: reduce) { .hud-tidy, .hud-csa { animation: none; } }
 .hud-tidy:not(.is-done) { animation: pop 0.25s ease both, tidy-nudge 4s ease-in-out 1s infinite; }
 @media (prefers-reduced-motion: reduce) { .hud-tidy:not(.is-done) { animation: none; } }
@@ -1272,11 +1276,11 @@ button.card:active { transform: scale(0.98); }
 .menu-item { display: flex; flex-direction: column; gap: 2px; }
 .menu-item small { font-size: 8px; opacity: 0.75; padding-left: 4px; }
 .tc-bonus { font-size: 9px; font-weight: 600; color: #2f6a1a; background: #e8f5dc; border-radius: 8px; padding: 2px 8px; margin: 0; white-space: nowrap; }
-.hud-menu { left: 12px; top: 130px; }
-.hud-tractor { left: 12px; top: 194px; }
+.hud-menu { left: 12px; top: 124px; }
+.hud-tractor { left: 12px; top: 184px; }
 .hud-tractor.is-on > svg { background: radial-gradient(circle at 50% 35%, #7bd24a, #3f9a1c); }
 .hud-rig {
-  position: absolute; left: 70px; top: 214px; z-index: 6; padding: 4px 10px; border-radius: 100px;
+  position: absolute; left: 70px; top: 204px; z-index: 6; padding: 4px 10px; border-radius: 100px;
   background: var(--cream); color: var(--brown); font-size: 11px; font-weight: 800; box-shadow: 0 0 0 2px #eea660, 0 3px 8px rgba(0,0,0,.25);
 }
 
@@ -2459,12 +2463,12 @@ button.card:active { transform: scale(0.98); }
 /* My Progress: the PROGRESS button, the journey and the modules       */
 /* ================================================================== */
 
-.hud-progress { right: 12px; top: 320px; }
-/* PARTNERS on the farm: left of WATER, under PROGRESS */
-.hud-partners { left: 12px; top: 258px; }
+/* My Progress lives in the main menu: its reward and theft dots sit on MENU's circle, on the side away from the edge */
+.hud-menu .awards-dot { left: auto; right: 6px; top: 3px; }
+.hud-menu .theft-dot { left: auto; right: -2px; bottom: auto; top: 22px; }
+/* the left column, 60px apart under the farmer: Settings 64, Menu 124, Tractor 184, Partners 244 (Kakuma, tucked, 304) */
+.hud-partners { left: 12px; top: 244px; }
 .hud-partners > svg { background: radial-gradient(circle at 50% 35%, #fff8e6, #f0dcb4); }
-.hud-progress > svg { padding: 3px; background: radial-gradient(circle at 50% 35%, #fff8e6, #f0dcb4); }
-.hud-progress .hud-badge { right: -6px; font-size: 10px; }
 .progress-chip { gap: 3px; background: rgba(30, 91, 120, 0.85); }
 .progress-chip-bar { display: block; width: 26px; height: 4px; margin-left: 3px; border-radius: 100px; background: rgba(255, 255, 255, 0.3); overflow: hidden; }
 .progress-chip-bar > i { display: block; height: 100%; background: #ffcf3f; }
@@ -3706,7 +3710,7 @@ button.pp-card:active { transform: scale(0.98); }
   background: #5b3418; color: #fff; font-size: 13px; font-weight: 800; line-height: 1; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 .world.has-event .hud-dock { left: 268px; }
-.hud-kakuma { left: 12px; top: 322px; }
+.hud-kakuma { left: 12px; top: 304px; }
 .hud-kakuma-icon {
   width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-size: 22px; text-shadow: none;
   background: radial-gradient(circle at 50% 35%, #ffd27a, #e8742a); box-shadow: 0 0 0 2.5px #fff3d6, 0 3px 6px rgba(0, 0, 0, 0.3);
