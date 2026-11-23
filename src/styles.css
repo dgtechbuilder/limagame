@@ -4363,3 +4363,80 @@ button.pp-card:active { transform: scale(0.98); }
 .hud-csa:not(.is-done) { box-shadow: 0 0 0 1.5px #6fb04a, 0 2px 6px rgba(0, 0, 0, 0.22); background: rgba(240, 250, 230, 0.97); color: #2e5e1d; }
 .hud-csa .hud-tidy-row > span.is-hot { background: #fde0c8; color: #9a3d12; }
 .hud-csa .hud-tidy-row > span.is-cool { background: #d6f0c4; color: #23720f; }
+
+/* ================================================================== */
+/* The workshop (src/minigames/workshop): hands-on lessons             */
+/* ================================================================== */
+.mg-card.is-wide { width: 800px; max-height: 394px; padding: 8px 14px 10px; }
+.ws { position: relative; display: flex; flex-direction: column; gap: 4px; }
+.ws .mg-quiz-top { margin-bottom: 0; }
+.ws-tries { margin-left: auto; padding: 1px 8px; border-radius: 100px; background: #eef8e6; color: var(--green-text); font-size: 10px; font-weight: 800; }
+.ws-tries.is-bad { background: #fcefe8; color: var(--bad); }
+.ws-body { position: relative; display: grid; grid-template-columns: 420px 1fr; gap: 12px; height: 262px; animation: rise 0.25s ease both; }
+.ws-stage { position: relative; width: 420px; height: 257px; border-radius: 12px; overflow: hidden; box-shadow: 0 0 0 2px var(--brown-20); background: #cfeaf6; }
+.ws-stage.is-won { box-shadow: 0 0 0 3px var(--green); }
+.ws-svg { display: block; width: 100%; height: 100%; touch-action: none; user-select: none; -webkit-user-select: none; }
+.ws-svg text { user-select: none; -webkit-user-select: none; }
+.ws-say { position: absolute; left: 6px; right: 6px; bottom: 6px; display: flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border-radius: 10px; background: rgba(255, 248, 234, 0.96); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2); border: 2px solid var(--brown-20); animation: wsSay 7s ease both; pointer-events: none; }
+/* a tip shows for a while, then gets out of the way of the drawing; a win stays */
+@keyframes wsSay { 0% { opacity: 0; translate: 0 8px; } 4%, 88% { opacity: 1; translate: 0 0; } 100% { opacity: 0; } }
+.ws-say.is-good { animation: rise 0.2s ease both; }
+.ws-say p { margin: 0; font-size: 10.5px; line-height: 1.35; font-weight: 600; }
+.ws-say.is-bad { border-color: var(--bad); background: #fff1ea; }
+.ws-say.is-bad .fun-coach { animation: mgShake 0.35s; }
+.ws-say.is-good { border-color: var(--green); background: #f0f9e8; }
+.ws-side { min-width: 0; display: flex; flex-direction: column; gap: 5px; overflow-y: auto; padding-right: 2px; }
+.ws-side .mg-q { margin: 0; font-size: 12.5px; }
+.ws-task { margin: 0; padding: 4px 8px; border-radius: 8px; background: #fff1cf; font-size: 10.5px; line-height: 1.35; font-weight: 600; }
+.ws-tray { display: flex; flex-direction: column; gap: 4px; }
+.ws-tray > small { font-size: var(--text-label); font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--ink-3); }
+.ws-part { display: flex; align-items: center; gap: 7px; min-height: 32px; padding: 2px 8px 2px 4px; border-radius: 10px; background: #fff8ea; border: 2px solid var(--brown-20); text-align: left; font-weight: 600; font-size: 11.5px; color: var(--ink); cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; transition: border-color 0.12s, transform 0.12s; }
+.ws-part:hover { border-color: var(--gold); transform: translateX(2px); }
+.ws-part:active { cursor: grabbing; }
+.ws-part.is-fitted { border-color: var(--gold); background: #fff1cf; }
+.ws-part-icon { flex-shrink: 0; width: 28px; height: 28px; display: grid; place-items: center; }
+.ws-part-text { display: flex; flex-direction: column; line-height: 1.2; }
+.ws-part-text small { font-size: 9px; font-weight: 600; color: var(--ink-3); }
+.ws-emoji { font-size: 20px; line-height: 1; }
+.ws-ghost { position: absolute; z-index: 20; translate: -50% -60%; pointer-events: none; padding: 4px; border-radius: 100px; background: rgba(255, 248, 234, 0.9); box-shadow: 0 0 0 2px var(--gold), 0 6px 14px rgba(0, 0, 0, 0.3); display: grid; place-items: center; scale: 1.25; }
+.ws-ghost svg { display: block; }
+.ws-controls { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-top: 2px; }
+.ws-btn { min-height: 34px; padding: 0 12px; border-radius: 10px; background: #fff8ea; border: 2px solid var(--brown-20); font-weight: 800; font-size: 11.5px; color: var(--ink); touch-action: none; user-select: none; -webkit-user-select: none; display: inline-flex; align-items: center; gap: 6px; }
+.ws-btn:disabled { opacity: 0.5; }
+.ws-hold { background: linear-gradient(180deg, #ffd25c, var(--gold)); border-color: #c88900; box-shadow: 0 3px 0 #c88900; }
+.ws-hold.is-on { translate: 0 2px; box-shadow: 0 1px 0 #c88900; filter: brightness(0.95); }
+.ws-switch i { position: relative; width: 28px; height: 16px; border-radius: 100px; background: var(--brown-20); transition: background 0.15s; }
+.ws-switch i b { position: absolute; left: 2px; top: 2px; width: 12px; height: 12px; border-radius: 100px; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); transition: left 0.15s; }
+.ws-switch.is-on i { background: var(--green); }
+.ws-switch.is-on i b { left: 14px; }
+.ws-switch small { font-size: 9.5px; font-weight: 700; color: var(--ink-3); min-width: 26px; }
+.ws-lever { display: flex; align-items: center; gap: 6px; width: 100%; font-size: 11px; font-weight: 800; }
+.ws-lever input { flex: 1; accent-color: var(--gold); touch-action: pan-y; }
+.ws-lever b { min-width: 34px; font-size: 10px; color: var(--ink-3); }
+.ws-hint { width: 100%; font-size: 9.5px; font-weight: 600; color: var(--ink-3); }
+.ws-why { position: absolute; right: 0; bottom: 0; z-index: 5; width: 336px; margin: 0; flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 12px; border-radius: 12px; background: #f0f9e8; border: 2px solid var(--green); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18); animation: rise 0.25s ease both; }
+.ws-why p { font-size: 11px; line-height: 1.45; }
+.ws-why .mg-go { align-self: flex-end; }
+.ws-slot circle { fill: rgba(255, 220, 90, 0.3); stroke: #ffae00; stroke-width: 2; stroke-dasharray: 4 3; animation: mgPulse 1.2s ease-in-out infinite; }
+.ws-slot text { fill: #6b402b; }
+.ws-slot-label { fill: #6b402b; paint-order: stroke; stroke: #fff8ea; stroke-width: 3px; }
+.ws-spot { fill: rgba(255, 255, 255, 0.25); stroke: #fff; stroke-width: 1.5; stroke-dasharray: 3 3; }
+.ws-grab, .ws-rub { cursor: grab; touch-action: none; }
+.ws-rub { cursor: pointer; }
+.ws-idle { animation: wsIdle 0.18s linear infinite; }
+@keyframes wsIdle { 50% { translate: 0 0.6px; } }
+.ws-puffs circle { opacity: 0; animation: wsPuff 1s ease-out infinite; }
+@keyframes wsPuff { 0% { opacity: 0.7; translate: 0 0; scale: 0.6; } 100% { opacity: 0; translate: 6px -22px; scale: 1.6; } }
+.ws-steam circle { opacity: 0; animation: wsPuff 0.8s ease-out infinite; }
+.ws-flow path { stroke-dasharray: 4 3; animation: wsFlow 0.5s linear infinite; }
+@keyframes wsFlow { to { stroke-dashoffset: -7; } }
+.ws-alarm { animation: wsAlarm 0.5s ease-in-out infinite; }
+@keyframes wsAlarm { 50% { opacity: 0.35; } }
+.ws-co2 { animation: wsCo2 1.6s ease-out infinite; }
+@keyframes wsCo2 { 0% { opacity: 0.9; translate: 0 4px; } 100% { opacity: 0; translate: 0 -14px; } }
+@media (prefers-reduced-motion: reduce) {
+  .ws-idle, .ws-puffs circle, .ws-steam circle, .ws-flow path, .ws-alarm, .ws-co2, .ws-slot circle { animation: none; }
+}
+/* four people (or parts) sit two by two, so the pedals stay in view */
+.ws-tray:has(> .ws-part:nth-of-type(4)) { display: grid; grid-template-columns: 1fr 1fr; }
+.ws-tray:has(> .ws-part:nth-of-type(4)) > small { grid-column: 1 / -1; }

@@ -19,7 +19,7 @@ import { lifeOf } from '../livestock/model';
 const SECTIONS: { id: HubSection; label: string; icon: string; does: string }[] = [
   { id: 'yard', label: 'Yard', icon: '🏡', does: 'Walk round the tractor yard: each station is a mini-game.' },
   { id: 'train', label: 'Train', icon: '🎓', does: 'Drive the practice course round the cones: a better driver drives faster.' },
-  { id: 'learn', label: 'Learn', icon: '📖', does: 'Short lessons: the tractor’s parts, working safely, looking after the soil.' },
+  { id: 'learn', label: 'Learn', icon: '📖', does: 'Hands-on lessons: fit the tractor’s parts, work it safely and look after the soil, by doing each job yourself.' },
   { id: 'safety', label: 'Safety check', icon: '🦺', does: 'The walk-round before starting, in the right order.' },
   { id: 'service', label: 'Service', icon: '🛢️', does: 'Check the oil and filters, grease the nipples: keeps it in good condition.' },
   { id: 'repair', label: 'Repair', icon: '🔧', does: 'Find what is wrong and fix it: a worn tractor drives slower, then will not start.' },
@@ -38,7 +38,7 @@ export function gameOf(section: HubSection, s: GameState, lesson: string): GameS
     case 'train':
       return { type: 'steer', seconds: 12, speed: 1 + levelOf(h.xp) * 0.15 };
     case 'learn':
-      return { type: 'quiz', questions: LESSONS.find(l => l.id === lesson)!.questions };
+      return { type: 'workshop', questions: LESSONS.find(l => l.id === lesson)!.questions };
     case 'safety':
       return { type: 'order', steps: SAFETY_STEPS, icons: SAFETY_ICONS };
     case 'service':
@@ -209,7 +209,7 @@ export function TractorHub({
         <MiniGame
           title={section === 'learn' ? LESSONS.find(l => l.id === lesson)!.title : sec.label}
           kicker="Tractor"
-          task={section === 'train' ? 'Steer left and right round the cones down the practice lane.' : section === 'learn' ? 'Answer each question: the why comes after.' : section === 'safety' ? 'Tap the steps of the walk-round in the right order.' : section === 'service' ? 'Tap each service point in order before the time runs out.' : section === 'repair' ? 'Fix the three faults (⚠️) before the time runs out. Leave the parts that are fine (👍).' : 'Hold to pour the diesel and let go at the line.'}
+          task={section === 'train' ? 'Steer left and right round the cones down the practice lane.' : section === 'learn' ? 'Every question is a job on a working tractor. Drag parts in and out, work the levers and drive it to see what moves. Fewer wrong tries, more stars.' : section === 'safety' ? 'Tap the steps of the walk-round in the right order.' : section === 'service' ? 'Tap each service point in order before the time runs out.' : section === 'repair' ? 'Fix the three faults (⚠️) before the time runs out. Leave the parts that are fine (👍).' : 'Hold to pour the diesel and let go at the line.'}
           spec={game}
           onClose={() => setPlaying(false)}
           onDone={score => {

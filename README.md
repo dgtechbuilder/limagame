@@ -200,7 +200,8 @@ src/
   greenhouse/              the greenhouse where Farm 7 was (four beds under glass): model.ts, Greenhouse.tsx
   storehouse/              the storehouse where Farm 8 was (store, harvest, produce): model.ts, Storehouse.tsx
   systems/track.ts         the newer systems through the days: power, gutters, drip, wilting, tractor wear, morning news
-  minigames/MiniGame.tsx   the mini-games: timing, hold-to-fill, tap the spots, wires, order, quiz, aim, steer, balance
+  minigames/MiniGame.tsx   the mini-games: timing, hold-to-fill, tap the spots, wires, order, quiz, aim, steer, balance,
+                           workshop (workshop/: the hands-on tractor lessons, their scenes and kit)
   minifarm/                the tractor game: sim.ts (the rules, no DOM), MiniFarm.tsx (the page and its canvas)
   components/Page.tsx      a page with sections down the left (Wallet, Power, Market, Greenhouse, Storehouse, Tractor)
   training/data.ts         farmer training courses and bookings
@@ -1693,7 +1694,7 @@ returns to the yard. Each station is a mini-game:
 | --- | --- | --- |
 | Yard | walk round the yard to the stations | — |
 | Train | steer round the cones down the practice lane | experience: each driver level (60, 150, 300) drives 5% faster |
-| Learn | three lessons of questions (parts, safety, soil) | points; the why after each answer |
+| Learn | three hands-on lessons (parts, safety, soil): each question is a job on a working tractor ([the workshop](#the-workshop-hands-on-lessons)) | points; the why after each job |
 | Safety check | the walk-round in the right order | points |
 | Service | tap each service point in order | condition +10 to +35 (KSh 1,500; 30% less with workshop power) |
 | Repair | fix the three faults, leave the parts that are fine | condition back to 60–100% (KSh 6,000; 30% less with power) |
@@ -1881,10 +1882,34 @@ store, and the old addresses (`#/new-farms/7`, `/8`) open the greenhouse and the
 
 ## Mini-games
 
-`src/minigames/MiniGame.tsx`: one frame (what to do, the game, then stars and a score from 0 to 1), nine games:
+`src/minigames/MiniGame.tsx`: one frame (what to do, the game, then stars and a score from 0 to 1), ten games:
 **timing** (press in the green), **hold** (hold to fill, let go at the line), **tap** (tap the right spots before the
-time runs out, in order or not, decoys cost points), **wires**, **order**, **quiz**, **aim**, **steer** and
-**balance**. Every game is played with taps or a held press (keyboard too).
+time runs out, in order or not, decoys cost points), **wires**, **order**, **quiz**, **aim**, **steer**, **balance**
+and **workshop**. Every game is played with taps, drags or a held press (keyboard too).
+
+### The workshop: hands-on lessons
+
+The tractor's Learn lessons (`src/minigames/workshop`) are not picked from a list: every question is a small job on a
+working tractor, and the answer is found by doing it. The player drags parts in and out with a finger (or taps a part
+to fit it and taps again to take it out), works switches and levers, and holds a pedal to drive and see what moves.
+
+| Question | The job |
+| --- | --- |
+| Which part turns the mower? | Fit the PTO shaft, the steering wheel or the fuel cap into the gap, switch the PTO on, mow the grass. Only the shaft turns the blades; reaching for a turning shaft is a wrong try |
+| What do the linkage arms do? | Hitch the plough with the arms, a tyre pump or a fan, pull the lift lever and carry the plough to the field |
+| Where does the engine's heat go? | Fit the radiator, battery or seat, start the engine and watch the gauge; rub the chaff off the radiator's fins |
+| Across a steep slope… | Turn the tractor (seen from above) and drive to the shed; a view from behind shows the lean, and across the slope it rolls |
+| Before getting off… | Tool down, PTO off, hand brake on, engine off with the switches, then drag the farmer down; stepping down too soon shows what goes wrong |
+| Who rides on the tractor? | Drag the friends and the child off the mudguard, bonnet and drawbar; drive to the gate. Passengers fall off at the first bump |
+| Driving on wet soil… | Drag the sun to let days pass; drive on wet soil and the wheels sink and the soil's air spaces are squashed |
+| Ploughing too deep… | Set the plough's depth (lever or drag the blade) and plough the strip; too deep turns up pale subsoil and lets carbon out |
+| Tyre pressure for the field… | Let air out on the gauge from road to field pressure and drive across; hard tyres leave a deep rut, flat ones fold |
+
+A try that goes wrong is shown, then counted: a question done with no wrong tries is worth full marks, one wrong try
+two thirds, more a third. Tips fade after a few seconds so they never cover the drawing; the why comes with the job
+done. Each scene's question, options, task and why live in `src/tractor/hub.ts` (`LESSONS`); the scenes in
+`workshop/scenes.tsx`, built from the kit in `workshop/kit.tsx` (the bench, dragging, the pedal, switches, levers and
+the side-on tractor). Play-tested in `tests/workshop.spec.ts`.
 
 **The game layer** (`src/minigames/fun.tsx`) is shared by every quiz, form and test in the game:
 
