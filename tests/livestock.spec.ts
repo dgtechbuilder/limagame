@@ -233,8 +233,15 @@ test('in the game: ANIMALS opens the day’s jobs, a job is done, the coop is bu
   await expect.poll(() => page.evaluate(() => window.location.hash)).toBe('#/animals/today');
   await page.getByRole('button', { name: /^Feed the cows for/ }).click();
   await expect(page.getByLabel('Feed the cows: done today')).toBeVisible();
-  // the coop
+  // the coop: every option shows a real photo of one, with its size, before it is chosen
   await page.getByRole('button', { name: 'Coop', exact: true }).click();
+  await expect(page.locator('.lv-option .lv-photo img')).toHaveCount(5);
+  await expect(page.locator('[data-option="basic"] .lv-size')).toHaveText(/3 × 2 m/);
+  await expect(page.locator('[data-option="basic"] .rr-credit')).toContainText('CC BY-SA');
+  // the sidebar foot: the checks button on one line, fully in view
+  const foot = await page.locator('.lv-foot .ck-link').evaluate(b => ({ h: b.getBoundingClientRect().height, fits: b.scrollWidth <= b.clientWidth }));
+  expect(foot.fits).toBe(true);
+  expect(foot.h).toBeLessThan(40);
   await page.getByRole('button', { name: /^Build the simple coop/ }).click();
   // built by hand: the hammer mini-game
   await playTiming(page, 'Finish the coop');

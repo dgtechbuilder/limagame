@@ -771,8 +771,9 @@ export function fenceRail(len: number): Part[] {
   ];
 }
 
-/** A fence from (x0, z0) to (x1, z1), a post every ~1.8 units. */
-export function fence(x0: number, z0: number, x1: number, z1: number): Part[] {
+/** A fence from (x0, z0) to (x1, z1), a post every ~1.8 units. The bay numbered `open` (from the start) has no
+    lower rail and a raised top rail: a feed barrier the cows reach under to the feeder. */
+export function fence(x0: number, z0: number, x1: number, z1: number, open = -1): Part[] {
   const len = Math.hypot(x1 - x0, z1 - z0);
   const n = Math.max(1, Math.round(len / 1.8));
   const ry = -Math.atan2(z1 - z0, x1 - x0);
@@ -781,7 +782,10 @@ export function fence(x0: number, z0: number, x1: number, z1: number): Part[] {
     const x = x0 + ((x1 - x0) * i) / n;
     const z = z0 + ((z1 - z0) * i) / n;
     out.push(...place(fencePost(), at(x, 0, z)));
-    if (i < n) out.push(...place(fenceRail(len / n), at(x + (x1 - x0) / n / 2, 0, z + (z1 - z0) / n / 2, { ry })));
+    if (i >= n) continue;
+    const mid = at(x + (x1 - x0) / n / 2, 0, z + (z1 - z0) / n / 2, { ry });
+    if (i === open) out.push(...place([{ geo: G.box, color: C.wood, m: at(0, 0.98, 0, { sx: len / n, sy: 0.12, sz: 0.09 }) }], mid));
+    else out.push(...place(fenceRail(len / n), mid));
   }
   return out;
 }
@@ -1012,10 +1016,25 @@ export function waterTank(pipe = 1.8): Part[] {
   return out;
 }
 
+/** The cow feeder: a timber box on short legs that sits right on the pen's front fence, half in, half out, so the
+    farmer pours over it from outside and the cows eat from inside. Centred at the origin, 1.56 long (it fits one
+    fence bay); the feed in it is the engine's own mesh, so it can rise as it is poured (FEEDER). */
 export function trough(): Part[] {
+  const wood = '#8b5a2b';
+  const dark = '#5e3a1a';
   return [
-    { geo: G.box, color: '#8b5a2b', m: at(0, 0.3, 0, { sx: 1.8, sy: 0.5, sz: 0.6 }) },
-    { geo: G.box, color: C.hay, m: at(0, 0.52, 0, { sx: 1.6, sy: 0.1, sz: 0.45 }) },
+    // legs
+    { geo: G.box, color: dark, m: at(-0.66, 0.16, 0, { sx: 0.12, sy: 0.32, sz: 0.62 }) },
+    { geo: G.box, color: dark, m: at(0.66, 0.16, 0, { sx: 0.12, sy: 0.32, sz: 0.62 }) },
+    // the floor, the two long sides and the ends: an open box
+    { geo: G.box, color: wood, m: at(0, 0.36, 0, { sx: 1.56, sy: 0.08, sz: 0.72 }) },
+    { geo: G.box, color: wood, m: at(0, 0.5, 0.33, { sx: 1.56, sy: 0.3, sz: 0.07 }) },
+    { geo: G.box, color: wood, m: at(0, 0.5, -0.33, { sx: 1.56, sy: 0.3, sz: 0.07 }) },
+    { geo: G.box, color: wood, m: at(-0.75, 0.5, 0, { sx: 0.07, sy: 0.3, sz: 0.72 }) },
+    { geo: G.box, color: wood, m: at(0.75, 0.5, 0, { sx: 0.07, sy: 0.3, sz: 0.72 }) },
+    // a pale lip along the top so the box reads from the camera
+    { geo: G.box, color: '#c08a52', m: at(0, 0.66, 0.33, { sx: 1.6, sy: 0.04, sz: 0.1 }) },
+    { geo: G.box, color: '#c08a52', m: at(0, 0.66, -0.33, { sx: 1.6, sy: 0.04, sz: 0.1 }) },
   ];
 }
 

@@ -25,6 +25,7 @@ const ChecksPage = lazyPage(() => import('./inspect/Checks'), m => m.ChecksPage,
 const SecurityPage = lazyPage(() => import('./security/Security'), m => m.SecurityPage, 1);
 const WalletPage = lazyPage(() => import('./wallet/Wallet'), m => m.WalletPage, 1);
 const FinancePage = lazyPage(() => import('./finance/Finance'), m => m.FinancePage, 1);
+const TrackingPage = lazyPage(() => import('./tracking/Tracking'), m => m.TrackingPage, 1);
 const PowerPage = lazyPage(() => import('./power/Power'), m => m.PowerPage, 1);
 const TractorGamePage = lazyPage(() => import('./minifarm/MiniFarm'), m => m.TractorGamePage, 1);
 const MarketPage = lazyPage(() => import('./produce/Market'), m => m.MarketPage, 1);
@@ -372,6 +373,11 @@ export default function App() {
         {m?.kind === 'checks' && (
           <LoadGuard onBack={goHome}><Suspense fallback={<ActivityLoading label="Opening the farm checks…" />}>
             <ChecksPage key={m.subject ?? 'all'} s={s} dispatch={dispatch} subject={m.subject} />
+          </Suspense></LoadGuard>
+        )}
+        {m?.kind === 'tracking' && (
+          <LoadGuard onBack={goHome}><Suspense fallback={<ActivityLoading label="Opening tracking…" />}>
+            <TrackingPage s={s} dispatch={dispatch} tab={m.tab} />
           </Suspense></LoadGuard>
         )}
         {m?.kind === 'power' && (

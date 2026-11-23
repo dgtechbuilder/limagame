@@ -6,7 +6,7 @@ import { money } from '../money';
 import type { Action, GameState } from '../state';
 import { powerOf } from '../power/model';
 import { repairCut } from '../systems/track';
-import { HUB, LESSONS, SAFETY_ICONS, SAFETY_STEPS, SERVICE_SPOTS, cannotDrive, faultsFor, hubOf, levelOf, speedOf, type HubSection } from './hub';
+import { HUB, LESSONS, SAFETY_ICONS, SAFETY_START, SAFETY_STEPS, SAFETY_TRACK, SERVICE_SPOTS, cannotDrive, faultsFor, hubOf, levelOf, speedOf, type HubSection } from './hub';
 import { TractorYard, type Station, type StationInfo } from './Yard';
 import { TrainField } from './TrainField';
 import { DRILLS } from './training';
@@ -21,7 +21,7 @@ import { lifeOf } from '../livestock/model';
 const SECTIONS: { id: HubSection; label: string; icon: string; does: string }[] = [
   { id: 'yard', label: 'Yard', icon: '🏡', does: 'Walk round the tractor yard: each station is a mini-game.' },
   { id: 'train', label: 'Train', icon: '🎓', does: 'Tractor school: one job at a time (plough, plant, spray, harvest…). Hitch the right implement and drive the row round the rocks and trees.' },
-  { id: 'learn', label: 'Learn', icon: '📖', does: 'Short lessons: the tractor’s parts, working safely, looking after the soil.' },
+  { id: 'learn', label: 'Learn', icon: '📖', does: 'Hands-on lessons: fit the tractor’s parts, work it safely and look after the soil, by doing each job yourself.' },
   { id: 'safety', label: 'Safety check', icon: '🦺', does: 'The walk-round before starting, in the right order.' },
   { id: 'service', label: 'Service', icon: '🛢️', does: 'Check the oil and filters, grease the nipples: keeps it in good condition.' },
   { id: 'repair', label: 'Repair', icon: '🔧', does: 'Find what is wrong and fix it: a worn tractor drives slower, then will not start.' },
@@ -38,9 +38,9 @@ export function gameOf(section: HubSection, s: GameState, lesson: string): GameS
   const h = hubOf(s.hub);
   switch (section) {
     case 'learn':
-      return { type: 'quiz', questions: LESSONS.find(l => l.id === lesson)!.questions };
+      return { type: 'workshop', questions: LESSONS.find(l => l.id === lesson)!.questions };
     case 'safety':
-      return { type: 'order', steps: SAFETY_STEPS, icons: SAFETY_ICONS };
+      return { type: 'order', steps: SAFETY_STEPS, icons: SAFETY_ICONS, scene: 'tractor', track: SAFETY_TRACK, start: SAFETY_START };
     case 'service':
       return { type: 'tap', scene: 'tractor', verb: 'Checked', spots: SERVICE_SPOTS, seconds: 20, ordered: true, mark: '✓' };
     case 'repair':
@@ -229,7 +229,7 @@ export function TractorHub({
         <MiniGame
           title={section === 'learn' ? LESSONS.find(l => l.id === lesson)!.title : sec.label}
           kicker="Tractor"
-          task={section === 'learn' ? 'Answer each question: the why comes after.' : section === 'safety' ? 'Tap the steps of the walk-round in the right order.' : section === 'service' ? 'Tap each service point in order before the time runs out.' : section === 'repair' ? 'Fix the three faults (⚠️) before the time runs out. Leave the parts that are fine (👍).' : 'Hold to pour the diesel and let go at the line.'}
+          task={section === 'learn' ? 'Every question is a job on a working tractor. Drag parts in and out, work the levers and drive it to see what moves. Fewer wrong tries, more stars.' : section === 'safety' ? 'Put the steps of the walk-round in the right order: tap one, or drag it onto the glowing checkpoint. Zoom in on the tractor to see where each step happens.' : section === 'service' ? 'Tap each service point in order before the time runs out.' : section === 'repair' ? 'Fix the three faults (⚠️) before the time runs out. Leave the parts that are fine (👍).' : 'Hold to pour the diesel and let go at the line.'}
           spec={game}
           onClose={() => setPlaying(false)}
           onDone={score => {
