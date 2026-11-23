@@ -57,11 +57,14 @@ import {
   suggestPlans,
   planOptionBlock,
   planOptionOpen,
+  isResting,
+  plantedFarms,
   type Plan,
   type StepKey,
   type Trial,
   type TrialSummary,
 } from './trials/model';
+import { soilAfter, soilOf, type RestKind, type SoilState } from './soil/model';
 import { FOLLOW_UP } from './care/data';
 import { FULL, ROUTINE_POINTS, carryNeeded, doneMask, emptyField, followUpLeft, plotLocked, routineLeft, treatCostFor, treatLeft, type Carry, type Field } from './world/field';
 import { TRACTOR_BONUS, type ImplId } from './tractor/data';
@@ -82,7 +85,7 @@ import { GIFT_POINTS, KG_PER_MEAL, STORE_GIFT_KG, addGift, giftOf, kakumaOf, kak
 import type { SfxKind } from './sfx';
 import { money } from './money';
 import { clearPiece, tidyFor, TIDY_TOTAL, type TidyState } from './tidy/model';
-import { finishRun, type CsaState } from './csa/model';
+import { finishRun, soilCare, type CsaState } from './csa/model';
 import { practiceOf, type CsaId } from './csa/data';
 import { trackCsa } from './csa/track';
 import { JOBS_MAX, onFarm, treatJob, type Job, type JobSpec } from './onsite/model';
@@ -366,6 +369,8 @@ export interface GameState {
   jobs?: Job[];
   /** Climate Smart Agriculture: the practices learned and their skills, the daily drill, the field clock (src/csa; missing in older saves) */
   csa?: Partial<CsaState>;
+  /** the six farms' soil health, cycles cropped in a row and cycles rested (src/soil; missing in older saves) */
+  soil?: Partial<SoilState>;
   collectedDay: Record<string, string>; // milk/eggs → date last collected
   /** the cows and the hens: care, health, problems, the coop (src/livestock) */
   life?: Partial<LifeState>;
@@ -615,6 +620,8 @@ export type Action =
   | { type: 'trialNew' }
   | { type: 'trialPlan'; farm: number; key: StepKey; value: string }
   | { type: 'trialSuggest' }
+  /** rest a farm this cycle instead of planting it (src/soil), or plant it again: rest null */
+  | { type: 'trialRest'; farm: number; rest: RestKind | null }
   | { type: 'trialPlant'; clock: Trial['clock'] }
   | { type: 'trialCheck'; farm: number; day: number; right: boolean; tries: number; physical?: boolean }
   | { type: 'view'; view: GameState['view'] }
@@ -748,6 +755,8 @@ const morning = (x: Success | null) => (x && MORNING_KINDS.includes(x.kind) ? x 
 let toastId = 0;
 let successId = 0;
 export const toast = (text: string) => ({ id: ++toastId, text });
+/** Points for each farm rested in a cycle (src/soil): looking after the land is farming too. */
+export const REST_POINTS = 30;
 const gainXp = (s: GameState, amount: number) => {
   let xp = s.xp + amount;
   let level = s.level;
@@ -1160,7 +1169,7 @@ function play(s: GameState, a: Action): GameState {
       return {
         ...s,
         coins: s.coins - cost,
-        trial: { ...trial, phase: 'growing', clock: 'fast', planted: dayNumber(), day: 1 },
+        trial: { ...trial, phase: 'growing', clock: 'fast', planted: dayNumber(), day: 1, soil: soilOf(s.soil).health.slice(0, trial.plans.length) },
         field: emptyField(trial.cycle),
         toast: toast(`Your first planting: maize on Farm 1, sukuma wiki on Farm 2 · −${money(cost)}`),
       };
@@ -1178,6 +1187,13 @@ function play(s: GameState, a: Action): GameState {
       if (!t || t.phase !== 'plan') return s;
       return { ...s, trial: { ...t, plans: suggestPlans(t.plans[0], t.plans.length, Math.floor(Math.random() * 7), (key, id) => planOptionOpen(s, key, id)) } };
     }
+    case 'trialRest': {
+      const t = s.trial;
+      if (!t || t.phase !== 'plan' || t.guided || a.farm < 0 || a.farm >= t.plans.length) return s;
+      const rest = t.plans.map((_, i) => (i === a.farm ? a.rest : t.rest?.[i] ?? null));
+      if (rest.every(Boolean)) return { ...s, toast: toast('Plant at least one farm: the family needs a harvest.') };
+      return { ...s, trial: { ...t, rest: rest.some(Boolean) ? rest : undefined } };
+    }
     case 'trialPlant': {
       const t = s.trial;
       if (!t || t.phase !== 'plan') return s;
@@ -1189,10 +1205,23 @@ function play(s: GameState, a: Action): GameState {
         coins: s.coins - cost,
         // scheduled care (weeding, the stalk-borer spray, the top-dress) from the second cycle, when the farms are worked
         // in the farm world: the six farms screen has no field work to do it with
-        trial: { ...t, phase: 'growing', clock: a.clock, planted: dayNumber(), day: 1, ...(!t.guided && s.view === 'world' ? { routine: [] } : {}) },
+        trial: {
+          ...t,
+          phase: 'growing',
+          clock: a.clock,
+          planted: dayNumber(),
+          day: 1,
+          // the soil each farm has at planting sets a share of its harvest (src/soil)
+          soil: soilOf(s.soil).health.slice(0, t.plans.length),
+          ...(!t.guided && s.view === 'world' ? { routine: [] } : {}),
+        },
         field: emptyField(t.cycle),
         ...gainXp(s, 0.1),
-        toast: toast(s.view === 'world' ? `${t.plans.length} farm plans paid: ${money(cost)} · now get them planted` : `${t.plans.length} farms planted for ${money(cost)} · day 1: check every farm`),
+        toast: toast(
+          `${s.view === 'world' ? `${plantedFarms(t).length} farm plans paid: ${money(cost)} · now get them planted` : `${plantedFarms(t).length} farms planted for ${money(cost)} · day 1: check every farm`}${
+            plantedFarms(t).length < t.plans.length ? ` · ${t.plans.length - plantedFarms(t).length} resting` : ''
+          }`,
+        ),
       };
     }
     case 'trialCheck': {
@@ -1225,7 +1254,7 @@ function play(s: GameState, a: Action): GameState {
       if (!t || t.phase !== 'growing' || t.clock !== 'fast') return s;
       const day = currentDay(t, dayNumber());
       if (day > CHECK_DAYS) return s;
-      const unchecked = t.plans.findIndex((_, i) => !t.checks[checkKey(i, day)]);
+      const unchecked = t.plans.findIndex((_, i) => !isResting(t, i) && !t.checks[checkKey(i, day)]);
       if (unchecked >= 0) return { ...s, toast: toast(`Check ${farmName(unchecked)} first`) };
       return { ...s, trial: { ...t, day: day + 1 }, toast: toast(day + 1 > CHECK_DAYS ? 'Harvest time on every farm' : `Day ${day + 1} of ${CHECK_DAYS}`) };
     }
@@ -1243,14 +1272,21 @@ function play(s: GameState, a: Action): GameState {
       const income = results.reduce((n, r) => n + r.income, 0);
       const why = explain(t, results);
       const summary: TrialSummary = { cycle: t.cycle, farms: t.plans.length, best: why.best, bags: results.map(r => r.bags), profit: results.map(r => r.profit) };
+      // the soil after the cycle: cropped farms lose some, resting farms come back (src/soil); points for each rest
+      const soil = soilAfter(s.soil, t, soilCare(s.csa));
+      const rested = t.plans.length - plantedFarms(t).length;
+      const pts = 50 * plantedFarms(t).length + REST_POINTS * rested;
       return {
         ...s,
         coins: s.coins + income,
-        points: s.points + 50 * t.plans.length,
+        points: s.points + pts,
         trial: { ...t, phase: 'done', results },
         trialHistory: [...s.trialHistory, summary],
+        soil,
         ...gainXp(s, 0.4),
-        toast: toast(`Harvest sold for ${money(income)} · +${50 * t.plans.length} points${theft.bags ? ` · ${theft.bags} bags were stolen from the field (${money(theft.value)})` : ''}`),
+        toast: toast(
+          `Harvest sold for ${money(income)} · +${pts} points${rested ? ` · ${rested} farm${rested === 1 ? '' : 's'} rested: soil up` : ''}${theft.bags ? ` · ${theft.bags} bags were stolen from the field (${money(theft.value)})` : ''}`,
+        ),
       };
     }
     case 'view':

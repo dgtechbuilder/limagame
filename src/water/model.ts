@@ -1,7 +1,7 @@
 /* Water as a real resource: the tank, where its water comes from and goes, the shared catchment, water credits and
    crop cover. No screens here (the panel is WaterPanel.tsx). Every number is in ./config.ts. */
 
-import { FORECASTS, CHECK_DAYS, harvestFarm, type Forecast, type Trial } from '../trials/model';
+import { FORECASTS, CHECK_DAYS, harvestFarm, isResting, type Forecast, type Trial } from '../trials/model';
 import { FACTORS } from '../climate/model';
 import { emptyField, setupLeft, type Field } from '../world/field';
 import { rowEffect, strategiesOf, chosen } from '../strategy/model';
@@ -91,7 +91,8 @@ export function farmsUse(s: Pick<WaterHost, 'trial' | 'field' | 'csa'>): number 
   const f = s.field.cycle === t.cycle ? s.field : emptyField(t.cycle);
   let litres = 0;
   t.plans.forEach((_, farm) => {
-    if (setupLeft(f, t, farm)) return;
+    // a resting farm (src/soil) is not watered
+    if (isResting(t, farm) || setupLeft(f, t, farm)) return;
     // a can of water a row a day by hand, and what the row's habits add or save over the cycle
     for (const st of strategiesOf(t, farm)) litres += Math.max(0, WATER.rowCan + rowEffect(st, t.forecast).water / CHECK_DAYS);
   });
@@ -111,7 +112,7 @@ export function useToday(s: WaterHost) {
 export function irrigationWant(s: Pick<WaterHost, 'trial' | 'field'>): number {
   const t = s.trial;
   if (!t || t.phase !== 'growing') return 0;
-  return Math.round(t.plans.reduce((n, p) => n + (p.water * FACTORS.farmM2.value) / 7, 0));
+  return Math.round(t.plans.reduce((n, p, i) => n + (isResting(t, i) ? 0 : (p.water * FACTORS.farmM2.value) / 7), 0));
 }
 
 /** The shared catchment over one day: rain in, every household's draw out, rationed when it runs low. */

@@ -9,7 +9,8 @@ import { RIDE_SPEED, TRACTOR_EDGE, type ImplId } from '../tractor/data';
 import { slotBrand, type SlotId } from '../partners/data';
 import { TIDY, type TidyItem } from '../tidy/model';
 import { JOB_INFO, ROUTINE, TRACTOR_PLOT, toolJobs, toolName, type PlotJob, type TractorId } from '../plots/data';
-import { CHECK_DAYS, CROP_WORDS, checkKey, cropOf, farmName, harvestFarm, hazardFor, plotGrowth, type Trial, type TrialHazard } from '../trials/model';
+import { CHECK_DAYS, CROP_WORDS, checkKey, cropOf, farmName, harvestFarm, hazardFor, isResting, plotGrowth, restOf, type Trial, type TrialHazard } from '../trials/model';
+import { REST } from '../soil/model';
 import {
   FULL,
   PLOTS,
@@ -1438,7 +1439,9 @@ export class FarmWorld {
       used.set(m, k + 1);
     };
     for (let farm = 0; farm < PLOTS.length; farm++) {
-      const active = !!t && farm < t.plans.length && t.phase !== 'plan';
+      // a resting farm (src/soil) is left to its grass and bush, or under a green cover crop: nothing is worked on it
+      const rest = t && t.phase === 'growing' ? restOf(t, farm) : null;
+      const active = !!t && farm < t.plans.length && t.phase !== 'plan' && !rest;
       const plan = t?.plans[farm];
       // a farm that started the cycle cleared (the first cycle's sukuma wiki) shows cleared soil from the start
       const prep = active ? (t?.cleared?.includes(farm) ? FULL : this.marks(farm, 'prep')) : 0;
@@ -1465,7 +1468,7 @@ export class FarmWorld {
       // the farm grows with its seed, fertilizer and machines: taller or shorter, greener or paler
       const growth = active && t ? this.grown(t, farm, day).plots : [1];
 
-      col.set(active && prep ? '#7a4224' : '#93cf33');
+      col.set(active && prep ? '#7a4224' : rest === 'cover' ? '#4f9e2c' : '#93cf33');
       this.base.setColorAt(farm, col);
 
       for (let i = 0; i < TILES; i++) {
@@ -1474,7 +1477,7 @@ export class FarmWorld {
         const isPrep = !!(prep & bit);
         // the soil
         const moundAt = at(c.x, 0.06, c.z, { sx: TILE * 0.82, sy: 0.16, sz: TILE * 0.94 });
-        let soil = C.grassDark;
+        let soil = rest === 'cover' ? '#3f8a26' : C.grassDark;
         if (isPrep) soil = plan?.land === 'mulch' ? C.mulch : plan?.land === 'slash' ? '#8f6a3c' : C.soilTilled;
         if (isPrep && sown & bit) soil = plan?.land === 'mulch' ? C.mulch : C.soil;
         if (isPrep && fed & bit && day <= 1) soil = '#8a5838';
@@ -1527,7 +1530,7 @@ export class FarmWorld {
       const s = this.signs[farm];
       s.board.visible = !!t && farm < t.plans.length;
       let badge: string | null = null;
-      if (growing && t && farm < t.plans.length) {
+      if (growing && t && farm < t.plans.length && !rest) {
         if (day > CHECK_DAYS) badge = cut === FULL ? null : 'harvest';
         else if (setupDone && !t.checks[checkKey(farm, day)]) badge = 'check';
         else if (pend) badge = 'treat';
@@ -1607,6 +1610,8 @@ export class FarmWorld {
     const v = this.view!;
     const t = v.trial;
     if (!t || t.phase !== 'growing' || farm >= t.plans.length) return null;
+    const rest = restOf(t, farm);
+    if (rest) return { hint: `${farmName(farm)} is resting this cycle (${REST[rest].short.toLowerCase()}): leave it be` };
     const f = this.liveField();
     const plan = t.plans[farm];
     const day = fieldDay(t, v.today);
@@ -1693,7 +1698,7 @@ export class FarmWorld {
     const v = this.view!;
     const t = v.trial;
     const rig = this.rig;
-    if (!t || t.phase !== 'growing' || !rig || farm >= t.plans.length) return;
+    if (!t || t.phase !== 'growing' || !rig || farm >= t.plans.length || isResting(t, farm)) return;
     const f = this.liveField();
     const day = fieldDay(t, v.today);
     // the tool decides the job: its first one that the farm is waiting for (the spreader feeds at planting, then
@@ -2142,6 +2147,7 @@ export class FarmWorld {
     const t = this.view?.trial;
     if (t && t.phase === 'growing')
       for (let f = 0; f < t.plans.length; f++) {
+        if (isResting(t, f)) continue;
         const s = signOf(f);
         if (Math.hypot(this.pos.x - s.x, this.pos.y - s.z) < 1.3) sign = f;
       }

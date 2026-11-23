@@ -37,11 +37,14 @@ import {
   farmCost,
   farmName,
   hazardFor,
+  isResting,
   lower,
   optionOf,
   planProblem,
+  plantedFarms,
   plotLessons,
   plotsOf,
+  restOf,
   samePlan,
   stageOfDay,
   stepOf,
@@ -51,9 +54,11 @@ import {
   type TrialHazard,
 } from './model';
 import { money } from '../money';
+import { REST, REST_KINDS, SOIL_WORD, restAdvice, soilEffect, soilOf, soilTone, type RestKind } from '../soil/model';
 
 /* The six farms: plan → grow (a check of every farm each day) → harvest and compare.
-   The first cycle is guided: two farms, Farm 1 grown a common way, Farm 2 with one change. */
+   The first cycle is guided: two farms, Farm 1 grown a common way, Farm 2 with one change.
+   From the second cycle any farm can rest instead (the Use row, src/soil): under a cover crop or natural fallow. */
 
 const SHORT: Record<TrialHazard, string> = {
   healthy: 'Healthy',
@@ -163,12 +168,16 @@ function PlanBoard({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) 
   const [planting, setPlanting] = useState(false);
   const [board, setBoard] = useState<number | null>(null);
   const [rowsFor, setRowsFor] = useState<number | null>(null);
+  const [useFor, setUseFor] = useState<number | null>(null);
   const k = tr.plans.length;
   const total = trialCost(tr);
   const problem = planProblem(tr, s.coins);
+  const soil = soilOf(s.soil);
+  const planted = plantedFarms(tr).length;
+  const advice = tr.guided ? [] : restAdvice(s.soil, k).filter(a => !isResting(tr, a.farm));
   // two farms with the same plan and the same plots teach nothing new
   const plotKey = (i: number) => JSON.stringify(plotsOf(tr, i).map(r => [r.seed, r.fert, r.sprayer]));
-  const twinOf = (i: number) => tr.plans.findIndex((q, j) => j < i && samePlan(q, tr.plans[i]) && plotKey(j) === plotKey(i));
+  const twinOf = (i: number) => (isResting(tr, i) ? -1 : tr.plans.findIndex((q, j) => j < i && !isResting(tr, j) && samePlan(q, tr.plans[i]) && plotKey(j) === plotKey(i)));
   const changed = tr.guided ? differences(tr.plans[0], tr.plans[1]) : [];
 
   let line: string;
@@ -180,7 +189,11 @@ function PlanBoard({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) 
           ? t(`Farm 2 now differs in one thing: ${stepOf(changed[0]).label.toLowerCase()}. Plant both to see what it does.`)
           : t(`Farm 2 differs in ${changed.length} things, {name}. Change just one to know what made the difference.`);
   } else {
-    line = problem ?? t('Change one thing per farm against Farm 1, {name}.');
+    line =
+      problem ??
+      (advice.length
+        ? t(`${advice.map(a => `${farmName(a.farm)} (${a.why})`).join(' and ')}: rest ${advice.length === 1 ? 'it' : 'them'} this cycle, {name}? Tap Use.`)
+        : t('Change one thing per farm against Farm 1, {name}. Rest a tired farm in turns.'));
   }
 
   const inWorld = s.view === 'world';
@@ -198,20 +211,63 @@ function PlanBoard({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) 
   return (
     <>
       <div className="fs-panel tr-panel">
-        <div className="tr-grid" style={{ gridTemplateColumns: `104px repeat(${k}, minmax(0, 1fr))` }}>
+        <div className="tr-grid is-plan" style={{ gridTemplateColumns: `104px repeat(${k}, minmax(0, 1fr))` }}>
           <div className="tr-head tr-corner">Your plans</div>
           {tr.plans.map((_, i) => {
             const twin = twinOf(i);
             return (
-              <div key={i} className={`tr-head${twin >= 0 ? ' is-twin' : ''}`}>
+              <div key={i} className={`tr-head${twin >= 0 ? ' is-twin' : ''}${isResting(tr, i) ? ' is-resting' : ''}`}>
                 <b>{farmName(i)}</b>
-                <small>{twin >= 0 ? `Same as ${farmName(twin)}` : tr.guided && i === 0 ? 'A common way' : `${money(farmCost(tr, i))}`}</small>
+                <small>{twin >= 0 ? `Same as ${farmName(twin)}` : tr.guided && i === 0 ? 'A common way' : farmCost(tr, i) ? `${money(farmCost(tr, i))}` : 'Free'}</small>
               </div>
             );
           })}
+          <Row label={<span title="Plant the farm, or rest it this cycle; and its soil now, with what the soil does to the harvest (src/soil)">Use · soil</span>}>
+            {tr.plans.map((_, i) => {
+              const rest = restOf(tr, i);
+              const advised = advice.some(a => a.farm === i);
+              const h = soil.health[i];
+              const tip = `Soil ${h}, ${SOIL_WORD[soilTone(h)].toLowerCase()}: harvest ${soilEffect(h)}${soil.streak[i] ? ` · cropped ${soil.streak[i]} cycles in a row` : ''}`;
+              const body = (
+                <>
+                  <span>
+                    {rest ? `${REST[rest].icon} Rest` : '🌽 Plant'}
+                    <small className={`tr-soil-n is-${soilTone(h)}`}> · soil {h}</small>
+                  </span>
+                  <span className={`soil-meter tr-use-meter is-${soilTone(h)}`} aria-hidden="true">
+                    <span style={{ width: `${Math.max(4, h)}%` }} />
+                  </span>
+                </>
+              );
+              if (tr.guided)
+                return (
+                  <span key={i} className="tr-cell tr-use is-locked" title={tip}>
+                    {body}
+                  </span>
+                );
+              return (
+                <button
+                  type="button"
+                  key={i}
+                  className={`tr-cell tr-use${rest ? ' is-resting' : ''}${advised ? ' is-advised' : ''}`}
+                  onClick={() => setUseFor(i)}
+                  title={tip}
+                  aria-label={`${farmName(i)}: ${rest ? REST[rest].label : 'plant a crop'}; soil ${h}. Tap to plant it or rest it this cycle`}
+                >
+                  {body}
+                </button>
+              );
+            })}
+          </Row>
           {FARM_STEPS.map(step => (
             <Row key={step.key} label={step.label}>
               {tr.plans.map((p, i) => {
+                if (isResting(tr, i))
+                  return (
+                    <span key={i} className="tr-cell tr-rest-cell" aria-hidden="true">
+                      —
+                    </span>
+                  );
                 const locked = tr.guided && i === 0;
                 const diff = i > 0 && String(p[step.key]) !== String(tr.plans[0][step.key]);
                 return (
@@ -230,7 +286,12 @@ function PlanBoard({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) 
             </Row>
           ))}
           <Row label="Inputs">
-            {tr.plans.map((_, i) => (
+            {tr.plans.map((_, i) =>
+              isResting(tr, i) ? (
+                <span key={i} className="tr-cell tr-rest-cell">
+                  {REST[restOf(tr, i)!].icon} Resting
+                </span>
+              ) : (
               <button
                 type="button"
                 key={i}
@@ -246,10 +307,17 @@ function PlanBoard({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) 
                 ))}
                 <NutriChips food={foodOf(tr, i)} max={2} compact />
               </button>
-            ))}
+              ),
+            )}
           </Row>
           <Row label="Rows">
             {tr.plans.map((_, i) => {
+              if (isResting(tr, i))
+                return (
+                  <span key={i} className="tr-cell tr-rest-cell" aria-hidden="true">
+                    —
+                  </span>
+                );
               const n = strategiesOf(tr, i).filter(st => chosen(st).length).length;
               return (
                 <button type="button" key={i} className={`tr-cell tr-rows-cell${n ? ' is-diff' : ''}`} onClick={() => setRowsFor(i)} aria-label={`${farmName(i)}: row strategies. Tap to choose each row's way of farming`}>
@@ -271,7 +339,9 @@ function PlanBoard({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) 
         </div>
       </div>
 
-      <GuideLine text={line} action={{ label: tr.guided ? 'Plant both farms' : `Plant all ${k} farms`, onClick: plant }} />
+      <GuideLine text={line} action={{ label: tr.guided ? 'Plant both farms' : planted === k ? `Plant all ${k} farms` : `Plant ${planted} · rest ${k - planted}`, onClick: plant }} />
+
+      {useFor !== null && <UsePicker s={s} tr={tr} farm={useFor} dispatch={dispatch} onClose={() => setUseFor(null)} />}
 
       {board !== null && (
         <div className="abs ending" style={{ inset: 0 }} onClick={() => setBoard(null)} role="dialog" aria-label="Farm inputs">
@@ -365,6 +435,53 @@ function Picker({ s, tr, farm, stepKey, dispatch, onClose }: { s: GameState; tr:
   );
 }
 
+/** A farm's use this cycle: planted, or rested under a cover crop or natural fallow (src/soil). */
+function UsePicker({ s, tr, farm, dispatch, onClose }: { s: GameState; tr: Trial; farm: number; dispatch: Dispatch<Action>; onClose: () => void }) {
+  const soil = soilOf(s.soil);
+  const h = soil.health[farm];
+  const current = restOf(tr, farm);
+  const choose = (rest: RestKind | null) => {
+    dispatch({ type: 'trialRest', farm, rest });
+    onClose();
+  };
+  const crop = CROP_WORDS[cropOf(tr, farm)].name;
+  return (
+    <div className="abs ending" style={{ inset: 0 }} onClick={onClose} role="dialog" aria-label={`${farmName(farm)}: plant or rest`}>
+      <div className="tr-picker" onClick={e => e.stopPropagation()}>
+        <CloseX onClick={onClose} />
+        <p className="tr-card-title">{farmName(farm)} · plant or rest</p>
+        <p className="tr-card-small">
+          Soil {h} ({SOIL_WORD[soilTone(h)].toLowerCase()}): harvest {soilEffect(h)}.{soil.streak[farm] ? ` Cropped ${soil.streak[farm]} cycle${soil.streak[farm] === 1 ? '' : 's'} in a row.` : ''} A resting farm grows no harvest this
+          cycle and needs no work; its soil comes back, and its plants store carbon every day.
+        </p>
+        <ul>
+          <li>
+            <button type="button" className={!current ? 'is-on' : ''} onClick={() => choose(null)}>
+              <b>🌽 Plant {crop}</b>
+              <span>Grow this cycle’s plan. A crop takes about 10 soil points; mulch, manure and beans give some back.</span>
+              <i>{money(farmCost({ ...tr, rest: undefined }, farm))}</i>
+            </button>
+          </li>
+          {REST_KINDS.map(kind => (
+            <li key={kind}>
+              <button type="button" className={current === kind ? 'is-on' : ''} onClick={() => choose(kind)}>
+                <b>
+                  {REST[kind].icon} {REST[kind].label}
+                </b>
+                <span>
+                  {REST[kind].does} {REST[kind].why} Soil +{REST[kind].soil}.
+                </span>
+                <span className="clim-tag is-good">🌿 Stores {REST[kind].carbon} kg CO₂ an acre a day</span>
+                <i>{REST[kind].cost ? money(REST[kind].cost) : 'Free'}</i>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 /* ---------------- growing ---------------- */
 
 function Growing({ s, tr, dispatch, t, inWorld }: Props & { s: GameState; tr: Trial; inWorld: boolean }) {
@@ -372,8 +489,8 @@ function Growing({ s, tr, dispatch, t, inWorld }: Props & { s: GameState; tr: Tr
   const sown = (farm: number) => s.field.cycle === tr.cycle && doneMask(s.field, tr.cycle, farm, 'sow') > 0;
   const day = currentDay(tr, dayNumber());
   const ready = day > CHECK_DAYS;
-  const k = tr.plans.length;
-  const todayLeft = ready ? 0 : tr.plans.filter((_, i) => !tr.checks[checkKey(i, day)]).length;
+  const k = plantedFarms(tr).length;
+  const todayLeft = ready ? 0 : plantedFarms(tr).filter(i => !tr.checks[checkKey(i, day)]).length;
 
   let line: string;
   let action: { label: string; onClick: () => void } | undefined;
@@ -406,6 +523,25 @@ function Growing({ s, tr, dispatch, t, inWorld }: Props & { s: GameState; tr: Tr
             </div>
           ))}
           {tr.plans.map((p, i) => {
+            const rest = restOf(tr, i);
+            if (rest)
+              return (
+                <Row
+                  key={i}
+                  label={
+                    <>
+                      <b>{farmName(i)}</b>
+                      <small>Resting: {REST[rest].short.toLowerCase()}</small>
+                    </>
+                  }
+                >
+                  {Array.from({ length: CHECK_DAYS }, (_, dd) => (
+                    <span key={dd} className="tr-day is-rest">
+                      {dd === 0 ? `${REST[rest].icon} Resting` : ''}
+                    </span>
+                  ))}
+                </Row>
+              );
             const diff = i === 0 ? [] : differences(tr.plans[0], p);
             const tests = tr.crops
               ? cap(CROP_WORDS[cropOf(tr, i)].name)
@@ -496,8 +632,15 @@ function Compare({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) {
   const k = tr.plans.length;
   const maxBags = Math.max(6, ...results.map(r => r.bags));
   const income = results.reduce((n, r) => n + r.income, 0);
-  const differing = FARM_STEPS.filter(step => tr.plans.some(p => String(p[step.key]) !== String(tr.plans[0][step.key])));
+  const differing = FARM_STEPS.filter(step => tr.plans.some((p, i) => !isResting(tr, i) && String(p[step.key]) !== String(tr.plans[plantedFarms(tr)[0] ?? 0][step.key])));
   const kept = s.recipe && samePlan(s.recipe, tr.plans[keep]);
+  // the soil change this cycle made: shown once the cycle is the last one harvested (src/soil)
+  const soilLast = tr.cycle === s.trialHistory[s.trialHistory.length - 1]?.cycle ? soilOf(s.soil).last : undefined;
+  const restedLine = soilLast?.filter(x => x.rest).map(x => `${farmName(x.farm)} rested: soil ${x.from} → ${x.to}.`);
+  const tiredLine = soilLast
+    ?.filter(x => !x.rest && x.to < 50)
+    .map(x => farmName(x.farm))
+    .slice(0, 2);
 
   return (
     <>
@@ -509,21 +652,43 @@ function Compare({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) {
         ) : (
         <div className="tr-grid" style={{ gridTemplateColumns: `100px repeat(${k}, minmax(0, 1fr))` }}>
           <div className="tr-head tr-corner">Harvest</div>
-          {results.map((_, i) => (
-            <button type="button" key={i} className={`tr-head tr-pick${i === keep ? ' is-on' : ''}`} onClick={() => setKeep(i)} aria-pressed={i === keep}>
+          {results.map((r, i) => (
+            <button type="button" key={i} className={`tr-head tr-pick${i === keep ? ' is-on' : ''}${r.rested ? ' is-resting' : ''}`} onClick={() => !r.rested && setKeep(i)} disabled={!!r.rested} aria-pressed={i === keep}>
               <b>
                 {farmName(i)}
-                {i === why.best && <i>Most grown</i>}
+                {i === why.best && !r.rested && <i>Most grown</i>}
+                {r.rested && <i>Rested</i>}
               </b>
             </button>
           ))}
           <div className="tr-label">{tr.crops ? 'Harvest' : 'Maize'}</div>
-          {results.map((r, i) => (
-            <div key={i} className="tr-bar">
-              <span style={{ height: `${Math.max(3, (r.bags / maxBags) * 100)}%` }} className={i === why.best ? 'is-best' : i === why.worst ? 'is-worst' : ''} />
-              <b>{r.bags} bags</b>
-            </div>
-          ))}
+          {results.map((r, i) =>
+            r.rested ? (
+              <div key={i} className="tr-bar is-rest">
+                <b>
+                  {REST[r.rested].icon} {REST[r.rested].short}
+                </b>
+              </div>
+            ) : (
+              <div key={i} className="tr-bar">
+                <span style={{ height: `${Math.max(3, (r.bags / maxBags) * 100)}%` }} className={i === why.best ? 'is-best' : i === why.worst ? 'is-worst' : ''} />
+                <b>{r.bags} bags</b>
+              </div>
+            ),
+          )}
+          {soilLast && (
+            <Row label={<span title="Each farm's soil before and after this cycle (src/soil)">Soil</span>}>
+              {results.map((_, i) => {
+                const c = soilLast.find(x => x.farm === i);
+                if (!c) return <div key={i} className="tr-val tr-small">—</div>;
+                return (
+                  <div key={i} className={`tr-val tr-small ${c.to > c.from ? 'is-up' : c.to < c.from ? 'is-neg' : ''}`} title={c.why.join(' · ')}>
+                    {c.from} → {c.to}
+                  </div>
+                );
+              })}
+            </Row>
+          )}
           <div className="tr-label">Quality</div>
           {results.map((r, i) => (
             <div key={i} className="tr-val">
@@ -560,7 +725,7 @@ function Compare({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) {
             <Row key={step.key} label={step.label}>
               {tr.plans.map((p, i) => (
                 <div key={i} className={`tr-val tr-small${i > 0 && String(p[step.key]) !== String(tr.plans[0][step.key]) ? ' is-diff' : ''}`}>
-                  {optionOf(step.key, p).label}
+                  {isResting(tr, i) ? '—' : optionOf(step.key, p).label}
                 </div>
               ))}
             </Row>
@@ -597,7 +762,13 @@ function Compare({ s, tr, dispatch, t }: Props & { s: GameState; tr: Trial }) {
               ))}
             </div>
           ) : (
-            why.lines.map(l => <p key={l}>{l}</p>)
+            <>
+              {why.lines.map(l => (
+                <p key={l}>{l}</p>
+              ))}
+              {restedLine?.length ? <p>{restedLine.join(' ')} It comes back to the plan with a bigger harvest.</p> : null}
+              {tiredLine?.length ? <p>{tiredLine.join(' and ')}: soil is worn out. Rest {tiredLine.length === 1 ? 'it' : 'them'} next cycle, or mulch and add manure.</p> : null}
+            </>
           )}
           <GoldButton font={10} height={30} style={{ width: '100%', marginTop: 'auto' }} selected={!!kept} onClick={() => dispatch({ type: 'trialRecipe', farm: keep })}>
             {kept ? `${farmName(keep)}'s plan is your recipe` : `Keep ${farmName(keep)}'s plan as my recipe`}
@@ -675,6 +846,7 @@ function PlotResults({ tr }: { tr: Trial }) {
         <b>Harvest · seed · fertilizer · sprayer</b>
       </div>
       {results.map((r, i) => {
+        if (r.rested) return null;
         const inp = plotsOf(tr, i)[0];
         const fert = OPTIONS.fert.find(x => x.id === inp.fert)?.label;
         const spray = inp.sprayer && inp.sprayer !== 'none' ? OPTIONS.sprayer.find(x => x.id === inp.sprayer)?.label : '';

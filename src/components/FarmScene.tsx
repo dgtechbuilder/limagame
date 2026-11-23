@@ -9,7 +9,7 @@ import { FarmMap } from './FarmMap';
 import { LOOKS } from '../first/data';
 import { ClimateIcon, GoArrow, PartnersIcon, MailIcon, SettingsIcon, TimerIcon } from './Icons';
 import { Img } from './ui';
-import { CHECK_DAYS, checkKey, currentDay } from '../trials/model';
+import { CHECK_DAYS, checkKey, currentDay, isResting } from '../trials/model';
 import { dayNumber } from '../rounds/farms';
 import { ClassicLifeButtons } from '../livestock/HudButtons';
 import { currency, money, moneyShort } from '../money';
@@ -22,7 +22,7 @@ function trialBadge(s: GameState): string | null {
   if (!t || t.phase !== 'growing') return null;
   const day = currentDay(t, dayNumber());
   if (day > CHECK_DAYS) return '!';
-  const left = t.plans.filter((_, i) => !t.checks[checkKey(i, day)]).length;
+  const left = t.plans.filter((_, i) => !isResting(t, i) && !t.checks[checkKey(i, day)]).length;
   return left ? String(left) : null;
 }
 

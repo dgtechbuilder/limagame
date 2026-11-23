@@ -7,8 +7,10 @@
      money, points and climate credits once a day, and keeps a streak.
    - The field clock: the hour of the phone's own clock matters for work on the farm. Watering a dry farm in the
      midday heat loses water to the sun; watering in the cool of the morning or evening earns points.
-   - Skills help the farm: the rows use less water from the tank (saving water and the right time of day), and crop
-     cover costs less (half-moons, zaï pits and drought-tolerant seed keep water in the soil).
+   - Skills help the farm: the rows use less water from the tank (saving water and the right time of day), crop
+     cover costs less (half-moons, zaï pits and drought-tolerant seed keep water in the soil), and the six farms'
+     soil (src/soil) loses less to each crop (half-moons, zaï pits, push-pull, seed and intercropping) and comes back
+     faster when a farm rests (resting the land).
    Every number a designer might tune is in CSA below. */
 
 import { CSA_IDS, PRACTICES, practiceOf, type CsaId } from './data';
@@ -70,6 +72,10 @@ export const CSA = {
   hotLoss: 0.4,
   /** points for farm work in the cool hours (once per job) */
   coolPoints: 3,
+  /** the six farms' soil (src/soil): soil points a crop loses less, for each of these practices at Skilled or better */
+  soilCrop: { practices: ['halfmoon', 'zai', 'pushpull', 'seeds'] as CsaId[], each: 1, from: 3 },
+  /** soil points a resting farm gains more, by skill level in resting the land (0 to 4) */
+  soilRest: [0, 0, 1, 2, 4],
 };
 
 export const levelIndex = (xp: number) => CSA.levels.reduce((n, l, i) => (xp >= l.xp ? i : n), 0);
@@ -173,11 +179,19 @@ export function coverOff(prev: Partial<CsaState> | undefined): { off: number; na
   return { off: names.length * CSA.coverOff.each, names };
 }
 
+/** What the skills do for the six farms' soil (src/soil): points a crop loses less, and a rest gains more. */
+export function soilCare(prev: Partial<CsaState> | undefined): { crop: number; rest: number } {
+  const c = csaOf(prev);
+  const crop = CSA.soilCrop.practices.filter(id => skillOf(c, id).level >= CSA.soilCrop.from).length * CSA.soilCrop.each;
+  return { crop, rest: CSA.soilRest[skillOf(c, 'rest').level] ?? 0 };
+}
+
 /** Everything the skills do for the farm now, and what is still to win, for the module's page. */
 export function benefitsOf(prev: Partial<CsaState> | undefined) {
   const c = csaOf(prev);
   const cut = waterCut(c);
   const cover = coverOff(c);
+  const soil = soilCare(c);
   return [
     {
       icon: '🛢',
@@ -188,6 +202,14 @@ export function benefitsOf(prev: Partial<CsaState> | undefined) {
       icon: '☂️',
       on: cover.off > 0,
       text: cover.off > 0 ? `Crop cover costs ${Math.round(cover.off * 100)}% less (${cover.names.join(', ')})` : 'Reach Skilled in half-moons, zaï pits or seed and intercropping: crop cover costs less',
+    },
+    {
+      icon: '🪱',
+      on: soil.crop > 0 || soil.rest > 0,
+      text:
+        soil.crop > 0 || soil.rest > 0
+          ? `Soil: each crop takes ${soil.crop} point${soil.crop === 1 ? '' : 's'} less, each rest gives ${soil.rest} more`
+          : 'Reach Practised in resting the land, or Skilled in half-moons, zaï, push-pull or seed: the farms’ soil lasts longer',
     },
     {
       icon: '🕖',

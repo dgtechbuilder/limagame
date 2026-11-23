@@ -54,6 +54,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [The evidence layer](#the-evidence-layer)
 - [Climate tracking](#climate-tracking)
 - [Climate Smart Agriculture](#climate-smart-agriculture)
+  - [Resting the land: the six farms' soil](#resting-the-land-the-six-farms-soil)
 - [The wallet](#the-wallet)
 - [Money: savings, investments and profit](#money-savings-investments-and-profit)
 - [The power system](#the-power-system)
@@ -100,7 +101,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 | **Every week** | **Six farms**: a different plan on each farm, one day of checks each real day (or all now), then the harvests compared. The plan that worked becomes their recipe for the next cycle. |
 | **Any time** | Plays seasons of maize on Farm Moja: six farming steps, harvest timing, storage, processing, selling, results, rewards. |
 | **Any time** | Opens **Climate** to see what their farming did to the climate, the water and the soil, and the climate credits it earned. |
-| **Any time** | **Climate › Climate Smart Agriculture**: learns seven practices used in Kenya and West Africa (half-moons, saving water, the right time of day, zaï pits, push-pull, kisiki hai, drought-tolerant seed with intercropping) and practises each one by hand in its own game. |
+| **Any time** | **Climate › Climate Smart Agriculture**: learns eight practices used in Kenya and West Africa (half-moons, saving water, the right time of day, zaï pits, push-pull, kisiki hai, drought-tolerant seed with intercropping, resting the land) and practises each one by hand in its own game; sees every farm's soil and rests the tired ones in the next cycle's plan. |
 | **Every day** | The **CLIMATE-SMART** chip on the farm: today's drill (one practice a day) and the **field clock**, which says what the hour on the phone is good for. Watering a dry farm by hand at midday loses water to the sun; in the cool it earns points. |
 | **From day 2** | Looks after the **cows and hens** every day (feed, water, milk, eggs, cleaning), treats their diseases by their signs, and **keeps the farm safe from thieves** at night. The **Animal chores** chip walks the farmer to each chore at the pen or the coop, where it is done by hand. |
 | **Every job** | **Does the work on the farm**: buying the inverter, building the coop, servicing the tractor or feeding the hens closes the page and the farmer walks there, then works at each spot (round the tractor, every corner of the coop, each light pole) before it counts. See [Jobs done by hand on the farm](#jobs-done-by-hand-on-the-farm). |
@@ -229,10 +230,12 @@ src/
                            fertilizer and sprayer); TractorPick.tsx (the tractor's type and tool)
   strategy/                climate-smart rows: data.ts (every dimension and option), model.ts, StrategyBoard.tsx
   water/                   the tank, the animals, the shared catchment, crop cover: config.ts, model.ts, track.ts, WaterPanel.tsx
-  csa/                     Climate Smart Agriculture (see below): data.ts the seven practices in words, rules.ts the games'
+  csa/                     Climate Smart Agriculture (see below): data.ts the eight practices in words, rules.ts the games'
                            rules (no DOM), model.ts skills, the daily drill, the field clock and what skills do on the farm,
                            track.ts the field clock on farm work, Csa.tsx the module's tab and lessons, Chip.tsx the farm's
                            chip, games/ one hands-on game for each practice
+  soil/                    the six farms' soil and resting a farm (see Climate Smart Agriculture): model.ts (soil health,
+                           what a crop or a rest does to it, its share of the harvest, the rest advice), SoilPanel.tsx
   credits/ledger.ts        every kind of credit (CO₂, water) earned and paid
   livestock/               the cows and the hens: config.ts (every number: care, coop, prevention, diseases), model.ts
                            (care, health, problems, a night), track.ts (the nights, day 2), Animals.tsx (the page),
@@ -1543,7 +1546,7 @@ farms' numbers: illustrative estimates for learning until an agronomist reviews 
 
 ## Climate Smart Agriculture
 
-**Climate › Climate Smart Agriculture** (`#/climate/climate-smart-agriculture`) is a module of seven practices that
+**Climate › Climate Smart Agriculture** (`#/climate/climate-smart-agriculture`) is a module of eight practices that
 keep a harvest coming when the rains fail, the heat rises and pests spread, while storing carbon. Each one is used by
 farmers in Kenya and in West Africa, and each is **learned, then practised by hand in its own game**, not in a form:
 
@@ -1556,6 +1559,7 @@ farmers in Kenya and in West Africa, and each is **learned, then practised by ha
 | **Push-pull** | Western Kenya (icipe) and East Africa; striga and fall armyworm across West Africa | Paint desmodium and Brachiaria grass on a maize field (drag to paint), then the moths fly in: the edge grass pulls most in, desmodium drives the rest back out into it; maize with no desmodium beside it gets striga. Either one alone leaves gaps. |
 | **Kisiki hai** (FMNR) | Baringo, Makueni and the dry counties; Niger, Senegal, Mali, Burkina Faso, Ghana | Four living stumps: keep the 3 to 5 tall, straight, strong stems on each and cut the thin, crooked and broken ones, then let five years pass. |
 | **Drought-tolerant seed and intercropping** | Eastern Kenya; the Sahel, Ghana, Nigeria | Three forecasts (short rains, good long rains, a false start): choose the crop, what goes between the rows and when to plant, and watch the season's rain against what the crops need. Planting into dry soil before a false start kills the seed. |
+| **Resting the land** (fallow, green manure, rotation) | Lablab, mucuna and desmodium in western Kenya and the highlands; improved fallows in Benin, Nigeria, Ghana; the Sahel | Six farms over four seasons: tap a farm to crop it, rest it under a cover crop (1 bag of seed, soil +22) or leave it to natural fallow (free, soil +12). Harvests follow the soil; at least three farms stay planted and the family needs 36 bags a season (what is short is bought at double). Never resting is one star; resting the poorest in turns is three. |
 
 A lesson is three steps: **Learn** (what it is, where it is used, how, step by step, and why it is climate-smart),
 **Practise** (the game) and the **Result** (stars, what to remember, and the reward). Every practice has its own
@@ -1577,13 +1581,52 @@ points; a new best pays points for each star.
 - **Skills help the farm.** Saving water and the right time of day, practised, cut the water the rows draw from the tank
   each day (up to 25% at Expert in both). Half-moons, zaï pits and drought-tolerant seed at Skilled each take 4% off
   crop cover's price. The tab's *On your farm* box lists what is working and what is still to win.
-- **Badges** in My Progress (the Climate module): practices at two stars (3, 5, all 7) and daily drills (3, 10, 30).
+- **Skills look after the soil.** Half-moons, zaï pits, push-pull and seed at Skilled each take a soil point less from
+  every crop; resting the land, practised, gives each rest up to 4 points more (see below).
+- **Badges** in My Progress (the Climate module): practices at two stars (3, 5, all 8) and daily drills (3, 10, 30).
 - **Farm words** has each practice's card (half-moons, zaï pits, push-pull, desmodium, kisiki hai, intercropping, the
   field clock).
 
 Every number is in `src/csa/model.ts` (`CSA`) and `src/csa/rules.ts`; the practices' words are in `src/csa/data.ts`.
 `tests/csa.spec.ts` plays each game's rules, the skills and the drill, the field clock on a watered farm, and the
 module in the browser.
+
+### Resting the land: the six farms' soil
+
+Every one of the six farms has a **soil health** from 0 to 100 (it starts at 80), kept across cycles in the save
+(`soil`). A cycle of crop takes 10 points; the way the farm was farmed moves that (mulch, no dig +6, manure +6, beans
+between the rows +4; slash and burn −6, tractor tillage −3, ox ploughing −1, no fertilizer −3, a double dose −3, planted
+too close −2, a spray every week −2), and a farm cropped three cycles in a row or more loses 3 more. So a farm worked
+the climate-smart way (mulch, manure, beans) holds its soil; a plain one wears out.
+
+**Resting a farm.** From the second cycle, the plan's **Use · soil** row shows each farm's soil and lets the player
+plant it or rest it for the cycle:
+
+| Rest | Costs | Soil | Carbon stored |
+| --- | --- | --- | --- |
+| **Natural fallow** (grass and bush grow back) | Free | +12 | 0.8 kg CO₂ an acre a day |
+| **Green-manure cover crop** (lablab, mucuna; dug in before the next crop) | Its seed | +22 | 2 kg CO₂ an acre a day |
+
+A resting farm needs no clearing, sowing, checks, care or water; its tiles on the 3D farm are grass or a green cover,
+its sign shows no badge, and walking onto it says it is resting. It grows no harvest and is left out of the results'
+comparison, but its plants store carbon every day (Climate › Land & pay shows its plots as *Resting*, and the carbon is
+paid with the daily climate payment), the climate log records the rest, and the harvest pays 30 points for each farm
+rested. At least one farm must be planted.
+
+**The soil sets a share of the harvest.** The soil each farm has at planting is kept with the cycle (`Trial.soil`) and
+multiplies its harvest: 0.64 + 0.45 × soil / 100, so soil 80 grows the plan's harvest, 100 about 9% more, 50 about 13%
+less, 25 about 25% less. The results show each farm's soil before and after (with why, on hover), and TemoLima AI names
+the soil when it explains a gap and says which farms are worn out.
+
+**Advice.** A farm below 55, or cropped four cycles in a row, is worth resting (never more than half the farms). The plan
+marks those Use cells and says so; **Climate › Climate Smart Agriculture** shows every farm's soil, what it does to the
+harvest, how long it has been cropped and what the last cycle did to it, with one button that rests the advised farms
+under a cover crop in this cycle's plan.
+
+Every number is in `src/soil/model.ts` (`SOIL`, `REST`). `tests/soil.spec.ts` checks the soil rules, resting in the
+plan (cost, twins, at least one planted), a resting farm through the cycle (no work, checks or water, carbon stored),
+the harvest and the soil after it, the soil's share of the harvest, the rotation game's scoring, and both screens in
+the browser.
 
 ## The wallet
 
@@ -2316,6 +2359,9 @@ kept with the run for 14 days.
 - **Climate Smart Agriculture** (`src/csa`): the practices' steps, places, yields and the games' numbers (water a litre
   reaches the roots, moths pulled and pushed, the seasons' rain and the crops' needs) are for learning and need an
   agronomist's review; the field clock's hours are for a hot, dry-season day near the equator.
+- **Soil and resting the land** (`src/soil`): what a crop, each practice and a rest do to a farm's soil, the soil's share of
+  the harvest, and the carbon fallow and a cover crop store are illustrative; one game cycle stands in for a season, so a
+  rest of one cycle stands in for a season of fallow. The cover crop's price and the rest points are game figures.
 - **TemoLima AI** is a rule-based stand-in that reads the season's numbers; it does not call an AI service.
 - **Rewards** are saved in the game but nothing is sent to a partner; there is no redemption backend.
 - **Missed checks** cost harvest on the six farms (see `DAMAGE` in `src/trials/model.ts`); a problem left unresolved

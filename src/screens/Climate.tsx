@@ -234,7 +234,7 @@ function Overview({ s, go }: { s: GameState; go: (t: ClimateTab) => void }) {
 
 /* ---------------- Land & pay ---------------- */
 
-const USE_WORD: Record<LandUse, string> = { farmed: 'Farmed', bare: 'Bare', idle: 'Idle' };
+const USE_WORD: Record<LandUse, string> = { farmed: 'Farmed', bare: 'Bare', idle: 'Idle', resting: 'Resting' };
 
 function LandPay({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
   const c = s.climate;
@@ -255,10 +255,10 @@ function LandPay({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) 
       <div>
         <p className="set-title">Land today</p>
         <p className="set-body">
-          Six {FARM_ACRES}-acre farms, {LAND_PLOTS} plots. Crops store carbon daily; bare ground loses it; idle earns nothing. The forest stores {kg(forest.stored)} a
+          Six {FARM_ACRES}-acre farms, {LAND_PLOTS} plots. Crops store carbon daily; a resting farm’s cover or fallow stores some too; bare ground loses it; idle earns nothing. The forest stores {kg(forest.stored)} a
           day.
         </p>
-        <div className="cl-land" role="img" aria-label={`Land today: ${l.farmed} plots farmed, ${l.bare} bare, ${l.idle} idle`}>
+        <div className="cl-land" role="img" aria-label={`Land today: ${l.farmed} plots farmed, ${l.resting ? `${l.resting} resting, ` : ''}${l.bare} bare, ${l.idle} idle`}>
           {l.farms.map(f => (
             <div key={f.farm} className="cl-land-farm" title={`Farm ${f.farm + 1}${f.practices.length ? ` · ${f.practices.join(', ')}` : ''}${f.rate ? ` · ${num(f.rate, 1)} kg CO₂ an acre a day` : ''}`}>
               <span className="cl-land-grid" style={{ gridTemplateColumns: `repeat(${COLS}, 1fr)` }}>
@@ -271,7 +271,7 @@ function LandPay({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) 
           ))}
         </div>
         <p className="cl-land-key" aria-hidden="true">
-          {(['farmed', 'bare', 'idle'] as LandUse[]).map(u => (
+          {(['farmed', 'resting', 'bare', 'idle'] as LandUse[]).filter(u => u !== 'resting' || l.resting > 0).map(u => (
             <span key={u}>
               <i className={`is-${u}`} />
               {USE_WORD[u]}

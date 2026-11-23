@@ -11,7 +11,7 @@ import { dayNumber, ROUND_POINTS } from '../rounds/farms';
 import { CROP_NAME } from '../rounds/hazards';
 import { trialRounds } from '../rounds/trial';
 import type { Action, GameState } from '../state';
-import { CHECK_DAYS, DAMAGE, WRONG_FIX_COST, canTreat, causeOf, checkKey, farmName, hazardFor, plotsOf, returnedProblem } from '../trials/model';
+import { CHECK_DAYS, DAMAGE, WRONG_FIX_COST, canTreat, causeOf, checkKey, farmName, hazardFor, plantedFarms, plotsOf, returnedProblem } from '../trials/model';
 import { fmt } from '../components/ui';
 import { track } from '../first/track';
 import { FOLLOW_UP, PRESCRIBE, fixOrder } from '../care/data';
@@ -1434,7 +1434,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
               if (fixLeft(sRef.current.trial ?? t, c.farm, c.day)) setCare({ kind: 'fix', farm: c.farm, day: c.day });
             }}
             onLeave={() => setChecking(null)}
-            progress={{ done: t.plans.filter((_, i) => t.checks[checkKey(i, checking.day)]?.right).length, total: t.plans.length, unit: 'farm' }}
+            progress={{ done: plantedFarms(t).filter(i => t.checks[checkKey(i, checking.day)]?.right).length, total: plantedFarms(t).length, unit: 'farm' }}
             stake={risk.items.find(x => x.farm === checking.farm)?.amount}
           />
         </div>
