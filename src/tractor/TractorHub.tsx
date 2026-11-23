@@ -8,6 +8,8 @@ import { powerOf } from '../power/model';
 import { repairCut } from '../systems/track';
 import { HUB, LESSONS, SAFETY_ICONS, SAFETY_STEPS, SERVICE_SPOTS, cannotDrive, faultsFor, hubOf, levelOf, speedOf, type HubSection } from './hub';
 import { TractorYard, type Station, type StationInfo } from './Yard';
+import { TrainField } from './TrainField';
+import { DRILLS } from './training';
 import { LOOKS } from '../first/data';
 import { lifeOf } from '../livestock/model';
 
@@ -18,7 +20,7 @@ import { lifeOf } from '../livestock/model';
 
 const SECTIONS: { id: HubSection; label: string; icon: string; does: string }[] = [
   { id: 'yard', label: 'Yard', icon: '🏡', does: 'Walk round the tractor yard: each station is a mini-game.' },
-  { id: 'train', label: 'Train', icon: '🎓', does: 'Drive the practice course round the cones: a better driver drives faster.' },
+  { id: 'train', label: 'Train', icon: '🎓', does: 'Tractor school: one job at a time (plough, plant, spray, harvest…). Hitch the right implement and drive the row round the rocks and trees.' },
   { id: 'learn', label: 'Learn', icon: '📖', does: 'Short lessons: the tractor’s parts, working safely, looking after the soil.' },
   { id: 'safety', label: 'Safety check', icon: '🦺', does: 'The walk-round before starting, in the right order.' },
   { id: 'service', label: 'Service', icon: '🛢️', does: 'Check the oil and filters, grease the nipples: keeps it in good condition.' },
@@ -35,8 +37,6 @@ const BUSINESS_TAB = { id: 'business' as const, label: 'Tractor business', icon:
 export function gameOf(section: HubSection, s: GameState, lesson: string): GameSpec | null {
   const h = hubOf(s.hub);
   switch (section) {
-    case 'train':
-      return { type: 'steer', seconds: 12, speed: 1 + levelOf(h.xp) * 0.15 };
     case 'learn':
       return { type: 'quiz', questions: LESSONS.find(l => l.id === lesson)!.questions };
     case 'safety':
@@ -188,9 +188,18 @@ export function TractorHub({
           {farmFuel !== null && farmFuel >= HUB.tankL - h.fuel ? `From the farm’s diesel tank (${Math.round(farmFuel)} L in it): no trip to town.` : `At the pump in town: ${money(cost)} to fill up${farmFuel === null ? '. Put in the farm’s diesel tank (Power, day 6) to refuel here' : '. The farm tank is low: buy diesel in Power'}.`} Pour steadily: spilt diesel is lost.
         </p>
       )}
+      {section === 'train' && (
+        <p className="pg-lead">
+          {DRILLS.filter(d => h.drills[d.id]).length} of {DRILLS.length} jobs passed: {DRILLS.map(d => `${h.drills[d.id] ? '✓ ' : ''}${d.verb.toLowerCase()}`).join(', ')}.
+        </p>
+      )}
       {section === 'hire' && <p className="pg-lead">{hire.text}</p>}
       {section === 'drive' && <p className="pg-lead">{block ?? 'The tractor is ready.'} A worn tractor (under 30%) drives 20% slower; each driver level adds 5%.</p>}
-      {game ? (
+      {section === 'train' ? (
+        <button type="button" className="gold-btn mg-big" onClick={() => setPlaying(true)}>
+          Start training
+        </button>
+      ) : game ? (
         <button type="button" className="gold-btn mg-big" disabled={(section === 'refuel' && h.fuel >= HUB.tankL - 0.5) || cost > s.coins} onClick={() => setPlaying(true)}>
           {section === 'learn' ? `Start: ${LESSONS.find(l => l.id === lesson)!.title}` : section === 'refuel' && h.fuel >= HUB.tankL - 0.5 ? 'The tank is full' : `Start ${sec.label.toLowerCase()}${cost ? ` · ${money(cost)}` : ''}`}
         </button>
@@ -205,11 +214,22 @@ export function TractorHub({
       )}
       </>
       )}
+      {playing && section === 'train' && (
+        <TrainField
+          speed={1 + lvl * 0.1}
+          passed={h.drills}
+          onPass={(drill, score) => act(s, dispatch, { type: 'tractorHub', section: 'train', score, drill, label: sec.label })}
+          onClose={() => {
+            setPlaying(false);
+            if (fromYard) onSection('yard');
+          }}
+        />
+      )}
       {playing && game && (
         <MiniGame
           title={section === 'learn' ? LESSONS.find(l => l.id === lesson)!.title : sec.label}
           kicker="Tractor"
-          task={section === 'train' ? 'Steer left and right round the cones down the practice lane.' : section === 'learn' ? 'Answer each question: the why comes after.' : section === 'safety' ? 'Tap the steps of the walk-round in the right order.' : section === 'service' ? 'Tap each service point in order before the time runs out.' : section === 'repair' ? 'Fix the three faults (⚠️) before the time runs out. Leave the parts that are fine (👍).' : 'Hold to pour the diesel and let go at the line.'}
+          task={section === 'learn' ? 'Answer each question: the why comes after.' : section === 'safety' ? 'Tap the steps of the walk-round in the right order.' : section === 'service' ? 'Tap each service point in order before the time runs out.' : section === 'repair' ? 'Fix the three faults (⚠️) before the time runs out. Leave the parts that are fine (👍).' : 'Hold to pour the diesel and let go at the line.'}
           spec={game}
           onClose={() => setPlaying(false)}
           onDone={score => {
