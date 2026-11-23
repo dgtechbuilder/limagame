@@ -11,11 +11,11 @@ const openSettings = async (page: Page) => {
 const section = async (page: Page, name: string) => page$(page).getByRole('button', { name, exact: true }).click();
 const choose = (page: Page, group: string, option: string) => page$(page).getByRole('radiogroup', { name: group }).getByRole('radio', { name: option, exact: true }).click();
 
-test('Settings: six sections with Back, Menu and Farm; Back returns to the farm', async ({ page }) => {
+test('Settings: seven sections with Back, Menu and Farm; Back returns to the farm', async ({ page }) => {
   await boot(page);
   await scenario(page, 'tractor');
   await openSettings(page);
-  for (const s of ['My farmer', 'Game', 'Display', 'Tractor', 'Controller', 'Help & data']) await expect(page$(page).getByRole('button', { name: s, exact: true })).toBeVisible();
+  for (const s of ['My farmer', 'Game', 'Display', 'Home screen', 'Tractor', 'Controller', 'Help & data']) await expect(page$(page).getByRole('button', { name: s, exact: true })).toBeVisible();
   for (const nav of ['Back', 'Main menu', 'Back to my farm']) await expect(page$(page).getByRole('button', { name: nav, exact: true })).toBeVisible();
   await page$(page).getByRole('button', { name: 'Back', exact: true }).click();
   await expect(page$(page)).toBeHidden();
@@ -126,4 +126,45 @@ test('Tractor: speed, steering, touch controls, sounds, dust and smoke for the b
   // kept after a reload
   await boot(page, false);
   expect((await state(page)).settings.tractor).toMatchObject(want);
+});
+
+test('Home screen: hide the farm’s buttons, the columns close up, Show all brings them back, and it is saved', async ({ page }) => {
+  await boot(page);
+  await scenario(page, 'tractor');
+  for (const c of ['.hud-mission', '.hud-shop', '.hud-water', '.hud-climate', '.hud-progress', '.hud-partners', '.hud-day', '.hud-pill.is-points']) await expect(page.locator(c)).toBeVisible();
+  const climateTop = await page.locator('.hud-climate').evaluate(e => e.getBoundingClientRect().top);
+
+  await openSettings(page);
+  await section(page, 'Home screen');
+  await expect(page).toHaveURL(/#\/settings\/home-screen$/);
+  await choose(page, 'Mission', 'Hide');
+  await choose(page, 'Water tank', 'Hide');
+  await choose(page, 'Partners', 'Hide');
+  await choose(page, 'Points', 'Hide');
+  await expect.poll(async () => (await state(page)).settings.hud).toMatchObject({ mission: false, water: false, partners: false, points: false });
+  await page$(page).getByRole('button', { name: 'Back', exact: true }).click();
+
+  for (const c of ['.hud-mission', '.hud-water', '.hud-partners', '.hud-pill.is-points']) await expect(page.locator(c)).toHaveCount(0);
+  // what always stays
+  for (const name of ['Settings', 'Main menu']) await expect(page.getByRole('button', { name, exact: true }).first()).toBeVisible();
+  await expect(page.locator('.hud-tractor')).toBeVisible();
+  await expect(page.locator('.hud-task')).toBeVisible();
+  // the right column closes up: Shop takes Mission's place, Climate moves up two places
+  const top = (c: string) => page.locator(c).evaluate(e => e.getBoundingClientRect().top);
+  expect(await top('.hud-shop')).toBeLessThan(await top('.hud-climate'));
+  expect(await top('.hud-climate')).toBeLessThan(climateTop - 50);
+
+  // kept after a reload
+  await boot(page, false);
+  expect((await state(page)).settings.hud).toMatchObject({ mission: false, water: false, partners: false, points: false });
+  await page.waitForFunction(() => !!(window as unknown as { __limaWorld?: unknown }).__limaWorld);
+  await expect(page.locator('.hud-mission')).toHaveCount(0);
+
+  // Show all brings every button back
+  await openSettings(page);
+  await section(page, 'Home screen');
+  await page$(page).getByRole('button', { name: 'Show all buttons', exact: true }).click();
+  await page$(page).getByRole('button', { name: 'Back', exact: true }).click();
+  for (const c of ['.hud-mission', '.hud-water', '.hud-partners', '.hud-pill.is-points']) await expect(page.locator(c)).toBeVisible();
+  expect(await top('.hud-climate')).toBeCloseTo(climateTop, 0);
 });

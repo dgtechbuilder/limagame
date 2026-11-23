@@ -1,10 +1,10 @@
-import type { Dispatch } from 'react';
+import type { CSSProperties, Dispatch } from 'react';
 import type { Action, GameState } from '../state';
 import { WATER } from './config';
 import { capacityOf, tankOf } from './model';
 
 /** The tank on the farm's HUD: its level at a glance; tap it for Climate › Water. */
-export function WaterButton({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
+export function WaterButton({ s, dispatch, style }: { s: GameState; dispatch: Dispatch<Action>; style?: CSSProperties }) {
   const tank = tankOf(s.tank);
   const cap = capacityOf(s);
   const share = Math.max(0, Math.min(1, tank.level / cap));
@@ -13,6 +13,7 @@ export function WaterButton({ s, dispatch }: { s: GameState; dispatch: Dispatch<
     <button
       type="button"
       className={`hud-round hud-water${low ? ' is-low' : ''}`}
+      style={style}
       onClick={() => dispatch({ type: 'open', modal: { kind: 'climate', tab: 'tank' } })}
       aria-label={`Water tank: ${Math.round(tank.level).toLocaleString('en-US')} of ${cap.toLocaleString('en-US')} litres${low ? ', low' : ''}`}
     >

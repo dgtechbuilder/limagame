@@ -1,4 +1,4 @@
-import type { Dispatch } from 'react';
+import type { CSSProperties, Dispatch } from 'react';
 import { achOfSave, streakNow, unclaimed } from '../achievements/model';
 import { achClock, viewOf } from '../achievements/track';
 import { currentLevel, levelProgress } from '../progress/model';
@@ -27,7 +27,7 @@ function LevelRing({ n, value }: { n: number; value: number }) {
 
 /** The PROGRESS button on the farm: the certification level and how close the next one is, the streak, and a dot
     while a reward waits to be claimed. It opens My Progress. */
-export function ProgressButton({ s, dispatch, classic }: { s: GameState; dispatch: Dispatch<Action>; classic?: boolean }) {
+export function ProgressButton({ s, dispatch, classic, style }: { s: GameState; dispatch: Dispatch<Action>; classic?: boolean; style?: CSSProperties }) {
   const today = achClock.today();
   const a = achOfSave(s.ach);
   const streak = streakNow(a, today);
@@ -56,7 +56,7 @@ export function ProgressButton({ s, dispatch, classic }: { s: GameState; dispatc
       </button>
     );
   return (
-    <button type="button" className="hud-round hud-progress" onClick={open} aria-label={label}>
+    <button type="button" className="hud-round hud-progress" style={style} onClick={open} aria-label={label}>
       <LevelRing n={level?.n ?? 0} value={toNext} />
       <span>PROGRESS</span>
       <i className="hud-badge" aria-hidden="true">

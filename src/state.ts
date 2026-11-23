@@ -1,5 +1,6 @@
 import { DEFAULT_PAD, type PadSettings } from './input/pad';
 import { DEFAULT_TRACTOR, type TractorSettings } from './business/tune';
+import type { HudKey } from './hud/prefs';
 import { farmSignal } from './business/signal';
 import { idBlock, lockBlock } from './unlock/model';
 import { evidenceReduce, trackEvidence, type EvidenceAction, type EvidenceState } from './evidence/model';
@@ -216,8 +217,10 @@ export interface Settings {
   tractor?: TractorSettings;
   /** Data saver (src/net/connection.ts): auto follows the phone (its data saver, or a 2G-speed link); on always saves data */
   data?: 'auto' | 'on' | 'off';
+  /** Home screen (src/hud/prefs.ts): the farm's buttons the player has hidden (false); a missing key is shown */
+  hud?: Partial<Record<HudKey, boolean>>;
 }
-export type SettingsTab = 'farmer' | 'game' | 'display' | 'tractor' | 'controller' | 'help';
+export type SettingsTab = 'farmer' | 'game' | 'display' | 'home' | 'tractor' | 'controller' | 'help';
 export type ClimateTab = 'overview' | 'csa' | 'land' | 'areas' | 'emissions' | 'water' | 'tank' | 'credits' | 'shocks' | 'activity';
 /** My Progress (the achievements page): the journey of certification levels, the modules, today, badges, certificates */
 export type AchTab = 'journey' | 'modules' | 'today' | 'badges' | 'certificates';

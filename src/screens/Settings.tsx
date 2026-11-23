@@ -16,11 +16,12 @@ import { FAMILY_NAME, padKey, padLabel, padSettings, type PadAction, type PadFam
 import { tractorSettings, type TractorSettings } from '../business/tune';
 import { linkLabel, lowData, onNetChange, online, slowLink } from '../net/connection';
 import { keptStatus, onWarm, warmGame, type KeptStatus } from '../net/offline';
+import { HUD_GROUPS, HUD_KEYS, hudHiddenCount, hudShown } from '../hud/prefs';
 import { clearSave, initialState, type Action, type GameState, type Settings, type SettingsTab } from '../state';
 
-/* Settings: a full page with six sections. Every control changes the game straight away and is kept on this device.
+/* Settings: a full page with seven sections. Every control changes the game straight away and is kept on this device.
    Farmer: rename and change look. Game: character style, farm view, read aloud. Display: graphics, motion, full
-   screen. Tractor: the business drive's speed, steering, touch controls, sounds, dust and smoke. Controller: the controller connected, its button names, Confirm on the bottom or right, dead zone, rumble,
+   screen. Home screen: which of the farm's buttons show. Tractor: the business drive's speed, steering, touch controls, sounds, dust and smoke. Controller: the controller connected, its button names, Confirm on the bottom or right, dead zone, rumble,
    and setting up the buttons of a controller the browser does not know. Help & data: about the game and its name, the intro, design review, and reset (which keeps these settings). */
 
 type Props = { s: GameState; dispatch: Dispatch<Action>; tab?: SettingsTab };
@@ -29,6 +30,7 @@ const TABS: { id: SettingsTab; label: string; icon: string }[] = [
   { id: 'farmer', label: 'My farmer', icon: '☺' },
   { id: 'game', label: 'Game', icon: '✦' },
   { id: 'display', label: 'Display', icon: '☀' },
+  { id: 'home', label: 'Home screen', icon: '▦' },
   { id: 'tractor', label: 'Tractor', icon: '🚜' },
   { id: 'controller', label: 'Controller', icon: '🎮' },
   { id: 'help', label: 'Help & data', icon: '?' },
@@ -99,6 +101,7 @@ export function SettingsPage({ s, dispatch, tab: startTab }: Props) {
           {tab === 'farmer' && <FarmerTab s={s} dispatch={dispatch} />}
           {tab === 'game' && <GameTab s={s} dispatch={dispatch} set={set} />}
           {tab === 'display' && <DisplayTab s={s} dispatch={dispatch} set={set} />}
+          {tab === 'home' && <HomeTab s={s} dispatch={dispatch} set={set} />}
           {tab === 'tractor' && <TractorTab s={s} dispatch={dispatch} set={set} />}
           {tab === 'controller' && <ControllerTab s={s} dispatch={dispatch} set={set} />}
           {tab === 'help' && <HelpTab s={s} dispatch={dispatch} />}
@@ -426,6 +429,55 @@ function DisplayTab({ s, dispatch, set }: Props & { set: (p: Partial<Settings>) 
           ]}
         />
       </Row>
+    </div>
+  );
+}
+
+/* ---------------- Home screen (src/hud/prefs.ts) ---------------- */
+
+/* Which of the farm's buttons show. Settings, Menu, the money, the tractor and the next task always stay; anything
+   hidden is still in the Main menu. */
+function HomeTab({ s, set }: Props & { set: (p: Partial<Settings>) => void }) {
+  const st = s.settings;
+  const hidden = hudHiddenCount(st);
+  const setAll = (shown: boolean) => set({ hud: shown ? {} : Object.fromEntries(HUD_KEYS.map(k => [k, false])) });
+  return (
+    <div className="set-rows set-home">
+      <Row
+        title="Buttons on the farm"
+        body={
+          <>
+            Hide what you don’t use to keep the farm clear. Settings, Menu, your money, the tractor and the next task always stay. Anything hidden is still in the <b>Main menu</b>.
+          </>
+        }
+      >
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <button type="button" className="set-link" disabled={hidden === HUD_KEYS.length} onClick={() => setAll(false)}>
+            Hide all
+          </button>
+          <GoldButton font={10} height={28} style={{ width: 96, opacity: hidden ? 1 : 0.5 }} onClick={() => hidden && setAll(true)} ariaLabel="Show all buttons">
+            Show all
+          </GoldButton>
+        </div>
+      </Row>
+      {HUD_GROUPS.map(g => (
+        <div key={g.title} className="set-group" role="group" aria-label={g.title}>
+          <p className="set-group-head">{g.title}</p>
+          {g.items.map(i => (
+            <Row key={i.key} title={i.label} body={i.body}>
+              <Seg
+                label={i.label}
+                value={hudShown(st, i.key) ? 'show' : 'hide'}
+                onChange={v => set({ hud: { ...st.hud, [i.key]: v === 'show' } })}
+                options={[
+                  { id: 'hide', label: 'Hide' },
+                  { id: 'show', label: 'Show' },
+                ]}
+              />
+            </Row>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
