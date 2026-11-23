@@ -277,7 +277,7 @@ function down(a: PadAction, repeat: boolean) {
     case 'nextTab':
       return changeTab(a === 'nextTab' ? 1 : -1);
     case 'start':
-      if (!clickFirst('[aria-label="Main menu"]', true)) key('keydown', 'Escape', 'Escape');
+      if (!clickFirst('[aria-label^="Main menu"]', true)) key('keydown', 'Escape', 'Escape');
       return;
     case 'select':
       clickFirst('button[aria-label="Settings"]', true);

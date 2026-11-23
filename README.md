@@ -529,7 +529,7 @@ WASD. The **task card** at the top says what to do next; tap it and the farmer w
 - The HUD: the farmer and their level (top left) with the harvest card and its at-risk tab beside them, the task card
   (top centre, alone: nothing else sits under it), coins and points (top right; **+** opens the shop and the rewards,
   and a small *Night* chip shows under the day at night), the two rails of round buttons, one stack bottom left
-  (today's Farm basics lesson, today's build, then the cycle's day and what the farmer carries) and the small daily
+  (today's Farm basics lesson, today's build, then what the farmer carries or rides) and the small daily
   chips bottom right (*Animal chores*, *Daily tidy-up*: one line each). Mama Achieng's bubble and a sign's *Check*
   button stay under the top cards, whatever the camera does.
 - **Settings → Farm view** switches to the classic painted farm (Farm Moja seasons and the everyday field rounds),
@@ -1316,7 +1316,7 @@ The farm's **2 cows and 4 hens** (the herd the water model already counts) come 
 fast clock (the first cycle) or with a calendar day; the first night brings a **Day 2** dialog: *Your animals*, with
 **Build the chicken coop**. Before then the Animals page shows what is coming and nothing can be done.
 
-- **Where:** **Animals** in My Progress (PROGRESS on the farm; a badge counts the jobs waiting and the problems showing), the main menu,
+- **Where:** **Animals** in My Progress (from the main menu; a badge counts the jobs waiting and the problems showing), the main menu,
   or walking to the **Cows** spot at the pen gate or the **Hens** spot at the coop in the 3D farm. The classic farm has
   the same buttons.
 - **Today:** the day's jobs. Cows: *Feed* (napier, hay and dairy meal, paid a cow), *Fill the trough* (needs 50 L a cow
@@ -1429,8 +1429,8 @@ The farm's lit lights already count as the solar security light, so Protect show
 of selling it again. A guard dog whose food cannot be paid does not watch that night. A stolen thing found again
 names what found it (the community watch, the cow's brand and tag, or the tractor's GPS tracker). Crops and water
 stolen are priced (a share of that farm's expected harvest; water at a bowser's price a litre), so *lost* adds up.
-A cash theft never takes more than the farmer still has. While last night had a theft, the PROGRESS button on the
-farm shows a red **!**, since Security sits inside My Progress.
+A cash theft never takes more than the farmer still has. While last night had a theft, the farm shows a red **!** (on
+MENU in the 3D farm, on the PROGRESS chip in the classic one), since Security sits inside My Progress.
 
 Nights are seeded (`src/livestock/rand.ts`): the same farm, night and target always draw the same result, so a reload
 never re-rolls a night. `tests/livestock.spec.ts` plays all of this through the reducer and the two pages.
@@ -1953,7 +1953,7 @@ A reason to come back every day, and something won in every part of the game. Ev
   was done that week), one for each streak of 3, 7, 14, 30, 60 and 100 days, and a bronze, silver or gold
   certificate for a part of the game whose every badge of that tier is won.
 - **On screen:** the badges, the streak and the certificates are part of **My Progress** (next section), opened
-  from the PROGRESS button. A pop-up announces each badge, certificate, level and new day. *Today* has the streak,
+  from the main menu (or the PROGRESS chip on the classic farm). A pop-up announces each badge, certificate, level and new day. *Today* has the streak,
   the last seven days, today's reward and the day-one goals; *Badges* filters by part of the game, closest to done
   first; *Certificates* keeps every certificate.
 - Counting starts with the first action after this update; badges that read what the save already holds
@@ -1962,9 +1962,10 @@ A reason to come back every day, and something won in every part of the game. Ev
 
 ## My Progress: certification levels and learning credits
 
-The first days and weeks of play laid out as a learning journey, behind the **PROGRESS** button on the farm
-(3D farm: under Climate; classic farm: under the farm's name). The button shows the certification level in a ring
-that fills toward the next level, the streak, and a red dot while a reward waits. Everything a designer might tune
+The first days and weeks of play laid out as a learning journey, in **My Progress** in the main menu (3D farm: the
+MENU button carries a red dot while a reward waits, and a red **!** after a theft; classic farm: the PROGRESS chip
+under the farm's name, with the level and a bar filling toward the next one). The 3D farm has no round PROGRESS
+button: its bottom-right corner is left to the daily chips. Everything a designer might tune
 is in `src/progress/model.ts`; the page is `src/screens/Achievements.tsx`.
 The page's left side also holds **Animals** and **Security** (they left the farm's HUD), each with the badge its old
 button had. Beside the money at the top right of the farm, a small **Day X/30** button counts the day out of the
@@ -2039,7 +2040,7 @@ each. To sign a partner, add or edit its brand and put its id on the slots it bo
   prices in the game yet.
 - **Engagement** (views and taps per slot) is counted on the device only, apart from the saved game
   (`src/partners/track.ts`): nothing is sent anywhere, and Reset progress does not clear it.
-- **PARTNERS on the farm** opens the page too: on the 3D farm left of WATER (under PROGRESS), on the classic farm
+- **PARTNERS on the farm** opens the page too: on the 3D farm at the foot of the left column (under TRACTOR), on the classic farm
   beside Shop. The page also opens before the farm does (`#/partners`), so a partner can visit without playing.
 - **Partner with us** (`src/partners/catalogue.ts`): every way a brand, school or service could be part of TemoLima, for
   partners still to sign. 23 ways in five areas: *Farm inputs* (seed, fertilizer, crop protection, safety kit),

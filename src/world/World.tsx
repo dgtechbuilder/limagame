@@ -54,7 +54,7 @@ import { JOB_INFO, KIND_WORDS, toolJobs, toolName, tractorName, type PlotKind } 
 import type { Rig } from '../plots/TractorPick';
 import { currency, money, moneyShort } from '../money';
 import { sfx } from '../sfx';
-import { ProgressButton } from '../components/ProgressButton';
+import { progressAlerts } from '../components/ProgressButton';
 import { RiskHud, useRisk } from '../risk/RiskHud';
 import { WaterButton } from '../water/WaterButton';
 import { EvidenceAsk } from '../evidence/Ask';
@@ -170,6 +170,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
   const t = s.trial;
   const grade = rating(s.climate.total);
   const look = LOOKS[s.farmer?.look ?? 0];
+  const alerts = progressAlerts(s);
   const name = s.farmer?.name ?? 'Farmer';
   const day = fieldDay(t, today);
   const task = useMemo(() => nextTask(s.field, t, today, s.coins), [s.field, t, today, s.coins]);
@@ -1053,13 +1054,20 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         </span>
         <span className="hud-level">{s.level}</span>
       </div>
-      <button type="button" className="hud-round" style={{ left: 12, top: 66 }} onClick={() => dispatch({ type: 'open', modal: { kind: 'settings' } })} aria-label="Settings">
+      <button type="button" className="hud-round" style={{ left: 12, top: 64 }} onClick={() => dispatch({ type: 'open', modal: { kind: 'settings' } })} aria-label="Settings">
         <GearIcon />
         <span>SETTINGS</span>
       </button>
-      <button type="button" className="hud-round hud-menu" onClick={nav.menu} aria-label="Main menu">
+      <button
+        type="button"
+        className="hud-round hud-menu"
+        onClick={nav.menu}
+        aria-label={`Main menu${alerts.waiting ? `: ${alerts.waiting} reward${alerts.waiting === 1 ? '' : 's'} to claim in My Progress` : ''}${alerts.theft ? `${alerts.waiting ? ',' : ':'} a theft last night, see Security` : ''}`}
+      >
         <MenuIcon />
         <span>MENU</span>
+        {alerts.waiting > 0 && <i className="awards-dot" aria-hidden="true" />}
+        {alerts.theft && <i className="theft-dot" aria-hidden="true">!</i>}
       </button>
       <button
         type="button"
@@ -1118,7 +1126,6 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         <span>CLIMATE</span>
         {grade && <i className="hud-badge" aria-hidden="true">{grade.grade}</i>}
       </button>
-      <ProgressButton s={s} dispatch={dispatch} />
       <button type="button" className="hud-round hud-mission" onClick={() => dispatch({ type: 'trials', open: true })} aria-label="Mission: plan, progress and results of your farms">
         <ClipboardIcon />
         <span>MISSION</span>
@@ -1227,7 +1234,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       {s.fs.phase === 'done' && <CsaChip s={s} dispatch={dispatch} now={now} />}
       </div>
 
-      {/* bottom left, one stack that never overlaps: today's lesson, today's build, then the day and what the farmer
+      {/* bottom left, one stack that never overlaps: today's lesson, today's build, then what the farmer
           carries (moved right of the special event's card while it shows) */}
       <div className="hud-dock">
       {/* the first days: today's Farm basics lesson, until it is read */}
@@ -1242,11 +1249,6 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         </button>
       )}
       <div className="hud-status">
-        {t && t.phase === 'growing' && (
-          <span>
-            Cycle {t.cycle} · {day > CHECK_DAYS ? 'harvest' : `day ${day} of ${CHECK_DAYS}`}
-          </span>
-        )}
         {anchors.riding && (
           <span className="is-carry">
             On the tractor{rig ? ` · ${tractorName(rig.tractor)} · ${toolName(rig.tool)}` : ''}
