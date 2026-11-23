@@ -2,7 +2,7 @@ import type { HandsQuestion } from '../minigames/workshop/kit';
 
 /* The tractor yard: the farm's own tractor, looked after and learned. Tapping the tractor (or walking to the Train
    spot beside it) opens the tractor screen with its sections, each a short mini-game: Train (drive the practice
-   course), Learn (the parts and the safe way to work), Safety check (the walk-round before starting), Service (oil
+   course: one row of a field per job, with the right implement), Learn (the parts and the safe way to work), Safety check (the walk-round before starting), Service (oil
    and grease), Repair (find what is wrong), Refuel (diesel from the farm's tank or the pump), Hire (the oxen or
    the tractor plough the farms whose plan hires them) and Drive (hop on).
 
@@ -47,14 +47,16 @@ export interface HubState {
   done: Partial<Record<HubSection, number>>;
   /** the best score (0 to 1) at each section's mini-game: the stars on its station in the yard */
   best: Partial<Record<HubSection, number>>;
+  /** Train: the best score (0 to 1) on each drill passed (training.ts DRILLS ids) */
+  drills: Partial<Record<string, number>>;
   /** the farm day of the last safety check */
   safetyDay: number | null;
   /** newest first */
   log: { day: number; text: string }[];
 }
 
-export const newHub = (): HubState => ({ xp: 0, lessons: [], condition: 100, fuel: HUB.tankL, done: {}, best: {}, safetyDay: null, log: [] });
-export const hubOf = (h: Partial<HubState> | undefined): HubState => ({ ...newHub(), ...(h ?? {}), done: { ...(h?.done ?? {}) }, best: { ...(h?.best ?? {}) } });
+export const newHub = (): HubState => ({ xp: 0, lessons: [], condition: 100, fuel: HUB.tankL, done: {}, best: {}, drills: {}, safetyDay: null, log: [] });
+export const hubOf = (h: Partial<HubState> | undefined): HubState => ({ ...newHub(), ...(h ?? {}), done: { ...(h?.done ?? {}) }, best: { ...(h?.best ?? {}) }, drills: { ...(h?.drills ?? {}) } });
 
 /** The driver's level, 0 to 3. */
 export const levelOf = (xp: number) => HUB.levels.filter(n => xp >= n).length;
@@ -112,6 +114,17 @@ export const lessonOf = (id: string) => LESSONS.find(l => l.id === id);
 export const SAFETY_STEPS = ['Walk round: nobody near the tractor', 'Check the oil and the water', 'Check the tyres and the hitch pins', 'Sit down and put the belt on', 'Gear in neutral, PTO off', 'Start the engine'];
 /** A picture for each safety step, in the same order. */
 export const SAFETY_ICONS = ['👀', '🛢️', '🛞', '💺', '🕹️', '🔑'];
+/** Where each safety step happens on the big tractor drawing (the order game's stage units, 400 × 184): the track
+    starts on foot in front of the tractor, goes round it, and ends in the seat with the key. */
+export const SAFETY_TRACK = [
+  { x: 342, y: 168, hint: 'On foot, all the way round' },
+  { x: 246, y: 70, hint: 'Under the bonnet' },
+  { x: 70, y: 150, hint: 'The wheels and the hitch pins' },
+  { x: 126, y: 54, hint: 'The seat' },
+  { x: 151, y: 72, hint: 'The levers' },
+  { x: 178, y: 58, hint: 'The key on the dash' },
+];
+export const SAFETY_START = { x: 376, y: 172 };
 
 /** Service: the points to grease and check, on the tractor drawing (stage coordinates of the mini-game). */
 export const SERVICE_SPOTS = [
