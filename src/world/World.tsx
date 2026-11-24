@@ -247,10 +247,10 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       // every activity's code, fetched now while the player looks round, so opening one does not wait (src/prefetch.ts)
       window.setTimeout(prefetchActivities, 800);
     });
-    // start at the farmhouse door, or (in design review) beside the job at hand
+    // start on the path below the farmhouse's Sleep square (not in it), or (in design review) beside the job at hand
     const tk = nextTask(sRef.current.field, sRef.current.trial, dayNumber(), sRef.current.coins);
     const review = new URLSearchParams(window.location.search).has('review') || new URLSearchParams(window.location.search).has('screen');
-    const spot = review ? targetOf(tk, w) : { x: 0, z: -13.4 };
+    const spot = review ? targetOf(tk, w) : { x: 0, z: -12.5 };
     w.spawn(spot.x + (review ? 0.6 : 0), spot.z + (review ? 1.4 : 0));
     const fit = () => {
       const r = pad.current?.getBoundingClientRect();

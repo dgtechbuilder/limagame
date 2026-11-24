@@ -196,18 +196,21 @@ export const PLACES: Record<Place, { x: number; z: number; r: number }> = {
   'shed-sprayer': { x: -14.2, z: 1.9, r: 0.85 },
   pond: { x: 13.6, z: 0, r: 1.1 },
   hire: { x: -14.6, z: 6.4, r: 1.2 },
-  market: { x: 0, z: 12.9, r: 1.3 },
+  /** Each place's white square sits on open ground the camera can see: the camera looks down from the south (+z), so
+      a roof or an awning hides the ground just north of it. The market's and the restaurant's squares stand out in
+      front of their awnings, the storehouse's on the lane before its door, the house's below the porch step. */
+  market: { x: 0, z: 11.6, r: 1.3 },
   /** the mini restaurant beside the stall: meals from the store (src/produce/restaurant.ts) */
-  restaurant: { x: 3.35, z: 13.4, r: 0.95 },
+  restaurant: { x: 3.4, z: 11.9, r: 0.95 },
   /** the greenhouse's door, facing the market path, and the storehouse's door, on the lane (src/greenhouse, src/storehouse) */
-  greenhouse: { x: GREENHOUSE_AT.x + GREENHOUSE_AT.w / 2 + 0.85, z: GREENHOUSE_AT.z, r: 0.85 },
-  storehouse: { x: STOREHOUSE_AT.x + STOREHOUSE_AT.door, z: STOREHOUSE_AT.z - STOREHOUSE_AT.d / 2 - 0.85, r: 0.85 },
-  house: { x: 0, z: -15.2, r: 1.2 },
+  greenhouse: { x: GREENHOUSE_AT.x + GREENHOUSE_AT.w / 2 + 1.3, z: GREENHOUSE_AT.z - 0.3, r: 0.85 },
+  storehouse: { x: STOREHOUSE_AT.x + STOREHOUSE_AT.door, z: STOREHOUSE_AT.z - STOREHOUSE_AT.d / 2 - 1.95, r: 0.85 },
+  house: { x: 0, z: -14.1, r: 1.0 },
   /** the cow pen's gate and the chicken coop's door: the Animals page (src/livestock) */
   pen: { x: -10.7, z: -13.0, r: 1.0 },
   coop: { x: 8.2, z: -16.0, r: 1.0 },
-  /** the power yard's gate: the Power page */
-  power: { x: 13.4, z: -9.2, r: 1.1 },
+  /** beside the power yard's fence, on the grass above the lane's corner: the Power page */
+  power: { x: 13.5, z: -11.4, r: 1.1 },
 };
 
 /** How many cows and hens there are, and the coop (src/livestock): the 3D farm shows them. */
@@ -827,9 +830,9 @@ export class FarmWorld {
     };
     const zones: [Place, string, string, number][] = [
       ['hire', 'Train', 'tractor', 2.2],
-      ['market', 'Sell', 'sell', 2.4],
+      ['market', 'Sell', 'sell', 2.2],
       ['restaurant', 'Eat', 'bowl', 1.6],
-      ['house', 'Sleep', 'sleep', 2.2],
+      ['house', 'Sleep', 'sleep', 2.0],
       ['mission', 'Plan', 'plan', 2.0],
       ['pond', 'Water', 'water', 1.9],
       ['shed-seeds', 'Seeds', 'bag', 1.6],
