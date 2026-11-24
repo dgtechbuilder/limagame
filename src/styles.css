@@ -876,6 +876,37 @@ button.card:active { transform: scale(0.98); }
 .tr-bar span.is-best { background: #2f9b14; }
 .tr-bar span.is-worst { background: #d98b3a; }
 .tr-bar b { font-size: 11px; }
+
+/* resting farms (src/soil): the plan's Soil and Use rows, the days, the results */
+.tr-soil { display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 0 4px; min-width: 0; }
+.tr-soil small { font-size: var(--text-caption); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tr-soil.is-poor small { color: #c0392b; }
+.tr-soil.is-good small { color: #2f7d27; }
+.soil-meter { display: block; width: 100%; height: 5px; border-radius: 99px; background: var(--brown-10); overflow: hidden; }
+.soil-meter span { display: block; height: 100%; border-radius: 99px; background: #7a4a24; }
+.is-good > .soil-meter span { background: #4f9d2f; }
+.is-ok > .soil-meter span { background: #c9922f; }
+.is-poor > .soil-meter span { background: #c0392b; }
+.tr-grid.is-plan { gap: 2px 4px; }
+.tr-grid.is-plan .tr-head { height: 28px; }
+.tr-grid.is-plan .tr-cell:not(.tr-plots) { height: 24px; }
+.tr-cell.tr-use { position: relative; padding-bottom: 3px; }
+.tr-cell.tr-use small { font-size: var(--text-caption); font-weight: 700; }
+.tr-soil-n.is-poor { color: #c0392b; }
+.tr-soil-n.is-good { color: #2f7d27; }
+.tr-use-meter { position: absolute; left: 6px; right: 6px; bottom: 3px; width: auto; height: 3px; }
+.tr-use-meter.is-good span { background: #4f9d2f; }
+.tr-use-meter.is-ok span { background: #c9922f; }
+.tr-use-meter.is-poor span { background: #c0392b; }
+.tr-cell.tr-use.is-resting { background: #dff2cf; border-color: #4f9d2f; color: #2f6b1f; font-weight: 700; }
+.tr-cell.tr-use.is-advised { border-color: var(--gold); border-style: dashed; }
+.tr-rest-cell { display: flex; align-items: center; justify-content: center; background: #eef7e6; border-style: dashed; color: #4f7a35; cursor: default; }
+.tr-head.is-resting { background: #dff2cf; }
+.tr-day.is-rest { background: #eef7e6; color: #2f6b1f; }
+.tr-bar.is-rest { justify-content: center; color: #2f6b1f; }
+.tr-pick.is-resting { cursor: default; }
+.tr-pick.is-resting b i { background: #6aa84f; }
+.tr-val.is-up { color: #2f7d27; font-weight: 700; }
 .tr-val { height: 20px; min-width: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; text-align: center; }
 .tr-val.is-neg { color: #c0392b; }
 .tr-small { font-size: 10px; font-weight: 600; line-height: 1.05; padding: 0 2px; }
@@ -2288,6 +2319,7 @@ button.card:active { transform: scale(0.98); }
 .cl-land-grid .is-farmed { background: #3f8f46; }
 .cl-land-grid .is-bare { background: #b5653a; }
 .cl-land-grid .is-idle { background: #e9e0cf; box-shadow: inset 0 0 0 1px rgba(110, 80, 40, 0.18); }
+.cl-land-grid .is-resting { background: #9fd36a; }
 .cl-pay { margin-top: 8px; }
 .cl-pay .cl-where { width: 92px; }
 .cl-land-key { display: flex; gap: 12px; margin: -2px 0 6px; font-size: 8.5px; opacity: 0.85; }
@@ -2296,6 +2328,7 @@ button.card:active { transform: scale(0.98); }
 .cl-land-key .is-farmed { background: #3f8f46; }
 .cl-land-key .is-bare { background: #b5653a; }
 .cl-land-key .is-idle { background: #e9e0cf; box-shadow: inset 0 0 0 1px rgba(110, 80, 40, 0.18); }
+.cl-land-key .is-resting { background: #9fd36a; }
 
 /* Climate · Farm areas: every area of the farm, evaluated */
 .cl-rows { display: flex; flex-direction: column; gap: 8px; }
@@ -4446,6 +4479,23 @@ button.pp-card:active { transform: scale(0.98); }
 .csa-farm li { font-size: 10px; line-height: 1.35; color: var(--ink-3); }
 .csa-farm li.is-on { color: var(--ink); }
 .csa-farm li i { font-style: normal; display: inline-block; width: 16px; }
+
+/* Climate Smart Agriculture: the six farms' soil (src/soil/SoilPanel.tsx) */
+.soil-panel { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border-radius: var(--radius-md); background: #f2f8e8; }
+.soil-head .set-body { font-size: 10px; line-height: 1.35; }
+.soil-farms { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.soil-farm { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 5px 6px; border-radius: 8px; background: #fff; border: 1.5px solid var(--brown-10); }
+.soil-farm.is-resting { border-color: #4f9d2f; background: #eaf6df; }
+.soil-farm.is-poor { border-color: #e6a99f; }
+.soil-farm b { font-size: 10px; }
+.soil-farm small { font-size: 8.5px; line-height: 1.25; color: var(--ink-2); }
+.soil-farm small.is-up { color: #2f7d27; font-weight: 700; }
+.soil-farm small.is-down { color: #b0522f; font-weight: 700; }
+.soil-advice { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.soil-advice p { margin: 0; font-size: 10px; line-height: 1.35; flex: 1 1 220px; }
+.soil-btns { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.soil-note { font-size: 9.5px; color: var(--ink-2); }
+@media (max-width: 640px) { .soil-farms { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
 /* a lesson: it fills the page */
 .csa-lesson { position: relative; flex: 1; display: flex; flex-direction: column; gap: 6px; padding: 8px 12px 10px; min-width: 0; background: var(--cream); }

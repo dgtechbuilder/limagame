@@ -34,7 +34,7 @@ import {
   type PpPlant,
 } from '../src/csa/rules';
 
-/* Climate Smart Agriculture (src/csa): the seven practice games' rules, the skills and the daily drill, what the
+/* Climate Smart Agriculture (src/csa): the eight practice games' rules, the skills and the daily drill, what the
    skills do on the farm, the field clock, and the module played through the Climate page and the farm's chip. */
 
 let day = '2026-11-22';
@@ -183,7 +183,7 @@ test('a practice played: first-time pay, a better best, skill points (a few a da
   expect(r2.csa.drill.streak).toBe(2);
   // skills grow to Expert with practice
   expect(skillOf(csaOf({ xp: { water: 10 } }), 'water').name).toBe('Expert');
-  expect(CSA_IDS).toHaveLength(7);
+  expect(CSA_IDS).toHaveLength(8);
   expect(PRACTICES.every(p => p.kenya && p.westAfrica && p.steps.length >= 5)).toBe(true);
 });
 
@@ -279,7 +279,7 @@ type Lima = { __lima: { dispatch: (a: unknown) => void; jump: (s: Record<string,
 const jump = (page: Page, s: Record<string, unknown>) => page.evaluate(x => (window as unknown as Lima).__lima.jump(x), s);
 const dialog = (page: Page) => page.getByRole('dialog', { name: 'Climate' });
 
-test('Climate › Climate Smart Agriculture: the seven practices, a lesson learned and the half-moons played to three stars', async ({ page }) => {
+test('Climate › Climate Smart Agriculture: the eight practices, a lesson learned and the half-moons played to three stars', async ({ page }) => {
   await boot(page);
   await jump(page, { view: 'classic', coins: 5000 });
   await expect.poll(() => page.evaluate(() => location.hash)).toBe('#/farm');

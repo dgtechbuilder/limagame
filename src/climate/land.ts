@@ -6,7 +6,9 @@
      · farmed: a crop in the ground; living roots and leaf litter feed carbon into the soil, more with climate-smart
        practices (mulch, beans between the rows, manure), less with tractor tillage or slash and burn;
      · bare: cleared or ploughed, not planted yet; bare soil dries and washes away, and loses its carbon to the air;
-     · idle: not worked this cycle, or harvested; nothing new is counted or paid, and it grows no food.
+     · idle: not worked this cycle, or harvested; nothing new is counted or paid, and it grows no food;
+     · resting: rested this cycle on purpose (src/soil), under natural fallow or a green-manure cover crop; it grows
+       no food but its plants store carbon every day, more under a cover crop, and its soil comes back.
    - Farm Moja: the 1-acre season farm, farmed, bare or idle the same way, from its season's tasks.
    - The mini forest: 10 acres of idle land left to grow as forest, bottom right of the farm below the pond. Young trees
      store far more carbon than any crop.
@@ -31,8 +33,9 @@ import { FULL, PLOTS, TILES, doneMask } from '../world/field';
 import { FARM_ACRES, PLOT_ACRES } from '../farmSize';
 import { fromUsd } from '../money';
 import { FACTORS, LEVELS, type Delta, type Factor, type Source } from './model';
+import { REST } from '../soil/model';
 
-export type LandUse = 'farmed' | 'bare' | 'idle';
+export type LandUse = 'farmed' | 'bare' | 'idle' | 'resting';
 
 export const LAND_FARMS = PLOTS.length;
 export const LAND_PLOTS = LAND_FARMS * TILES;
@@ -109,6 +112,8 @@ export interface LandNow {
   farmed: number;
   bare: number;
   idle: number;
+  /** plots resting this cycle (src/soil) */
+  resting: number;
   /** a day's kg CO₂ stored by the farmed plots, and lost from the bare ones */
   stored: number;
   lost: number;
@@ -124,6 +129,9 @@ function farmLand(s: LandSource, farm: number): FarmLand {
   const t = s.trial;
   const idle: FarmLand = { farm, uses: Array.from({ length: TILES }, () => 'idle'), rate: 0, practices: [] };
   if (!t || t.phase !== 'growing' || farm >= t.plans.length) return idle;
+  // a resting farm: every plot under its fallow or cover crop, storing carbon (src/soil)
+  const rest = t.rest?.[farm];
+  if (rest) return { farm, uses: idle.uses.map(() => 'resting'), rate: REST[rest].carbon, practices: [REST[rest].short] };
   const classic = s.view === 'classic';
   const sown = classic ? FULL : doneMask(s.field, t.cycle, farm, 'sow');
   const prepped = classic || t.cleared?.includes(farm) ? FULL : doneMask(s.field, t.cycle, farm, 'prep');
@@ -143,10 +151,10 @@ function farmLand(s: LandSource, farm: number): FarmLand {
 export function landOf(s: LandSource): LandNow {
   const farms = Array.from({ length: LAND_FARMS }, (_, i) => farmLand(s, i));
   const count = (u: LandUse) => farms.reduce((n, f) => n + f.uses.filter(x => x === u).length, 0);
-  const stored = farms.reduce((n, f) => n + f.uses.filter(x => x === 'farmed').length * f.rate * PLOT_ACRES, 0);
+  const stored = farms.reduce((n, f) => n + f.uses.filter(x => x === 'farmed' || x === 'resting').length * f.rate * PLOT_ACRES, 0);
   const bare = count('bare');
   const lost = bare * PLOT_ACRES * LAND_FACTORS.bare.value;
-  return { farms, farmed: count('farmed'), bare, idle: count('idle'), stored, lost, credits: Math.max(0, stored - lost) / FACTORS.credit.value };
+  return { farms, farmed: count('farmed'), bare, idle: count('idle'), resting: count('resting'), stored, lost, credits: Math.max(0, stored - lost) / FACTORS.credit.value };
 }
 
 /* ---------------- every area of the farm ---------------- */
@@ -214,13 +222,13 @@ export function areasOf(s: GameState): AreaNow[] {
   });
 
   // the six farms
-  const practices = [...new Set(l.farms.flatMap(f => (f.uses.includes('farmed') ? f.practices : [])))];
+  const practices = [...new Set(l.farms.flatMap(f => (f.uses.includes('farmed') || f.uses.includes('resting') ? f.practices : [])))];
   const farms = area({
     id: 'farms',
     name: 'Six farms',
     icon: '🌽',
     size: `${AREA_SIZE.farms} acres`,
-    use: `${l.farmed} of ${LAND_PLOTS} plots farmed${l.bare ? `, ${l.bare} bare` : ''}`,
+    use: `${l.farmed} of ${LAND_PLOTS} plots farmed${l.resting ? `, ${l.resting} resting` : ''}${l.bare ? `, ${l.bare} bare` : ''}`,
     stored: l.stored,
     emit: l.lost ? { soil: l.lost } : {},
     lost: l.lost,
@@ -228,7 +236,7 @@ export function areasOf(s: GameState): AreaNow[] {
     soil: -l.bare * LAND_FACTORS.bareSoil.value,
     note: l.bare
       ? `${l.bare} bare plots losing ${kg1(l.lost)} CO₂ a day: plant them.`
-      : !l.farmed
+      : !l.farmed && !l.resting
         ? 'Idle: plant to store carbon and earn credits.'
         : practices.length
           ? `Storing ${kg1(l.stored)} CO₂ a day, helped by ${practices.join(', ').toLowerCase()}.`
@@ -377,8 +385,8 @@ export function areasDelta(areas: AreaNow[], days: number): Delta {
 }
 
 /** The six farms' land in a few words: "40 farmed · 20 bare · 60 idle". */
-export const landWords = (l: Pick<LandNow, 'farmed' | 'bare' | 'idle'>) =>
-  [`${l.farmed} farmed`, l.bare ? `${l.bare} bare` : '', `${l.idle} idle`].filter(Boolean).join(' · ');
+export const landWords = (l: Pick<LandNow, 'farmed' | 'bare' | 'idle'> & Partial<Pick<LandNow, 'resting'>>) =>
+  [`${l.farmed} farmed`, l.resting ? `${l.resting} resting` : '', l.bare ? `${l.bare} bare` : '', `${l.idle} idle`].filter(Boolean).join(' · ');
 
 /** The share of the six farms' land farmed, 0 to 1. */
 export const farmedShare = (l: Pick<LandNow, 'farmed'>) => l.farmed / LAND_PLOTS;

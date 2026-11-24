@@ -40,6 +40,7 @@ import { RISK, riskShare } from '../risk/config';
 import { treatmentOf } from '../care/treatments';
 import type { RowStrategy } from '../strategy/data';
 import { hasStrategies, rowResults, strategyCost, type RowResult } from '../strategy/model';
+import { REST, soilFactor, type RestKind } from '../soil/model';
 
 /* ---------------- the plan ---------------- */
 
@@ -171,10 +172,20 @@ export const plotsOf = (t: Pick<Trial, 'plots' | 'plans'>, farm: number): PlotRe
 
 /** Seed and fertilizer for a farm. */
 export const plotsCost = (rows: PlotRecord[]) => rows.reduce((n, r) => n + plotCost('seed', r.seed) + plotCost('fert', r.fert), 0);
-/** Everything a farm costs to plant: its farm-wide steps and its plots' seed and fertilizer. */
-export const farmCost = (t: Pick<Trial, 'plots' | 'plans'> & Partial<Pick<Trial, 'strategies' | 'forecast'>>, farm: number) =>
-  planCost(t.plans[farm]) + plotsCost(plotsOf(t, farm)) + (t.strategies?.[farm] ? strategyCost({ plans: t.plans, forecast: t.forecast ?? 'normal', strategies: t.strategies }, farm) : 0);
-export const trialCost = (t: Pick<Trial, 'plots' | 'plans'> & Partial<Pick<Trial, 'strategies' | 'forecast'>>) => t.plans.reduce((n, _, i) => n + farmCost(t, i), 0);
+/** How a farm rests this cycle (src/soil), or null when it is planted. */
+export const restOf = (t: Partial<Pick<Trial, 'rest'>>, farm: number): RestKind | null => t.rest?.[farm] ?? null;
+export const isResting = (t: Partial<Pick<Trial, 'rest'>>, farm: number) => !!restOf(t, farm);
+/** The farms planted this cycle (not resting). */
+export const plantedFarms = (t: Pick<Trial, 'plans'> & Partial<Pick<Trial, 'rest'>>) => t.plans.map((_, i) => i).filter(i => !isResting(t, i));
+
+/** Everything a farm costs to plant: its farm-wide steps and its plots' seed and fertilizer. A resting farm costs its
+    cover seed, or nothing. */
+export const farmCost = (t: Pick<Trial, 'plots' | 'plans'> & Partial<Pick<Trial, 'strategies' | 'forecast' | 'rest'>>, farm: number) => {
+  const rest = restOf(t, farm);
+  if (rest) return REST[rest].cost;
+  return planCost(t.plans[farm]) + plotsCost(plotsOf(t, farm)) + (t.strategies?.[farm] ? strategyCost({ plans: t.plans, forecast: t.forecast ?? 'normal', strategies: t.strategies }, farm) : 0);
+};
+export const trialCost = (t: Pick<Trial, 'plots' | 'plans'> & Partial<Pick<Trial, 'strategies' | 'forecast' | 'rest'>>) => t.plans.reduce((n, _, i) => n + farmCost(t, i), 0);
 
 /* ---------------- the season's rain ---------------- */
 
@@ -375,6 +386,10 @@ export interface FarmResult {
   plotFactor?: number;
   /** the farm's four rows side by side, when their strategies differ from the plan */
   rows?: RowResult[];
+  /** the farm rested this cycle (src/soil): no harvest, its cover seed its only cost */
+  rested?: RestKind;
+  /** what the farm's soil did to its harvest (1 = as planned; missing before soil) */
+  soilFactor?: number;
 }
 
 export interface Trial {
@@ -416,6 +431,10 @@ export interface Trial {
   delivered?: number;
   /** each farm's four rows of plots: the strategy each row runs (src/strategy; missing: as the farm plan) */
   strategies?: RowStrategy[][];
+  /** farms resting this cycle instead of planted, and how (src/soil): null or missing is planted */
+  rest?: (RestKind | null)[];
+  /** each farm's soil health when the cycle was planted (src/soil; missing in saves from before soil: no effect) */
+  soil?: number[];
 }
 
 /** The crops a farm can grow in this model. Sukuma wiki uses maize's numbers for yield and price until an agronomist
@@ -481,7 +500,7 @@ export function returnedProblem(t: Pick<Trial, 'followUps'>, farm: number, day: 
 /** What a farm shows on a day of the cycle: what its plan and luck drew (baseHazard), unless follow-up care was
     missed the day before, which brings that problem back, or a problem was left unresolved the day before, which
     stays on the farm (src/risk/config.ts: RISK.carryOver). */
-export function hazardFor(t: Pick<Trial, 'cycle' | 'forecast' | 'plans' | 'guided' | 'followUps' | 'crops'> & Partial<Pick<Trial, 'checks'>>, farm: number, day: number): TrialHazard {
+export function hazardFor(t: Pick<Trial, 'cycle' | 'forecast' | 'plans' | 'guided' | 'followUps' | 'crops'> & Partial<Pick<Trial, 'checks' | 'rest'>>, farm: number, day: number): TrialHazard {
   return shownOn(t, farm, day).hazard;
 }
 
@@ -503,7 +522,9 @@ export function resolvedOn(t: Partial<Pick<Trial, 'checks'>> & Pick<Trial, 'plan
 }
 
 /** The problem a farm shows on a day, and the day it first showed. */
-export function shownOn(t: Pick<Trial, 'cycle' | 'forecast' | 'plans' | 'guided' | 'followUps' | 'crops'> & Partial<Pick<Trial, 'checks'>>, farm: number, day: number): Episode {
+export function shownOn(t: Pick<Trial, 'cycle' | 'forecast' | 'plans' | 'guided' | 'followUps' | 'crops'> & Partial<Pick<Trial, 'checks' | 'rest'>>, farm: number, day: number): Episode {
+  // a resting farm has no crop to go wrong
+  if (isResting(t, farm)) return { hazard: 'healthy', start: day };
   let ep: Episode | null = null;
   for (let d = Math.min(1, day); d <= day; d++) {
     const back = returnedProblem(t, farm, d);
@@ -591,8 +612,8 @@ function farmProblems(t: Trial, farm: number, lastDay: number) {
 
 /** Whether a farm is due this scheduled care at all: weeding on every farm, the stalk-borer spray on maize with a
     sprayer, the top-dress on a fertilizer that has one. */
-export function routineApplies(t: Pick<Trial, 'routine' | 'plots' | 'plans' | 'crops'>, farm: number, job: RoutineJob): boolean {
-  if (!t.routine || farm >= t.plans.length) return false;
+export function routineApplies(t: Pick<Trial, 'routine' | 'plots' | 'plans' | 'crops'> & Partial<Pick<Trial, 'rest'>>, farm: number, job: RoutineJob): boolean {
+  if (!t.routine || farm >= t.plans.length || isResting(t, farm)) return false;
   const r = plotsOf(t, farm)[0];
   if (job === 'topdress') return !!fertOf(r.fert).withoutTop;
   if (job === 'borer') return cropOf(t, farm) === 'maize' && (r.sprayer ?? 'knapsack') !== 'none';
@@ -695,13 +716,21 @@ export function plotGrowth(t: Trial, farm: number, lastDay = CHECK_DAYS, today =
 /** What a farm's harvest comes to: from the farm plan, its inputs, and the farm's
     problems as its inputs let them hurt it. */
 export function harvestFarm(t: Trial, farm: number, lastDay = CHECK_DAYS): FarmResult {
+  const rest = restOf(t, farm);
+  if (rest) {
+    const ones = Object.fromEntries(PLAN_STEPS.map(x => [x.key, 1])) as Record<StepKey, number>;
+    const cost = REST[rest].cost;
+    return { bags: 0, beans: 0, quality: 1, income: 0, costs: cost, profit: -cost, factors: ones, lost: 0, problems: [], plots: [], rested: rest };
+  }
   const ctx = farmContext(t, farm, lastDay);
+  // the soil the farm had at planting (src/soil)
+  const sf = soilFactor(t.soil?.[farm]);
   const { p, factors, found } = ctx;
   const rows = plotsOf(t, farm);
   const plots: PlotResult[] = rows.map(r => {
     const g = growPlot(t, farm, r, ctx);
-    const bags = round1(g.bags);
-    const beans = g.seed.beans ? round1(BEANS_BAGS * PLOT_SHARE * g.keep) : 0;
+    const bags = round1(g.bags * sf);
+    const beans = g.seed.beans ? round1(BEANS_BAGS * PLOT_SHARE * g.keep * sf) : 0;
     const lost = 1 - g.keep;
     let quality = 5 - Math.round(lost * 10) + g.seed.quality;
     if (p.harvest === 'early') quality = Math.min(quality, 3);
@@ -723,7 +752,7 @@ export function harvestFarm(t: Trial, farm: number, lastDay = CHECK_DAYS): FarmR
   const problems = found
     .map(q => ({ hazard: q.hazard, day: q.day, caught: q.caught, loss: plots.reduce((n, x) => n + plotLoss(q.hazard, q.caught, q.treated, x.inputs, q.scale, q.effect, untopped), 0) / plots.length }))
     .sort((a, b) => b.loss - a.loss);
-  const result: FarmResult = { bags, beans, quality, income, costs, profit: income - costs, factors: out, lost, problems, plots, plotFactor, ...(t.routine ? { care: careOf(t, farm, rows[0], lastDay + 1) } : {}) };
+  const result: FarmResult = { bags, beans, quality, income, costs, profit: income - costs, factors: out, lost, problems, plots, plotFactor, ...(t.soil ? { soilFactor: sf } : {}), ...(t.routine ? { care: careOf(t, farm, rows[0], lastDay + 1) } : {}) };
   // the four rows of plots, each with its own strategy: the farm's harvest is theirs added up
   if (!hasStrategies(t, farm)) return result;
   const byRow = rowResults(t, farm, result, strategyCost(t, farm));
@@ -778,6 +807,7 @@ export function plotLessons(t: Trial): PlotLesson[] {
   for (const tp of topics) {
     const by = new Map<string, number[]>();
     t.plans.forEach((_, farm) => {
+      if (isResting(t, farm)) return;
       plotsOf(t, farm).forEach(r => {
         const k = tp.get(r);
         if (k === undefined) return;
@@ -828,12 +858,18 @@ const bagsText = (x: number) => `${Math.abs(Math.round(x * 10) / 10)} bag${Math.
 
 /** TemoLima AI: the reasons the farm that grew the most beat the farm that grew the least, from the player's own numbers. */
 export function explain(t: Trial, results: FarmResult[]): { best: number; worst: number; lines: string[] } {
-  const order = results.map((_, i) => i).sort((a, b) => results[b].bags - results[a].bags || results[b].profit - results[a].profit);
+  // resting farms grew nothing on purpose: they are left out of the comparison (their soil is in the results)
+  const grown = results.map((_, i) => i).filter(i => !results[i].rested);
+  const order = (grown.length ? grown : results.map((_, i) => i)).sort((a, b) => results[b].bags - results[a].bags || results[b].profit - results[a].profit);
   const best = order[0];
   const worst = order[order.length - 1];
   const B = results[best];
   const W = results[worst];
   const lines: string[] = [];
+  if (best === worst) {
+    lines.push(`${farmName(best)} was the only farm planted: ${B.bags} bags of ${CROP_WORDS[cropOf(t, best)].name}. Plant two or more to compare.`);
+    return { best, worst, lines };
+  }
   const gap = B.bags - W.bags;
   const cropB = CROP_WORDS[cropOf(t, best)].name;
   const cropW = CROP_WORDS[cropOf(t, worst)].name;
@@ -859,6 +895,7 @@ export function explain(t: Trial, results: FarmResult[]): { best: number; worst:
   }));
   parts.push({ what: 'plots', ln: Math.log(B.plotFactor ?? B.factors.seed * B.factors.fert) - Math.log(W.plotFactor ?? W.factors.seed * W.factors.fert) });
   parts.push({ what: 'problems', ln: Math.log(1 - B.lost) - Math.log(1 - W.lost) });
+  parts.push({ what: 'soil', ln: Math.log(B.soilFactor ?? 1) - Math.log(W.soilFactor ?? 1) });
   const lnGap = parts.reduce((n, x) => n + x.ln, 0);
   const pb = t.plans[best];
   const pw = t.plans[worst];
@@ -868,7 +905,9 @@ export function explain(t: Trial, results: FarmResult[]): { best: number; worst:
     .sort((a, b) => b.bags - a.bags)
     .slice(0, 2);
   for (const x of top) {
-    if (x.what === 'plots') {
+    if (x.what === 'soil') {
+      lines.push(`Soil: ${farmName(best)} had soil ${t.soil?.[best] ?? '?'} at planting, ${farmName(worst)} ${t.soil?.[worst] ?? '?'}. That is ${bagsText(x.bags)}. Rest a worn-out farm for a cycle.`);
+    } else if (x.what === 'plots') {
       lines.push(`Inputs on ${farmName(best)} gave ${bagsText(x.bags)} more than ${farmName(worst)}'s.`);
     } else if (x.what === 'problems') {
       const worstProblems = [...new Set(W.problems.filter(q => q.loss >= 0.05).map(q => HAZARD_WORDS[q.hazard]))].slice(0, 2);
@@ -889,7 +928,7 @@ export function explain(t: Trial, results: FarmResult[]): { best: number; worst:
     lines.push(`Care: ${farmName(worst)} missed its ${missed.map(c => ROUTINE[c.job].short).join(' and ')}, about ${pct(loss)} of its harvest. ${ROUTINE[missed[0].job].missed}`);
   }
   // the farm that grew most is not always the one that made most
-  const rich = results.map((_, i) => i).sort((a, b) => results[b].profit - results[a].profit)[0];
+  const rich = [...order].sort((a, b) => results[b].profit - results[a].profit)[0];
   if (rich !== best) {
     lines.push(`But ${farmName(rich)} made the most: ${money(results[rich].profit)} vs ${money(B.profit)}, as it cost less.`);
   }
@@ -988,11 +1027,13 @@ export function suggestPlans(base: Plan, count: number, salt = 0, open: (key: St
 }
 
 /** What stops the farms being planted, or null when they can be. */
-export function planProblem(t: Pick<Trial, 'plans' | 'plots'>, coins: number): string | null {
+export function planProblem(t: Pick<Trial, 'plans' | 'plots'> & Partial<Pick<Trial, 'rest' | 'strategies' | 'forecast'>>, coins: number): string | null {
   const plans = t.plans;
+  if (!plantedFarms(t).length) return 'Plant at least one farm: the family needs a harvest.';
   for (let i = 1; i < plans.length; i++) {
+    if (isResting(t, i)) continue;
     const key = (k: number) => JSON.stringify(plotsOf(t, k).map(r => [r.seed, r.fert, r.sprayer]));
-    const twin = plans.findIndex((q, j) => j < i && samePlan(q, plans[i]) && key(j) === key(i));
+    const twin = plans.findIndex((q, j) => j < i && !isResting(t, j) && samePlan(q, plans[i]) && key(j) === key(i));
     if (twin >= 0) return `${farmName(i)} has the same plan and plots as ${farmName(twin)}. Change at least one thing.`;
   }
   const cost = trialCost(t);

@@ -1,12 +1,13 @@
 /* Climate Smart Agriculture: the practices the module teaches, in words. Each one is learned, then practised in its
    own hands-on game (src/csa/games), then drilled on the farm day after day (the CLIMATE-SMART chip on the farm).
 
-   Seven practices: the three the module was asked for (half-moons, saving water, the right time of day) and four
-   more that are used by farmers in Kenya and West Africa: zaï pits, push-pull, kisiki hai (farmer-managed natural
-   regeneration) and drought-tolerant seed with a legume between the rows. Every figure here is for learning and
+   Eight practices: the three the module was asked for (half-moons, saving water, the right time of day), four more
+   that are used by farmers in Kenya and West Africa: zaï pits, push-pull, kisiki hai (farmer-managed natural
+   regeneration) and drought-tolerant seed with a legume between the rows, and resting the land (fallow and a
+   green-manure cover crop, taken in turns across the six farms: src/soil, and the plan's Use row). Every figure here is for learning and
    needs an agronomist's review before a pilot (see README › Assumptions). No screens here. */
 
-export type CsaId = 'halfmoon' | 'water' | 'clock' | 'zai' | 'pushpull' | 'fmnr' | 'seeds';
+export type CsaId = 'halfmoon' | 'water' | 'clock' | 'zai' | 'pushpull' | 'fmnr' | 'seeds' | 'rest';
 
 export interface Practice {
   id: CsaId;
@@ -187,6 +188,28 @@ export const PRACTICES: Practice[] = [
     task: 'Three seasons, three forecasts: choose the crop, the partner between the rows and when to plant',
     remember: 'Match the seed to the rain; a legume between the rows; plant when the soil is wet a hand deep.',
     slug: 'seed-and-intercrop',
+  },
+  {
+    id: 'rest',
+    name: 'Resting the land',
+    aka: 'Fallow, green manure and rotation · kupumzisha shamba',
+    icon: '🍀',
+    fixes: 'Worn-out soil and shrinking harvests',
+    kenya: 'Lablab, mucuna and desmodium as green manure in western Kenya and the highlands; short grass fallows in Machakos and the coast',
+    westAfrica: 'Improved fallows with mucuna and pigeon pea in Benin, Nigeria and Ghana; Faidherbia trees and grazed fallow in the Sahel',
+    what: 'A farm cropped every season wears out: each harvest carries nutrients away and the soil loses its carbon. Rest one or two farms each season, in turns, under grass or a legume cover crop, and they come back richer.',
+    steps: [
+      ['🪱', 'Watch each farm’s soil: a pale crop, a hard crust and smaller harvests mean it is tired'],
+      ['🔄', 'Rest in turns: each season, rest the farm that has been cropped longest or has the poorest soil'],
+      ['🍀', 'Sow a legume cover (lablab, mucuna, desmodium): it fixes nitrogen and covers every bit of ground'],
+      ['🌾', 'No seed? Let grass and bush grow back (natural fallow): slower, but free'],
+      ['🔪', 'Before the next crop, slash the cover at flowering and dig it in, or leave it as mulch'],
+      ['🍲', 'Keep enough farms planted to feed the family; mulch, manure and beans keep the planted ones from wearing out'],
+    ],
+    why: ['Richer soil: bigger harvests from every farm that follows', 'Soil covered all year: no wash-off, no bare ground losing carbon', 'Roots and cover store carbon; legumes replace bought nitrogen'],
+    task: 'Six farms, four seasons: choose which farms rest each season, keep the family fed and leave the soil richer',
+    remember: 'Rest in turns, under a legume cover; keep enough planted to feed the family.',
+    slug: 'resting-the-land',
   },
 ];
 

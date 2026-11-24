@@ -10,6 +10,7 @@ import {
   cropOf,
   farmName,
   hazardFor,
+  isResting,
   lower,
   optionOf,
   plotsOf,
@@ -33,7 +34,9 @@ export interface TrialRound extends Round {
 }
 
 export function trialRounds(t: Trial, day: number): TrialRound[] {
-  return t.plans.map((plan, i) => {
+  // a resting farm (src/soil) has no crop to check
+  return t.plans.flatMap((plan, i) => {
+    if (isResting(t, i)) return [];
     const h = hazardFor(t, i, day);
     const stage = stageOfDay(day);
     const elapsed = stage === 'young' ? 3 : stage === 'grow' ? 10 : h === 'harvestLate' ? 19 : 15;
@@ -51,7 +54,7 @@ export function trialRounds(t: Trial, day: number): TrialRound[] {
     if (h === 'hail') treated = 'Nothing to treat: hail-damaged plants often recover.';
     else if (d.treat > 0 && canTreat(h, plan)) treated = `${d.fix} for ${money(d.treat)}: most of the damage is stopped.`;
     else if (d.treat > 0) treated = 'It stays untreated, so the damage goes on.';
-    return {
+    return [{
       ...round,
       diary,
       farmIndex: i,
@@ -60,6 +63,6 @@ export function trialRounds(t: Trial, day: number): TrialRound[] {
         right: [cause, h === 'healthy' ? '' : treated].filter(Boolean).join(' '),
         wrong: d.missed ? 'Until read right, this costs part of the harvest.' : '',
       },
-    };
+    }];
   });
 }
