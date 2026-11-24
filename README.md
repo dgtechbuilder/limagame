@@ -156,7 +156,7 @@ own collector.
 src/
   main.tsx                 entry point
   App.tsx                  scales the 874 × 402 stage to the screen; routes first session / farm / modals
-  state.ts                 game state, season rules and saving (useReducer + localStorage)
+  state.ts                 game state, season rules and saving (useReducer + localStorage, copied to Supabase by net/cloud.ts)
   route.ts                 page addresses: pathOf (the address of the page on show), routeTo (an address to the page); see Page addresses
   data.ts                  farm copy, prices, tasks, rewards, storage and processing options
   money.ts                 money on screen (money(), kshText()): see Money on screen
@@ -2268,6 +2268,15 @@ player's saved game or events.
 - **Progress** saves on the device in `localStorage` (`lima-farming-game:v2`): farmer, first-session progress,
   coins, points, seasons. *Settings → Reset progress* erases it and starts again with a new farmer. Saves from
   before the first session existed keep their coins and play the first session once.
+- **Cloud save**: the published game also keeps a copy of that progress in Supabase (the *MelaPress* project, table
+  `public.temolima_saves`; `src/net/cloud.ts`). The phone stays the source of truth and the game plays with no signal.
+  There are no accounts: on first use the phone makes a random player id and secret key (`lima-cloud-id`); the
+  database keeps only a hash of the key, and its two functions (`temolima_save`, `temolima_load`) refuse any other
+  key. Only the latest state is sent: at most once a minute while playing (every 5 minutes on Data saver), when the
+  signal comes back, and when the game is hidden or closed. Each row also carries the farmer's name, stage, days
+  played, coins and levels reached, for a quick look in the Supabase table editor. The SQL is in
+  `supabase/migrations/`. Development and the play-tests never write to the real project (set `VITE_SUPABASE_URL`
+  and `VITE_SUPABASE_KEY` to point it elsewhere); `VITE_CLOUD_SAVE=off` turns it off; design-review links never send.
 - **Events**: one per first-session moment, so drop-off can be measured — `create_shown`, `farmer_created`,
   `story_page`, `story_done`, `story_skipped`, `walk_start`, `first_move`, `shamba_reached`, `review_start`, `part_viewed`, `spot_found`, `call`,
   `review_failed`, `review_passed`, `farm_opened`, `session_close`; the field-round events (`round_start`,
@@ -2277,8 +2286,10 @@ player's saved game or events.
   if `VITE_EVENTS_URL` is set at build time, sent in batches through the outbox (see
   [Playing on a weak, slow or missing signal](#playing-on-a-weak-slow-or-missing-signal)): the endpoint receives a
   `POST` whose body is a JSON **array** of events.
-- **No personal data is sent.** Events never include the farmer's name. There are no accounts, cookies or
-  third-party scripts, and no outside requests at all: the Poppins font is kept with the game (`src/fonts/`).
+- **What leaves the phone.** Events never include the farmer's name. The cloud save holds the game's progress,
+  which includes the name the player chose for their farmer. There are no accounts, cookies or third-party
+  scripts; the only outside requests are the cloud save to Supabase (and events, if `VITE_EVENTS_URL` is set). The
+  Poppins font is kept with the game (`src/fonts/`).
 
 ## Performance on low-cost phones
 

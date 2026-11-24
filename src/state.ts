@@ -91,6 +91,7 @@ import { practiceOf, type CsaId } from './csa/data';
 import { trackCsa } from './csa/track';
 import { JOBS_MAX, onFarm, treatJob, type Job, type JobSpec } from './onsite/model';
 import { PAYG, SHOP, activitiesDone, bizOf, contractDay, demoSlots, farmerAccepts, graduation, hireOutDay, offersFor, partnerBlock, partnerOf, planDay, requestsFor, runDay, scanFarm, shopBlock, type Biz, type Bookings, type Crop, type Drives, type FleetItem, type PartnerId } from './business/model';
+import { cloudFlush, cloudSave } from './net/cloud';
 import {
   GROWING_STEPS,
   HARVEST_EFFECT,
@@ -2211,6 +2212,13 @@ function save(state: GameState) {
   }
 }
 
+/** A copy of the progress for the cloud (src/net/cloud.ts): the save, without what lasts only one visit. */
+function syncToCloud(state: GameState) {
+  const copy: Partial<GameState> = { ...state };
+  TRANSIENT.forEach(k => delete copy[k]);
+  cloudSave(copy);
+}
+
 /** The game's state, saved to the phone. Saving waits for a short pause (the farm world changes the state many times a
     second while the farmer works), and happens at once when the game is hidden or closed. */
 export function useGame() {
@@ -2225,6 +2233,7 @@ export function useGame() {
     if (latest.current === saved.current) return;
     saved.current = latest.current;
     save(latest.current);
+    syncToCloud(latest.current);
   };
   useEffect(() => {
     if (reviewing() || state === saved.current) return;
@@ -2234,7 +2243,12 @@ export function useGame() {
   }, [state]);
   useEffect(() => {
     if (reviewing()) return;
-    const now = flush;
+    // progress already on the phone (from before cloud saving, or saved while offline) goes to the cloud too
+    if (saved.current !== initialState && saved.current.onboarded) syncToCloud(saved.current);
+    const now = () => {
+      flush();
+      cloudFlush();
+    };
     const hidden = () => document.visibilityState === 'hidden' && now();
     document.addEventListener('visibilitychange', hidden);
     window.addEventListener('pagehide', now);
