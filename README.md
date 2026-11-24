@@ -2268,15 +2268,30 @@ player's saved game or events.
 - **Progress** saves on the device in `localStorage` (`lima-farming-game:v2`): farmer, first-session progress,
   coins, points, seasons. *Settings → Reset progress* erases it and starts again with a new farmer. Saves from
   before the first session existed keep their coins and play the first session once.
-- **Cloud save**: the published game also keeps a copy of that progress in Supabase (the *MelaPress* project, table
-  `public.temolima_saves`; `src/net/cloud.ts`). The phone stays the source of truth and the game plays with no signal.
-  There are no accounts: on first use the phone makes a random player id and secret key (`lima-cloud-id`); the
-  database keeps only a hash of the key, and its two functions (`temolima_save`, `temolima_load`) refuse any other
-  key. Only the latest state is sent: at most once a minute while playing (every 5 minutes on Data saver), when the
-  signal comes back, and when the game is hidden or closed. Each row also carries the farmer's name, stage, days
-  played, coins and levels reached, for a quick look in the Supabase table editor. The SQL is in
-  `supabase/migrations/`. Development and the play-tests never write to the real project (set `VITE_SUPABASE_URL`
-  and `VITE_SUPABASE_KEY` to point it elsewhere); `VITE_CLOUD_SAVE=off` turns it off; design-review links never send.
+- **Cloud save**: the published game also keeps the progress in Supabase (the *MelaPress* project; `src/net/cloud.ts`).
+  The phone stays the source of truth and the game plays with no signal. Only the latest state is sent: at most once a
+  minute while playing (every 5 minutes on Data saver), when the signal comes back, and when the game is hidden or
+  closed. The SQL is in `supabase/migrations/`.
+  - **Player code.** There are no accounts. On first use the phone makes a random player code, a UUID
+    (`lima-cloud-id`). *Settings → Help & data → My player code* shows it with a Copy button; typing it under *Open my
+    farm from another phone* on any other phone finds the farm and, once confirmed, opens it there (that phone then
+    saves under the same code). The code is the key to the farm, so the game tells players to keep it to themselves.
+    With one code on two phones, the save made last wins.
+  - **Tables.** Every table is closed to the public API; the game only calls `temolima_save` and `temolima_restore`.
+    | Table | What it holds |
+    | --- | --- |
+    | `temolima_players` | one row per player code: farmer, country, coins, points, level, days played, streaks, learning credits, last seen |
+    | `temolima_saves` | the whole save, as kept on the phone (what another phone opens) |
+    | `temolima_achievements` | every badge won: game, tier, name, day, claimed |
+    | `temolima_certificates` | every certificate: weeks, streaks, mastery, levels |
+    | `temolima_learning_modules` | My Progress: credits and stage in each module |
+    | `temolima_learning_levels` | certification levels reached |
+    | `temolima_learning_activity` | Farm basics lessons read, climate-smart practices (best score, skill points), courses booked |
+    | `temolima_partner_codes` | partner offers saved, with the player's code for each |
+    | `temolima_rewards` | rewards redeemed with points |
+    The lists are worked out from the save on the phone (`src/net/cloudRecords.ts`) and sent only when they change.
+  - Development and the play-tests never write to the real project (set `VITE_SUPABASE_URL` and `VITE_SUPABASE_KEY` to
+    point it elsewhere); `VITE_CLOUD_SAVE=off` turns it off; design-review links never send.
 - **Events**: one per first-session moment, so drop-off can be measured — `create_shown`, `farmer_created`,
   `story_page`, `story_done`, `story_skipped`, `walk_start`, `first_move`, `shamba_reached`, `review_start`, `part_viewed`, `spot_found`, `call`,
   `review_failed`, `review_passed`, `farm_opened`, `session_close`; the field-round events (`round_start`,

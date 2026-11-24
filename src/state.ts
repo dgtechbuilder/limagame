@@ -92,6 +92,7 @@ import { trackCsa } from './csa/track';
 import { JOBS_MAX, onFarm, treatJob, type Job, type JobSpec } from './onsite/model';
 import { PAYG, SHOP, activitiesDone, bizOf, contractDay, demoSlots, farmerAccepts, graduation, hireOutDay, offersFor, partnerBlock, partnerOf, planDay, requestsFor, runDay, scanFarm, shopBlock, type Biz, type Bookings, type Crop, type Drives, type FleetItem, type PartnerId } from './business/model';
 import { cloudFlush, cloudSave } from './net/cloud';
+import { cloudRecords } from './net/cloudRecords';
 import {
   GROWING_STEPS,
   HARVEST_EFFECT,
@@ -2202,7 +2203,24 @@ export function clearSave() {
   }
 }
 
+/** Set when another farm has been written to the phone and the game is about to reopen with it: nothing more is saved. */
+let replaced = false;
+
+/** Open a farm saved on another phone (Settings → Help & data → player code): it becomes this phone's save, and the
+    game reopens with it. */
+export function replaceSave(saved: Record<string, unknown>) {
+  replaced = true;
+  try {
+    window.localStorage.setItem(SAVE_KEY, JSON.stringify(saved));
+  } catch {
+    /* storage blocked: nothing to open */
+  }
+  window.location.hash = '';
+  window.location.reload();
+}
+
 function save(state: GameState) {
+  if (replaced) return;
   try {
     const copy: Partial<GameState> = { ...state };
     TRANSIENT.forEach(k => delete copy[k]);
@@ -2214,9 +2232,10 @@ function save(state: GameState) {
 
 /** A copy of the progress for the cloud (src/net/cloud.ts): the save, without what lasts only one visit. */
 function syncToCloud(state: GameState) {
+  if (replaced) return;
   const copy: Partial<GameState> = { ...state };
   TRANSIENT.forEach(k => delete copy[k]);
-  cloudSave(copy);
+  cloudSave(copy, () => cloudRecords(state));
 }
 
 /** The game's state, saved to the phone. Saving waits for a short pause (the farm world changes the state many times a
