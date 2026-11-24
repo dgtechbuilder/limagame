@@ -38,6 +38,7 @@ import {
   GH_BED,
   GREENHOUSE_AT,
   STOREHOUSE_AT,
+  STORAGE_AT,
   ghBedCenter,
   followUpLeft,
   routineLeft,
@@ -111,6 +112,9 @@ import {
   greenhousePlant,
   jar,
   nameBoardTexture,
+  freezerAnnex,
+  freezerDisplayTexture,
+  FREEZER,
   raisedBed,
   sack,
   SHELF,
@@ -169,13 +173,13 @@ export const LAMPS: { x: number; z: number }[] = [
 export const TRACTOR_BOARD = { x: -17.4, z: 8.6 };
 
 /** The partner billboards across the farm (src/partners/data.ts sets the brand on each): two in the yard either side of
-    the farmhouse path, one by the seed shed and one between the storehouse and the mini forest. Each stands on one steel pole
+    the farmhouse path, one by the seed shed and one at the end of the lane, behind the storage annex and beside the mini forest. Each stands on one steel pole
     and is turned a little (ry) toward the path the farmer walks. */
 export const BILLBOARDS: { slot: SlotId; x: number; z: number; ry: number }[] = [
   { slot: 'world-billboard-west', x: -7.6, z: -14.9, ry: 0.14 },
   { slot: 'world-billboard-east', x: 12.6, z: -14.6, ry: -0.14 },
   { slot: 'world-billboard-shed', x: -19.0, z: -7.8, ry: 0.2 },
-  { slot: 'world-billboard-forest', x: 12.4, z: 12.2, ry: -0.2 },
+  { slot: 'world-billboard-forest', x: 12.9, z: 9.5, ry: -0.2 },
 ];
 /** How often a sweep of light crosses a billboard (seconds), and how long it takes. */
 const SWEEP = { every: 7, takes: 1.1 };
@@ -205,6 +209,8 @@ export const PLACES: Record<Place, { x: number; z: number; r: number }> = {
   /** the greenhouse's door, facing the market path, and the storehouse's door, on the lane (src/greenhouse, src/storehouse) */
   greenhouse: { x: GREENHOUSE_AT.x + GREENHOUSE_AT.w / 2 + 1.3, z: GREENHOUSE_AT.z - 0.3, r: 0.85 },
   storehouse: { x: STOREHOUSE_AT.x + STOREHOUSE_AT.door, z: STOREHOUSE_AT.z - STOREHOUSE_AT.d / 2 - 1.95, r: 0.85 },
+  /** the storage annex's freezer door, in its front wall (src/storehouse: the store and its cold room) */
+  storage: { x: STORAGE_AT.x, z: STORAGE_AT.z + STORAGE_AT.d / 2 + 1.0, r: 0.85 },
   house: { x: 0, z: -14.1, r: 1.0 },
   /** the cow pen's gate and the chicken coop's door: the Animals page (src/livestock) */
   pen: { x: -10.7, z: -13.0, r: 1.0 },
@@ -636,7 +642,7 @@ export class FarmWorld {
       [-6.8, -19.4, 0.9],
       [13.2, -19.6, 0.9],
       [-11.4, 16.0, 0.85],
-      [12.2, 16.2, 0.9],
+      [14.2, 16.2, 0.9],
       [-20.0, 9.0, 0.7],
     ];
     for (const [x, z, s] of trees) {
@@ -722,6 +728,26 @@ export class FarmWorld {
         g.ellipse(-20, -14, 22, 11, -0.6, 0, Math.PI * 2);
         g.ellipse(20, -26, 22, 11, 0.6, 0, Math.PI * 2);
         g.fill();
+      },
+      snow: g => {
+        g.strokeStyle = '#fff';
+        g.lineWidth = 8;
+        g.lineCap = 'round';
+        for (let i = 0; i < 3; i++) {
+          g.save();
+          g.rotate((i * Math.PI) / 3);
+          g.beginPath();
+          g.moveTo(0, -42);
+          g.lineTo(0, 42);
+          for (const e of [-1, 1]) {
+            g.moveTo(0, e * 26);
+            g.lineTo(-12, e * 38);
+            g.moveTo(0, e * 26);
+            g.lineTo(12, e * 38);
+          }
+          g.stroke();
+          g.restore();
+        }
       },
       crate: g => {
         g.fillStyle = '#fff';
@@ -843,6 +869,7 @@ export class FarmWorld {
       ['power', 'Power', 'bolt', 1.9],
       ['greenhouse', 'Grow', 'sprout', 1.5],
       ['storehouse', 'Store', 'crate', 1.5],
+      ['storage', 'Storage', 'snow', 1.5],
     ];
     for (const [p, label, glyph, size] of zones) {
       const mat = sharpText(new THREE.MeshBasicMaterial({ map: zoneTexture(label, glyphs[glyph]), transparent: true, depthWrite: false }));
@@ -894,6 +921,7 @@ export class FarmWorld {
     this.buildPower();
     this.buildGreenhouse();
     this.buildStorehouse();
+    this.buildStorage();
   }
 
   /* ---------------- the power yard, the lights and the night (src/power) ---------------- */
@@ -1095,6 +1123,29 @@ export class FarmWorld {
     this.addGlassHouse(h.x, h.z, glassHouse({ w: h.w, d: h.d, h: 1.6, rise: 0.6, frame: '#2f5d50', glass: '#d6ecef', door: { side: 'z-', at: h.door, width: 0.95 }, plinth: { h: 0.4, color: C.woodPlank } }), 0.15);
     this.addBoard(h.x, 1.85, h.z + h.d / 2 + 0.06, 'STOREHOUSE', 'store · harvest · produce', '#2f5d50');
     this.rects.push({ x0: h.x - h.w / 2, x1: h.x + h.w / 2, z0: h.z - h.d / 2, z1: h.z + h.d / 2 });
+  }
+
+  /** The storage annex against the storehouse's right-hand wall: a big freezer with its own door (src/world/models.ts
+      freezerAnnex). Its name board and its display sit on the control strip over the door. */
+  private buildStorage() {
+    const a = STORAGE_AT;
+    // a little light of its own, so the white cabinet reads as white on the side away from the sun
+    const mat = vcMaterial(true);
+    mat.emissive.set('#30373d');
+    const fm = new THREE.Mesh(merge(place(freezerAnnex(a), at(a.x, 0, a.z))), mat);
+    fm.castShadow = true;
+    fm.receiveShadow = true;
+    this.scene.add(fm);
+    const front = a.z + a.d / 2;
+    const stripY = a.h - FREEZER.strip / 2 - 0.06;
+    const board = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.32), sharpText(new THREE.MeshBasicMaterial({ map: nameBoardTexture('STORAGE', 'cold room · freezer', '#2a7fb8') })));
+    board.position.set(a.x - 0.42, stripY, front + 0.035);
+    board.renderOrder = 4;
+    const display = new THREE.Mesh(new THREE.PlaneGeometry(0.68, 0.26), sharpText(new THREE.MeshBasicMaterial({ map: freezerDisplayTexture() })));
+    display.position.set(a.x + 0.88, stripY, front + 0.035);
+    display.renderOrder = 4;
+    this.scene.add(board, display);
+    this.rects.push({ x0: a.x - a.w / 2, x1: a.x + a.w / 2, z0: a.z - a.d / 2, z1: a.z + a.d / 2 });
   }
 
   /** The greenhouse's beds, as grown (stage 0 just planted … 3 ready), and a badge over a bed that needs the farmer. */

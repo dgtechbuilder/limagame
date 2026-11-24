@@ -50,7 +50,7 @@ export const TIDY_NAME: Record<TidyKind, string> = { bush: 'bush', rock: 'rock' 
 /** Where bushes can sprout: on the grass, clear of the paths, the farms, the buildings and the places. */
 export const BUSH_SPOTS: [number, number][] = [
   [-11.6, 12.4],
-  [11.4, 13.2],
+  [13.9, 11.8],
   [-5.2, -11.2],
   [7.8, -10.9],
   [14.2, 4.0],
@@ -76,7 +76,7 @@ export const ROCK_SPOTS: [number, number][] = [
   [-17.6, -3.6],
   [16.2, -3.6],
   [-11.2, 15.6],
-  [12.6, 16.0],
+  [14.4, 14.4],
 ];
 
 /** A small seeded random number generator (the same day, the same numbers). */

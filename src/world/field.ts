@@ -95,6 +95,9 @@ export const GH_BED = { w: 2.0, d: 1.25 };
 export const ghBedCenter = (i: number) => ({ x: GREENHOUSE_AT.x + (i % 2 ? 1.25 : -1.25), z: GREENHOUSE_AT.z + (i < 2 ? -0.9 : 0.9) });
 /** The storehouse (src/storehouse), where Farm 8 was: right of the market path. Its door is in the back wall, by the lane. */
 export const STOREHOUSE_AT = { x: 7.4, z: 13.0, w: 5.0, d: 3.8, door: 1.6 };
+/** The storage annex: a second building against the storehouse's right-hand wall, built like a big freezer (the cold
+    room). Its own freezer door is in the front wall, facing the camera. */
+export const STORAGE_AT = { x: STOREHOUSE_AT.x + STOREHOUSE_AT.w / 2 + 1.5, z: 13.2, w: 3.0, d: 3.2, h: 2.25 };
 
 /** Where the farm's sign stands: at the path side, below the plot. */
 export const signOf = (farm: number) => ({ x: PLOTS[farm].x + PLOT_W / 2 + 0.35, z: PLOTS[farm].z + PLOT_D / 2 + 0.3 });
@@ -338,7 +341,7 @@ export interface Task {
   target: { farm: number; at: 'plot' | 'sign' } | { place: Place };
 }
 
-export type Place = 'mission' | 'shed-seeds' | 'shed-fertilizer' | 'shed-sprayer' | 'pond' | 'hire' | 'market' | 'restaurant' | 'house' | 'pen' | 'coop' | 'power' | 'greenhouse' | 'storehouse';
+export type Place = 'mission' | 'shed-seeds' | 'shed-fertilizer' | 'shed-sprayer' | 'pond' | 'hire' | 'market' | 'restaurant' | 'house' | 'pen' | 'coop' | 'power' | 'greenhouse' | 'storehouse' | 'storage';
 export type TaskIcon = 'plan' | 'hoe' | 'seeds' | 'fertilizer' | 'check' | 'weed' | 'water' | 'spray' | 'drain' | 'goat' | 'birds' | 'tractor' | 'corn' | 'sleep' | 'wait' | 'results';
 
 /** The task card's icon for each scheduled care job. */

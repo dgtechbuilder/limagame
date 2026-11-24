@@ -703,9 +703,11 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     if (p === 'restaurant') return dispatch({ type: 'open', modal: { kind: 'serve', shop: 'restaurant' } });
     // the greenhouse opens on the bed that needs the farmer most (pick, then water, then plant); the storehouse on its
     // Harvest when a bed is ripe
-    if (p === 'greenhouse' || p === 'storehouse') {
+    // the storage annex's freezer door opens the store, where the cold room is
+    if (p === 'greenhouse' || p === 'storehouse' || p === 'storage') {
       const day = lifeOf(st.life).day;
       if (day < GREENHOUSE.openDay) return say(`The ${p} opens on day ${GREENHOUSE.openDay}: sleep at the farmhouse first`);
+      if (p === 'storage') return dispatch({ type: 'open', modal: { kind: 'storehouse', tab: 'store' } });
       const n = ghNeeds(st.greenhouse, day).statuses;
       const first = (['ready', 'thirsty', 'empty'] as const).map(k => n.indexOf(k)).find(i => i >= 0) ?? 0;
       if (p === 'greenhouse') return dispatch({ type: 'open', modal: { kind: 'greenhouse', bed: first } });
@@ -1034,7 +1036,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       ? !ghOpen
         ? `Opens on day ${GREENHOUSE.openDay}`
         : [needs.ready && `${needs.ready} to pick`, needs.thirsty && `${needs.thirsty} to water`, needs.empty && `${needs.empty} to plant`].filter(Boolean).join(' · ') || 'Every bed growing'
-      : anchors.place === 'storehouse' && !ghOpen
+      : (anchors.place === 'storehouse' || anchors.place === 'storage') && !ghOpen
         ? `Opens on day ${GREENHOUSE.openDay}`
         : null;
 
@@ -1592,6 +1594,8 @@ function placeButton(p: Place, carry: GameState['field']['carry']): { label: str
       return { label: 'Open the greenhouse', sub: 'Four beds under glass', aria: 'Open the greenhouse', emoji: '🍅' };
     case 'storehouse':
       return { label: 'Open the storehouse', sub: 'Store, harvest, produce', aria: 'Open the storehouse', emoji: '📦' };
+    case 'storage':
+      return { label: 'Open the storage', sub: 'Freezer cold room', aria: 'Open the storage', emoji: '❄️' };
   }
 }
 
