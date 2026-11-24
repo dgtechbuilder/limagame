@@ -33,5 +33,13 @@ export default defineConfig({
   ],
   webServer: process.env.LIMA_URL
     ? undefined
-    : { command: `npm run dev -- --port ${PORT} --strictPort`, url: `http://localhost:${PORT}/`, reuseExistingServer: !process.env.CI, timeout: 120_000 },
+    : {
+        command: `npm run dev -- --port ${PORT} --strictPort`,
+        url: `http://localhost:${PORT}/`,
+        reuseExistingServer: !process.env.CI,
+        timeout: 120_000,
+        // cloud save (src/net/cloud.ts) points at the dev server itself, never the real Supabase project:
+        // tests/cloud-save.spec.ts catches its requests there
+        env: { VITE_SUPABASE_URL: `http://localhost:${PORT}/__cloud`, VITE_SUPABASE_KEY: 'test-publishable-key' },
+      },
 });
