@@ -1709,6 +1709,129 @@ export function glassHouse(o: { w: number; d: number; h: number; rise: number; f
   return { frame, glass };
 }
 
+/** The storage annex beside the storehouse, built at the origin like a big upright freezer: w along x, d along z, h
+    high. A white insulated cabinet with rounded corners and panel seams on a grey kick plate, a dark control strip
+    across the top of the front (the name board and the display go on it), one big freezer door on the front (+z) with
+    an ice-blue gasket, chrome hinges and a lever latch, frost along its foot, icicles under the lip, and the
+    condenser on the roof (a fan in a grille, copper pipes down the side). */
+export const FREEZER = { strip: 0.42, doorW: 1.5, doorH: 1.48 };
+export function freezerAnnex(o: { w: number; d: number; h: number }): Part[] {
+  const { w, d, h } = o;
+  const r = 0.14;
+  const white = '#f2f6f8';
+  const seam = '#d3dde3';
+  const chrome = '#c9d2d8';
+  const chromeDark = '#8e9aa3';
+  const ice = '#bfe7fb';
+  const frost = '#e6f6ff';
+  const kick = 0.14;
+  const out: Part[] = [
+    // a concrete pad, and the grey kick plate the cabinet stands on
+    { geo: G.box, color: '#bdbdb6', m: at(0, 0.03, 0, { sx: w + 0.3, sy: 0.06, sz: d + 0.3 }) },
+    { geo: G.box, color: '#9aa4ab', m: at(0, 0.06 + kick / 2, 0, { sx: w - 0.06, sy: kick, sz: d - 0.06 }) },
+  ];
+  // the cabinet: two crossed boxes and a post at each corner, so its vertical edges are round
+  const y0 = 0.06 + kick;
+  const bh = h - y0;
+  out.push({ geo: G.box, color: white, m: at(0, y0 + bh / 2, 0, { sx: w - 2 * r, sy: bh, sz: d }) });
+  out.push({ geo: G.box, color: white, m: at(0, y0 + bh / 2, 0, { sx: w, sy: bh, sz: d - 2 * r }) });
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) out.push({ geo: G.cyl, color: white, m: at(sx * (w / 2 - r), y0 + bh / 2, sz * (d / 2 - r), { sx: 2 * r, sy: bh, sz: 2 * r }) });
+  // a lid a little proud of the walls, its edge rounded too
+  out.push({ geo: G.box, color: '#e4ebef', m: at(0, h + 0.04, 0, { sx: w - 2 * r + 0.04, sy: 0.08, sz: d + 0.04 }) });
+  out.push({ geo: G.box, color: '#e4ebef', m: at(0, h + 0.04, 0, { sx: w + 0.04, sy: 0.08, sz: d - 2 * r + 0.04 }) });
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) out.push({ geo: G.cyl, color: '#e4ebef', m: at(sx * (w / 2 - r), h + 0.04, sz * (d / 2 - r), { sx: 2 * r + 0.04, sy: 0.08, sz: 2 * r + 0.04 }) });
+  // the insulated panels' seams on the sides and the back
+  for (const z of [-d / 6, d / 6]) for (const sx of [-1, 1]) out.push({ geo: G.box, color: seam, m: at(sx * (w / 2 + 0.005), y0 + bh / 2, z, { sx: 0.01, sy: bh - 0.1, sz: 0.035 }) });
+  for (const x of [-w / 4, 0, w / 4]) out.push({ geo: G.box, color: seam, m: at(x, y0 + bh / 2, -d / 2 - 0.005, { sx: 0.035, sy: bh - 0.1, sz: 0.01 }) });
+  // the control strip across the top of the front
+  const fz = d / 2;
+  const st = FREEZER.strip;
+  out.push({ geo: G.box, color: '#28394a', m: at(0, h - st / 2 - 0.04, fz + 0.01, { sx: w - 2 * r, sy: st, sz: 0.03 }) });
+  out.push({ geo: G.box, color: chrome, m: at(0, h - st - 0.05, fz + 0.02, { sx: w - 2 * r, sy: 0.03, sz: 0.03 }) });
+  // the freezer door: a slab proud of the front, an ice-blue gasket round it
+  const dw = FREEZER.doorW;
+  const dh = FREEZER.doorH;
+  const dy = y0 + 0.04 + dh / 2;
+  const dz = fz + 0.06;
+  out.push({ geo: G.box, color: ice, m: at(0, dy, fz + 0.02, { sx: dw + 0.08, sy: dh + 0.08, sz: 0.04 }) });
+  out.push({ geo: G.box, color: '#fbfdfe', m: at(0, dy, dz, { sx: dw, sy: dh, sz: 0.08 }) });
+  // a raised panel on the door, and a window of frosted glass up top
+  out.push({ geo: G.box, color: '#eef3f6', m: at(0, dy - 0.15, dz + 0.045, { sx: dw - 0.3, sy: dh - 0.75, sz: 0.01 }) });
+  out.push({ geo: G.box, color: chromeDark, m: at(0, dy + dh / 2 - 0.3, dz + 0.045, { sx: 0.6, sy: 0.32, sz: 0.012 }) });
+  out.push({ geo: G.box, color: '#a9dcf3', m: at(0, dy + dh / 2 - 0.3, dz + 0.05, { sx: 0.52, sy: 0.24, sz: 0.012 }) });
+  // chrome hinges on the left edge, and the lever latch with its handle bar on the right
+  for (const hy of [dy - dh / 2 + 0.3, dy + dh / 2 - 0.3]) {
+    out.push({ geo: G.box, color: chrome, m: at(-dw / 2 + 0.06, hy, dz + 0.06, { sx: 0.22, sy: 0.16, sz: 0.05 }) });
+    out.push({ geo: G.cyl, color: chromeDark, m: at(-dw / 2 - 0.02, hy, dz + 0.06, { sx: 0.07, sy: 0.2, sz: 0.07 }) });
+  }
+  const lx = dw / 2 - 0.22;
+  out.push({ geo: G.box, color: chromeDark, m: at(lx, dy + 0.05, dz + 0.055, { sx: 0.16, sy: 0.3, sz: 0.04 }) });
+  out.push({ geo: G.box, color: chrome, m: at(lx - 0.02, dy + 0.12, dz + 0.1, { sx: 0.07, sy: 0.07, sz: 0.1 }) });
+  out.push({ geo: G.box, color: chrome, m: at(lx - 0.02, dy - 0.08, dz + 0.12, { sx: 0.06, sy: 0.42, sz: 0.05, rz: 0.2 }) });
+  // a long pull bar beside the latch, on two stand-offs
+  for (const by of [dy - 0.45, dy + 0.45]) out.push({ geo: G.box, color: chromeDark, m: at(dw / 2 - 0.08, by, dz + 0.08, { sx: 0.04, sy: 0.04, sz: 0.1 }) });
+  out.push({ geo: G.cyl, color: chrome, m: at(dw / 2 - 0.08, dy, dz + 0.13, { sx: 0.06, sy: 1.0, sz: 0.06 }) });
+  // a kick plate on the door's foot, frost along it, and frost on the door's top corners
+  out.push({ geo: G.box, color: chrome, m: at(0, y0 + 0.14, dz + 0.045, { sx: dw - 0.06, sy: 0.18, sz: 0.012 }) });
+  out.push({ geo: G.box, color: frost, m: at(0, 0.075, fz + 0.06, { sx: w - 0.2, sy: 0.03, sz: 0.1 }) });
+  for (const x of [-w / 2 + 0.3, -dw / 2 - 0.05, dw / 2 + 0.1, w / 2 - 0.35]) out.push({ geo: G.sphere, color: '#f7fcff', m: at(x, 0.08, fz + 0.07, { sx: 0.22, sy: 0.06, sz: 0.1 }) });
+  for (const sx of [-1, 1]) out.push({ geo: G.sphere, color: frost, m: at(sx * (dw / 2 - 0.05), dy + dh / 2 - 0.02, dz + 0.04, { sx: 0.28, sy: 0.1, sz: 0.06 }) });
+  // icicles under the lid's front lip
+  for (let i = 0; i < 9; i++) {
+    const x = -w / 2 + 0.2 + (i * (w - 0.4)) / 8;
+    const len = 0.05 + ((i * 37) % 5) * 0.015;
+    out.push({ geo: G.cone6, color: i % 2 ? ice : frost, m: at(x, h - len / 2, fz + 0.05, { sx: 0.06, sy: len, sz: 0.06, rx: Math.PI }) });
+  }
+  // the condenser on the roof: a grey box, its fan in a round grille, louvres along the side
+  const cx = -w / 2 + 0.75;
+  const cz = -d / 2 + 0.7;
+  const cy = h + 0.08;
+  out.push({ geo: G.box, color: '#a8b1b8', m: at(cx, cy + 0.3, cz, { sx: 1.1, sy: 0.6, sz: 0.9 }) });
+  out.push({ geo: G.box, color: '#8d969d', m: at(cx, cy + 0.62, cz, { sx: 1.14, sy: 0.04, sz: 0.94 }) });
+  out.push({ geo: G.cyl, color: '#3b4650', m: at(cx, cy + 0.65, cz, { sx: 0.66, sy: 0.03, sz: 0.66 }) });
+  out.push({ geo: G.cyl, color: chrome, m: at(cx, cy + 0.67, cz, { sx: 0.14, sy: 0.03, sz: 0.14 }) });
+  for (let i = 0; i < 3; i++) out.push({ geo: G.box, color: '#6c7780', m: at(cx, cy + 0.665, cz, { sx: 0.56, sy: 0.015, sz: 0.1, ry: (i * Math.PI) / 3 }) });
+  for (const t of [-0.3, 0, 0.3]) out.push({ geo: G.box, color: chrome, m: at(cx, cy + 0.67, cz + t, { sx: 0.62, sy: 0.012, sz: 0.012 }) });
+  for (let i = 0; i < 4; i++) out.push({ geo: G.box, color: '#7d878f', m: at(cx + 0.556, cy + 0.15 + i * 0.11, cz, { sx: 0.01, sy: 0.04, sz: 0.7 }) });
+  // a second, smaller unit and a junction box beside it
+  out.push({ geo: G.box, color: '#b8c0c6', m: at(w / 2 - 0.55, cy + 0.18, -d / 2 + 0.5, { sx: 0.6, sy: 0.36, sz: 0.5 }) });
+  out.push({ geo: G.cyl, color: '#3b4650', m: at(w / 2 - 0.55, cy + 0.37, -d / 2 + 0.5, { sx: 0.36, sy: 0.02, sz: 0.36 }) });
+  // copper pipes from the condenser over the edge and down the right-hand wall
+  const copper = '#c47a3a';
+  const px = w / 2 + 0.04;
+  for (const pz of [-d / 2 + 0.35, -d / 2 + 0.5]) {
+    out.push({ geo: G.cyl6, color: copper, m: at(px, (y0 + h) / 2, pz, { sx: 0.05, sy: h - y0, sz: 0.05 }) });
+    out.push({ geo: G.cyl6, color: copper, m: at(px - 0.2, h + 0.12, pz, { sx: 0.05, sy: 0.45, sz: 0.05, rz: Math.PI / 2 }) });
+  }
+  out.push({ geo: G.box, color: '#e4ebef', m: at(px + 0.02, y0 + 0.5, -d / 2 + 0.42, { sx: 0.06, sy: 0.3, sz: 0.3 }) });
+  return out;
+}
+
+/** The storage freezer's display: a blue screen with the temperature, and a green light. */
+export function freezerDisplayTexture() {
+  return textTex(256, 96, g => {
+    g.fillStyle = '#0d1a26';
+    g.fillRect(0, 0, 256, 96);
+    g.fillStyle = '#0f3550';
+    g.beginPath();
+    g.roundRect(10, 12, 170, 72, 10);
+    g.fill();
+    g.fillStyle = '#7fe0ff';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.font = 'bold 46px Poppins, Arial, sans-serif';
+    g.fillText('-18°C', 95, 50);
+    g.fillStyle = '#41d96b';
+    g.beginPath();
+    g.arc(218, 34, 12, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = '#7fe0ff';
+    g.beginPath();
+    g.arc(218, 66, 9, 0, Math.PI * 2);
+    g.fill();
+  });
+}
+
 /** The greenhouse's raised bed: soil in a wooden edge, w × d. */
 export function raisedBed(w: number, d: number): Part[] {
   return [

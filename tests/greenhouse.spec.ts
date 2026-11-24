@@ -11,7 +11,7 @@ import { FOODS } from '../src/nutrition/data';
 import { walletOf } from '../src/wallet/model';
 import { routeTo } from '../src/route';
 import { BUSH_SPOTS, ROCK_SPOTS } from '../src/tidy/model';
-import { GREENHOUSE_AT, STOREHOUSE_AT } from '../src/world/field';
+import { GREENHOUSE_AT, STORAGE_AT, STOREHOUSE_AT } from '../src/world/field';
 import { tankOf } from '../src/water/model';
 
 /* The greenhouse (four beds under glass, where Farm 7 was) and the storehouse (the store, the greenhouse's picks
@@ -122,9 +122,9 @@ test('an old save with Farms 7 and 8 crops loads, and their addresses open the g
   expect(routeTo(s, '#/storehouse/produce')).toContainEqual({ type: 'open', modal: { kind: 'storehouse', tab: 'produce' } });
 });
 
-test('the daily tidy-up never puts a bush or a rock inside the greenhouse or the storehouse', () => {
+test('the daily tidy-up never puts a bush or a rock inside the greenhouse, the storehouse or its storage annex', () => {
   for (const [x, z] of [...BUSH_SPOTS, ...ROCK_SPOTS])
-    for (const b of [GREENHOUSE_AT, STOREHOUSE_AT]) expect(Math.abs(x - b.x) < b.w / 2 + 0.6 && Math.abs(z - b.z) < b.d / 2 + 0.6, `${x},${z} in a building`).toBe(false);
+    for (const b of [GREENHOUSE_AT, STOREHOUSE_AT, STORAGE_AT]) expect(Math.abs(x - b.x) < b.w / 2 + 0.6 && Math.abs(z - b.z) < b.d / 2 + 0.6, `${x},${z} in a building`).toBe(false);
 });
 
 test('on the farm: the greenhouse door opens its beds, the storehouse door its shelves; plant, pick and make', async ({ page }) => {
@@ -183,4 +183,28 @@ test('on the farm: the greenhouse door opens its beds, the storehouse door its s
   await page.getByRole('button', { name: 'Onto the shelves' }).click();
   await expect.poll(async () => (await state(page)).produce.store.jam).toBeGreaterThan(3);
   await expect.poll(async () => (await state(page)).storehouse.batches).toBe(1);
+});
+
+test('the storage annex stands against the storehouse, built like a freezer, its own door opening the store', async ({ page }) => {
+  // the annex is a second building on the storehouse's right-hand wall, and its door is not the storehouse's
+  expect(STORAGE_AT.x - STORAGE_AT.w / 2).toBeCloseTo(STOREHOUSE_AT.x + STOREHOUSE_AT.w / 2, 5);
+  await boot(page);
+  await page.evaluate(() => (window as unknown as Win).__lima.jump({ view: 'world', coins: 50_000, life: { day: 6, date: null, started: 2 }, produce: { store: { tomatoes: 12 } } } as never));
+  await page.waitForFunction(() => !!(window as unknown as Win).__limaWorld);
+  const places = await page.evaluate(() => (window as unknown as Win).__lima.places);
+  expect(places.storage).toBeTruthy();
+  expect(Math.hypot(places.storage.x - places.storehouse.x, places.storage.z - places.storehouse.z)).toBeGreaterThan(places.storage.r + places.storehouse.r);
+  // its door is in the front wall: from the storehouse's door on the lane, the farmer walks round the annex to it
+  await page.evaluate(at => (window as unknown as Win).__limaWorld!.spawn(at.x, at.z), places.storehouse);
+  await page.evaluate(() => ((window as unknown as Win).__limaWorld!.speedScale = 4));
+  const side = STORAGE_AT.x + STORAGE_AT.w / 2 + 0.7;
+  for (const to of [{ x: side, z: places.storehouse.z }, { x: side, z: places.storage.z }, places.storage]) {
+    await page.evaluate(at => (window as unknown as Win).__limaWorld!.walkTo(at.x, at.z), to);
+    await expect.poll(async () => page.evaluate(at => { const f = (window as unknown as Win).__limaWorld!.farmerAt(); return Math.hypot(f.x - at.x, f.z - at.z); }, to), { timeout: 60_000 }).toBeLessThan(0.3);
+  }
+  await expect(page.locator('.hud-place .is-enter')).toContainText('Open the storage', { timeout: 60_000 });
+  await optIn(page);
+  const sh = page.getByRole('dialog', { name: 'Storehouse', exact: true });
+  await expect(sh).toBeVisible();
+  await expect(page).toHaveURL(/#\/storehouse\/store$/);
 });

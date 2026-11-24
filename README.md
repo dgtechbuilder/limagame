@@ -1943,6 +1943,15 @@ fresh produce, sacks for the dry grain and beans, jars of what it makes. Three s
   costs a little for jars, sugar, vinegar or the mill; what it makes keeps for months and is worth more at the stall
   than the food raw (`quoteMake`). Made food goes into the store and sells at the stall like the rest.
 
+**The storage annex** (`STORAGE_AT` in `src/world/field.ts`, `freezerAnnex` in `src/world/models.ts`): a second
+building against the storehouse's right-hand wall, built like a big upright freezer. A white insulated cabinet with
+rounded corners and panel seams, a dark control strip over the door with its **STORAGE** board and a blue *-18°C*
+display, frost along its foot and icicles under the lid, and the condenser on the roof (a fan in a grille, copper pipes
+down the side). Its own freezer door is in the front wall, facing the camera: an ice-blue gasket, chrome hinges, a lever
+latch and a pull bar. Its white square (**Storage**, a snowflake) sits on the grass before that door; its button, *Open
+the storage*, opens the storehouse's **Store** (`#/storehouse/store`), where the cold room is. It opens on day 4 with the
+storehouse.
+
 A save from before keeps its money and its store; crops the farm no longer grows (spinach, onions…) are left out of the
 store, and the old addresses (`#/new-farms/7`, `/8`) open the greenhouse and the storehouse.
 
@@ -2103,7 +2112,7 @@ each. To sign a partner, add or edit its brand and put its id on the slots it bo
 
 | Slot | Where | Brand now |
 | --- | --- | --- |
-| Billboards (4) | 3D farm: two in the yard either side of the farmhouse path, one by the seed shed, one between the storehouse and the mini forest; walk up to one and a *See offer* tag appears | Lima Fertilizer, Lima Insurance, Lima Seeds, Lima Tanks |
+| Billboards (4) | 3D farm: two in the yard either side of the farmhouse path, one by the seed shed, one at the end of the lane behind the storage annex, beside the mini forest; walk up to one and a *See offer* tag appears | Lima Fertilizer, Lima Insurance, Lima Seeds, Lima Tanks |
 | Tractor livery | 3D farm: the partner's name on the bonnet and both sides of the tractor | Hello Tractor |
 | Market stall awning | 3D farm | *Available* |
 | Roadside sign | Classic farm: each partner in turn, every 6 seconds (or one brand, if it buys the slot) | All partners |
