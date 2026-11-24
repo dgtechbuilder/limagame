@@ -359,7 +359,7 @@ export function Tractor({ x, y, s = 1, roll = 0, tilt = 0, driver = true, runnin
         <path d="M2 -60 L12 -80" stroke="#444" strokeWidth={3} />
         <ellipse cx={13} cy={-82} rx={9} ry={3} fill="none" stroke="#333" strokeWidth={2.5} transform="rotate(-25 13 -82)" />
         {driver && (
-          <text x={30} y={-68} fontSize={26} textAnchor="middle">
+          <text x={30} y={-68} fontSize={20.5} textAnchor="middle">
             🧑‍🌾
           </text>
         )}
@@ -383,11 +383,11 @@ export const Sky = ({ ground = 190, sun = true, soil = '#9a6b3e' }: { ground?: n
 export const Slot = ({ x, y, r = 14, label }: { x: number; y: number; r?: number; label?: string }) => (
   <g className="ws-slot" aria-hidden="true">
     <circle cx={x} cy={y} r={r} />
-    <text x={x} y={y + 4} textAnchor="middle" fontSize={12} fontWeight={800}>
+    <text x={x} y={y + 4} textAnchor="middle" fontSize={9.5} fontWeight={800}>
       ?
     </text>
     {label && (
-      <text x={x} y={y - r - 4} textAnchor="middle" fontSize={8} fontWeight={800} className="ws-slot-label">
+      <text x={x} y={y - r - 4} textAnchor="middle" fontSize={7} fontWeight={800} className="ws-slot-label">
         {label}
       </text>
     )}
@@ -465,7 +465,7 @@ export function PartArt({ kind, spin = 0 }: { kind: string; spin?: number }) {
           <rect x={-11} y={-7} width={22} height={14} rx={2} fill="#333" />
           <rect x={-8} y={-10} width={4} height={3} fill="#c0432f" />
           <rect x={4} y={-10} width={4} height={3} fill="#111" />
-          <text x={0} y={4} textAnchor="middle" fontSize={8} fill="#ffd25c" fontWeight={800}>
+          <text x={0} y={4} textAnchor="middle" fontSize={7} fill="#ffd25c" fontWeight={800}>
             12V
           </text>
         </g>

@@ -241,7 +241,7 @@ function Ground() {
       <g transform="translate(552,22)">
         <rect x={-74} y={-13} width={148} height={24} rx={6} fill="#6b402b" />
         <rect x={-70} y={-10} width={140} height={18} rx={4} fill="#ffce7e" />
-        <text y={4} textAnchor="middle" fontSize={11} fontWeight={800} fill="#6b402b">
+        <text y={4} textAnchor="middle" fontSize={8.5} fontWeight={800} fill="#6b402b">
           🚜 TRACTOR YARD
         </text>
       </g>
@@ -273,7 +273,7 @@ function Prop({ id }: { id: Station }) {
           <rect x={-40} y={-66} width={80} height={46} rx={4} fill="#c98a4b" />
           <polygon points="-48,-64 0,-86 48,-64" fill="#a8452f" />
           <rect x={-28} y={-58} width={56} height={26} rx={2} fill="#2f4a3a" stroke="#8a5a32" strokeWidth={2} />
-          <text y={-41} textAnchor="middle" fontSize={9} fill="#fff" fontFamily="monospace">
+          <text y={-41} textAnchor="middle" fontSize={7} fill="#fff" fontFamily="monospace">
             A B C ✓
           </text>
           <rect x={-6} y={-32} width={12} height={12} fill="#7a4a24" />
@@ -284,10 +284,10 @@ function Prop({ id }: { id: Station }) {
         <g>
           <rect x={-3} y={-40} width={6} height={24} fill="#7a4a24" />
           <rect x={-34} y={-76} width={68} height={40} rx={5} fill="#ffd25c" stroke="#6b402b" strokeWidth={2} />
-          <text y={-60} textAnchor="middle" fontSize={14}>
+          <text y={-60} textAnchor="middle" fontSize={11}>
             🦺⛑️
           </text>
-          <text y={-43} textAnchor="middle" fontSize={7.5} fontWeight={800} fill="#6b402b">
+          <text y={-43} textAnchor="middle" fontSize={7} fontWeight={800} fill="#6b402b">
             SAFETY FIRST
           </text>
         </g>
@@ -304,7 +304,7 @@ function Prop({ id }: { id: Station }) {
               <rect x={-8} y={-8} width={16} height={3} fill="#8f2f20" />
             </g>
           ))}
-          <text x={22} y={-30} fontSize={16} textAnchor="middle">
+          <text x={22} y={-30} fontSize={12.5} textAnchor="middle">
             🛢️
           </text>
         </g>
@@ -316,7 +316,7 @@ function Prop({ id }: { id: Station }) {
           <rect x={-42} y={-34} width={6} height={16} fill="#6b402b" />
           <rect x={36} y={-34} width={6} height={16} fill="#6b402b" />
           <rect x={-46} y={-80} width={92} height={34} rx={3} fill="#a06a3a" />
-          <text y={-58} textAnchor="middle" fontSize={15}>
+          <text y={-58} textAnchor="middle" fontSize={12}>
             🔧🔩🪛
           </text>
           <circle cx={-30} cy={-50} r={7} fill="#2a2a2a" />
@@ -327,7 +327,7 @@ function Prop({ id }: { id: Station }) {
         <g>
           <rect x={-18} y={-74} width={36} height={56} rx={6} fill="#ffae00" stroke="#c88900" strokeWidth={2} />
           <rect x={-12} y={-66} width={24} height={14} rx={2} fill="#2a2a2a" />
-          <text y={-55} textAnchor="middle" fontSize={8} fill="#7cff6a" fontFamily="monospace">
+          <text y={-55} textAnchor="middle" fontSize={7} fill="#7cff6a" fontFamily="monospace">
             DIESEL
           </text>
           <path d="M18 -50 Q34 -48 30 -28" stroke="#2a2a2a" strokeWidth={3} fill="none" />
@@ -338,10 +338,10 @@ function Prop({ id }: { id: Station }) {
       return (
         <g>
           <rect x={-56} y={-70} width={112} height={50} rx={6} fill="#c9a26a" stroke="#8a5a32" strokeWidth={3} strokeDasharray="2 6" />
-          <text x={-18} y={-34} fontSize={22} textAnchor="middle">
+          <text x={-18} y={-34} fontSize={17.5} textAnchor="middle">
             🐂
           </text>
-          <text x={20} y={-38} fontSize={20} textAnchor="middle">
+          <text x={20} y={-38} fontSize={16} textAnchor="middle">
             🐂
           </text>
         </g>
@@ -425,14 +425,14 @@ function Mechanic() {
       <circle cy={-13} r={8} fill="#5a3420" />
       <path d="M-8 -16 Q0 -26 8 -16 Z" fill="#c0432f" />
       <path d="M6 0 L14 -8" stroke="#5a3420" strokeWidth={3.5} strokeLinecap="round" />
-      <text x={17} y={-8} fontSize={9}>
+      <text x={17} y={-8} fontSize={7}>
         🔧
       </text>
       <g transform="translate(-62,-32)">
         <g key={i} className="ty-tip">
           <rect x={-74} y={-11} width={148} height={20} rx={10} fill="#fff8ea" stroke="#6b402b" strokeWidth={1} />
           <polygon points="62,9 70,9 66,15" fill="#fff8ea" />
-          <text y={3} textAnchor="middle" fontSize={8.5} fontWeight={700} fill="#6b402b">
+          <text y={3} textAnchor="middle" fontSize={7} fontWeight={700} fill="#6b402b">
             {TIPS[i]}
           </text>
         </g>
@@ -465,7 +465,7 @@ function Farmer({ x, y, face, walking, look, name }: { x: number; y: number; fac
       </g>
       <g transform="translate(0,-50)">
         <rect x={-24} y={-8} width={48} height={13} rx={6.5} fill="rgba(0,0,0,0.55)" />
-        <text y={2} textAnchor="middle" fontSize={8} fontWeight={700} fill="#fff">
+        <text y={2} textAnchor="middle" fontSize={7} fontWeight={700} fill="#fff">
           {name.length > 10 ? `${name.slice(0, 9)}…` : name}
         </text>
       </g>

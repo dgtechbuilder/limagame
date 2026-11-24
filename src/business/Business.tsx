@@ -757,7 +757,7 @@ function MapLabel({ y, text, strong }: { y: number; text: string; strong?: boole
   return (
     <g className="biz-map-label">
       <rect x={-w / 2} y={y} width={w} height={17} rx={8.5} fill="#fff" fillOpacity={strong ? 1 : 0.92} />
-      <text y={y + 12.5} textAnchor="middle" fontSize={12} fontWeight={700} fill="#4a2a10">
+      <text y={y + 12.5} textAnchor="middle" fontSize={9.5} fontWeight={700} fill="#4a2a10">
         {text}
       </text>
     </g>
@@ -831,7 +831,7 @@ function TerritoryMap({
         <g transform={`translate(${MAP_W - 166},${MAP_H - 28})`}>
           <rect width={158} height={20} rx={10} fill="#2e6b35" fillOpacity={0.9} />
           <path d="M10,10 H30" stroke="#fff" strokeWidth={2} strokeDasharray="5 3" />
-          <text x={36} y={14.2} fontSize={11.5} fontWeight={700} fill="#fff">
+          <text x={36} y={14.2} fontSize={9} fontWeight={700} fill="#fff">
             {TERRITORY.hub} territory
           </text>
         </g>
@@ -912,7 +912,7 @@ function TerritoryMap({
             {badge && (
               <g transform="translate(19,-15)">
                 <circle r={10} fill={badgeFill} stroke="#4a2a10" strokeOpacity={0.35} strokeWidth={1.2} />
-                <text y={4.3} textAnchor="middle" fontSize={12} fontWeight={800} fill={badgeInk}>
+                <text y={4.3} textAnchor="middle" fontSize={9.5} fontWeight={800} fill={badgeInk}>
                   {badge}
                 </text>
               </g>
@@ -920,7 +920,7 @@ function TerritoryMap({
             {c.id in advised && (
               <g transform="translate(-19,-15)">
                 <circle r={7} fill={advised[c.id] ? '#2f9b14' : '#a8382a'} stroke="#fff" strokeWidth={1.5} />
-                <text y={3.4} textAnchor="middle" fontSize={9} fontWeight={900} fill="#fff">
+                <text y={3.4} textAnchor="middle" fontSize={7} fontWeight={900} fill="#fff">
                   {advised[c.id] ? '✓' : '✕'}
                 </text>
                 <title>{advised[c.id] ? 'Said yes to the tip' : 'Said no to the tip'}</title>

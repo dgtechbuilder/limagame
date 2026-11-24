@@ -202,7 +202,7 @@ function Specimen({ crop, early, x, y, marks, seed, uid }: { crop: Crop; early: 
 /* ---------------- the five pictures ---------------- */
 
 const lab = (x: number, text: string) => (
-  <text x={x} y={133} textAnchor="middle" fontSize={9} fontWeight={700} fill="#fff" stroke="#3d2614" strokeWidth={2.4} paintOrder="stroke" fontFamily="Poppins, sans-serif">
+  <text x={x} y={133} textAnchor="middle" fontSize={7} fontWeight={700} fill="#fff" stroke="#3d2614" strokeWidth={2.4} paintOrder="stroke" fontFamily="Poppins, sans-serif">
     {text}
   </text>
 );

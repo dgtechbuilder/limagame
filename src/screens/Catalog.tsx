@@ -275,7 +275,7 @@ function WaterBody({ s, status, dispatch }: { s: GameState; status: StepStatus; 
         </label>
         <span className="field-box" style={{ flex: 1, height: 32, padding: '0 8px', gap: 8 }}>
           <Img src={img.waterInput} w={20} h={21} />
-          <input id="water-amount" inputMode="numeric" placeholder="Litres per m²" value={amount} onChange={e => setAmount(e.target.value)} style={{ flex: 1, minWidth: 0, fontSize: 12 }} />
+          <input id="water-amount" inputMode="numeric" placeholder="Litres per m²" value={amount} onChange={e => setAmount(e.target.value)} style={{ flex: 1, minWidth: 0, fontSize: 9.5 }} />
           <span className="pp-cap">L/m²</span>
           <Info term="lpm2" size={14} style={{ margin: 0 }} />
         </span>

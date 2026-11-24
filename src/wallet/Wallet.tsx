@@ -51,7 +51,7 @@ export function WalletPage({ s, dispatch, tab = 'history' }: { s: GameState; dis
                   const t = w.totals[k]!;
                   return (
                     <tr key={k}>
-                      <th scope="row" style={{ fontSize: 10.5, textTransform: 'none', color: 'var(--ink)' }}>
+                      <th scope="row" style={{ fontSize: 8, textTransform: 'none', color: 'var(--ink)' }}>
                         {WALLET_KINDS[k].icon} {WALLET_KINDS[k].label}
                       </th>
                       <td className="is-num pg-in">{money(t.in)}</td>

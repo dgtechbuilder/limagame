@@ -96,7 +96,7 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
       {!busy && (
         <div className="abs" style={{ left: 346, top: 6, width: 203, height: 58 }}>
           <Img src={img.plank} w={203} h={58} />
-          <span className="label abs" style={{ left: 0, right: 0, top: 23, textAlign: 'center', fontSize: 14 }}>
+          <span className="label abs" style={{ left: 0, right: 0, top: 23, textAlign: 'center', fontSize: 11 }}>
             TemoLima
           </span>
         </div>
@@ -123,14 +123,14 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
       </div>
       <div className="abs" style={{ left: 100, top: 26, width: 30, height: 30, display: 'grid', placeItems: 'center' }}>
         <Img src={img.star} w={30} h={30} style={{ position: 'absolute', inset: 0 }} />
-        <span style={{ position: 'relative', fontSize: 8, fontWeight: 600, color: '#fff', marginTop: 1 }} aria-label={`Level ${s.level}`}>
+        <span style={{ position: 'relative', fontSize: 7, fontWeight: 600, color: '#fff', marginTop: 1 }} aria-label={`Level ${s.level}`}>
           {s.level}
         </span>
       </div>
       {!busy && (
         <div className="abs" style={{ left: 104, top: 59 }}>
-          <p className="label" style={{ fontSize: 14, fontWeight: 700 }}>{s.farmer ? `${s.farmer.name}'s farm` : 'Ojuoks farm'}</p>
-          <p className="label" style={{ fontSize: 12 }}>1 acre · Season {s.season}</p>
+          <p className="label" style={{ fontSize: 11, fontWeight: 700 }}>{s.farmer ? `${s.farmer.name}'s farm` : 'Ojuoks farm'}</p>
+          <p className="label" style={{ fontSize: 9.5 }}>1 acre · Season {s.season}</p>
         </div>
       )}
 
@@ -188,7 +188,7 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
         <>
           {/* Next task */}
           <div className="abs" style={{ left: 39, top: 127 }}>
-            <p className="label" style={{ fontSize: 14, height: 21 }}>Next Task</p>
+            <p className="label" style={{ fontSize: 11, height: 21 }}>Next Task</p>
             <ul style={{ listStyle: 'none', margin: '2px 0 0', padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
               {tasks.map((t, i) => (
                 <li key={t.label}>
@@ -204,7 +204,7 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
             </ul>
           </div>
 
-          <div className="abs task-row" style={{ left: 39, top: 364, fontSize: 14, gap: 4 }}>
+          <div className="abs task-row" style={{ left: 39, top: 364, fontSize: 11, gap: 4 }}>
             <TimerIcon size={16} />
             <span>{stageLine}</span>
           </div>
@@ -219,7 +219,7 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
             <span className="peach-btn" style={{ width: 56, height: 48.66 }}>
               <Img src={img.infoBtn} w={22} h={22} />
             </span>
-            <span className="label" style={{ fontSize: 14 }}>Learn</span>
+            <span className="label" style={{ fontSize: 11 }}>Learn</span>
           </button>
           {/* Partners, beside Shop */}
           <button
@@ -232,7 +232,7 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
             <span className="peach-btn" style={{ width: 56, height: 48.66 }}>
               <PartnersIcon size={30} />
             </span>
-            <span className="label" style={{ fontSize: 13 }}>Partners</span>
+            <span className="label" style={{ fontSize: 10 }}>Partners</span>
           </button>
           <button
             type="button"
@@ -244,7 +244,7 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
             <span className="peach-btn" style={{ width: 56, height: 48.66 }}>
               <Img src={img.cart} w={28} h={28} />
             </span>
-            <span className="label" style={{ fontSize: 14 }}>Shop</span>
+            <span className="label" style={{ fontSize: 11 }}>Shop</span>
           </button>
 
           <button
@@ -257,7 +257,7 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
             <span className="peach-btn" style={{ width: 56, height: 48.66 }}>
               <Img src={img.maizeMini} w={28} h={28} />
             </span>
-            <span className="label" style={{ fontSize: 14 }}>Rounds</span>
+            <span className="label" style={{ fontSize: 11 }}>Rounds</span>
           </button>
 
           {/* Climate, beside Rounds (the farm map) */}
@@ -272,7 +272,7 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
               <ClimateIcon size={30} />
               {grade && <span className="tr-badge">{grade.grade}</span>}
             </span>
-            <span className="label" style={{ fontSize: 14 }}>Climate</span>
+            <span className="label" style={{ fontSize: 11 }}>Climate</span>
           </button>
 
           <button
@@ -286,7 +286,7 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
               <Img src={img.sprout} w={28} h={28} />
               {trialBadge(s) && <span className="tr-badge">{trialBadge(s)}</span>}
             </span>
-            <span className="label" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>Six farms</span>
+            <span className="label" style={{ fontSize: 10, whiteSpace: 'nowrap' }}>Six farms</span>
           </button>
           {/* the cows and hens, and keeping the farm safe (src/livestock, src/security) */}
           <ClassicLifeButtons s={s} dispatch={dispatch} />
@@ -353,7 +353,7 @@ function FieldAction({ left, top, width, icon, label, onClick }: { left: number;
       <span className="bubble-btn">
         <Img src={icon} w={26} h={24} />
       </span>
-      <span className="label" style={{ fontSize: 12 }}>{label}</span>
+      <span className="label" style={{ fontSize: 9.5 }}>{label}</span>
     </button>
   );
 }
@@ -396,8 +396,8 @@ function SelectedPlot({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action
         />
       ))}
       <div className="abs" style={{ left: 349, top: 274, width: 176, textAlign: 'center', pointerEvents: 'none' }}>
-        <p className="label" style={{ fontSize: 16, fontWeight: 700 }}>Farm Moja</p>
-        <p className="label" style={{ fontSize: 12 }}>Maize · 1 acre</p>
+        <p className="label" style={{ fontSize: 12.5, fontWeight: 700 }}>Farm Moja</p>
+        <p className="label" style={{ fontSize: 9.5 }}>Maize · 1 acre</p>
       </div>
       <div className="abs" style={{ left: 279, top: 316, display: 'flex', gap: 12 }}>
         {actions.map(a => (

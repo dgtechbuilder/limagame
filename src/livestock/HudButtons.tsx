@@ -17,14 +17,14 @@ export function ClassicLifeButtons({ s, dispatch }: { s: GameState; dispatch: Di
           <HenIcon />
           {n > 0 && <span className="tr-badge">{n}</span>}
         </span>
-        <span className="label" style={{ fontSize: 13 }}>Animals</span>
+        <span className="label" style={{ fontSize: 10 }}>Animals</span>
       </button>
       <button type="button" className="abs" style={{ left: 651, top: 310, ...col }} onClick={() => dispatch({ type: 'open', modal: { kind: 'security', tab: fresh ? 'reports' : 'protect' } })} aria-label={`Security: ${activeMeasures(s).length} measures in place${fresh ? ', a theft last night' : ''}`}>
         <span className="peach-btn" style={{ width: 56, height: 48.66, position: 'relative' }}>
           <ShieldIcon />
           {fresh && <span className="tr-badge">!</span>}
         </span>
-        <span className="label" style={{ fontSize: 13 }}>Security</span>
+        <span className="label" style={{ fontSize: 10 }}>Security</span>
       </button>
     </>
   );

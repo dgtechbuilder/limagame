@@ -126,7 +126,7 @@ function PtoScene() {
             </g>
             {turning && <ellipse cx={126} cy={-6} rx={30} ry={5} fill="rgba(255,255,255,0.45)" />}
             <circle cx={163} cy={-8} r={7} fill="#333" />
-            <text x={126} y={-36} textAnchor="middle" fontSize={10} fontWeight={800} fill="#6b402b">
+            <text x={126} y={-36} textAnchor="middle" fontSize={8} fontWeight={800} fill="#6b402b">
               Mower
             </text>
             {slot ? (
@@ -275,7 +275,7 @@ function LinkageScene() {
           ))}
           <path d={`M${FIELD - 8} ${G} V${G - 44}`} stroke="#6b402b" strokeWidth={3} />
           <path d={`M${FIELD - 8} ${G - 44} l-20 6 l20 6 z`} fill="#ffae00" />
-          <text x={30} y={G - 50} textAnchor="middle" fontSize={11} fontWeight={800} fill="#6b402b">
+          <text x={30} y={G - 50} textAnchor="middle" fontSize={8.5} fontWeight={800} fill="#6b402b">
             Field
           </text>
           {dug.map(k => (
@@ -445,7 +445,7 @@ function RadiatorScene() {
           {/* the close-up of the engine's front */}
           <path d={`M${IN.x + IN.r * 0.9} ${IN.y + 20} L${front.x - 4} ${front.y}`} stroke="#6b402b" strokeWidth={1.5} strokeDasharray="3 3" />
           <circle cx={IN.x} cy={IN.y} r={IN.r} fill="#fff8ea" stroke="#6b402b" strokeWidth={2.5} />
-          <text x={IN.x} y={IN.y - IN.r - 5} textAnchor="middle" fontSize={9} fontWeight={800} fill="#6b402b">
+          <text x={IN.x} y={IN.y - IN.r - 5} textAnchor="middle" fontSize={7} fontWeight={800} fill="#6b402b">
             Front of the engine
           </text>
           {slot === 'radiator' ? (
@@ -493,7 +493,7 @@ function RadiatorScene() {
             <path d={arc(34, 30, 0)} stroke="#d9473a" strokeWidth={8} fill="none" />
             <line x1={0} y1={0} x2={polar(needle, 30).x} y2={polar(needle, 30).y} stroke="#2a1a10" strokeWidth={3} strokeLinecap="round" />
             <circle r={4} fill="#2a1a10" />
-            <text y={16} textAnchor="middle" fontSize={11} fontWeight={800} fill="#6b402b">
+            <text y={16} textAnchor="middle" fontSize={8.5} fontWeight={800} fill="#6b402b">
               {Math.round(temp)}°C
             </text>
           </g>
@@ -583,7 +583,7 @@ function SlopeScene() {
           {[40, 72, 104, 136, 168, 200].map(y => (
             <path key={y} d={`M0 ${y} C90 ${y - 8} 180 ${y + 8} 360 ${y - 4}`} stroke="rgba(255,255,255,0.35)" strokeWidth={1.5} fill="none" />
           ))}
-          <text x={16} y={120} fontSize={10} fontWeight={800} fill="#fff" transform="rotate(-90 16 120)" textAnchor="middle">
+          <text x={16} y={120} fontSize={8} fontWeight={800} fill="#fff" transform="rotate(-90 16 120)" textAnchor="middle">
             uphill ⟶
           </text>
           <g transform={`translate(${SHED.x},${SHED.y})`}>
@@ -606,14 +606,14 @@ function SlopeScene() {
             </g>
           </g>
           {rolled > 0 && (
-            <text x={pos.x} y={pos.y - 26} textAnchor="middle" fontSize={20}>
+            <text x={pos.x} y={pos.y - 26} textAnchor="middle" fontSize={16}>
               ⚠️
             </text>
           )}
           {/* the tractor seen from behind */}
           <g transform="translate(292,60)">
             <rect x={-58} y={-50} width={116} height={100} rx={10} fill="#fff8ea" stroke="#6b402b" strokeWidth={2} />
-            <text y={-37} textAnchor="middle" fontSize={9} fontWeight={800} fill="#6b402b">
+            <text y={-37} textAnchor="middle" fontSize={7} fontWeight={800} fill="#6b402b">
               Seen from behind
             </text>
             <g transform={`translate(0,16) rotate(${side * lean})`}>
@@ -628,7 +628,7 @@ function SlopeScene() {
             </g>
             <rect x={-44} y={30} width={88} height={8} rx={4} fill="rgba(107,64,43,0.15)" />
             <rect x={-44} y={30} width={(Math.min(lean, 30) / 30) * 88} height={8} rx={4} fill={tone} />
-            <text y={47} textAnchor="middle" fontSize={9} fontWeight={800} fill={tone}>
+            <text y={47} textAnchor="middle" fontSize={7} fontWeight={800} fill={tone}>
               Leans {Math.round(lean)}°{lean >= 24 ? ': it will roll!' : ''}
             </text>
           </g>
@@ -718,7 +718,7 @@ function GetOffScene() {
         <>
           <Sky ground={G} />
           <rect x={10} y={G + 2} width={110} height={22} rx={6} fill="rgba(255,255,255,0.18)" stroke="#fff" strokeDasharray="4 3" />
-          <text x={65} y={G + 17} textAnchor="middle" fontSize={9} fontWeight={800} fill="#fff">
+          <text x={65} y={G + 17} textAnchor="middle" fontSize={7} fontWeight={800} fill="#fff">
             Step down here
           </text>
           <Tractor x={x} y={G} s={S} roll={x * 1.9} running={engine} driver={false}>
@@ -740,7 +740,7 @@ function GetOffScene() {
             <circle cx={brake ? 14 : 4} cy={brake ? -82 : -68} r={3.4} fill="#d9473a" />
             {farmer === 'seat' && (
               <g className="ws-grab" data-person="farmer" onPointerDown={e => b.drag('farmer', e, <span className="ws-emoji">🧑‍🌾</span>)}>
-                <text x={30} y={-68} fontSize={26} textAnchor="middle">
+                <text x={30} y={-68} fontSize={20.5} textAnchor="middle">
                   🧑‍🌾
                 </text>
                 <rect x={14} y={-96} width={32} height={30} fill="transparent" />
@@ -748,12 +748,12 @@ function GetOffScene() {
             )}
           </Tractor>
           {farmer === 'ground' && (
-            <text x={60} y={G + 2} fontSize={30} textAnchor="middle" data-person="farmer" className={alarm > 0 ? 'ws-alarm' : undefined} onPointerDown={e => b.drag('farmer', e, <span className="ws-emoji">🧑‍🌾</span>)}>
+            <text x={60} y={G + 2} fontSize={24} textAnchor="middle" data-person="farmer" className={alarm > 0 ? 'ws-alarm' : undefined} onPointerDown={e => b.drag('farmer', e, <span className="ws-emoji">🧑‍🌾</span>)}>
               🧑‍🌾
             </text>
           )}
           {alarm > 0 && (
-            <text x={x} y={40} textAnchor="middle" fontSize={22} className="ws-alarm">
+            <text x={x} y={40} textAnchor="middle" fontSize={17.5} className="ws-alarm">
               ⚠️
             </text>
           )}
@@ -868,7 +868,7 @@ function RiderScene() {
         <>
           <Sky ground={G} />
           <path d={`M${GATE - 20} ${G} V${G - 40} M${GATE} ${G} V${G - 40} M${GATE - 20} ${G - 30} H${GATE} M${GATE - 20} ${G - 16} H${GATE}`} stroke="#a8612f" strokeWidth={4} />
-          <text x={GATE - 10} y={G - 46} textAnchor="middle" fontSize={10} fontWeight={800} fill="#6b402b">
+          <text x={GATE - 10} y={G - 46} textAnchor="middle" fontSize={8} fontWeight={800} fill="#6b402b">
             Gate
           </text>
           <Tractor x={x} y={G} s={S} roll={x * 1.9} running driver={false} />
@@ -883,7 +883,7 @@ function RiderScene() {
             const fy = f ? Math.min(G + 2, at.y + f * f * 70) : at.y;
             return (
               <g key={p.id} className="ws-grab" data-person={p.id} transform={f ? `rotate(${f * 80} ${at.x} ${fy - 10})` : undefined} onPointerDown={e => !fall && b.drag(p.id, e, <span className="ws-emoji">{p.icon}</span>)}>
-                <text x={at.x} y={fy} fontSize={22} textAnchor="middle">
+                <text x={at.x} y={fy} fontSize={17.5} textAnchor="middle">
                   {p.icon}
                 </text>
                 <rect x={at.x - 12} y={fy - 22} width={24} height={24} fill="transparent" />
@@ -891,12 +891,12 @@ function RiderScene() {
             );
           })}
           {fall && (
-            <text x={x + 28 * S} y={G - 70} textAnchor="middle" fontSize={20} className="ws-alarm">
+            <text x={x + 28 * S} y={G - 70} textAnchor="middle" fontSize={16} className="ws-alarm">
               ⚠️
             </text>
           )}
           {ground.map((p, k) => (
-            <text key={p.id} x={300 + k * 18} y={H - 3} fontSize={17} textAnchor="middle" data-person={p.id} className="ws-grab" onPointerDown={e => b.drag(p.id, e, <span className="ws-emoji">{p.icon}</span>)}>
+            <text key={p.id} x={300 + k * 18} y={H - 3} fontSize={13.5} textAnchor="middle" data-person={p.id} className="ws-grab" onPointerDown={e => b.drag(p.id, e, <span className="ws-emoji">{p.icon}</span>)}>
               {p.icon}
             </text>
           ))}
@@ -980,7 +980,7 @@ function WetSoilScene() {
           <rect width={W} height={H} fill={m > 0.6 ? '#b9cbd6' : '#cfeaf6'} />
           <g className="ws-grab" data-handle="sun" onPointerDown={e => b.follow(e, p => day((p.x - 32) / 296), (_, moved) => !moved && day(t + 0.25))}>
             <circle cx={sun.x} cy={sun.y} r={16} fill="#ffd25c" stroke="#fff" strokeWidth={2} />
-            <text x={sun.x} y={sun.y + 3.5} textAnchor="middle" fontSize={9} fontWeight={800} fill="#6b402b">
+            <text x={sun.x} y={sun.y + 3.5} textAnchor="middle" fontSize={7} fontWeight={800} fill="#6b402b">
               drag
             </text>
           </g>
@@ -992,7 +992,7 @@ function WetSoilScene() {
           {/* soil water */}
           <g transform="translate(10,10)">
             <rect width={120} height={30} rx={8} fill="#fff8ea" stroke="#6b402b" strokeWidth={1.5} />
-            <text x={8} y={12} fontSize={8} fontWeight={800} fill="#6b402b">
+            <text x={8} y={12} fontSize={7} fontWeight={800} fill="#6b402b">
               Soil water · Day {1 + Math.floor(t * 3.99)}
             </text>
             <rect x={8} y={17} width={104} height={7} rx={3} fill="rgba(107,64,43,0.15)" />
@@ -1014,7 +1014,7 @@ function WetSoilScene() {
               </g>
             );
           })}
-          <text x={8} y={H - 6} fontSize={8} fontWeight={800} fill="#f3e2c7">
+          <text x={8} y={H - 6} fontSize={7} fontWeight={800} fill="#f3e2c7">
             ○ air spaces in the soil
           </text>
           <Tractor x={x} y={G} s={S} roll={stuck > 0 ? stuck * 900 : x * 1.9} running sink={stuck > 0 ? 5 : 0} />
@@ -1116,10 +1116,10 @@ function DeepScene() {
           ))}
           <path d="M60 118 q5 -4 10 0 t10 0" stroke="#e79a9a" strokeWidth={2} fill="none" />
           <path d="M230 130 q5 -4 10 0 t10 0" stroke="#e79a9a" strokeWidth={2} fill="none" />
-          <text x={6} y={G + 14} fontSize={8} fontWeight={800} fill="#f3e2c7">
+          <text x={6} y={G + 14} fontSize={7} fontWeight={800} fill="#f3e2c7">
             topsoil: dark, full of carbon
           </text>
-          <text x={6} y={H - 8} fontSize={8} fontWeight={800} fill="#6b402b">
+          <text x={6} y={H - 8} fontSize={7} fontWeight={800} fill="#6b402b">
             subsoil: pale and poor
           </text>
           {cells.map((c, k) => {
@@ -1163,7 +1163,7 @@ function DeepScene() {
           {/* carbon in the topsoil */}
           <g transform="translate(8,8)">
             <rect width={130} height={28} rx={8} fill="#fff8ea" stroke="#6b402b" strokeWidth={1.5} />
-            <text x={8} y={12} fontSize={8} fontWeight={800} fill="#6b402b">
+            <text x={8} y={12} fontSize={7} fontWeight={800} fill="#6b402b">
               Carbon in the topsoil: {Math.round(carbon)}%
             </text>
             <rect x={8} y={16} width={114} height={6} rx={3} fill="rgba(107,64,43,0.15)" />
@@ -1251,14 +1251,14 @@ function TyreScene() {
           <path d={`M${END - 80 * S} ${G - 26} l12 4 l-12 4 z`} fill="#ffae00" />
           <g transform="translate(250,8)">
             <rect width={102} height={20} rx={8} fill="#fff8ea" stroke="#6b402b" strokeWidth={1.5} />
-            <text x={51} y={13.5} textAnchor="middle" fontSize={8.5} fontWeight={800} fill="#6b402b">
+            <text x={51} y={13.5} textAnchor="middle" fontSize={7} fontWeight={800} fill="#6b402b">
               Tyres: {p.toFixed(1)} bar ({zone})
             </text>
           </g>
           {/* under the tyre, close up */}
           <rect y={112} width={W} height={H - 112} fill="#fff8ea" />
           <line x1={0} x2={W} y1={112} y2={112} stroke="#6b402b" strokeWidth={2} />
-          <text x={8} y={124} fontSize={8} fontWeight={800} fill="#6b402b">
+          <text x={8} y={124} fontSize={7} fontWeight={800} fill="#6b402b">
             Under the tyre
           </text>
           <rect x={14} y={196} width={170} height={24} fill="#8a5a30" />
@@ -1270,10 +1270,10 @@ function TyreScene() {
             </g>
           )}
           <line x1={96 - foot / 2} x2={96 + foot / 2} y1={197} y2={197} stroke="#ffae00" strokeWidth={3} />
-          <text x={150} y={132} fontSize={8} fontWeight={800} fill="#6b402b">
+          <text x={150} y={132} fontSize={7} fontWeight={800} fill="#6b402b">
             {foot > 60 ? 'wide footprint' : 'narrow footprint'}
           </text>
-          <text x={150} y={143} fontSize={8} fontWeight={800} fill="#6b402b">
+          <text x={150} y={143} fontSize={7} fontWeight={800} fill="#6b402b">
             packed {p > 1.3 ? 'deep' : 'shallow'}
           </text>
           {/* the pressure gauge: drag its needle */}
@@ -1295,7 +1295,7 @@ function TyreScene() {
             </text>
             <line x2={polar(ang, DIAL.r - 4).x} y2={polar(ang, DIAL.r - 4).y} stroke="#2a1a10" strokeWidth={3} strokeLinecap="round" />
             <circle r={4} fill="#2a1a10" />
-            <text y={24} textAnchor="middle" fontSize={10} fontWeight={800} fill="#6b402b">
+            <text y={24} textAnchor="middle" fontSize={8} fontWeight={800} fill="#6b402b">
               {p.toFixed(1)} bar
             </text>
           </g>

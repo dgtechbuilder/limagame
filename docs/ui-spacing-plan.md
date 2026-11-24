@@ -95,18 +95,19 @@ Rules:
 
 | Token | Size / line height | Weight | Use |
 | --- | --- | --- | --- |
-| `--text-label` | 10 / 1.3, uppercase, +0.04em | 700 | small section labels, chips (never sentences) |
-| `--text-caption` | 11 / 1.4 | 500 | notes under a value, timestamps, sources |
-| `--text-body-sm` | 12 / 1.45 | 500 | card text, list rows, table cells |
-| `--text-body` | 13 / 1.5 | 500 | sentences on reading screens (story, overview, advice) |
-| `--text-subhead` | 15 / 1.3 | 700 | card titles, values |
-| `--text-title` | 18 / 1.2 | 700 | page and pop-up titles |
-| `--text-display` | 24 / 1.1 | 800 | one hero number per screen (a profit, a score) |
+| `--text-label` | 8 / 1.3, uppercase, +0.04em | 700 | small section labels, chips (never sentences) |
+| `--text-caption` | 8.5 / 1.4 | 500 | notes under a value, timestamps, sources |
+| `--text-body-sm` | 9.5 / 1.45 | 500 | card text, list rows, table cells |
+| `--text-body` | 10 / 1.5 | 500 | sentences on reading screens (story, overview, advice) |
+| `--text-subhead` | 12 / 1.3 | 700 | card titles, values |
+| `--text-title` | 14 / 1.2 | 700 | page and pop-up titles |
+| `--text-display` | 19 / 1.1 | 800 | one hero number per screen (a profit, a score) |
 
 Rules:
 
-- **Nothing under 10px**, and 10px only for uppercase labels. Anything read as a sentence is 12 or larger.
-  (11 on the stage is about 9.4px on the smallest phone; 13 is about 11px.)
+- **Nothing under 8px**, and 8px only for uppercase labels. Anything read as a sentence is 9.5 or larger.
+  (Type scale, Nov 2026: every text size was cut to 80% of the sizes below, rounded down to half a pixel, 7px at
+  least; sizes passed as props go through `shrink()` in `src/components/ui.tsx`. The table above is the new scale.)
 - **At most four sizes on one screen.**
 - **Numbers in buttons and pills: 12 or larger, bold** (prices, points, "Redeem · 1,500 pts").
 - **Line length**: about 70 characters at most (roughly 460px at 13px). Wider panels use two columns or a side

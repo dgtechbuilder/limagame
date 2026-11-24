@@ -543,13 +543,13 @@ function StoryArt({ page, look, name, p, running, planting, holding, caring }: {
         <g transform="translate(86,154)">
           <rect x={-2.5} y={-46} width={5} height={46} fill="#6a4a2a" />
           <rect x={-46} y={-62} width={92} height={22} rx={3} fill="#f7e2b8" stroke="#8a5a30" strokeWidth={1.6} />
-          <text x={0} y={-47} textAnchor="middle" fontSize={11} fontWeight={700} fill={p.signed ? '#6b402b' : '#b8a07a'}>
+          <text x={0} y={-47} textAnchor="middle" fontSize={8.5} fontWeight={700} fill={p.signed ? '#6b402b' : '#b8a07a'}>
             {p.signed ? (name.length > 9 ? 'My farm' : `${name}'s farm`) : 'FOR SALE'}
           </text>
           {p.signed && (
             <g transform="rotate(-8)" className="story-pop">
               <rect x={-6} y={-40} width={40} height={14} rx={2} fill="#c0392b" />
-              <text x={14} y={-30} textAnchor="middle" fontSize={9} fontWeight={800} fill="#fff" letterSpacing={1}>
+              <text x={14} y={-30} textAnchor="middle" fontSize={7} fontWeight={800} fill="#fff" letterSpacing={1}>
                 SOLD
               </text>
             </g>
@@ -603,7 +603,7 @@ function StoryArt({ page, look, name, p, running, planting, holding, caring }: {
       <g transform="translate(180,40) rotate(4)">
         <rect x={0} y={0} width={96} height={112} rx={6} fill="#fffaf0" stroke="#8a5a30" strokeWidth={2} />
         <rect x={0} y={0} width={96} height={18} rx={6} fill="#c98d55" />
-        <text x={48} y={13} textAnchor="middle" fontSize={9} fontWeight={800} fill="#fff">
+        <text x={48} y={13} textAnchor="middle" fontSize={7} fontWeight={800} fill="#fff">
           THIS SEASON
         </text>
         {['Every 2 days', 'Feel the soil', 'Store, sell later'].map((l, k) => (
@@ -613,7 +613,7 @@ function StoryArt({ page, look, name, p, running, planting, holding, caring }: {
             ) : (
               <rect x={0} y={-6} width={11} height={11} rx={2} fill="none" stroke="#c9b18a" strokeWidth={1.5} />
             )}
-            <text x={15} y={4} fontSize={8.2} fontWeight={600} fill={p.flipped.includes(k) ? '#6b402b' : '#b8a07a'}>
+            <text x={15} y={4} fontSize={7} fontWeight={600} fill={p.flipped.includes(k) ? '#6b402b' : '#b8a07a'}>
               {l}
             </text>
           </g>
@@ -810,7 +810,7 @@ function Harvested() {
       {/* the harvest: one small sack and a few cobs */}
       <g transform="translate(150,40)" className="story-pop">
         <rect x={-62} y={-24} width={124} height={26} rx={13} fill="#fff8ec" stroke="#8a6a3a" strokeWidth={1.5} />
-        <text y={-6} textAnchor="middle" fontSize={11} fontWeight={800} fill="#6b402b">
+        <text y={-6} textAnchor="middle" fontSize={8.5} fontWeight={800} fill="#6b402b">
           The whole harvest
         </text>
       </g>

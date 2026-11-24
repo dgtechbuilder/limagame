@@ -332,7 +332,7 @@ export function Rounds({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
                     {CROP_NAME[r.crop]}
                   </text>
                 )}
-                <text y={4} textAnchor="middle" fontSize={11} fontWeight={800} fill="#fff" fontFamily="Poppins, sans-serif" pointerEvents="none">
+                <text y={4} textAnchor="middle" fontSize={8.5} fontWeight={800} fill="#fff" fontFamily="Poppins, sans-serif" pointerEvents="none">
                   {st === 'first' || st === 'second' ? '✓' : st === 'missed' && !readyAgain(r) ? Math.ceil(wait) : st === 'missed' ? '↺' : r.n}
                 </text>
               </g>

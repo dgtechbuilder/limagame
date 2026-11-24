@@ -307,7 +307,7 @@ export const PART_W = 200;
 export const PART_H = 140;
 
 const label = (x: number, y: number, text: string) => (
-  <text x={x} y={y} textAnchor="middle" fontSize={9} fontWeight={700} fill="#fff" stroke="#3d2614" strokeWidth={2.4} paintOrder="stroke" fontFamily="Poppins, sans-serif">
+  <text x={x} y={y} textAnchor="middle" fontSize={7} fontWeight={700} fill="#fff" stroke="#3d2614" strokeWidth={2.4} paintOrder="stroke" fontFamily="Poppins, sans-serif">
     {text}
   </text>
 );

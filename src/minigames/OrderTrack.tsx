@@ -353,7 +353,7 @@ export function OrderTrack({ spec, onEnd }: { spec: Spec; onEnd: (score: number)
                   </text>
                 </g>
               </g>
-              <text x={pts[total - 1].x + 8} y={pts[total - 1].y - 9} fontSize={13} className="mg-track-flag" aria-hidden="true">
+              <text x={pts[total - 1].x + 8} y={pts[total - 1].y - 9} fontSize={10} className="mg-track-flag" aria-hidden="true">
                 🏁
               </text>
 
@@ -391,7 +391,7 @@ export function OrderTrack({ spec, onEnd }: { spec: Spec; onEnd: (score: number)
                           <>
                             <g transform="translate(0,-24)">
                               <circle r={10} className="mg-cp-bubble" />
-                              <text y={4} textAnchor="middle" fontSize={11}>
+                              <text y={4} textAnchor="middle" fontSize={8.5}>
                                 {icons[k]}
                               </text>
                             </g>
@@ -415,7 +415,7 @@ export function OrderTrack({ spec, onEnd }: { spec: Spec; onEnd: (score: number)
               <g className={`mg-mover${shake !== null ? ' is-stall' : ''}`} style={{ transform: `translate(${mover.x}px, ${mover.y}px)` }} aria-hidden="true">
                 <g transform={`scale(${1 / Math.sqrt(z)})`}>
                   {tractor ? (
-                    <text y={-6} textAnchor="middle" fontSize={16}>
+                    <text y={-6} textAnchor="middle" fontSize={12.5}>
                       🧑‍🌾
                     </text>
                   ) : (

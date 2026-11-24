@@ -400,7 +400,7 @@ function Tap({ spec, onEnd }: Of<'tap'>) {
           return (
             <g key={p.i} transform={`translate(${p.x},${p.y})`}>
               <circle r={16} className={`mg-spot${done ? ' is-done' : ''}${spec.hidden ? ' is-hidden' : ''}`} />
-              <text y={5} textAnchor="middle" fontSize={14} pointerEvents="none">
+              <text y={5} textAnchor="middle" fontSize={11} pointerEvents="none">
                 {done ? (spec.mark ?? '✓') : p.real ? (spec.spotMark ?? (spec.hidden ? '?' : '')) : (spec.decoyMark ?? (spec.hidden ? '?' : ''))}
               </text>
               <rect x={-18} y={-18} width={36} height={36} fill="transparent" role="button" tabIndex={0} aria-label={p.label} onClick={() => hit(p)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), hit(p))} style={{ cursor: 'pointer' }} />

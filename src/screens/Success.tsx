@@ -176,7 +176,7 @@ function NightNews({ x, dispatch, done }: Each<'night'>) {
       tone="gold"
       kicker={x.nights > 1 ? `While you were away: ${x.nights} nights` : `Good morning · day ${x.day}`}
       title={theft ? 'Trouble in the night' : sick ? 'News from the animals' : 'The night’s news'}
-      badge={<span style={{ fontSize: 26 }}>{theft ? '🛡' : '🐄'}</span>}
+      badge={<span style={{ fontSize: 20.5 }}>{theft ? '🛡' : '🐄'}</span>}
       highlight={lost ? { label: 'Lost in the night', value: coins(lost) } : undefined}
       actions={[
         { label: 'Back to the farm', plain: true, onClick: done },
@@ -213,7 +213,7 @@ function DayTwo({ s, dispatch, done }: Each<'day2'>) {
       kicker="Good morning · day 2"
       title={`Your animals, ${name}`}
       lead="The cows and the hens are yours to look after from today."
-      badge={<span style={{ fontSize: 26 }}>🐔</span>}
+      badge={<span style={{ fontSize: 20.5 }}>🐔</span>}
       rows={[
         ['Every day', 'Feed, water, milk, collect eggs'],
         ['Every 3 days', 'Clean the pen and the coop'],
@@ -242,7 +242,7 @@ function Morning({ x, s, dispatch, done }: Each<'morning'>) {
       kicker={`Good morning · day ${x.day}`}
       title={x.lines.length > 1 ? `New today, ${name}` : first.title}
       lead={x.lines.length > 1 ? undefined : first.text}
-      badge={<span style={{ fontSize: 26 }}>{first.icon}</span>}
+      badge={<span style={{ fontSize: 20.5 }}>{first.icon}</span>}
       rows={x.lines.length > 1 ? x.lines.map(l => [`${l.icon} ${l.title}`, l.text] as [string, string]) : []}
       actions={[
         { label: 'Later', plain: true, onClick: done },

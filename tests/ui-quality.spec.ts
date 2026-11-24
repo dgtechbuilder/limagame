@@ -2,11 +2,11 @@ import { expect, test } from '@playwright/test';
 import { boot, scenario } from './helpers';
 
 /* The spacing and layout plan (docs/ui-spacing-plan.md), Phase 1: a pop-up never shares the stage with the farm's HUD
-   buttons, and the gold buttons are readable (dark text on gold, 10px at least). */
+   buttons, and the gold buttons are readable (dark text on gold, 8px at least). */
 
 const POPUPS = ['/shop/fertilizer', '/shop/equipment', '/rewards', '/sale', '/storage', '/harvest-timing', '/results', '/value-addition', '/farm-info', '/steps/planting', '/menu'];
 
-test('pop-ups over the 3D farm hide its HUD, and every gold button has dark text of 10px or more', async ({ page }) => {
+test('pop-ups over the 3D farm hide its HUD, and every gold button has dark text of 8px or more', async ({ page }) => {
   test.setTimeout(180_000);
   await boot(page);
   await scenario(page, 'tractor');
@@ -28,7 +28,7 @@ test('pop-ups over the 3D farm hide its HUD, and every gold button has dark text
     );
     for (const g of gold) {
       expect(g.color, `${path}: "${g.text}"`).toBe('rgb(74, 42, 16)');
-      expect(g.size, `${path}: "${g.text}"`).toBeGreaterThanOrEqual(10);
+      expect(g.size, `${path}: "${g.text}"`).toBeGreaterThanOrEqual(8);
     }
   }
   // back on the farm, the HUD returns
@@ -37,7 +37,7 @@ test('pop-ups over the 3D farm hide its HUD, and every gold button has dark text
 });
 
 /* Phase 2: the older pop-ups on the wooden frames. Navigation sits in the top bar (Back · Menu · Farm, top right) with
-   no ✕ outside the frame, no text under 10px, and at most one gold button in view. */
+   no ✕ outside the frame, no text under 8px, and at most one gold button in view. */
 const PHASE2 = [
   'Shop · Fertilizer',
   'Shop · Sell Food',
@@ -54,7 +54,7 @@ const PHASE2 = [
   'Farmer training',
 ];
 
-test('the older pop-ups: navigation in the top bar, text 10px and up, one gold button at most', async ({ page }) => {
+test('the older pop-ups: navigation in the top bar, text 8px and up, one gold button at most', async ({ page }) => {
   test.setTimeout(180_000);
   for (const screen of PHASE2) {
     await page.goto(`./?review=1&screen=${encodeURIComponent(screen)}`);
@@ -76,7 +76,7 @@ test('the older pop-ups: navigation in the top bar, text 10px and up, one gold b
         // letters only: emoji brand marks are pictures
         if (!/[a-z0-9]/i.test(text) || el.offsetParent === null) continue;
         const size = parseFloat(getComputedStyle(el).fontSize);
-        if (size < 10) small.push(`${size}px "${text.slice(0, 30)}"`);
+        if (size < 8) small.push(`${size}px "${text.slice(0, 30)}"`);
       }
       const gold = [...root.querySelectorAll<HTMLElement>('.gold-btn')].filter(e => e.offsetParent !== null).length;
       return { small, gold };
