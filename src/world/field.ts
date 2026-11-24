@@ -19,6 +19,7 @@ import {
   cropOf,
   currentDay,
   hazardFor,
+  isResting,
   plotsOf,
   routineApplies,
   routineDone,
@@ -197,7 +198,9 @@ export const machinePrep = (p: Plan) => p.land === 'ox' || p.land === 'tractor';
 
 /** The setup jobs of a farm, in order: prepare the land, sow, then fertilizer at planting (if the farm gets some). A
     farm that starts the cycle cleared (Farm 2's sukuma wiki in the first cycle: Trial.cleared) skips the clearing. */
-export function setupJobs(t: Pick<Trial, 'cycle' | 'plans' | 'plots' | 'cleared'>, farm: number): string[] {
+export function setupJobs(t: Pick<Trial, 'cycle' | 'plans' | 'plots' | 'cleared'> & Partial<Pick<Trial, 'rest'>>, farm: number): string[] {
+  // a resting farm (src/soil) is left to its grass or its cover crop: nothing to clear or sow
+  if (isResting(t, farm)) return [];
   const jobs = t.cleared?.includes(farm) ? ['sow'] : ['prep', 'sow'];
   if (needOf('setupFeed', t, farm)) jobs.push('setupFeed');
   return jobs;
@@ -320,7 +323,7 @@ export function sprayJobs(f: Field, t: Trial, day: number): { farm: number; haza
 export const fieldDay = (t: Trial | null, today: number) => (t && t.phase === 'growing' ? currentDay(t, today) : 0);
 
 export const harvestReady = (t: Trial | null, today: number) => fieldDay(t, today) > CHECK_DAYS;
-export const allHarvested = (f: Field, t: Trial) => t.plans.every((_, i) => isDone(f, t, i, 'harvest'));
+export const allHarvested = (f: Field, t: Trial) => t.plans.every((_, i) => isResting(t, i) || isDone(f, t, i, 'harvest'));
 
 /** What the farmer should do next, for the task card. */
 export interface Task {
@@ -390,7 +393,7 @@ export function nextTask(f: Field, t: Trial | null, today: number, coins: number
     return needCarry(f, 'fertilizer', { title: `Fertilize ${name(i)}`, note: 'At planting', icon: 'fertilizer', target: { farm: i, at: 'plot' } });
   }
   if (day > CHECK_DAYS) {
-    const left = t.plans.findIndex((_, i) => !isDone(f, t, i, 'harvest'));
+    const left = t.plans.findIndex((_, i) => !isResting(t, i) && !isDone(f, t, i, 'harvest'));
     if (left >= 0) return { title: `Harvest ${name(left)}`, note: CROP_WORDS[cropOf(t, left)].ready, icon: 'corn', target: { farm: left, at: 'plot' } };
     return { title: 'Collect Corn', note: 'Sell at the market', icon: 'corn', target: { place: 'market' } };
   }
@@ -419,7 +422,7 @@ export function nextTask(f: Field, t: Trial | null, today: number, coins: number
       return item ? needCarry(f, item, then) : then;
     }
   }
-  const unchecked = t.plans.findIndex((_, i) => !t.checks[checkKey(i, day)]);
+  const unchecked = t.plans.findIndex((_, i) => !isResting(t, i) && !t.checks[checkKey(i, day)]);
   if (unchecked >= 0) return { title: `Check ${name(unchecked)}`, note: `Day ${day} of ${CHECK_DAYS}`, points: 100, icon: 'check', target: { farm: unchecked, at: 'sign' } };
   // scheduled care (weeding, the stalk-borer spray, the top-dress): what the farmer carries first, so one trip to
   // the shed does every farm

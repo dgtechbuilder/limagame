@@ -234,7 +234,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   ...tiers('csa', 'climate', '🌿', v => v.csaPractised, [
     ['Climate-smart learner', 3, 'Practise 3 climate-smart practices to two stars'],
     ['Climate-smart farmer', 5, 'Practise 5 climate-smart practices to two stars'],
-    ['Climate-smart master', 7, 'Practise all 7 climate-smart practices to two stars'],
+    ['Climate-smart master', 8, 'Practise all 8 climate-smart practices to two stars'],
   ]),
   ...tiers('csa-drill', 'climate', '🕖', v => v.csaDrills, [
     ['Daily drill', 3, 'Do 3 daily climate-smart drills'],

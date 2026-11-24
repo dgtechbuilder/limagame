@@ -1,7 +1,9 @@
-/* Climate Smart Agriculture: the rules of the seven practice games, with no screens, so the play-tests can check
+/* Climate Smart Agriculture: the rules of the eight practice games, with no screens, so the play-tests can check
    them directly. Each game's screen is in ./games; every number a designer might tune is in the tables here. The
    figures are for learning (an agronomist's review is still to come), but every rule follows the real practice: a
    half-moon only catches water with its open side uphill, a zaï pit sown before the rain loses its seed, and so on. */
+
+import { REST, SOIL, soilFactor, type RestKind } from '../soil/model';
 
 /** Stars from a score of 0 to 1 (the same as every mini-game in the game). */
 export const starsOf = (score: number) => (score >= 0.85 ? 3 : score >= 0.6 ? 2 : score > 0 ? 1 : 0);
@@ -487,4 +489,114 @@ export function scoreSeason(season: SeasonId, c: SeedChoice) {
   const r = seasonOf(season, c);
   const best = bestOf(season);
   return { score: clamp01((r.total / best.total) * (c.when === 'dry' ? 0.85 : 1)), result: r, best };
+}
+
+/* ================================================================== */
+/* Resting the land                                                    */
+/* ================================================================== */
+
+/* Six farms over a few seasons. Each season every farm is cropped, or rested under natural fallow or a green-manure
+   cover crop. A cropped farm's harvest follows its soil (src/soil: the same soil numbers as the six farms), and the
+   crop wears the soil out, faster when it has been cropped many seasons in a row; a rest brings it back. The family
+   needs ROT.need bags a season: what is short is bought at market, at twice the price. The soil left at the end counts
+   too: each point grows about half a bag over the seasons after. */
+
+export const ROT = {
+  farms: 6,
+  seasons: 4,
+  /** the daily drill's game is shorter */
+  drillSeasons: 2,
+  /** farms that must be planted each season */
+  minPlanted: 3,
+  /** bags a farm grows at the starting soil */
+  bags: 10,
+  /** bags the family needs a season; each bag short costs `hungry` bags */
+  need: 36,
+  hungry: 2,
+  /** bags the cover crop's seed costs, a farm */
+  coverBags: 1,
+  /** what a point of soil left at the end is worth, in bags (the seasons after) */
+  soilWorth: 0.45,
+};
+
+export interface RotFarm {
+  soil: number;
+  /** seasons cropped in a row */
+  streak: number;
+}
+export type RotPick = RestKind | null;
+
+const round1r = (x: number) => Math.round(x * 10) / 10;
+
+/** The six farms at the start: some rich, some worn out, some cropped many seasons in a row. */
+export function rotStart(seed: number): RotFarm[] {
+  const r = rng(seed);
+  return Array.from({ length: ROT.farms }, () => ({ soil: Math.round(30 + r() * 55), streak: Math.floor(r() * 5) }));
+}
+
+/** The bags a cropped farm grows on this soil. */
+export const rotBags = (soil: number) => round1r(ROT.bags * soilFactor(soil));
+
+/** One season grown: each farm's bags, the soil after, the cover seed paid and the bags short of the family's need. */
+export function rotSeason(farms: RotFarm[], picks: RotPick[]) {
+  const per = farms.map((f, i) => (picks[i] ? 0 : rotBags(f.soil)));
+  const bags = round1r(per.reduce((n, x) => n + x, 0));
+  const cover = picks.filter(p => p === 'cover').length * ROT.coverBags;
+  const short = round1r(Math.max(0, ROT.need - bags));
+  const next = farms.map((f, i): RotFarm => {
+    const p = picks[i];
+    const soil = p ? f.soil + REST[p].soil : f.soil + SOIL.cropped - (f.streak + 1 >= SOIL.streakFrom ? SOIL.streakLoss : 0);
+    return { soil: Math.round(Math.max(SOIL.min, Math.min(SOIL.max, soil))), streak: p ? 0 : f.streak + 1 };
+  });
+  return { farms: next, per, bags, cover, short };
+}
+
+/** A plan for every season played out: the food, the cover seed, the bags short, the soil left, and its value in bags. */
+export function rotRun(start: RotFarm[], plan: RotPick[][]) {
+  let farms = start;
+  let food = 0;
+  let cover = 0;
+  let short = 0;
+  for (const picks of plan) {
+    const r = rotSeason(farms, picks);
+    food += r.bags;
+    cover += r.cover;
+    short += r.short;
+    farms = r.farms;
+  }
+  const soil = farms.reduce((n, f) => n + f.soil, 0);
+  return { farms, food: round1r(food), cover, short: round1r(short), soil, value: food - cover - short * ROT.hungry + soil * ROT.soilWorth };
+}
+
+/** Ways a farmer might go about it, for the yardstick: never rest; rest the poorest one or two, under cover or fallow. */
+const poorest = (n: number, kind: RestKind) => (farms: RotFarm[]): RotPick[] => {
+  const order = farms.map((_, i) => i).sort((a, b) => farms[a].soil - farms[b].soil || farms[b].streak - farms[a].streak);
+  const pick = new Set(order.slice(0, n));
+  return farms.map((_, i) => (pick.has(i) ? kind : null));
+};
+const WAYS: ((farms: RotFarm[]) => RotPick[])[] = [farms => farms.map(() => null), poorest(1, 'cover'), poorest(2, 'cover'), poorest(1, 'fallow'), poorest(2, 'fallow')];
+
+function wayRun(start: RotFarm[], seasons: number, way: (farms: RotFarm[]) => RotPick[]) {
+  let farms = start;
+  const plan: RotPick[][] = [];
+  for (let k = 0; k < seasons; k++) {
+    const picks = way(farms);
+    plan.push(picks);
+    farms = rotSeason(farms, picks).farms;
+  }
+  return rotRun(start, plan);
+}
+
+/** The yardsticks for a start: never resting, and the best of the simple ways. */
+export function rotRefs(start: RotFarm[], seasons: number) {
+  const runs = WAYS.map(w => wayRun(start, seasons, w));
+  return { never: runs[0].value, best: Math.max(...runs.map(r => r.value)) };
+}
+
+/** The score: never resting is one star; doing as well as the best simple rotation (or better) is three. */
+export function scoreRot(start: RotFarm[], plan: RotPick[][]) {
+  const run = rotRun(start, plan);
+  const ref = rotRefs(start, plan.length);
+  const score = ref.best > ref.never ? 0.3 + (0.7 * (run.value - ref.never)) / (ref.best - ref.never) : 1;
+  return { score: Math.max(0.05, clamp01(score)), run, ref };
 }

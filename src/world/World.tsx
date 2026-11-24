@@ -11,7 +11,7 @@ import { dayNumber, ROUND_POINTS } from '../rounds/farms';
 import { CROP_NAME } from '../rounds/hazards';
 import { trialRounds } from '../rounds/trial';
 import type { Action, GameState } from '../state';
-import { CHECK_DAYS, DAMAGE, WRONG_FIX_COST, canTreat, causeOf, checkKey, farmName, hazardFor, plotsOf, returnedProblem } from '../trials/model';
+import { CHECK_DAYS, DAMAGE, WRONG_FIX_COST, canTreat, causeOf, checkKey, farmName, hazardFor, plantedFarms, plotsOf, returnedProblem } from '../trials/model';
 import { fmt } from '../components/ui';
 import { track } from '../first/track';
 import { FOLLOW_UP, PRESCRIBE, fixOrder } from '../care/data';
@@ -247,10 +247,10 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       // every activity's code, fetched now while the player looks round, so opening one does not wait (src/prefetch.ts)
       window.setTimeout(prefetchActivities, 800);
     });
-    // start at the farmhouse door, or (in design review) beside the job at hand
+    // start on the path below the farmhouse's Sleep square (not in it), or (in design review) beside the job at hand
     const tk = nextTask(sRef.current.field, sRef.current.trial, dayNumber(), sRef.current.coins);
     const review = new URLSearchParams(window.location.search).has('review') || new URLSearchParams(window.location.search).has('screen');
-    const spot = review ? targetOf(tk, w) : { x: 0, z: -13.4 };
+    const spot = review ? targetOf(tk, w) : { x: 0, z: -12.5 };
     w.spawn(spot.x + (review ? 0.6 : 0), spot.z + (review ? 1.4 : 0));
     const fit = () => {
       const r = pad.current?.getBoundingClientRect();
@@ -1447,7 +1447,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
               if (fixLeft(sRef.current.trial ?? t, c.farm, c.day)) setCare({ kind: 'fix', farm: c.farm, day: c.day });
             }}
             onLeave={() => setChecking(null)}
-            progress={{ done: t.plans.filter((_, i) => t.checks[checkKey(i, checking.day)]?.right).length, total: t.plans.length, unit: 'farm' }}
+            progress={{ done: plantedFarms(t).filter(i => t.checks[checkKey(i, checking.day)]?.right).length, total: plantedFarms(t).length, unit: 'farm' }}
             stake={risk.items.find(x => x.farm === checking.farm)?.amount}
           />
         </div>

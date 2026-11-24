@@ -17,6 +17,7 @@ import { daysBetween } from '../achievements/model';
 import { dayText } from '../training/data';
 import { money } from '../money';
 import { practiceOf } from '../csa/data';
+import { REST } from '../soil/model';
 import { PAY, areasDelta, areasOf, coinsFor, landOf, landWords, payRate } from './land';
 import {
   creditsOf,
@@ -193,7 +194,12 @@ export function trackClimate(prev: GameState, s: GameState, a: Action): GameStat
     case 'trialPlant': {
       const t = s.trial;
       if (!t || t.phase !== 'growing' || (prev.trial?.phase === 'growing' && prev.trial.cycle === t.cycle)) break;
-      t.plans.forEach((p, i) => log(`${farmName(i)} planted · ${optionOf('land', p).label}, ${optionOf('fert', p).label.toLowerCase()}, ${optionOf('pest', p).label.toLowerCase()}`, 'farms', planDelta(p, t.forecast, solar)));
+      t.plans.forEach((p, i) => {
+        // a resting farm (src/soil): no inputs, its soil comes back (the carbon its plants store is paid daily: land.ts)
+        const rest = t.rest?.[i];
+        if (rest) return log(`${farmName(i)} resting · ${REST[rest].short.toLowerCase()}`, 'farms', { soil: REST[rest].soil / 10 });
+        log(`${farmName(i)} planted · ${optionOf('land', p).label}, ${optionOf('fert', p).label.toLowerCase()}, ${optionOf('pest', p).label.toLowerCase()}`, 'farms', planDelta(p, t.forecast, solar));
+      });
       break;
     }
     // A check read: climate shocks met; a treatment paid at once (the six farms screen, not the farm world)
@@ -288,12 +294,13 @@ export function trackClimate(prev: GameState, s: GameState, a: Action): GameStat
       const t = s.trial;
       if (!t?.results || prev.trial?.phase !== 'growing') break;
       t.plans.forEach((p, i) => {
-        if (p.land !== 'tractor') return;
+        if (p.land !== 'tractor' || t.rest?.[i]) return;
         const drove = !!t.tractor?.[i] || popcount(s.field.byTractor?.[`${i}:prep`] ?? 0) > 0;
         if (!drove) log(`${farmName(i)} · ploughed by a hired tractor`, 'tractor', contractorDiesel());
       });
       // each farm's row strategies: their emissions, carbon, water and soil over the cycle (src/strategy)
       t.plans.forEach((_, i) => {
+        if (t.rest?.[i]) return;
         const d = strategyDelta(t, i, solar);
         if (d) log(`${farmName(i)} · row strategies (${d.smart} climate-smart choice${d.smart === 1 ? '' : 's'})`, 'farms', d.delta);
       });

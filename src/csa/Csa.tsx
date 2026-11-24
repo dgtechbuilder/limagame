@@ -14,9 +14,12 @@ import { ZaiGame } from './games/Zai';
 import { PushPullGame } from './games/PushPull';
 import { FmnrGame } from './games/Fmnr';
 import { SeedsGame } from './games/Seeds';
+import { RestGame } from './games/Rest';
+import { SoilPanel } from '../soil/SoilPanel';
 
-/* Climate › Climate Smart Agriculture: the module. Its tab lists the seven practices, with the farmer's skill in
-   each, today's drill, the field clock and what the skills do for the farm. A practice opens as a lesson that fills
+/* Climate › Climate Smart Agriculture: the module. Its tab lists the eight practices, with the farmer's skill in
+   each, today's drill, the six farms' soil and which to rest (src/soil), the field clock and what the skills do for
+   the farm. A practice opens as a lesson that fills
    the page: learn it (what it is, where it is used in Kenya and West Africa, how to do it, why it is climate-smart),
    practise it in its own game, and see the result. The daily drill (the CLIMATE-SMART chip on the farm) opens
    today's practice the same way, and pays once a day. */
@@ -29,6 +32,7 @@ const GAMES: Record<CsaId, ComponentType<GameProps>> = {
   pushpull: PushPullGame,
   fmnr: FmnrGame,
   seeds: SeedsGame,
+  rest: RestGame,
 };
 
 const Stars = ({ n, size = 'sm' }: { n: number; size?: 'sm' | 'lg' }) => (
@@ -72,10 +76,10 @@ export function CsaTab({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
         </div>
         <div className="csa-head-stats">
           <span>
-            <b>{learned(c)}/7</b> learned
+            <b>{learned(c)}/{PRACTICES.length}</b> learned
           </span>
           <span>
-            <b>{practised(c)}/7</b> at 2★+
+            <b>{practised(c)}/{PRACTICES.length}</b> at 2★+
           </span>
           <span>
             <b>{streak}</b> day drill streak
@@ -108,6 +112,7 @@ export function CsaTab({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
           );
         })}
       </div>
+      <SoilPanel s={s} dispatch={dispatch} />
       <div className="csa-farm">
         <p className="set-title">On your farm</p>
         <ul>

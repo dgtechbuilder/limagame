@@ -10,7 +10,8 @@ import { slotBrand, type SlotId } from '../partners/data';
 import { TIDY, type TidyItem } from '../tidy/model';
 import { FEEDER } from '../onsite/spots';
 import { JOB_INFO, ROUTINE, TRACTOR_PLOT, toolJobs, toolName, type PlotJob, type TractorId } from '../plots/data';
-import { CHECK_DAYS, CROP_WORDS, checkKey, cropOf, farmName, harvestFarm, hazardFor, plotGrowth, type Trial, type TrialHazard } from '../trials/model';
+import { CHECK_DAYS, CROP_WORDS, checkKey, cropOf, farmName, harvestFarm, hazardFor, isResting, plotGrowth, restOf, type Trial, type TrialHazard } from '../trials/model';
+import { REST } from '../soil/model';
 import {
   FULL,
   PLOTS,
@@ -195,18 +196,21 @@ export const PLACES: Record<Place, { x: number; z: number; r: number }> = {
   'shed-sprayer': { x: -14.2, z: 1.9, r: 0.85 },
   pond: { x: 13.6, z: 0, r: 1.1 },
   hire: { x: -14.6, z: 6.4, r: 1.2 },
-  market: { x: 0, z: 12.9, r: 1.3 },
+  /** Each place's white square sits on open ground the camera can see: the camera looks down from the south (+z), so
+      a roof or an awning hides the ground just north of it. The market's and the restaurant's squares stand out in
+      front of their awnings, the storehouse's on the lane before its door, the house's below the porch step. */
+  market: { x: 0, z: 11.6, r: 1.3 },
   /** the mini restaurant beside the stall: meals from the store (src/produce/restaurant.ts) */
-  restaurant: { x: 3.35, z: 13.4, r: 0.95 },
+  restaurant: { x: 3.4, z: 11.9, r: 0.95 },
   /** the greenhouse's door, facing the market path, and the storehouse's door, on the lane (src/greenhouse, src/storehouse) */
-  greenhouse: { x: GREENHOUSE_AT.x + GREENHOUSE_AT.w / 2 + 0.85, z: GREENHOUSE_AT.z, r: 0.85 },
-  storehouse: { x: STOREHOUSE_AT.x + STOREHOUSE_AT.door, z: STOREHOUSE_AT.z - STOREHOUSE_AT.d / 2 - 0.85, r: 0.85 },
-  house: { x: 0, z: -15.2, r: 1.2 },
+  greenhouse: { x: GREENHOUSE_AT.x + GREENHOUSE_AT.w / 2 + 1.3, z: GREENHOUSE_AT.z - 0.3, r: 0.85 },
+  storehouse: { x: STOREHOUSE_AT.x + STOREHOUSE_AT.door, z: STOREHOUSE_AT.z - STOREHOUSE_AT.d / 2 - 1.95, r: 0.85 },
+  house: { x: 0, z: -14.1, r: 1.0 },
   /** the cow pen's gate and the chicken coop's door: the Animals page (src/livestock) */
   pen: { x: -10.7, z: -13.0, r: 1.0 },
   coop: { x: 8.2, z: -16.0, r: 1.0 },
-  /** the power yard's gate: the Power page */
-  power: { x: 13.4, z: -9.2, r: 1.1 },
+  /** beside the power yard's fence, on the grass above the lane's corner: the Power page */
+  power: { x: 13.5, z: -11.4, r: 1.1 },
 };
 
 /** How many cows and hens there are, and the coop (src/livestock): the 3D farm shows them. */
@@ -826,9 +830,9 @@ export class FarmWorld {
     };
     const zones: [Place, string, string, number][] = [
       ['hire', 'Train', 'tractor', 2.2],
-      ['market', 'Sell', 'sell', 2.4],
+      ['market', 'Sell', 'sell', 2.2],
       ['restaurant', 'Eat', 'bowl', 1.6],
-      ['house', 'Sleep', 'sleep', 2.2],
+      ['house', 'Sleep', 'sleep', 2.0],
       ['mission', 'Plan', 'plan', 2.0],
       ['pond', 'Water', 'water', 1.9],
       ['shed-seeds', 'Seeds', 'bag', 1.6],
@@ -1447,7 +1451,9 @@ export class FarmWorld {
       used.set(m, k + 1);
     };
     for (let farm = 0; farm < PLOTS.length; farm++) {
-      const active = !!t && farm < t.plans.length && t.phase !== 'plan';
+      // a resting farm (src/soil) is left to its grass and bush, or under a green cover crop: nothing is worked on it
+      const rest = t && t.phase === 'growing' ? restOf(t, farm) : null;
+      const active = !!t && farm < t.plans.length && t.phase !== 'plan' && !rest;
       const plan = t?.plans[farm];
       // a farm that started the cycle cleared (the first cycle's sukuma wiki) shows cleared soil from the start
       const prep = active ? (t?.cleared?.includes(farm) ? FULL : this.marks(farm, 'prep')) : 0;
@@ -1474,7 +1480,7 @@ export class FarmWorld {
       // the farm grows with its seed, fertilizer and machines: taller or shorter, greener or paler
       const growth = active && t ? this.grown(t, farm, day).plots : [1];
 
-      col.set(active && prep ? '#7a4224' : '#93cf33');
+      col.set(active && prep ? '#7a4224' : rest === 'cover' ? '#4f9e2c' : '#93cf33');
       this.base.setColorAt(farm, col);
 
       for (let i = 0; i < TILES; i++) {
@@ -1483,7 +1489,7 @@ export class FarmWorld {
         const isPrep = !!(prep & bit);
         // the soil
         const moundAt = at(c.x, 0.06, c.z, { sx: TILE * 0.82, sy: 0.16, sz: TILE * 0.94 });
-        let soil = C.grassDark;
+        let soil = rest === 'cover' ? '#3f8a26' : C.grassDark;
         if (isPrep) soil = plan?.land === 'mulch' ? C.mulch : plan?.land === 'slash' ? '#8f6a3c' : C.soilTilled;
         if (isPrep && sown & bit) soil = plan?.land === 'mulch' ? C.mulch : C.soil;
         if (isPrep && fed & bit && day <= 1) soil = '#8a5838';
@@ -1536,7 +1542,7 @@ export class FarmWorld {
       const s = this.signs[farm];
       s.board.visible = !!t && farm < t.plans.length;
       let badge: string | null = null;
-      if (growing && t && farm < t.plans.length) {
+      if (growing && t && farm < t.plans.length && !rest) {
         if (day > CHECK_DAYS) badge = cut === FULL ? null : 'harvest';
         else if (setupDone && !t.checks[checkKey(farm, day)]) badge = 'check';
         else if (pend) badge = 'treat';
@@ -1616,6 +1622,8 @@ export class FarmWorld {
     const v = this.view!;
     const t = v.trial;
     if (!t || t.phase !== 'growing' || farm >= t.plans.length) return null;
+    const rest = restOf(t, farm);
+    if (rest) return { hint: `${farmName(farm)} is resting this cycle (${REST[rest].short.toLowerCase()}): leave it be` };
     const f = this.liveField();
     const plan = t.plans[farm];
     const day = fieldDay(t, v.today);
@@ -1702,7 +1710,7 @@ export class FarmWorld {
     const v = this.view!;
     const t = v.trial;
     const rig = this.rig;
-    if (!t || t.phase !== 'growing' || !rig || farm >= t.plans.length) return;
+    if (!t || t.phase !== 'growing' || !rig || farm >= t.plans.length || isResting(t, farm)) return;
     const f = this.liveField();
     const day = fieldDay(t, v.today);
     // the tool decides the job: its first one that the farm is waiting for (the spreader feeds at planting, then
@@ -2189,6 +2197,7 @@ export class FarmWorld {
     const t = this.view?.trial;
     if (t && t.phase === 'growing')
       for (let f = 0; f < t.plans.length; f++) {
+        if (isResting(t, f)) continue;
         const s = signOf(f);
         if (Math.hypot(this.pos.x - s.x, this.pos.y - s.z) < 1.3) sign = f;
       }

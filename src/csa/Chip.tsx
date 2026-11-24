@@ -8,7 +8,7 @@ import { clockNow, csaOf, drillDone, drillOf, drillStreak, fieldClock } from './
 /* The farm's CLIMATE-SMART chip, with the daily chips (the animals' care, the tidy-up): today's climate-smart drill,
    and the field clock (what the hour on the phone's clock is good for). Tap it to do today's drill. */
 
-const SHORT: Record<CsaId, string> = { halfmoon: 'Half-moons', water: 'Save water', clock: 'Time of day', zai: 'Zaï pits', pushpull: 'Push-pull', fmnr: 'Kisiki hai', seeds: 'Seed mix' };
+const SHORT: Record<CsaId, string> = { halfmoon: 'Half-moons', water: 'Save water', clock: 'Time of day', zai: 'Zaï pits', pushpull: 'Push-pull', fmnr: 'Kisiki hai', seeds: 'Seed mix', rest: 'Rest the land' };
 
 export function CsaChip({ s, dispatch, now }: { s: GameState; dispatch: Dispatch<Action>; now: number }) {
   void now; // re-drawn every second by the farm, so the field clock follows the phone's clock

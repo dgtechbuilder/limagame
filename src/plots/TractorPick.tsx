@@ -7,7 +7,7 @@ import { img } from '../assets';
 import { FarmMap } from '../components/FarmMap';
 import { TractorArt } from '../components/TractorArt';
 import { GuideLine } from '../first/Review';
-import { CHECK_DAYS, farmName, plotsOf, type Trial } from '../trials/model';
+import { CHECK_DAYS, farmName, isResting, plotsOf, type Trial } from '../trials/model';
 import { TRACTORS, IMPL, type ImplId } from '../tractor/data';
 import { careLeft, isDone, routineLeft, setupLeft, type Field } from '../world/field';
 import { JOB_INFO, TOOL_JOB, TOOL_USE, TRACTOR_PLOT, prepNeed, toolJobs, toolName, tractorName, type PlotJob, type TractorId } from './data';
@@ -30,6 +30,8 @@ export function jobsDue(field: Field, tr: Trial | null, day: number): Partial<Re
   if (!tr || tr.phase !== 'growing') return out;
   const add = (j: PlotJob, farm: number) => (out[j] = [...(out[j] ?? []), farm]);
   tr.plans.forEach((_, i) => {
+    // a resting farm (src/soil) has nothing for the tractor
+    if (isResting(tr, i)) return;
     const setup = setupLeft(field, tr, i);
     if (setup) return add(setup as PlotJob, i);
     if (day > CHECK_DAYS) {
