@@ -1,9 +1,10 @@
-import type { Dispatch, ReactNode } from 'react';
+import { useEffect, useState, type Dispatch, type ReactNode } from 'react';
 import { openLesson } from '../learn/Info';
 import { SuccessCard } from '../components/Success';
 import { Coin, Img, Stars, fmt } from '../components/ui';
 import { PROCESSES, SHOP_TABS, STORAGE_OPTIONS } from '../data';
 import { money } from '../money';
+import { NightScene, sceneOf } from '../security/NightScene';
 import { courseOf, dayText } from '../training/data';
 import { MORNING_KINDS, type Action, type GameState, type Success } from '../state';
 
@@ -171,6 +172,19 @@ function NightNews({ x, dispatch, done }: Each<'night'>) {
   const theft = x.events.some(e => e.kind === 'theft' || e.kind === 'predator');
   const sick = x.events.some(e => e.kind === 'issue' || e.kind === 'death' || e.kind === 'thirst');
   const tips = [...new Set(x.events.map(e => e.tip).filter(Boolean))].slice(0, 2) as string[];
+  const list = x.events.slice(0, 5);
+  // each line that can be shown gets its moving picture, one after another (or the one tapped)
+  const scenes = list.flatMap((e, i) => {
+    const scene = sceneOf(e);
+    return scene ? [{ e, i, scene }] : [];
+  });
+  const [at, setAt] = useState(0);
+  useEffect(() => {
+    if (scenes.length < 2) return;
+    const t = setTimeout(() => setAt(k => (k + 1) % scenes.length), 8000);
+    return () => clearTimeout(t);
+  }, [at, scenes.length]);
+  const shown = scenes[Math.min(at, scenes.length - 1)];
   return (
     <SuccessCard
       tone="gold"
@@ -188,14 +202,31 @@ function NightNews({ x, dispatch, done }: Each<'night'>) {
       label="The night's news"
       width={460}
     >
-      <ul className="night-list">
-        {x.events.slice(0, 5).map((e, i) => (
-          <li key={i} className={`is-${e.kind}`}>
-            {e.text}
-            {e.value ? <> ({money(e.value)})</> : null}
-          </li>
-        ))}
-      </ul>
+      <div className="night-body">
+        {shown && (
+          <div className="night-scenes">
+            <NightScene key={`${x.id}:${at}`} id={shown.scene} tag={tagOf(shown.e)} found={shown.e.kind === 'recovered'} />
+            {scenes.length > 1 && (
+              <div className="night-dots">
+                {scenes.map((v, k) => (
+                  <button key={k} type="button" className={k === at ? 'is-on' : undefined} aria-label={`Show: ${v.e.text}`} onClick={() => setAt(k)} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        <ul className="night-list">
+          {list.map((e, i) => {
+            const k = scenes.findIndex(v => v.i === i);
+            return (
+              <li key={i} className={`is-${e.kind}${k >= 0 ? ' has-scene' : ''}${k >= 0 && k === at ? ' is-shown' : ''}`} onClick={k >= 0 ? () => setAt(k) : undefined}>
+                {e.text}
+                {e.value ? <> ({money(e.value)})</> : null}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
       {tips.map(t => (
         <p key={t} className="success-note">
           {t}
@@ -203,6 +234,14 @@ function NightNews({ x, dispatch, done }: Each<'night'>) {
       ))}
     </SuccessCard>
   );
+}
+
+/** The red tag on a night's picture: what it cost, or that it was found again. */
+function tagOf(e: { kind: string; value?: number; text: string }): ReactNode {
+  if (e.kind === 'recovered') return '✓ Found again';
+  if (e.value) return `−${money(e.value)}`;
+  const n = e.text.match(/(\d+) (hens?|cows?)/);
+  return n ? `−${n[1]} ${n[2]}` : undefined;
 }
 
 /** Day 2: the animals come into the player's care, the coop can be built, and theft becomes part of every night. */

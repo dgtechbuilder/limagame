@@ -8,6 +8,7 @@ import { tankOf } from '../src/water/model';
 import type { Biz } from '../src/business/model';
 import type { LifeEvent } from '../src/livestock/model';
 import { activeMeasures, exposure, lightCovered, securityOf, theftNight } from '../src/security/model';
+import { sceneOf } from '../src/security/NightScene';
 
 /* Security fixes: the farm's lights stand in for the solar light (not sold twice), the cash theft's text and floor,
    who found a stolen thing, the dog's food, crop and water thefts priced, and a theft shown on the PROGRESS button. */
@@ -112,4 +113,42 @@ test('in the game: a theft last night shows on PROGRESS, and Security shows the 
   const light = page.locator('[data-option="light"]');
   await expect(light).toContainText('Your farm lights do this');
   await expect(light.getByRole('button')).toHaveCount(0);
+});
+
+test('each night’s event carries its picture: the mongoose at the coop, the thief with the diesel, a fever for a sick cow', () => {
+  const herd = { tank: { ...tankOf(undefined), herd: { cows: 3, hens: 20 } } };
+  expect(firstHit(game(herd), 'predator', /mongoose/).event.scene).toBe('mongoose');
+  expect(firstHit(game(herd), 'theft', /hens? (was|were) stolen/).event.scene).toBe('henThief');
+  expect(firstHit(game({ biz: {} as Biz }), 'theft', /Diesel/).event.scene).toBe('diesel');
+  // a save from before the pictures: read off the words
+  expect(sceneOf({ kind: 'predator', text: 'A mongoose got into the hens: 2 lost.' })).toBe('mongoose');
+  expect(sceneOf({ kind: 'issue', text: 'In the morning, the cows: a high fever.' })).toBe('sickCow');
+  expect(sceneOf({ kind: 'cost', text: 'There was no money to pay the watchman.' })).toBeNull();
+});
+
+test('in the game: the morning dialog plays the night’s pictures, one per line, and a tap on a line shows its own', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() =>
+    (window as unknown as Win).__lima.jump({
+      view: 'farm',
+      success: {
+        kind: 'night',
+        id: 7,
+        nights: 1,
+        day: 3,
+        events: [
+          { kind: 'predator', text: 'A mongoose got into the hens: 2 lost.', value: 1400 },
+          { kind: 'issue', text: 'In the morning, the cows: a high fever. She will not eat.' },
+        ],
+      },
+    } as never),
+  );
+  const dialog = page.getByRole('dialog', { name: "The night's news" });
+  await expect(dialog.getByRole('img', { name: 'A mongoose gets into the chicken coop' })).toBeVisible();
+  await dialog.getByText(/the cows: a high fever/).click();
+  await expect(dialog.getByRole('img', { name: 'A cow with a fever' })).toBeVisible();
+  // the sun badge sits clear of the kicker: its rays reach 46 px from its middle
+  const badge = await page.locator('.success-badge').boundingBox();
+  const kicker = await dialog.getByText(/Good morning · day 3/i).boundingBox();
+  expect(badge!.y + badge!.height / 2 + 46).toBeLessThanOrEqual(kicker!.y);
 });

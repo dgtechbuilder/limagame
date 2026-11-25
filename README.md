@@ -1436,7 +1436,10 @@ community watch** (Nyumba Kumi: thefts reported together are found more often), 
 **lock on the tank's tap**, and a **GPS tracker and locking fuel cap** for the business tractor; and, in the farming
 itself, shut the coop every night, harvest on time, and store maize in the co-op warehouse. *Risks tonight* shows each
 target's chance before and after the measures, with the best next step; *Night reports* keeps the last 14 nights. A
-night with news opens a **morning dialog**: what was stolen or lost, its value, and what would have stopped it.
+night with news opens a **morning dialog**: what was stolen or lost, its value, and what would have stopped it, beside
+a short looping picture of each line (`src/security/NightScene.tsx`): a mongoose running up the ramp into the coop, a
+thief walking off with a sack of hens, a cow led from the pen, a feverish cow, a dry trough. The pictures take turns;
+tapping a line shows its own. With motion turned down, each one stands still at its telling moment.
 The farm's lit lights already count as the solar security light, so Protect shows *Your farm lights do this* instead
 of selling it again. A guard dog whose food cannot be paid does not watch that night. A stolen thing found again
 names what found it (the community watch, the cow's brand and tag, or the tractor's GPS tracker). Crops and water
