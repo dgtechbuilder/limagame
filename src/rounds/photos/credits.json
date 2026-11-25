@@ -962,5 +962,40 @@
   "author": "LMorland",
   "license": "CC BY-SA 4.0",
   "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+ },
+ "erosion/soil": {
+  "title": "Rill Erosion",
+  "page": "https://www.flickr.com/photos/22503286@N06/5097054849",
+  "author": "SoilScience.info",
+  "license": "CC BY 2.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by/2.0/"
+ },
+ "rodents/soil": {
+  "title": "Mole hill",
+  "page": "https://www.flickr.com/photos/13295342@N04/8569975498",
+  "author": "nalnoc",
+  "license": "CC BY 2.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by/2.0/"
+ },
+ "striga/maize/pests": {
+  "title": "Striga",
+  "page": "https://www.flickr.com/photos/47108884@N07/4639382554",
+  "author": "tonrulkens",
+  "license": "CC BY-SA 2.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0/"
+ },
+ "virus/maize/crop": {
+  "title": "Maize chlorotic mottle",
+  "page": "https://www.flickr.com/photos/62295966@N07/11801465543",
+  "author": "Plant pests and diseases",
+  "license": "CC0 1.0",
+  "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "virus/maize/pests": {
+  "title": "Zea mays (maize, corn): Maize chlorotic mottle",
+  "page": "https://www.flickr.com/photos/62295966@N07/15415391415",
+  "author": "Plant pests and diseases",
+  "license": "CC0 1.0",
+  "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/"
  }
 }

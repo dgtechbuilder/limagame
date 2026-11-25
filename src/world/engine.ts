@@ -24,6 +24,8 @@ import {
   isDone,
   machinePrep,
   needOf,
+  problemTiles,
+  jobOf,
   setupLeft,
   someTiles,
   signOf,
@@ -78,6 +80,11 @@ import {
   makeTractor,
   merge,
   pestTile,
+  strigaTile,
+  moundTile,
+  gullyTile,
+  trenchTile,
+  mulchTile,
   place,
   pond,
   waterTank,
@@ -343,6 +350,12 @@ export class FarmWorld {
   private kale: Record<'sprout' | 'young' | 'tall' | 'ripe' | 'stubble', THREE.InstancedMesh> = {} as never;
   private weeds!: THREE.InstancedMesh;
   private puddles!: THREE.InstancedMesh;
+  // the newer problems on the tiles (trials/model.ts NEW_HAZARDS), and what the work by hand leaves
+  private striga!: THREE.InstancedMesh;
+  private mounds!: THREE.InstancedMesh;
+  private gullies!: THREE.InstancedMesh;
+  private trenches!: THREE.InstancedMesh;
+  private mulch!: THREE.InstancedMesh;
   private hail!: THREE.InstancedMesh;
   private pests!: THREE.InstancedMesh;
   private signs: { badge: THREE.Sprite; board: THREE.Group }[] = [];
@@ -1276,6 +1289,11 @@ export class FarmWorld {
     this.puddles = inst(puddleTile(), new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.85 }), n, false);
     this.hail = inst(hailTile(), vcMaterial(), n, false);
     this.pests = inst(pestTile(), vcMaterial(), n, false);
+    this.striga = inst(strigaTile(), vcMaterial(), n, false);
+    this.mounds = inst(moundTile(), vcMaterial(), n, false);
+    this.gullies = inst(gullyTile(), vcMaterial(), n, false);
+    this.trenches = inst(trenchTile(), vcMaterial(), n, false);
+    this.mulch = inst(mulchTile(), vcMaterial(), n, false);
     // a sign at each farm
     for (let f = 0; f < PLOTS.length; f++) {
       const s = signOf(f);
@@ -1491,7 +1509,7 @@ export class FarmWorld {
     const growing = t?.phase === 'growing';
     const done = t?.phase === 'done';
     const col = new THREE.Color();
-    const meshes = [this.mound, this.wild, ...Object.values(this.plants), ...Object.values(this.kale), this.weeds, this.puddles, this.hail, this.pests];
+    const meshes = [this.mound, this.wild, ...Object.values(this.plants), ...Object.values(this.kale), this.weeds, this.puddles, this.hail, this.pests, this.striga, this.mounds, this.gullies, this.trenches, this.mulch];
     // only what shows is drawn: each instanced mesh is packed from the start and its count set to what it holds (a
     // hidden instance would still cost its triangles, in the picture and again in the shadows)
     const used = new Map<THREE.InstancedMesh, number>(meshes.map(m => [m, 0]));
@@ -1527,6 +1545,12 @@ export class FarmWorld {
       const lost = !t || farm >= t.plans.length ? 0 : growing && day > 1 ? this.grown(t, farm, day).lost : done ? t.results?.[farm]?.lost ?? 0 : 0;
       const weedMask = h === 'weeds' ? needOf('weed', t!, farm, day) : 0;
       const puddleMask = h === 'flood' ? needOf('drain', t!, farm, day) : 0;
+      // the newer problems show on some tiles (world/field.ts problemTiles); follow-up care brings sick plants or
+      // striga back on new tiles until it is done
+      const spots = h && t ? problemTiles(h, t, farm, day) : 0;
+      const job = h ? jobOf(h, rec?.treatment) : undefined;
+      const fuSick = fu?.job === 'uproot' ? fu.need & ~fuBits : 0;
+      const fuStriga = fu?.job === 'pull' ? fu.need & ~fuBits : 0;
       const gaps = plan?.date === 'early' ? someTiles(`gap:${t?.cycle}:${farm}`, 5) : 0;
       // the farm grows with its seed, fertilizer and machines: taller or shorter, greener or paler
       const growth = active && t ? this.grown(t, farm, day).plots : [1];
@@ -1548,9 +1572,23 @@ export class FarmWorld {
         if (fuDry & bit) soil = C.soilDry;
         if (h === 'drought' && treatBits & bit) soil = C.soilWet;
         if (h === 'flood') soil = C.soilDark;
+        // the topsoil washed off the gullies: red subsoil until the trenches are dug
+        if (showProblem && h === 'erosion' && spots & bit && !(treatBits & bit)) soil = '#c8642a';
+        // weeds cut and laid as mulch, or bare soil covered
+        const mulched = job === 'mulch' && !!(treatBits & spots & bit);
+        if (mulched) soil = C.mulch;
         col.set(soil);
         put(this.mound, moundAt, col);
         if (!isPrep) put(this.wild, at(c.x, 0.12, c.z, { ry: i * 1.3 }));
+        const spot = !!(spots & bit);
+        const open = showProblem && spot && !(treatBits & bit);
+        if (mulched) put(this.mulch, at(c.x, 0, c.z, { ry: i }));
+        if (open && h === 'erosion') put(this.gullies, at(c.x, 0, c.z, { ry: (i % 3) * 0.15 }));
+        if (h === 'erosion' && job === 'trench' && spot && treatBits & bit) put(this.trenches, at(c.x, 0, c.z));
+        if (open && h === 'rodents') put(this.mounds, at(c.x + 0.15, 0, c.z - 0.1, { ry: i }));
+        if ((open && h === 'striga') || fuStriga & bit) put(this.striga, at(c.x, 0.04, c.z, { ry: i * 0.7 }));
+        // a sick plant pulled out and burnt leaves a gap
+        if (h === 'virus' && job === 'uproot' && spot && treatBits & bit && active && sown & bit) continue;
         // the crop
         if (!active || !(sown & bit) || gaps & bit) continue;
         let stage: keyof FarmWorld['plants'] = day <= 2 ? 'sprout' : day <= 4 ? 'young' : day <= CHECK_DAYS ? 'tall' : 'ripe';
@@ -1570,8 +1608,25 @@ export class FarmWorld {
             }
             if (h === 'hail') sy = 0.75;
             if (h === 'harvestEarly') tint = '#b8f07a';
+            if (spot) {
+              // maize lethal necrosis: yellow streaks, the top drying; striga: wilting in damp soil; rats: gnawed
+              if (h === 'virus') tint = '#d8cf7e';
+              if (h === 'striga') {
+                tint = '#d9d68c';
+                sy = 0.8;
+              }
+              if (h === 'rodents') {
+                tint = '#e2dc98';
+                sy = 0.7;
+              }
+              if (h === 'erosion') sy = 0.85;
+            }
           }
         }
+        if (fuSick & bit && stage !== 'stubble') tint = '#d8cf7e';
+        // flattened by the wind: the plant lies on the ground until it is stood up and earthed up
+        const flat = showProblem && h === 'wind' && spot && !(treatBits & bit) && stage !== 'stubble' && stage !== 'sprout';
+        if (flat) tint = '#e4dc8a';
         if (h === 'plantLate') sy *= 0.8;
         const g = growth[0] ?? 1;
         if (stage !== 'sprout' && stage !== 'stubble') {
@@ -1580,7 +1635,7 @@ export class FarmWorld {
         }
         if (lost > 0.08 && tint === '#ffffff' && stage !== 'stubble') tint = lost > 0.25 ? '#dcd27a' : '#eef0a8';
         col.set(tint);
-        put((t && cropOf(t, farm) === 'kale' ? this.kale : this.plants)[stage], at(c.x, 0.06, c.z, { sy, ry: (i % 2) * 0.4 }), col);
+        put((t && cropOf(t, farm) === 'kale' ? this.kale : this.plants)[stage], at(c.x, 0.06, c.z, flat ? { sy, ry: 0.6, rz: 1.25 } : { sy, ry: (i % 2) * 0.4 }), col);
         const weedy = (showProblem && !(treatBits & bit) && weedMask & bit) || fuWeeds & bit;
         if (weedy) put(this.weeds, at(c.x, 0.08, c.z, { ry: i }));
         if (showProblem && !(treatBits & bit)) {
@@ -1697,8 +1752,11 @@ export class FarmWorld {
       if (r.job === 'borer') return carry === 'sprayer' ? { job: r.key, need: r.need, fx: 'spray' } : { hint: `Get the sprayer from the shed: ${ROUTINE.borer.teach}` };
       return carry === 'fertilizer' ? { job: r.key, need: r.need, fx: 'fert' } : { hint: `Get fertilizer from the shed: ${ROUTINE.topdress.teach}` };
     }
-    if (tr.job === 'weed') return { job: tr.key, need: tr.need, fx: 'weed' };
-    if (tr.job === 'drain') return { job: tr.key, need: tr.need, fx: 'drain' };
+    if (tr.job === 'weed' || tr.job === 'pull') return { job: tr.key, need: tr.need, fx: 'weed' };
+    if (tr.job === 'drain' || tr.job === 'trench') return { job: tr.key, need: tr.need, fx: 'drain' };
+    if (tr.job === 'mulch') return { job: tr.key, need: tr.need, fx: 'mulch' };
+    if (tr.job === 'uproot') return { job: tr.key, need: tr.need, fx: 'clear' };
+    if (tr.job === 'prop' || tr.job === 'trap') return { job: tr.key, need: tr.need, fx: 'dig' };
     if (tr.job === 'water') return carry === 'water' ? { job: tr.key, need: tr.need, fx: 'water' } : { hint: 'Fill the watering can at the pond' };
     if (tr.job === 'feed') return carry === 'fertilizer' ? { job: tr.key, need: tr.need, fx: 'fert' } : { hint: 'Get fertilizer from the shed to top-dress' };
     if (tr.job === 'spray') return carry === 'sprayer' ? { job: tr.key, need: tr.need, fx: 'spray' } : { hint: 'Get the sprayer from the shed' };

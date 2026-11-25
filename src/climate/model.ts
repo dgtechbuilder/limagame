@@ -301,6 +301,14 @@ export function treatDelta(job: string, solar: boolean): Delta {
       return sized({ soil: 0.5, credits: 0.3 });
     case 'drain':
       return { soil: 1 };
+    // the newer problems: trenches across the slope keep the soil on the farm; mulch covers it
+    case 'trench':
+      return { soil: 1.5 };
+    case 'mulch':
+      return sized({ soil: 1, credits: 0.3 });
+    case 'pull':
+    case 'uproot':
+      return sized({ soil: 0.2 });
     default:
       return {};
   }
@@ -325,7 +333,7 @@ export function wrongFixDelta(pick: string): Delta | null {
 }
 
 /** Climate shocks: the weather problems a changing climate brings more of. */
-export const SHOCKS: TrialHazard[] = ['drought', 'flood', 'hail'];
+export const SHOCKS: TrialHazard[] = ['drought', 'flood', 'hail', 'wind', 'erosion'];
 
 /* ---------------- Farm Moja's season (one acre) ---------------- */
 

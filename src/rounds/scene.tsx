@@ -99,7 +99,31 @@ function ProduceArt({ crop, state }: { crop: Crop; state: Produce }) {
 
 /* ---------------- one plant at one stage, with what has happened to it ---------------- */
 
-type Mark = 'small' | 'bitten' | 'shred' | 'soggy' | 'spots' | 'weedy' | 'ripe' | 'green' | 'late' | 'pecked';
+type Mark = 'small' | 'bitten' | 'shred' | 'soggy' | 'spots' | 'weedy' | 'ripe' | 'green' | 'late' | 'pecked' | 'streak' | 'lodged' | 'striga' | 'bare' | 'gnawed';
+
+/** Striga: a short stem of pink flowers growing from the crop's roots. */
+function StrigaShoot({ x, y, s = 1 }: { x: number; y: number; s?: number }) {
+  return (
+    <g transform={`translate(${x},${y}) scale(${s})`}>
+      <path d="M0,0 L0,-22" stroke="#6f8a3a" strokeWidth={1.6} />
+      <path d="M0,-6 l-4,-3 M0,-12 l4,-3" stroke="#6f8a3a" strokeWidth={1} />
+      {[[0, -24], [-2.6, -20], [2.6, -19], [-1.8, -15], [2.2, -13]].map(([fx, fy], i) => (
+        <circle key={i} cx={fx} cy={fy} r={2.1} fill="#e85aa8" stroke="#a02a6a" strokeWidth={0.5} />
+      ))}
+    </g>
+  );
+}
+
+/** A mole rat's heap of fresh soil, with its hole. */
+function Mound({ x, y, s = 1 }: { x: number; y: number; s?: number }) {
+  return (
+    <g transform={`translate(${x},${y}) scale(${s})`}>
+      <ellipse cx={0} cy={0} rx={12} ry={6} fill="#5a3a22" stroke="#3a2414" strokeWidth={0.8} />
+      <ellipse cx={-2} cy={-2} rx={6} ry={2.6} fill="#7a5232" />
+      <ellipse cx={8} cy={3} rx={3.4} ry={2} fill="#1d120a" />
+    </g>
+  );
+}
 const BASE: Record<Crop, number> = { maize: 0.98, kale: 1.6, tomato: 1.35, beans: 1.55 };
 const BOX: Record<Crop, { h: number; w: number }> = { maize: { h: 96, w: 48 }, beans: { h: 44, w: 24 }, kale: { h: 56, w: 30 }, tomato: { h: 68, w: 26 } };
 const SPOT: Record<Crop, [string, string]> = { maize: ['#c2651c', '#7a3b10'], beans: ['#c2651c', '#7a3b10'], tomato: ['#5a3418', '#d7d58a'], kale: ['#d9c04a', '#7a5a1a'] };
@@ -115,7 +139,7 @@ function Specimen({ crop, early, x, y, marks, seed, uid }: { crop: Crop; early: 
   const body = <Plant crop={crop} x={0} y={0} s={1} cond={cond} seed={seed} bg={SKY} />;
   return (
     <g transform={`translate(${x},${y}) scale(${s})`}>
-      <g transform={has('shred') ? 'rotate(8)' : has('bitten') ? 'rotate(10)' : undefined}>
+      <g transform={has('lodged') ? 'rotate(72)' : has('gnawed') ? 'rotate(-58)' : has('shred') ? 'rotate(8)' : has('bitten') ? 'rotate(10)' : undefined}>
         {has('bitten') ? (
           <>
             <clipPath id={clip}>
@@ -157,6 +181,30 @@ function Specimen({ crop, early, x, y, marks, seed, uid }: { crop: Crop; early: 
           <ellipse cx={0} cy={2} rx={w * 1.2} ry={7} fill="#8a7a4a" opacity={0.92} />
           <path d={`M${-w},1 h${w * 0.8} M${w * 0.2},4 h${w * 0.8}`} stroke="#d9cfa0" strokeWidth={1.4} strokeLinecap="round" />
         </>
+      )}
+      {has('streak') && (
+        <g>
+          {Array.from({ length: 7 }, (_, i) => {
+            const px = (rand() - 0.5) * w * 1.4;
+            const py = -h * (0.3 + rand() * 0.55);
+            return <path key={i} d={`M${px},${py} l${8 + rand() * 8},${-3 - rand() * 3}`} stroke="#eef2b8" strokeWidth={1.6} strokeLinecap="round" />;
+          })}
+          <path d={`M-6,${-h} q6,-8 12,0 l-4,${h * 0.22} l-4,0 Z`} fill="#b08a4a" opacity={0.9} />
+        </g>
+      )}
+      {has('striga') && [-0.9, -0.35, 0.4, 0.95].map((f, i) => <StrigaShoot key={i} x={f * w} y={2} s={0.85 + (i % 2) * 0.2} />)}
+      {has('bare') && (
+        <g>
+          <path d={`M${-w * 1.2},6 Q0,-4 ${w * 1.2},6 L${w * 1.2},12 L${-w * 1.2},12 Z`} fill="#a85a32" />
+          {[-8, -3, 3, 8].map((a, k) => <path key={k} d={`M0,0 q${a * 0.6},5 ${a * 1.4},10`} stroke="#e8d8b0" strokeWidth={1.3} fill="none" />)}
+        </g>
+      )}
+      {has('lodged') && [-12, 4, 14].map((a, k) => <path key={k} d={`M0,0 q${a * 0.5},4 ${a},7`} stroke="#e8d8b0" strokeWidth={1.3} fill="none" />)}
+      {has('gnawed') && (
+        <g>
+          <path d="M-3,-3 l2,2 l-2,2 l2,2" stroke="#e6d6a4" strokeWidth={1.4} fill="none" />
+          <Mound x={w * 0.9} y={4} s={0.9} />
+        </g>
       )}
       {has('weedy') && (
         <g>
@@ -218,6 +266,11 @@ function marksFor(r: Round): Mark[] {
     case 'livestock': return ['bitten'];
     case 'wildlife': return ['pecked'];
     case 'hail': return ['shred', ...ripe];
+    case 'virus': return ['streak'];
+    case 'wind': return ['lodged', ...ripe];
+    case 'striga': return ['striga', 'small'];
+    case 'erosion': return ['bare', ...ripe];
+    case 'rodents': return ['gnawed'];
     case 'plantLate': return ['small'];
     case 'harvestEarly': return ['green'];
     case 'harvestLate': return ['late'];
@@ -293,6 +346,15 @@ function LeafClose({ r }: { r: Round }) {
         </>
       )}
       {r.hazard === 'flood' && [[60, 50], [130, 98], [150, 56]].map(([x, y], i) => <path key={i} d={`M${x},${y} q5,8 0,11 q-5,-3 0,-11 Z`} fill="#8fd0f0" />)}
+      {r.hazard === 'virus' && (
+        <>
+          {[[16, 76, 186, 58], [24, 70, 176, 50], [30, 82, 180, 66], [40, 66, 150, 52]].map(([x1, y1, x2, y2], i) => (
+            <path key={i} d={`M${x1},${y1} Q100,${(y1 + y2) / 2 - 8} ${x2},${y2}`} stroke="#eef2b8" strokeWidth={2.6} fill="none" strokeLinecap="round" />
+          ))}
+          <path d="M150,48 Q176,52 194,60 Q176,72 150,70 Z" fill="#b08a4a" stroke="#7a5a24" strokeWidth={1} />
+          {[[96, 52], [104, 58], [112, 54]].map(([x, y], i) => <ellipse key={i} cx={x} cy={y} rx={2.2} ry={0.9} fill="#2a2a1a" />)}
+        </>
+      )}
     </>
   );
 }
@@ -367,6 +429,42 @@ function CloseUp({ r }: { r: Round }) {
       </>
     );
   }
+  if (r.hazard === 'striga') {
+    return (
+      <>
+        <rect width={PART_W} height={PART_H} fill={DIRT} />
+        <path d="M60,140 L60,20" stroke="#5c8f2c" strokeWidth={9} />
+        <path d="M60,56 Q30,40 14,52 M60,74 Q96,56 112,64" stroke="#b9c35a" strokeWidth={10} fill="none" strokeLinecap="round" />
+        <StrigaShoot x={110} y={140} s={3} />
+        <StrigaShoot x={160} y={140} s={2.4} />
+        <StrigaShoot x={84} y={140} s={1.8} />
+      </>
+    );
+  }
+  if (r.hazard === 'rodents') {
+    return (
+      <>
+        <rect width={PART_W} height={PART_H} fill={DIRT} />
+        <path d="M70,140 L70,104 L86,96 L74,108 L74,140 Z" fill="#9ac76a" stroke="#4f7a2a" strokeWidth={1} />
+        <path d="M84,96 L180,30" stroke="#6fae3c" strokeWidth={9} strokeLinecap="round" />
+        {[0, 1, 2, 3].map(k => <path key={k} d={`M${66 + k * 3},${104 + (k % 2) * 3} l2,3`} stroke="#e6d6a4" strokeWidth={1.6} />)}
+        <Mound x={150} y={112} s={2.6} />
+        {Array.from({ length: 9 }, (_, k) => <ellipse key={k} cx={20 + rand() * 50} cy={110 + rand() * 24} rx={2.4} ry={1.2} fill="#1d120a" transform={`rotate(${rand() * 180} 40 120)`} />)}
+      </>
+    );
+  }
+  if (r.hazard === 'wind') {
+    return (
+      <>
+        <rect width={PART_W} height={PART_H} fill={SKY} />
+        <rect y={112} width={PART_W} height={28} fill={DIRT} />
+        <path d="M60,114 Q62,106 70,104 L190,72" stroke="#5c8f2c" strokeWidth={8} fill="none" strokeLinecap="round" />
+        <path d="M60,114 l-10,10 M60,114 l-2,12 M60,114 l8,10 M60,114 l14,6" stroke="#e8d8b0" strokeWidth={2} />
+        <path d="M110,92 Q130,70 158,74 M140,84 Q150,104 176,100" stroke="#4fae3c" strokeWidth={7} fill="none" strokeLinecap="round" />
+        {[[20, 30], [30, 52], [14, 70]].map(([x, y], i) => <path key={i} d={`M${x},${y} h40 q8,0 8,-6`} stroke="#9ab0c0" strokeWidth={2.4} fill="none" strokeLinecap="round" />)}
+      </>
+    );
+  }
   if (r.hazard === 'plantEarly') {
     const kernel = r.crop === 'beans' ? '#8a5a30' : r.crop === 'tomato' ? '#e8dcaa' : '#f2c230';
     return (
@@ -417,6 +515,29 @@ function SoilPic({ r }: { r: Round }) {
           const y = 42 + rand() * 70;
           return <path key={k} d={`M${x},${y} q-5,-12 -8,-16 M${x},${y} q0,-14 2,-20 M${x},${y} q5,-12 9,-15`} stroke={k % 2 ? '#8fd45a' : '#6fbf3a'} strokeWidth={2.4} fill="none" strokeLinecap="round" />;
         })}
+      {r.hazard === 'erosion' && (
+        <g>
+          <rect x={x0} y={18} width={88} height={98} rx={8} fill="#b5653a" />
+          {[[x0 + 18, 18], [x0 + 52, 18]].map(([x, y], i) => (
+            <path key={i} d={`M${x},${y} q${8 - i * 14},30 ${-2 + i * 6},52 q-6,24 ${4 + i * 4},46`} stroke="#6a3418" strokeWidth={9 - i * 2} fill="none" strokeLinecap="round" />
+          ))}
+          {[[x0 + 34, 60], [x0 + 70, 86]].map(([x, y], i) => (
+            <g key={i}>
+              <path d={`M${x},${y} l0,-14`} stroke="#5c8f2c" strokeWidth={3} />
+              {[-6, -2, 3, 7].map((a, k) => <path key={k} d={`M${x},${y} q${a * 0.6},5 ${a * 1.2},10`} stroke="#efe2c0" strokeWidth={1.2} fill="none" />)}
+            </g>
+          ))}
+        </g>
+      )}
+      {r.hazard === 'rodents' && [[x0 + 22, 40], [x0 + 60, 62], [x0 + 30, 92], [x0 + 70, 104]].map(([x, y], i) => <Mound key={i} x={x} y={y} s={1.1} />)}
+      {r.hazard === 'wind' &&
+        [[x0 + 24, 52], [x0 + 62, 90]].map(([x, y], i) => (
+          <g key={i}>
+            <path d={`M${x},${y} l30,-8`} stroke="#5c8f2c" strokeWidth={4} strokeLinecap="round" />
+            {[-8, -3, 2, 7].map((a, k) => <path key={k} d={`M${x},${y} q${a * 0.5},-4 ${a},-9`} stroke="#efe2c0" strokeWidth={1.3} fill="none" />)}
+          </g>
+        ))}
+      {r.hazard === 'striga' && [[x0 + 20, 70], [x0 + 46, 104], [x0 + 70, 58]].map(([x, y], i) => <StrigaShoot key={i} x={x} y={y} s={1.1} />)}
       {dry && Array.from({ length: 7 }, (_, k) => <ellipse key={k} cx={x0 + 10 + rand() * 68} cy={26 + rand() * 82} rx={4} ry={2.6} fill={r.crop === 'beans' ? '#8a5a30' : '#f2c230'} stroke="#8a6a24" strokeWidth={0.6} transform={`rotate(${k * 37} ${x0 + 40} ${60})`} />)}
       {r.hazard === 'wildlife' && (
         <>
@@ -435,8 +556,10 @@ function SoilPic({ r }: { r: Round }) {
 
 /* ---------------- the farm from above ---------------- */
 
-function Marker({ crop, stage, x, y, tone }: { crop: Crop; stage: Round['stage']; x: number; y: number; tone: 'ok' | 'pale' | 'sick' | 'small' | 'torn' | 'cut' | 'ripe' | 'late' }) {
+function Marker({ crop, stage, x, y, tone }: { crop: Crop; stage: Round['stage']; x: number; y: number; tone: 'ok' | 'pale' | 'sick' | 'small' | 'torn' | 'cut' | 'ripe' | 'late' | 'flat' | 'grey' }) {
   const green = crop === 'kale' ? '#4f9070' : crop === 'maize' ? '#3f9b35' : '#4fae3c';
+  if (tone === 'flat') return <ellipse cx={x + 4} cy={y + 2} rx={8} ry={2.4} fill={green} stroke="#2a5a24" strokeWidth={0.7} transform={`rotate(24 ${x} ${y})`} />;
+  if (tone === 'grey') return <circle cx={x} cy={y} r={stage === 'young' ? 2.6 : 5} fill="#c8c07a" stroke="#7a6a3a" strokeWidth={0.7} />;
   if (tone === 'cut') return <circle cx={x} cy={y} r={1.6} fill="#cfae74" stroke="#8a6a3a" strokeWidth={0.4} />;
   const fill = tone === 'pale' ? '#b7cc7a' : tone === 'sick' ? '#a98a3a' : tone === 'torn' ? '#7f8f4a' : tone === 'late' ? '#a89a52' : green;
   const r = stage === 'young' || tone === 'small' ? 2.6 : 5.4;
@@ -493,6 +616,11 @@ function FarmPic({ r }: { r: Round }) {
       else if (r.hazard === 'wildlife') tone = rand() < 0.4 ? 'pale' : tone;
       else if (r.hazard === 'weeds') tone = 'pale';
       else if (r.hazard === 'flood') tone = 'pale';
+      else if (r.hazard === 'wind') tone = k < 6 || rand() < 0.3 ? 'flat' : tone;
+      else if (r.hazard === 'virus') tone = rand() < 0.35 ? 'grey' : tone;
+      else if (r.hazard === 'striga') tone = i < 3 ? 'pale' : tone;
+      else if (r.hazard === 'erosion') gone = (k === 2 || k === 6) && rand() < 0.7;
+      else if (r.hazard === 'rodents') gone = (k < 3 || i === 0) && rand() < 0.45;
       if (goatsIn && x > 108 && x < 170 && i > 1) gone = true;
       if (gone) continue;
       out.push(<Marker key={`${i}-${k}`} crop={r.crop} stage={r.stage} x={x} y={y} tone={tone} />);
@@ -536,6 +664,10 @@ function FarmPic({ r }: { r: Round }) {
           );
         })}
       {r.hazard === 'hail' && Array.from({ length: 36 }, (_, k) => <circle key={k} cx={18 + rand() * 164} cy={22 + rand() * 92} r={1.2 + rand() * 1.6} fill="#fff" stroke="#c9dfe8" strokeWidth={0.4} />)}
+      {r.hazard === 'erosion' && [64, 136].map((x, i) => <path key={i} d={`M${x},18 q${10 - i * 16},34 ${-4 + i * 6},58 q-6,20 ${6 + i * 4},42`} stroke="#8a4a24" strokeWidth={6} fill="none" strokeLinecap="round" opacity={0.85} />)}
+      {r.hazard === 'striga' && Array.from({ length: 26 }, (_, k) => <circle key={k} cx={24 + rand() * 152} cy={24 + rand() * 88} r={1.8} fill="#e85aa8" stroke="#a02a6a" strokeWidth={0.4} />)}
+      {r.hazard === 'rodents' && [[30, 40], [44, 80], [24, 104], [90, 24], [60, 60]].map(([x, y], i) => <Mound key={i} x={x} y={y} s={0.55} />)}
+      {r.hazard === 'wind' && [[20, 8], [70, 6], [130, 9]].map(([x, y], i) => <path key={i} d={`M${x},${y} h40 q6,0 6,-4`} stroke="#e8f0f4" strokeWidth={1.6} fill="none" strokeLinecap="round" />)}
       {r.hazard === 'harvestEarly' && [[160, 108], [168, 102], [154, 102], [164, 112], [172, 110]].map(([x, y], i) => <circle key={i} cx={x} cy={y} r={4.2} fill="#7fbf4a" stroke="#4f8a2a" strokeWidth={0.8} />)}
       {r.hazard === 'harvestLate' && Array.from({ length: 9 }, (_, k) => <circle key={k} cx={26 + rand() * 148} cy={24 + rand() * 90} r={2.6} fill="#4a2a14" stroke="#ecefd8" strokeOpacity={0.6} strokeWidth={0.8} />)}
       {wires}

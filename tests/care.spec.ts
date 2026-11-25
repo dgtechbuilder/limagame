@@ -27,20 +27,27 @@ test('a world check: right call, a wrong fix, the right fix, then the work by ha
   await expect.poll(async () => (await state(page)).coins).toBeLessThan(coins);
   await expect(page.locator('.care-opt.is-wrong')).toHaveCount(1);
 
-  // the right one leads to the work by hand, unchanged
+  // the right one asks how; the standard way is bought, and the farmer sets off for the work by hand
   await page.locator('.care-opt', { hasText: right.label }).click();
-  await page.getByRole('button', { name: 'Back to the farm', exact: true }).click();
-  await expect(page.locator('.hud-task')).toContainText('Cut the weeds on Farm 1');
+  const before = (await state(page)).coins;
+  await page.getByRole('button', { name: /^Buy Cut them out by hand/ }).click();
   const key = `0:${c.day}`;
+  await expect.poll(async () => (await state(page)).trial.checks[key]?.paid).toBeGreaterThan(0);
+  const paid = (await state(page)).trial.checks[key].paid;
+  expect((await state(page)).coins).toBe(before - paid);
+  await expect(page.locator('.care-screen')).toHaveCount(0);
+  await expect(page.locator('.hud-task')).toContainText('Cut the weeds on Farm 1');
   await workFarm(page, 0, async () => !!(await state(page)).trial.checks[key]?.treated);
 
   const s = await state(page);
+  // bought already: the finished work costs nothing more
+  expect(s.coins).toBe(before - paid);
   expect(s.trial.checks[key].fix).toBe(right.id);
   expect(s.trial.checks[key].wrongFixes).toBe(1);
   // weeds come back: a follow-up is set two days on
   expect(s.trial.followUps.some((u: { farm: number; job: string }) => u.farm === 0 && u.job === 'weed')).toBe(true);
   const names = await eventNames(page);
-  expect(names).toEqual(expect.arrayContaining(['prescribe', 'care_started', 'care_done']));
+  expect(names).toEqual(expect.arrayContaining(['prescribe', 'treatment_buy', 'care_started', 'care_done']));
 });
 
 test('follow-up care done on its day', async ({ page }) => {

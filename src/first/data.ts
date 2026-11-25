@@ -14,6 +14,12 @@ export type Call =
   | 'weeds'
   | 'animals'
   | 'hail'
+  // the newer problems on the six farms
+  | 'virus'
+  | 'wind'
+  | 'striga'
+  | 'erosion'
+  | 'rodents'
   | 'plantEarly'
   | 'plantLate'
   | 'harvestEarly'

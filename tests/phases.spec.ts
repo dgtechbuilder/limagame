@@ -302,7 +302,9 @@ test('on screen: choose how to treat after the right fix, the water tank on the 
   await ways.getByRole('button', { name: /Weed, then mulch/ }).click();
   const st = await state(page);
   expect(st.trial.checks[`0:${d}`].treatment).toBe('mulch');
-  await page.getByRole('button', { name: 'Back to the farm' }).last().click();
+  // bought: the way is kept, and the farmer sets off to weed and mulch
+  await page.getByRole('button', { name: /^Buy Weed, then mulch/ }).click();
+  await expect.poll(async () => (await state(page)).trial.checks[`0:${d}`].paid).toBeGreaterThan(0);
 
   // the tank on the HUD opens Climate › Water; buy a bowser
   await page.getByRole('button', { name: /Water tank/ }).click();

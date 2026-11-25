@@ -223,6 +223,16 @@ export type TrialHazard =
   | 'livestock'
   | 'wildlife'
   | 'hail'
+  /** maize lethal necrosis: a virus spread by insects and saved seed (from the second cycle: NEW_HAZARDS) */
+  | 'virus'
+  /** strong wind flattens the stalks (lodging) */
+  | 'wind'
+  /** striga (witchweed): a parasitic weed that feeds on the maize roots */
+  | 'striga'
+  /** heavy rain washes the topsoil off, gullies form and roots are bared */
+  | 'erosion'
+  /** rats and mole rats dig up seed and gnaw the roots and the cobs */
+  | 'rodents'
   | 'plantEarly'
   | 'plantLate'
   | 'harvestEarly'
@@ -240,6 +250,32 @@ const BASE: Record<TrialStage, Partial<Record<TrialHazard, number>>> = {
   grow: { healthy: 3, drought: 0.1, flood: 0.05, nitrogen: 0.05, armyworm: 0.9, disease: 0.35, weeds: 0.1, livestock: 0.12, hail: 0.08 },
   harvest: { healthy: 3, flood: 0.05, disease: 0.25, livestock: 0.12, wildlife: 0.25, hail: 0.08 },
 };
+
+/** The problems added after the first release (wind, a virus, striga, erosion, rats). They come from a second roll
+    that only replaces a day the main draw left healthy, so every problem the older odds gave still shows where it
+    did, and never in the first, guided planting: the farmer meets them once they know the basics. Odds per stage: */
+export const NEW_HAZARDS = ['virus', 'wind', 'striga', 'erosion', 'rodents'] as const;
+const EXTRA: Record<TrialStage, Partial<Record<TrialHazard, number>>> = {
+  young: { rodents: 0.09, erosion: 0.06, striga: 0.03 },
+  grow: { virus: 0.05, wind: 0.07, striga: 0.07, erosion: 0.05, rodents: 0.03 },
+  harvest: { virus: 0.03, wind: 0.08, rodents: 0.06 },
+};
+
+/** How likely each of the newer problems is on a healthy day, after the farm's plan and the season's rain. */
+export function extraWeightsFor(p: Plan, f: Forecast, day: number): Partial<Record<TrialHazard, number>> {
+  const w: Partial<Record<TrialHazard, number>> = { ...EXTRA[stageOfDay(day)] };
+  const add = (h: TrialHazard, n: number) => {
+    if (w[h] !== undefined) w[h] = Math.max(0, (w[h] ?? 0) + n);
+  };
+  // close planting and saved seed carry the virus; wet seasons carry the soil away; striga loves hungry soil;
+  // slashed bush round a farm hides the rats; dense, tall maize falls over in the wind
+  add('virus', (p.seed === 'dense' ? 0.03 : 0) + (p.pest === 'none' ? 0.02 : 0));
+  add('erosion', (f === 'wet' ? 0.06 : 0) + (p.land === 'mulch' ? -0.04 : p.land === 'slash' || p.land === 'tractor' ? 0.02 : 0));
+  add('striga', p.fert === 'none' ? 0.06 : p.fert === 'manure' ? 0.02 : 0);
+  add('rodents', p.land === 'slash' ? 0.04 : 0);
+  add('wind', (p.seed === 'dense' ? 0.04 : 0) + (p.harvest === 'late' ? 0.04 : 0));
+  return w;
+}
 
 const LAND_WEEDS: Record<Plan['land'], number> = { slash: 1.2, hoe: 0.6, ox: 0.5, tractor: 0.5, mulch: 0.2 };
 const FERT_HUNGER: Record<Plan['fert'], number> = { none: 2, manure: 0.8, basal: 1, basalTop: 0.1, double: 0.1 };
@@ -276,6 +312,11 @@ const DAMAGE_BASE: Record<TrialHazard, { missed: number; caught: number; treat: 
   livestock: { missed: 0.15, caught: 0.04, treat: 40, fix: 'The animals driven out and the fence mended' },
   wildlife: { missed: 0.12, caught: 0.04, treat: 30, fix: 'Birds scared off and the cobs guarded' },
   hail: { missed: 0.08, caught: 0.06, treat: 0, fix: '' },
+  virus: { missed: 0.18, caught: 0.06, treat: 25, fix: 'The sick plants pulled out and burnt' },
+  wind: { missed: 0.12, caught: 0.05, treat: 25, fix: 'The flattened stalks stood up and earthed up' },
+  striga: { missed: 0.15, caught: 0.05, treat: 25, fix: 'The striga pulled before it seeded' },
+  erosion: { missed: 0.1, caught: 0.03, treat: 35, fix: 'Trenches dug across the slope' },
+  rodents: { missed: 0.12, caught: 0.03, treat: 30, fix: 'Traps set on the runs and the bush cleared' },
   // timing problems come from the plan itself: their cost is already in the yield
   plantEarly: { missed: 0, caught: 0, treat: 0, fix: '' },
   plantLate: { missed: 0, caught: 0, treat: 0, fix: '' },
@@ -325,6 +366,9 @@ export interface CheckRecord {
   wrongFixes?: number;
   /** how the fix is done (care/treatments.ts); missing: the standard way */
   treatment?: string;
+  /** farm world: coins paid for that way at the fix screen (bought before the work, which then costs nothing more);
+      missing: paid when the work by hand is finished */
+  paid?: number;
 }
 
 /** Care that has to be done again a day or two after a treatment (care/data.ts FOLLOW_UP). */
@@ -451,6 +495,8 @@ export const CROP_WORDS: Record<TrialCrop, { name: string; produce: string; read
 export function cropHazard(h: TrialHazard, crop: TrialCrop): TrialHazard {
   if (crop === 'maize') return h;
   if (h === 'armyworm') return 'aphids';
+  // the virus, striga and lodging are problems of maize (and other cereals): sukuma wiki does not get them
+  if (h === 'virus' || h === 'striga' || h === 'wind') return 'healthy';
   if (h === 'wildlife' || h === 'plantEarly' || h === 'plantLate' || h === 'harvestEarly' || h === 'harvestLate') return 'healthy';
   return h;
 }
@@ -554,10 +600,23 @@ function planHazard(t: Pick<Trial, 'cycle' | 'forecast' | 'plans' | 'guided'>, f
   // In the guided cycle both farms share each day's luck, so they differ only where their plans differ. With six
   // farms each farm has its own luck, as real fields do; the plans still set the odds.
   let r = rand01(t.guided ? `${t.cycle}:${day}` : `${t.cycle}:${farm}:${day}`) * total;
+  let drawn: TrialHazard | null = null;
   for (const [h, n] of list) {
     r -= n;
-    if (r < 0) return h;
+    if (r < 0) {
+      drawn = h;
+      break;
+    }
   }
+  // the newer problems: a second roll on a day the first left healthy (never in the guided planting)
+  if (drawn === 'healthy' && !t.guided) {
+    let x = rand01(`x:${t.cycle}:${farm}:${day}`);
+    for (const [h, n] of Object.entries(extraWeightsFor(p, t.forecast, day)) as [TrialHazard, number][]) {
+      x -= n;
+      if (x < 0) return h;
+    }
+  }
+  if (drawn) return drawn;
   return 'healthy';
 }
 
@@ -847,6 +906,11 @@ export const HAZARD_WORDS: Record<TrialHazard, string> = {
   livestock: 'goats',
   wildlife: 'birds',
   hail: 'hail',
+  virus: 'maize lethal necrosis',
+  wind: 'wind damage',
+  striga: 'striga',
+  erosion: 'soil erosion',
+  rodents: 'rats and mole rats',
   plantEarly: 'planting too early',
   plantLate: 'planting too late',
   harvestEarly: 'harvesting too early',
@@ -973,6 +1037,16 @@ export function causeOf(h: TrialHazard, p: Plan, f: Forecast, rows?: PlotRecord[
       return p.pest === 'none' ? "This farm's plan has no pest control." : p.seed === 'dense' && h === 'disease' ? 'Planted close, the leaves stay wet and disease spreads.' : '';
     case 'wildlife':
       return p.harvest === 'late' ? 'Dry cobs left standing feed the birds.' : '';
+    case 'virus':
+      return p.seed === 'dense' ? 'Planted close, the insects that carry the virus move plant to plant.' : p.pest === 'none' ? 'No pest control: the thrips and beetles that carry the virus went unchecked.' : 'The virus came in on insects from a neighbour’s maize.';
+    case 'wind':
+      return p.seed === 'dense' ? 'Planted close, the stalks grow thin and tall and fall in the wind.' : p.harvest === 'late' ? 'Dry stalks left standing snap in the wind.' : 'A strong wind came across the open land.';
+    case 'striga':
+      return p.fert === 'none' ? 'No fertilizer: striga does best on hungry soil.' : 'Striga seed lies in the soil for years and wakes with maize roots.';
+    case 'erosion':
+      return f === 'wet' ? 'A wet season: heavy rain runs down the slope and takes the topsoil.' : p.land === 'slash' || p.land === 'tractor' ? 'Bare soil and no cover: the rain carried it off.' : 'A heavy storm ran across the farm.';
+    case 'rodents':
+      return p.land === 'slash' ? 'The slashed bush round the farm hides the rats.' : 'Rats and mole rats came in from the bush.';
     case 'plantEarly':
       return 'Planted before the rains, as planned.';
     case 'plantLate':

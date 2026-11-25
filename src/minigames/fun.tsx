@@ -12,6 +12,15 @@ const ICONS: [RegExp, string][] = [
   [/lower than/i, '⬇️'],
   [/^flat$/i, '🔻'],
   [/glyphosate|herbicide|weed killer/i, '🥀'],
+  // the newer problems' fixes (care/data.ts PRESCRIBE)
+  [/rat poison|poison/i, '☠️'],
+  [/striga/i, '🌺'],
+  [/sick plants/i, '🔥'],
+  [/stand the plants up|earth up/i, '🌽'],
+  [/fodder/i, '🐄'],
+  [/traps?\b/i, '🪤'],
+  [/flood the field/i, '🌊'],
+  [/trenches|channels/i, '⛏️'],
   // tractor and machines
   [/\bpto\b|shaft/i, '⚙️'],
   [/steering/i, '🛞'],

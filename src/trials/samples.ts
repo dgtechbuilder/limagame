@@ -134,6 +134,15 @@ export function wakalaCase(kind: WakalaCase): { trial: Trial; field: Field; day:
   return { trial, field: fieldOf(trial), day: shown, hazard: hazardFor(trial, 0, shown) };
 }
 
+/** One of the farm world's problems on Farm 1, read right and waiting for its fix (for the play-tests of the newer
+    problems: wind, the virus, striga, erosion and rats). Every earlier day checked and dealt with. */
+export function problemCase(want: TrialHazard, read = true): { trial: Trial; field: Field; day: number; hazard: TrialHazard } {
+  const { trial: base, day } = findCase([CARE_PLAN, OTHER_PLAN], want);
+  let trial = play(base, day - 1);
+  if (read) trial = { ...trial, checks: { ...trial.checks, [checkKey(0, day)]: { right: true, tries: 1, treated: false } } };
+  return { trial, field: fieldOf(trial), day, hazard: hazardFor(trial, 0, day) };
+}
+
 export const TRIAL_SAMPLES = {
   guidedPlan,
   guidedGrowing,

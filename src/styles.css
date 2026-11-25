@@ -2753,6 +2753,9 @@ button.card:active { transform: scale(0.98); }
 .care-way i { font-style: normal; font-size: 7px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; color: #b06a2a; }
 .care-way.is-smart i { color: #2c7a12; }
 .care-way.is-on { border-color: var(--gold, #ffb005); background: #fff1cf; box-shadow: 0 0 0 2px rgba(255, 176, 5, 0.35); }
+.care-way.is-bought { border-color: #2f9b14; background: #eaf7dc; box-shadow: 0 0 0 2px rgba(47, 155, 20, 0.3); }
+.care-way.is-bought i { color: #2c7a12; }
+.care-way:disabled { opacity: 0.45; }
 
 /* ---------------- water (src/water) ---------------- */
 .hud-water { right: 12px; top: 196px; }

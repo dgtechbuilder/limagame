@@ -127,8 +127,11 @@ export interface Field {
 
 export const emptyField = (cycle = 0): Field => ({ cycle, marks: {}, carry: null, hired: false });
 
-/** A treatment the farmer does by hand after reading a problem right. */
-export type TreatJob = 'weed' | 'water' | 'feed' | 'spray' | 'drain' | 'goat' | 'birds';
+/** A treatment the farmer does by hand after reading a problem right. The newer problems add: uproot (pull and burn
+    plants sick with the virus), prop (stand flattened plants up and earth them up), pull (pull striga), trench (dig
+    trenches across the slope), trap (set traps on the rats' runs), and mulch (cut weeds, or cover bare soil, and lay
+    the mulch: a way of treating, care/treatments.ts). */
+export type TreatJob = 'weed' | 'water' | 'feed' | 'spray' | 'drain' | 'goat' | 'birds' | 'uproot' | 'prop' | 'pull' | 'trench' | 'trap' | 'mulch';
 
 export const TREAT_JOB: Partial<Record<TrialHazard, TreatJob>> = {
   weeds: 'weed',
@@ -140,7 +143,37 @@ export const TREAT_JOB: Partial<Record<TrialHazard, TreatJob>> = {
   flood: 'drain',
   livestock: 'goat',
   wildlife: 'birds',
+  virus: 'uproot',
+  wind: 'prop',
+  striga: 'pull',
+  erosion: 'trench',
+  rodents: 'trap',
 };
+
+/** The work by hand for a problem, the way the farmer chose to treat it: the way's own job (weeding with a herbicide
+    is a spray job) or the problem's usual one. */
+export function jobOf(h: TrialHazard, way?: string): TreatJob | undefined {
+  return treatmentOf(h, way)?.job ?? TREAT_JOB[h];
+}
+
+/** The tiles a problem shows on, when it shows on some tiles only (the same tiles whichever way it is treated): weeds,
+    puddles, sick or flattened plants, striga, gullies and the rats' burrows. 0: it shows on the whole farm. */
+export function problemTiles(h: TrialHazard, t: Pick<Trial, 'cycle'>, farm: number, day: number): number {
+  const seed: Partial<Record<TrialHazard, [string, number]>> = {
+    weeds: ['w', 7],
+    flood: ['p', 5],
+    virus: ['v', 5],
+    wind: ['l', 7],
+    striga: ['s', 6],
+    erosion: ['e', 5],
+    rodents: ['r', 4],
+  };
+  const k = seed[h];
+  return k ? someTiles(`${k[0]}:${t.cycle}:${farm}:${day}`, k[1]) : 0;
+}
+
+/** The problem whose tiles a job works on, for needOf: the job's own problem. */
+const JOB_PROBLEM: Partial<Record<string, TrialHazard>> = { weed: 'weeds', drain: 'flood', uproot: 'virus', prop: 'wind', pull: 'striga', trench: 'erosion', trap: 'rodents' };
 
 /** What each job needs carried. Planting needs nothing: the farmer plants a row at a time with the button. */
 export const JOB_CARRY: Partial<Record<string, Exclude<Carry, null>>> = {
@@ -182,8 +215,8 @@ export function popcount(m: number) {
 /** The plots a job needs done. A farm with no fertilizer needs no fertilizer at planting; a farm with no sprayer is
     not sprayed. */
 export function needOf(job: string, t: Pick<Trial, 'cycle' | 'plans' | 'plots'>, farm: number, day = 0) {
-  if (job === 'weed') return someTiles(`w:${t.cycle}:${farm}:${day}`, 7);
-  if (job === 'drain') return someTiles(`p:${t.cycle}:${farm}:${day}`, 5);
+  const own = JOB_PROBLEM[job];
+  if (own) return problemTiles(own, t, farm, day);
   if (job === 'goat' || job === 'birds') return 1;
   if (job === 'setupFeed' || job === 'spray') {
     const r = plotsOf(t, farm)[0];
@@ -218,9 +251,10 @@ export function setupLeft(f: Field, t: Trial, farm: number): string | null {
 /** A spray treatment or follow-up has been done on this farm this cycle (its plots keep their sprayers after it). */
 export function sprayDone(f: Field, t: Trial, farm: number): boolean {
   for (let day = 1; day <= CHECK_DAYS; day++) {
-    if (TREAT_JOB[hazardFor(t, farm, day)] === 'spray' && t.checks[checkKey(farm, day)]?.treated) return true;
+    const sprayed = jobOf(hazardFor(t, farm, day), t.checks[checkKey(farm, day)]?.treatment) === 'spray';
+    if (sprayed && t.checks[checkKey(farm, day)]?.treated) return true;
     if (t.followUps?.some(u => u.farm === farm && u.day === day && u.job === 'spray' && u.done)) return true;
-    if (doneMask(f, t.cycle, farm, `t${day}`) && TREAT_JOB[hazardFor(t, farm, day)] === 'spray') return true;
+    if (doneMask(f, t.cycle, farm, `t${day}`) && sprayed) return true;
   }
   return routineDone(t, farm, 'borer');
 }
@@ -250,10 +284,11 @@ export function treatLeft(f: Field, t: Trial, farm: number, day: number): { job:
   const rec = t.checks[checkKey(farm, day)];
   if (!rec?.right || rec.treated) return null;
   const h = hazardFor(t, farm, day);
-  const job = TREAT_JOB[h];
+  const job = jobOf(h, rec.treatment);
   if (!job || !canTreat(h, t.plans[farm])) return null;
   if (PRESCRIBE[h] && !rec.fix) return null;
-  const need = needOf(job, t, farm, day) || FULL;
+  // the problem's own tiles, whichever way it is treated (a herbicide is sprayed on the weeds only)
+  const need = problemTiles(h, t, farm, day) || needOf(job, t, farm, day) || FULL;
   const key = `t${day}`;
   if (isDone(f, t, farm, key, need)) return null;
   return { job, key, need, hazard: h };
@@ -355,6 +390,12 @@ export const JOB_WORDS: Record<string, { title: string; icon: TaskIcon }> = {
   drain: { title: 'Dig drains on', icon: 'drain' },
   goat: { title: 'Chase the goat off', icon: 'goat' },
   birds: { title: 'Scare the birds off', icon: 'birds' },
+  uproot: { title: 'Pull the sick plants on', icon: 'weed' },
+  prop: { title: 'Stand up the maize on', icon: 'hoe' },
+  pull: { title: 'Pull the striga on', icon: 'weed' },
+  trench: { title: 'Dig trenches on', icon: 'drain' },
+  trap: { title: 'Set rat traps on', icon: 'hoe' },
+  mulch: { title: 'Mulch', icon: 'weed' },
 };
 
 /** Points for a farm's scheduled care done. */
@@ -409,8 +450,10 @@ export function nextTask(f: Field, t: Trial | null, today: number, coins: number
     const tr = treatLeft(f, t, i, day);
     if (tr) {
       const w = JOB_WORDS[tr.job];
-      const cost = treatCostFor(t, i, day, tr.hazard);
-      const then: Task = { title: `${w.title} ${name(i)}`, coins: -cost, icon: w.icon, target: { farm: i, at: 'plot' } };
+      // bought at the fix screen: only the work is left
+      const bought = t.checks[checkKey(i, day)]?.paid !== undefined;
+      const cost = bought ? 0 : treatCostFor(t, i, day, tr.hazard);
+      const then: Task = { title: `${w.title} ${name(i)}`, ...(bought ? { note: 'Bought · do the work' } : { coins: -cost }), icon: w.icon, target: { farm: i, at: 'plot' } };
       const item = JOB_CARRY[tr.job];
       if (item && coins >= cost) return needCarry(f, item, then);
       return then;

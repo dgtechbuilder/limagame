@@ -38,7 +38,7 @@ test('tour of the Wakala moments on a phone-sized screen', async ({ page }) => {
   await page.locator('.care-opt', { hasText: fixes.find(f => f.right)!.label }).click();
   await settle(page);
   await page.screenshot({ path: shot('05-right-fix') });
-  await page.getByRole('button', { name: 'Back to the farm', exact: true }).click();
+  await page.getByRole('button', { name: /^Buy / }).click();
 
   // follow-up due, and the problem back after a missed one
   await scenario(page, 'followUp');
