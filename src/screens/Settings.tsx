@@ -17,7 +17,8 @@ import { tractorSettings, type TractorSettings } from '../business/tune';
 import { linkLabel, lowData, onNetChange, online, slowLink } from '../net/connection';
 import { keptStatus, onWarm, warmGame, type KeptStatus } from '../net/offline';
 import { HUD_GROUPS, HUD_KEYS, hudHiddenCount, hudShown } from '../hud/prefs';
-import { clearSave, initialState, type Action, type GameState, type Settings, type SettingsTab } from '../state';
+import { clearSave, initialState, replaceSave, type Action, type GameState, type Settings, type SettingsTab } from '../state';
+import { cleanCode, cloudEnabled, cloudPlayerId, cloudRestore, adoptPlayer, type RestoreResult } from '../net/cloud';
 
 /* Settings: a full page with seven sections. Every control changes the game straight away and is kept on this device.
    Farmer: rename and change look. Game: character style, farm view, read aloud. Display: graphics, motion, full
@@ -94,7 +95,7 @@ export function SettingsPage({ s, dispatch, tab: startTab }: Props) {
           <p className="set-foot">
             {s.farmer ? `Season ${s.season} · Level ${s.level}` : 'New game'}
             <br />
-            Saved on this device
+            {cloudEnabled() ? 'Saved on this phone and online' : 'Saved on this device'}
           </p>
         </nav>
         <section className="set-content" aria-label={TABS.find(t => t.id === tab)!.label}>
@@ -780,6 +781,7 @@ function HelpTab({ s, dispatch }: Props) {
           </>
         }
       />
+      {cloudEnabled() && <PlayerCode />}
       <Row title="How the farm works" body="A quick guide to seasons, selling and rewards.">
         <GoldButton font={10} height={28} style={{ width: 120 }} onClick={() => dispatch({ type: 'open', modal: { kind: 'welcome' } })}>
           Open
@@ -808,7 +810,7 @@ function HelpTab({ s, dispatch }: Props) {
           Download
         </GoldButton>
       </Row>
-      <Row title="Reset progress" body={confirmReset ? 'Erases your farmer, seasons, money and points here. Settings stay.' : 'Start again with a new farmer.'}>
+      <Row title="Reset progress" body={confirmReset ? cloudEnabled() ? 'Erases your farmer, seasons, money and points, here and online. Settings and your player code stay.' : 'Erases your farmer, seasons, money and points here. Settings stay.' : 'Start again with a new farmer.'}>
         <div style={{ display: 'flex', gap: 6 }}>
           {confirmReset && (
             <button type="button" className="set-link" onClick={() => setConfirmReset(false)}>
@@ -830,6 +832,115 @@ function HelpTab({ s, dispatch }: Props) {
         </div>
       </Row>
     </div>
+  );
+}
+
+/** The player code: this farm's key on any phone. Copy it here; type it on another phone to open the same farm. */
+function PlayerCode() {
+  const mine = cloudPlayerId();
+  const [copied, setCopied] = useState(false);
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [found, setFound] = useState<RestoreResult | null>(null);
+  const typed = cleanCode(text);
+  const why: Record<string, string> = {
+    code: 'That is not a player code. It looks like 8-4-4-4-12 letters and numbers.',
+    none: 'No farm is saved under that code yet.',
+    offline: 'No signal. Try again when you are online.',
+    off: 'Online saving is off in this game.',
+    error: 'Could not reach the server. Try again in a moment.',
+  };
+  const copy = async () => {
+    if (!mine) return;
+    try {
+      await navigator.clipboard.writeText(mine);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* no clipboard: the code is on screen to copy by hand */
+    }
+  };
+  const look = async () => {
+    if (!typed || typed === mine) return;
+    setBusy(true);
+    setFound(await cloudRestore(typed));
+    setBusy(false);
+  };
+  const open = () => {
+    if (!found?.ok || !typed || !adoptPlayer(typed)) return;
+    replaceSave(found.state);
+  };
+  return (
+    <>
+      <Row
+        title="My player code"
+        body={
+          <>
+            Your farm is saved online under this code. Type it on another phone to play the same farm there. Keep it to
+            yourself: anyone with it can open your farm.
+            <br />
+            <code className="set-address" data-testid="player-code" style={{ userSelect: 'all', display: 'inline-block', marginTop: 4 }}>
+              {mine ?? 'Not saved online on this phone'}
+            </code>
+          </>
+        }
+      >
+        {mine && (
+          <GoldButton font={10} height={28} style={{ width: 120 }} onClick={() => void copy()}>
+            {copied ? 'Copied' : 'Copy'}
+          </GoldButton>
+        )}
+      </Row>
+      <Row
+        title="Open my farm from another phone"
+        body={
+          found?.ok ? (
+            <>
+              Found {found.farmer ? <b>{found.farmer}</b> : 'a farm'}, saved {new Date(found.savedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}. Opening it
+              replaces the farm on this phone.
+            </>
+          ) : found ? (
+            why[found.why]
+          ) : (
+            'Type the player code from your other phone.'
+          )
+        }
+      >
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          {found?.ok ? (
+            <>
+              <button type="button" className="set-link" onClick={() => setFound(null)}>
+                Cancel
+              </button>
+              <GoldButton font={10} height={28} style={{ width: 120, background: '#c0392b', borderColor: '#8e2a1f' }} onClick={open} ariaLabel="Open this farm here">
+                Open it here
+              </GoldButton>
+            </>
+          ) : (
+            <>
+              <input
+                className="name-input"
+                aria-label="Player code"
+                placeholder="Player code"
+                style={{ marginTop: 0, height: 28, width: 190, fontSize: 9 }}
+                value={text}
+                maxLength={48}
+                autoComplete="off"
+                spellCheck={false}
+                onChange={e => {
+                  setText(e.target.value);
+                  setFound(null);
+                }}
+                onKeyDown={e => e.key === 'Enter' && void look()}
+              />
+              <GoldButton font={10} height={28} style={{ width: 80, opacity: typed && typed !== mine && !busy ? 1 : 0.5 }} onClick={() => void look()} ariaLabel="Find farm">
+                {busy ? '…' : 'Find'}
+              </GoldButton>
+            </>
+          )}
+        </div>
+      </Row>
+    </>
   );
 }
 
