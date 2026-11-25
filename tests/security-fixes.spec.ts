@@ -113,3 +113,24 @@ test('in the game: a theft last night shows on PROGRESS, and Security shows the 
   await expect(light).toContainText('Your farm lights do this');
   await expect(light.getByRole('button')).toHaveCount(0);
 });
+
+test('Protect shows each measure as a card with a real photo of what is bought, and its credit', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const L = (window as unknown as Win).__lima;
+    L.jump({ view: 'classic', coins: 20000, life: { day: 9, started: 2, date: new Date().toISOString().slice(0, 10) }, modal: { kind: 'security', tab: 'protect' } });
+  });
+  const cards = page.locator('.sc-card');
+  await expect(cards).toHaveCount(9); // the GPS tracker shows only with the tractor business
+  for (const id of ['watch', 'locks', 'watchman', 'mpesa', 'taplock', 'tags', 'dog', 'light', 'fence']) {
+    const card = page.locator(`.sc-card[data-option="${id}"]`);
+    await expect(card.locator('img.rr-photo')).toHaveCount(1);
+    await expect(card.locator('.rr-credit')).toContainText(/Photo: .+ · (CC|Public domain)/);
+  }
+  // three to a row
+  const [a, b, c, d] = await Promise.all([0, 1, 2, 3].map(i => cards.nth(i).boundingBox()));
+  expect(a!.y).toBeCloseTo(b!.y, 0);
+  expect(b!.y).toBeCloseTo(c!.y, 0);
+  expect(d!.y).toBeGreaterThan(a!.y + a!.height - 1);
+  await expect(page.locator('.sc-card[data-option="watch"] .sc-cuts li')).toHaveCount(7);
+});

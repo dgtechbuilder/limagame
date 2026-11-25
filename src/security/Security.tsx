@@ -10,6 +10,8 @@ import { LIFE } from '../livestock/config';
 import { LockTag, OpenLine } from '../unlock/Lock';
 import { isOpen } from '../unlock/model';
 import { MEASURES, TARGETS, type Target } from './config';
+import { measurePhoto } from './photos';
+import { PhotoPicture } from '../components/PhotoPicture';
 import { activeMeasures, bestAgainst, exposure, lightCovered, nightlyCost, securityOf, storeTheftShare, theftOpen } from './model';
 
 /* The Security page: keeping the farm safe from thieves (and the hens from predators). Protect (every measure, what
@@ -76,49 +78,75 @@ export function SecurityPage({ s, dispatch, tab: startTab }: Props) {
   );
 }
 
+/** A small picture for each thing a measure protects, on its card's chips. */
+const ICON: Record<Target, string> = { crops: '🌽', hens: '🐔', predators: '🦅', cows: '🐄', tools: '🔧', store: '🌾', cash: '💵', water: '💧', diesel: '⛽' };
+
+/* Protect: one card per measure, three to a row, each with a real photo of what is being bought, what it guards
+   (a chip per thing, with how much it cuts the chance of losing it), and its price on the button. */
 function Protect({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
   const sec = securityOf(s.security);
   const lit = lightCovered(s);
+  const shown = MEASURES.filter(m => !m.needs || s.biz);
   return (
     <div className="lv-measures">
-      <OpenLine s={s} total={MEASURES.filter(m => !m.needs || s.biz).length} what="measures" />
-      {MEASURES.filter(m => !m.needs || s.biz).map(m => {
-        // the farm's lights already do what the solar security light does (src/power): nothing to buy
-        const byLights = m.id === 'light' && lit && !sec.owned.includes(m.id);
-        const owned = sec.owned.includes(m.id) || byLights;
-        const hired = sec.hired.includes(m.id);
-        const cuts = (Object.entries(m.cut) as [Target, number][]).sort((a, b) => b[1] - a[1]);
-        const at = MEASURES.indexOf(m);
-        const gated = !owned && !hired && !isOpen(s, at);
-        return (
-          <div key={m.id} className={`lv-job${owned || hired ? ' is-done' : ''}${gated ? ' is-gated' : ''}`} data-option={m.id}>
-            <span className="lv-job-text">
-              <b>{m.name}</b>
-              <small>{m.does}</small>
-              <small className="lv-cuts">
-                Cuts: {cuts.map(([t, k]) => `${SHORT[t]} ${pct(k)}`).join(' · ')}
-                {m.recover ? ` · finds stolen ${(Object.keys(m.recover) as Target[]).map(t => SHORT[t]).join(', ')}` : ''}
-              </small>
-            </span>
-            {gated ? (
-              <LockTag s={s} index={at} />
-            ) : m.kind === 'nightly' ? (
-              <button type="button" className={`lv-btn ${hired ? 'is-quiet' : 'is-go'}`} onClick={() => dispatch({ type: 'securityHire', id: m.id, on: !hired })} aria-pressed={hired} aria-label={hired ? `Stop the ${m.name.toLowerCase()}` : `Hire a ${m.name.toLowerCase()} for ${money(m.nightly ?? 0)} a night`}>
-                {hired ? 'Stop' : 'Hire'} · {money(m.nightly ?? 0)}/night
-              </button>
-            ) : byLights ? (
-              <span className="lv-done">✓ Your farm lights do this</span>
-            ) : owned ? (
-              <span className="lv-done">✓ In place{m.nightly ? ` · ${money(m.nightly)}/night` : ''}</span>
-            ) : (
-              <button type="button" className="lv-btn is-go" onClick={() => act(s, dispatch, { type: 'securityBuy', id: m.id })} aria-label={`${m.name}: ${m.price ? money(m.price) : 'free'}`}>
-                {m.price ? `Buy · ${money(m.price)}` : 'Set up · free'}
-                {m.nightly ? ` + ${money(m.nightly)}/night` : ''}
-              </button>
-            )}
-          </div>
-        );
-      })}
+      <OpenLine s={s} total={shown.length} what="measures" />
+      <div className="sc-grid">
+        {shown.map(m => {
+          // the farm's lights already do what the solar security light does (src/power): nothing to buy
+          const byLights = m.id === 'light' && lit && !sec.owned.includes(m.id);
+          const owned = sec.owned.includes(m.id) || byLights;
+          const hired = sec.hired.includes(m.id);
+          const cuts = (Object.entries(m.cut) as [Target, number][]).sort((a, b) => b[1] - a[1]);
+          const finds = m.recover ? (Object.keys(m.recover) as Target[]) : [];
+          const at = MEASURES.indexOf(m);
+          const gated = !owned && !hired && !isOpen(s, at);
+          const photo = measurePhoto(m.id);
+          return (
+            <div key={m.id} className={`sc-card${owned || hired ? ' is-done' : ''}${gated ? ' is-gated' : ''}`} data-option={m.id}>
+              <div className={`sc-photo${photo ? '' : ' is-empty'}`}>
+                {photo ? <PhotoPicture photo={photo} alt={`${m.name}: what it looks like on a farm`} credit /> : <span className="sc-icon" aria-hidden="true">🛡</span>}
+                <span className={`sc-kind${m.kind === 'nightly' ? ' is-nightly' : ''}`}>{m.kind === 'nightly' ? '☾ Paid each night' : m.nightly ? 'Buy once + food each night' : 'Pay once, keep it'}</span>
+                {(owned || hired) && <span className="sc-on">✓ {hired ? 'On duty' : 'In place'}</span>}
+              </div>
+              <div className="sc-body">
+                <p className="sc-name">{m.name}</p>
+                <p className="sc-does">{m.does}</p>
+                <ul className="sc-cuts" aria-label="What it protects">
+                  {cuts.map(([t, k]) => (
+                    <li key={t} title={TARGETS[t].label}>
+                      <i aria-hidden="true">{ICON[t]}</i>
+                      {SHORT[t]} <b>−{pct(k)}</b>
+                    </li>
+                  ))}
+                </ul>
+                {finds.length > 0 && (
+                  <p className="sc-finds">
+                    <i aria-hidden="true">🔎</i> Helps find stolen {finds.map(t => SHORT[t]).join(', ')}
+                  </p>
+                )}
+              </div>
+              <div className="sc-act">
+                {gated ? (
+                  <LockTag s={s} index={at} />
+                ) : m.kind === 'nightly' ? (
+                  <button type="button" className={`lv-btn ${hired ? 'is-quiet' : 'is-go'}`} onClick={() => dispatch({ type: 'securityHire', id: m.id, on: !hired })} aria-pressed={hired} aria-label={hired ? `Stop the ${m.name.toLowerCase()}` : `Hire a ${m.name.toLowerCase()} for ${money(m.nightly ?? 0)} a night`}>
+                    {hired ? 'Stop' : 'Hire'} · {money(m.nightly ?? 0)}/night
+                  </button>
+                ) : byLights ? (
+                  <span className="lv-done">✓ Your farm lights do this</span>
+                ) : owned ? (
+                  <span className="lv-done">✓ In place{m.nightly ? ` · ${money(m.nightly)}/night` : ''}</span>
+                ) : (
+                  <button type="button" className="lv-btn is-go" onClick={() => act(s, dispatch, { type: 'securityBuy', id: m.id })} aria-label={`${m.name}: ${m.price ? money(m.price) : 'free'}`}>
+                    {m.price ? `Buy · ${money(m.price)}` : 'Set up · free'}
+                    {m.nightly ? ` + ${money(m.nightly)}/night` : ''}
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
       <p className="cl-tip cl-note">
         Also: harvest the six farms on time (ripe maize left standing is stolen most), store the classic season’s maize in the co-op warehouse, shut the coop every night, and take
         payments on mobile money.
