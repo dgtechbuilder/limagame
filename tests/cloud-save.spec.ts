@@ -70,7 +70,7 @@ test('Settings shows the player code, and another phone opens the same farm with
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ state: { onboarded: true, farmer: { name: 'Amani', look: 2 }, fs: { phase: 'done', at: 'first', opened: true }, coins: 4321 }, saved_at: '2026-11-24T20:00:00Z', farmer_name: 'Amani' }),
+      body: JSON.stringify({ state: { onboarded: true, farmer: { name: 'Amani', look: 2 }, fs: { phase: 'done', at: 'first', opened: true }, season: 3, history: [] }, saved_at: '2026-11-24T20:00:00Z', farmer_name: 'Amani' }),
     });
   });
   await boot(page);
@@ -95,7 +95,10 @@ test('Settings shows the player code, and another phone opens the same farm with
   await expect(page.getByText('Amani', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Open this farm here' }).click();
   await page.waitForFunction(() => (window as any).__lima?.state?.farmer?.name === 'Amani');
-  expect(await page.evaluate(() => (window as any).__lima.state.coins)).toBe(4321);
+  // the farm opened is the one saved (the game starts a farm with no crops at once, spending its coins: check the season)
+  await page.waitForTimeout(3000);
+  expect(await page.evaluate(() => (window as any).__lima.state.season)).toBe(3);
+  expect(await page.evaluate(() => (window as any).__lima.state.farmer)).toEqual({ name: 'Amani', look: 2 });
   // this phone now saves under that code
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('lima-cloud-id') ?? 'null'))).toEqual({ id: code });
 });
