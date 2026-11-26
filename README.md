@@ -47,6 +47,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [Money at risk](#money-at-risk)
 - [Harvest estimate](#harvest-estimate)
 - [Climate-smart farming: row strategies and treatment choices](#climate-smart-farming-row-strategies-and-treatment-choices)
+- [More problems that can hit a farm](#more-problems-that-can-hit-a-farm)
 - [Water as a real resource](#water-as-a-real-resource)
 - [The animals: cows, hens and the chicken coop](#the-animals-cows-hens-and-the-chicken-coop)
   - [Farm checks: the plant, the tractor, the farm, the water and the power](#farm-checks-the-plant-the-tractor-the-farm-the-water-and-the-power)
@@ -761,7 +762,7 @@ with *Tractor hire* or *Check and treat*, and the moments come up as you play.
 
 | File | What is in it |
 | --- | --- |
-| `src/care/data.ts` | `PRESCRIBE` (three fixes and their lessons for drought, armyworm, aphids, nitrogen, weeds, disease, flood, livestock, wildlife), `KIT`, `PRODUCTS`, `FOLLOW_UP` |
+| `src/care/data.ts` | `PRESCRIBE` (three fixes and their lessons for drought, armyworm, aphids, nitrogen, weeds, disease, flood, livestock, wildlife, and the newer wind, virus, striga, erosion and rats), `KIT`, `PRODUCTS`, `FOLLOW_UP` |
 | `src/care/voice.ts` | `SAY`, `REMARK`, `WRONG_GUESS`, how often she guesses wrong and from which cycle |
 | `src/tractor/data.ts` | `TRACTORS`, `IMPL` (all eight), `RELATED` (how much a wrong implement still does), `LAYOUTS` (six fields), `MONEY`, `TRACTOR_REWARD` |
 | `src/trials/model.ts` | `WRONG_FIX_COST`, and the proposed yield effects: `WAKALA_YIELD_EFFECTS` (off), `TRACTOR_Q_FACTOR`, `MISSED_FOLLOW_UP_RETURNS` |
@@ -791,7 +792,7 @@ factor is scaled by the drive's job quality (`TRACTOR_Q_FACTOR`), and a problem 
 other. Wrong fixes cost coins now; those coins count in the farm's costs at harvest.
 
 **Events** (with the first-session ones): `prescribe {hazard, pick, right}`, `kit_on`, `product {hazard, pick,
-right}`, `care_started` and `care_done {farm, day, hazard, job, kind}` (treatment or follow-up), `care_missed`,
+right}`, `treatment_choice` and `treatment_buy {farm, day, hazard, way, cost}`, `care_started` and `care_done {farm, day, hazard, job, kind}` (treatment or follow-up), `care_missed`,
 `tractor_open`, `tractor_pick {tractor, implement, right}`, `tractor_done {score, stars, job, cov, eff, clim, money,
 saved, hits, secs, auto, reason}`.
 
@@ -1289,6 +1290,54 @@ A way's `effect` is the share of the avoidable damage it stops (the standard way
 saves a little less: the money-at-risk cheer and the harvest both use it. Each way has its own climate effects.
 **The table is `src/care/treatments.ts`.**
 
+**Buy the way, then go and do it.** The ways are a purchase. Pick one and the button under the guide line reads
+*Buy · price → work*: it pays for that way at once (saved on the check as `paid`, and added to the farm's costs), locks
+the way (the others grey out, the bought one is ticked *Bought*), closes the screen and walks the farmer straight off to
+the work. A job that needs something carried goes to the shed or the pond first (the sprayer for a herbicide, with the
+safety kit and the product question on the way). The task card then shows *Bought · do the work*, and finishing the
+work by hand costs nothing more. Short of coins, the button reads *Need …* and the guide line suggests a cheaper way.
+Leaving with *Back* keeps the old order: the work is paid when its last tile is done.
+
+**Each way is its own work by hand.** A way can name its own job (`job` in `src/care/treatments.ts`), on the same tiles
+the problem shows on (`problemTiles` in `src/world/field.ts`): weeds *by hand* are cut with the sickle; with a
+*selective herbicide* they are sprayed (the sprayer, the kit, then **Nicosulfuron** in the product question); *weed,
+then mulch* cuts them and lays them over the soil, and the mulched tiles stay covered. Bare soil after erosion can be
+mulched the same way, and the virus's carriers sprayed.
+
+## More problems that can hit a farm
+
+From the second cycle, five more problems can show on the six farms, each read on the farm like the others, with its
+own picture set, Mama Achieng's lines, three fixes (one right), two or three ways to do it (one climate-smart) and its
+own work by hand on the tiles where it shows:
+
+| Problem | Read it by | The right fix | Ways (★ climate-smart) | Work by hand on the farm |
+| --- | --- | --- | --- | --- |
+| **Wind** (lodging) | stalks lying flat, all one way | Stand the plants up and earth up the roots | Stand them up, earth up · ★ Earth up, then a windbreak | walk over the flattened maize |
+| **Maize lethal necrosis** (a virus) | pale streaks along the leaves, the top drying | Pull out and burn the sick plants | Pull out and burn · ★ Pull out, then beans in the gaps · Spray the insects that carry it | walk over the sick plants (they leave gaps); new ones two days on |
+| **Striga** (witchweed) | red-pink flowers at the foot of wilting maize in damp soil | Pull it before it flowers, and burn it | Pull and burn · ★ Pull, then desmodium (push-pull) · ★ Pull, then manure | walk over the striga; again two days on |
+| **Soil erosion** | gullies down the farm, bare roots, red subsoil | Dig trenches across the slope | Trenches across the slope · ★ Trenches and grass strips · ★ Cover the bare soil | walk over the gullies (trenches stay) |
+| **Rats and mole rats** | fresh mounds, holes, gnawed stems | Set traps on their runs and clear the bush | Traps, and clear the bush · ★ Traps and owl perches · Bait boxes | walk to each burrow |
+
+Leaf rust (a fungus disease) was already on the farms; the virus is the second disease, and the judge screen tells them
+apart (*Pests & disease › Disease* or *Virus*). The new calls are *Water & soil › Soil washed away*, *Weeds › Striga
+(witchweed)*, and *Animals & weather › Rats or mole rats* and *Wind flattened it*.
+
+- **When they come.** A second roll (`extraWeightsFor` in `src/trials/model.ts`) on a day the main draw left healthy,
+  so every problem the older odds gave still shows where it did. Never in the guided first planting. The plan sets the
+  odds: close planting and no pest control bring the virus, a wet season and bare or tractor-tilled land bring erosion
+  (mulch keeps it down), no fertilizer brings striga, slashed bush brings rats, and close planting or a late harvest
+  brings wind. Sukuma wiki gets no striga, virus or lodging. Each costs harvest (`DAMAGE`) like the others when it is
+  missed, and its cause is named after the call (`causeOf`).
+- **Pictures.** Drawn for every part, with real photos for the clues: maize chlorotic mottle (one of the two viruses
+  behind lethal necrosis), striga, a mole hill and rill erosion, credited in `src/rounds/photos/CREDITS.md`. They show on
+  the six farms only, not in the everyday field rounds.
+- **On the 3D farm.** Flattened, yellowed maize; sick plants; red-pink striga; gullies cut in red subsoil; mounds of
+  fresh soil. Each goes as its tile is worked.
+- **Farm words.** *Maize lethal necrosis*, *Striga*, *Desmodium (push-pull)*, *Lodging*, *Windbreak*, *Soil erosion*
+  and *Rats and mole rats* have ⓘ cards.
+- **Play-tests:** `tests/problems.spec.ts`. In dev, `__lima.problem('wind')` opens the farm world with that problem
+  on Farm 1, read right and waiting for its fix (`problem('wind', false)`: not checked yet).
+
 ## Water as a real resource
 
 - **The tank** is on the farm's HUD (**WATER**, under Shop, its level as water in a barrel; orange and pulsing when low)
@@ -1436,7 +1485,10 @@ community watch** (Nyumba Kumi: thefts reported together are found more often), 
 **lock on the tank's tap**, and a **GPS tracker and locking fuel cap** for the business tractor; and, in the farming
 itself, shut the coop every night, harvest on time, and store maize in the co-op warehouse. *Risks tonight* shows each
 target's chance before and after the measures, with the best next step; *Night reports* keeps the last 14 nights. A
-night with news opens a **morning dialog**: what was stolen or lost, its value, and what would have stopped it.
+night with news opens a **morning dialog**: what was stolen or lost, its value, and what would have stopped it, beside
+a short looping picture of each line (`src/security/NightScene.tsx`): a mongoose running up the ramp into the coop, a
+thief walking off with a sack of hens, a cow led from the pen, a feverish cow, a dry trough. The pictures take turns;
+tapping a line shows its own. With motion turned down, each one stands still at its telling moment.
 The farm's lit lights already count as the solar security light, so Protect shows *Your farm lights do this* instead
 of selling it again. A guard dog whose food cannot be paid does not watch that night. A stolen thing found again
 names what found it (the community watch, the cow's brand and tag, or the tractor's GPS tracker). Crops and water

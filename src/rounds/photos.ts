@@ -65,8 +65,8 @@ function find(keys: string[]): Photo | undefined {
 
 /** Situations where a picture looks normal, so a neutral photo (photos/_normal/<part>) can stand in for it. */
 const NORMAL: Partial<Record<RoundPart, HazardId[]>> = {
-  soil: ['healthy', 'nitrogen', 'armyworm', 'aphids', 'disease', 'plantLate'],
-  water: ['healthy', 'nitrogen', 'armyworm', 'aphids', 'disease', 'weeds', 'livestock', 'wildlife', 'hail', 'plantLate', 'harvestEarly', 'harvestLate'],
+  soil: ['healthy', 'nitrogen', 'armyworm', 'aphids', 'disease', 'plantLate', 'virus'],
+  water: ['healthy', 'nitrogen', 'armyworm', 'aphids', 'disease', 'weeds', 'livestock', 'wildlife', 'hail', 'plantLate', 'harvestEarly', 'harvestLate', 'virus', 'wind', 'striga', 'rodents'],
 };
 
 /** Pictures that look the same as another situation's: planting before the rains leaves the same cracked, dry soil as a drought. */

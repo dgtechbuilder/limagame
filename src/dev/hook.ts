@@ -14,7 +14,8 @@ import { driveClock } from '../business/drive';
 import { miniClock } from '../minifarm/sim';
 import { shopClock } from '../shop/model';
 import { sfxLog } from '../sfx';
-import { wakalaCase, type WakalaCase } from '../trials/samples';
+import { problemCase, wakalaCase, type WakalaCase } from '../trials/samples';
+import type { TrialHazard } from '../trials/model';
 import { PLACES } from '../world/engine';
 import { PLOTS, signOf, tileCenter } from '../world/field';
 import { tidyItems } from '../tidy/model';
@@ -42,6 +43,12 @@ export function install(get: () => GameState, dispatch: Dispatch<Action>) {
     scenario(kind: WakalaCase) {
       const c = wakalaCase(kind);
       jump({ view: 'world', trial: c.trial, field: c.field, coins: 5000 });
+      return { day: c.day, hazard: c.hazard, cycle: c.trial.cycle };
+    },
+    /** a problem on Farm 1, read right, its fix still to choose (trials/samples.ts problemCase) */
+    problem(hazard: TrialHazard, read = true) {
+      const c = problemCase(hazard, read);
+      jump({ view: 'world', trial: c.trial, field: c.field, coins: 50000 });
       return { day: c.day, hazard: c.hazard, cycle: c.trial.cycle };
     },
     /** the call that reads a problem right, as the judge screen shows it */

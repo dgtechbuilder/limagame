@@ -698,6 +698,8 @@ export type Action =
   | EvidenceAction
   /** how a treatment is done (care/treatments.ts) */
   | { type: 'treatChoose'; farm: number; day: number; id: string }
+  /** the fix screen: buy the way chosen for a farm's treatment, before doing the work by hand */
+  | { type: 'treatBuy'; farm: number; day: number }
   /** water (src/water): buy piped water or a bowser; change the herd; how the farm draws on the shared dam; crop cover */
   | { type: 'waterBuy'; kind: WaterBuyId }
   | { type: 'herdSet'; cows: number; hens: number }
@@ -1353,7 +1355,9 @@ function play(s: GameState, a: Action): GameState {
         const day = Number(a.job.slice(1));
         const pending = treatLeft(f, t, a.farm, day);
         if (pending && (after & pending.need) === pending.need) {
-          const cost = treatCostFor(t, a.farm, day, pending.hazard);
+          // bought at the fix screen already: the work costs nothing more
+          const bought = t.checks[checkKey(a.farm, day)]?.paid !== undefined;
+          const cost = bought ? 0 : treatCostFor(t, a.farm, day, pending.hazard);
           // a drought watered by hand needs the water in the tank (src/water)
           if (pending.hazard === 'drought') {
             const need = treatmentOf('drought', t.checks[checkKey(a.farm, day)]?.treatment)?.water ?? WATER.droughtTreat;
@@ -1380,7 +1384,7 @@ function play(s: GameState, a: Action): GameState {
             coins: s1.coins - cost,
             trial,
             ...gainXp(s1, 0.03),
-            toast: toast(`${farmName(a.farm)} treated · −${money(cost)} · damage stopped${due ? ` · come back on day ${due}` : ''}`),
+            toast: toast(`${farmName(a.farm)} treated${cost ? ` · −${money(cost)}` : ''} · damage stopped${due ? ` · come back on day ${due}` : ''}`),
           };
         }
       }
@@ -1956,7 +1960,26 @@ function play(s: GameState, a: Action): GameState {
       const ck = checkKey(a.farm, a.day);
       const rec = t.checks[ck];
       if (!rec?.right || rec.treated || rec.treatment === a.id) return s;
+      // a way already bought stays the way
+      if (rec.paid !== undefined) return s;
       return { ...s, trial: { ...t, checks: { ...t.checks, [ck]: { ...rec, treatment: a.id } } } };
+    }
+    case 'treatBuy': {
+      const t = s.trial;
+      if (!t || t.phase !== 'growing') return s;
+      const ck = checkKey(a.farm, a.day);
+      const rec = t.checks[ck];
+      if (!rec?.right || !rec.fix || rec.treated || rec.paid !== undefined) return s;
+      const h = hazardFor(t, a.farm, a.day);
+      const cost = treatCostFor(t, a.farm, a.day, h);
+      const way = treatmentOf(h, rec.treatment);
+      if (s.coins < cost) return { ...s, toast: toast(`${way?.label ?? 'This fix'} costs ${money(cost)} and you have ${money(s.coins)}`) };
+      return {
+        ...s,
+        coins: s.coins - cost,
+        trial: { ...t, checks: { ...t.checks, [ck]: { ...rec, paid: cost } }, treatments: t.treatments.map((n, i) => (i === a.farm ? n + cost : n)) },
+        toast: toast(`Bought: ${(way?.label ?? 'the fix').toLowerCase()} for ${farmName(a.farm)} · −${money(cost)} · now do the work`),
+      };
     }
     case 'strategySet': {
       const t = s.trial;

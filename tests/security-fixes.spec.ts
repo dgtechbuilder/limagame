@@ -8,6 +8,7 @@ import { tankOf } from '../src/water/model';
 import type { Biz } from '../src/business/model';
 import type { LifeEvent } from '../src/livestock/model';
 import { activeMeasures, exposure, lightCovered, securityOf, theftNight } from '../src/security/model';
+import { sceneOf } from '../src/security/NightScene';
 
 /* Security fixes: the farm's lights stand in for the solar light (not sold twice), the cash theft's text and floor,
    who found a stolen thing, the dog's food, crop and water thefts priced, and a theft shown on the PROGRESS button. */
@@ -127,10 +128,48 @@ test('Protect shows each measure as a card with a real photo of what is bought, 
     await expect(card.locator('img.rr-photo')).toHaveCount(1);
     await expect(card.locator('.rr-credit')).toContainText(/Photo: .+ · (CC|Public domain)/);
   }
-  // three to a row
-  const [a, b, c, d] = await Promise.all([0, 1, 2, 3].map(i => cards.nth(i).boundingBox()));
-  expect(a!.y).toBeCloseTo(b!.y, 0);
-  expect(b!.y).toBeCloseTo(c!.y, 0);
-  expect(d!.y).toBeGreaterThan(a!.y + a!.height - 1);
+  // three to a row (layout positions: the panel scales in, so on-screen boxes move while it opens)
+  const tops = await cards.evaluateAll(els => els.slice(0, 4).map(e => ({ top: (e as HTMLElement).offsetTop, h: (e as HTMLElement).offsetHeight })));
+  expect(tops[1].top).toBe(tops[0].top);
+  expect(tops[2].top).toBe(tops[0].top);
+  expect(tops[3].top).toBeGreaterThanOrEqual(tops[0].top + tops[0].h);
   await expect(page.locator('.sc-card[data-option="watch"] .sc-cuts li')).toHaveCount(7);
+});
+
+test('each night’s event carries its picture: the mongoose at the coop, the thief with the diesel, a fever for a sick cow', () => {
+  const herd = { tank: { ...tankOf(undefined), herd: { cows: 3, hens: 20 } } };
+  expect(firstHit(game(herd), 'predator', /mongoose/).event.scene).toBe('mongoose');
+  expect(firstHit(game(herd), 'theft', /hens? (was|were) stolen/).event.scene).toBe('henThief');
+  expect(firstHit(game({ biz: {} as Biz }), 'theft', /Diesel/).event.scene).toBe('diesel');
+  // a save from before the pictures: read off the words
+  expect(sceneOf({ kind: 'predator', text: 'A mongoose got into the hens: 2 lost.' })).toBe('mongoose');
+  expect(sceneOf({ kind: 'issue', text: 'In the morning, the cows: a high fever.' })).toBe('sickCow');
+  expect(sceneOf({ kind: 'cost', text: 'There was no money to pay the watchman.' })).toBeNull();
+});
+
+test('in the game: the morning dialog plays the night’s pictures, one per line, and a tap on a line shows its own', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() =>
+    (window as unknown as Win).__lima.jump({
+      view: 'farm',
+      success: {
+        kind: 'night',
+        id: 7,
+        nights: 1,
+        day: 3,
+        events: [
+          { kind: 'predator', text: 'A mongoose got into the hens: 2 lost.', value: 1400 },
+          { kind: 'issue', text: 'In the morning, the cows: a high fever. She will not eat.' },
+        ],
+      },
+    } as never),
+  );
+  const dialog = page.getByRole('dialog', { name: "The night's news" });
+  await expect(dialog.getByRole('img', { name: 'A mongoose gets into the chicken coop' })).toBeVisible();
+  await dialog.getByText(/the cows: a high fever/).click();
+  await expect(dialog.getByRole('img', { name: 'A cow with a fever' })).toBeVisible();
+  // the sun badge sits clear of the kicker: its rays reach 46 px from its middle
+  const badge = await page.locator('.success-badge').boundingBox();
+  const kicker = await dialog.getByText(/Good morning · day 3/i).boundingBox();
+  expect(badge!.y + badge!.height / 2 + 46).toBeLessThanOrEqual(kicker!.y);
 });

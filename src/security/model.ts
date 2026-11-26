@@ -10,7 +10,7 @@ import { tankOf, type TankState } from '../water/model';
 import { LIFE } from '../livestock/config';
 import { coopOption, shedOption } from '../livestock/config';
 import { lightsLit } from '../power/model';
-import { lifeOf, type LifeEvent, type LifeState } from '../livestock/model';
+import { lifeOf, type LifeEvent, type LifeState, type NightSceneId } from '../livestock/model';
 import { roll, rollInt } from '../livestock/rand';
 import { isOpen, type UnlockHost } from '../unlock/model';
 import { LATE_HARVEST, MAX_CUT, MEASURES, STORE_THEFT, TAKES, TARGETS, measureOf, type MeasureId, type Target } from './config';
@@ -177,6 +177,9 @@ export const cropsTaken = (s: SecurityHost, cycle: number): number[] => {
 /** What a litre stolen from the tank is worth: what a bowser's load costs a litre to put back. */
 const WATER_PER_L = WATER.transported.price / WATER.transported.litres;
 
+/** The picture the morning dialog shows for a theft of each kind. */
+const SCENE: Partial<Record<Target, NightSceneId>> = { crops: 'crops', hens: 'henThief', predators: 'mongoose', cows: 'cowThief', tools: 'shed', cash: 'house', water: 'water', diesel: 'diesel' };
+
 /** One night's thefts (and predators). Pays the night's watch first. */
 export function theftNight<S extends SecurityHost>(s: S, seed: string, cycleDay: CycleDay, date: string): { state: S; events: LifeEvent[]; paid: number } {
   if (!theftOpen(s)) return { state: s, events: [], paid: 0 };
@@ -283,10 +286,10 @@ export function theftNight<S extends SecurityHost>(s: S, seed: string, cycleDay:
     if (back) {
       recovered += value;
       const finder = finderOf(x.target, ids);
-      events.push({ kind: 'recovered', text: `${text} ${(finder && FOUND[finder]) ?? 'It was found again: it is back.'}` });
+      events.push({ kind: 'recovered', text: `${text} ${(finder && FOUND[finder]) ?? 'It was found again: it is back.'}`, scene: SCENE[x.target] });
     } else {
       lost += value;
-      events.push({ kind: x.target === 'predators' ? 'predator' : 'theft', text, value: value || undefined, tip });
+      events.push({ kind: x.target === 'predators' ? 'predator' : 'theft', text, value: value || undefined, tip, scene: SCENE[x.target] });
     }
   }
   const t = next.trial;
