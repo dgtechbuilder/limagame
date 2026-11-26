@@ -3,7 +3,9 @@
    the clonk of a rock, the crunch and rustle of a tree, the tink of a stone kicked aside, the thud of a pothole, the
    splash of a puddle — plus the horn, the clock's last ticks and a whoosh between scenes.
    It has its own audio context (the game's reward cues put theirs to sleep between cues). Settings → Tractor sets the
-   volume; Settings → Sound effects off silences it too. */
+   volume, under Settings → Sound's overall level (src/audio/volume.ts); Settings → Sound effects off silences it too. */
+
+import { gainOf, onVolume } from '../audio/volume';
 
 import type { HoleKind, ObstacleKind } from './drive';
 
@@ -36,7 +38,8 @@ export function tractorAudio(vol: number): TractorAudio {
   comp.ratio.value = 5;
   comp.connect(ac.destination);
   const master = ac.createGain();
-  master.gain.value = level;
+  master.gain.value = level * gainOf('effects');
+  const unVolume = onVolume(() => master.gain.setTargetAtTime(level * gainOf('effects'), ac.currentTime, 0.05));
   master.connect(comp);
 
   // one second of white noise, looped or cut as each sound needs
@@ -240,7 +243,7 @@ export function tractorAudio(vol: number): TractorAudio {
       gritG.gain.setTargetAtTime(load * 0.05 + rpmNow * 0.015, t, 0.1);
     },
     cue(kind) {
-      if (paused || level <= 0) return;
+      if (paused || level * gainOf('effects') <= 0) return;
       resume();
       try {
         cues[kind]();
@@ -250,7 +253,7 @@ export function tractorAudio(vol: number): TractorAudio {
     },
     volume(v) {
       level = v;
-      master.gain.setTargetAtTime(v, ac.currentTime, 0.05);
+      master.gain.setTargetAtTime(v * gainOf('effects'), ac.currentTime, 0.05);
     },
     pause(on) {
       if (on === paused) return;
@@ -259,6 +262,7 @@ export function tractorAudio(vol: number): TractorAudio {
       else resume();
     },
     stop() {
+      unVolume();
       try {
         const t = ac.currentTime;
         master.gain.setTargetAtTime(0, t, 0.06);

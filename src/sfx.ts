@@ -5,7 +5,9 @@
      completed flow (the story told, the first session done, a season sold, a harvest in, a tractor job or a day
      of the tractor business finished).
    The feel follows the reward sounds of mobile base-building games: short, punchy, major key, metallic shimmer.
-   Settings → Sound effects turns them off. */
+   Settings → Sound effects turns them off; they play at Settings → Sound's level (src/audio/volume.ts). */
+
+import { gainOf } from './audio/volume';
 
 export type SfxKind = 'action' | 'flow';
 
@@ -166,7 +168,7 @@ let sleep: number | undefined;
 async function play(kind: SfxKind) {
   sfxLog.push(kind);
   if (sfxLog.length > 50) sfxLog.shift();
-  if (!on) return;
+  if (!on || gainOf('effects') <= 0) return;
   const ac = audio();
   if (!ac) return;
   const buf = await render(kind, ac.sampleRate);
@@ -176,7 +178,9 @@ async function play(kind: SfxKind) {
     if (ac.state === 'suspended') await ac.resume();
     const src = ac.createBufferSource();
     src.buffer = buf;
-    src.connect(ac.destination);
+    const level = ac.createGain();
+    level.gain.value = gainOf('effects');
+    src.connect(level).connect(ac.destination);
     src.start();
     // the audio thread rests once the cue has played
     sleep = window.setTimeout(() => void ac.suspend().catch(() => undefined), (buf.duration + 0.5) * 1000);

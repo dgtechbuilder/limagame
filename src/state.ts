@@ -1,6 +1,7 @@
 import { DEFAULT_PAD, type PadSettings } from './input/pad';
 import { DEFAULT_TRACTOR, type TractorSettings } from './business/tune';
 import type { HudKey } from './hud/prefs';
+import { DEFAULT_VOLUME, type VolumeSettings } from './audio/volume';
 import { farmSignal } from './business/signal';
 import { idBlock, lockBlock } from './unlock/model';
 import { evidenceReduce, trackEvidence, type EvidenceAction, type EvidenceState } from './evidence/model';
@@ -227,8 +228,10 @@ export interface Settings {
   data?: 'auto' | 'on' | 'off';
   /** Home screen (src/hud/prefs.ts): the farm's buttons the player has hidden (false); a missing key is shown */
   hud?: Partial<Record<HudKey, boolean>>;
+  /** Settings → Sound (src/audio/volume.ts): the overall volume (2% to start) and each kind of sound's share of it */
+  volume?: VolumeSettings;
 }
-export type SettingsTab = 'farmer' | 'game' | 'display' | 'home' | 'tractor' | 'controller' | 'help';
+export type SettingsTab = 'farmer' | 'game' | 'sound' | 'display' | 'home' | 'tractor' | 'controller' | 'help';
 export type ClimateTab = 'overview' | 'csa' | 'land' | 'areas' | 'emissions' | 'water' | 'tank' | 'credits' | 'shocks' | 'activity';
 /** My Progress (the achievements page): the journey of certification levels, the modules, today, badges, certificates */
 export type AchTab = 'journey' | 'modules' | 'today' | 'badges' | 'certificates';
@@ -246,7 +249,7 @@ export type GlossaryTab = 'basics' | SectionId;
 /** Special events (src/events): happening now, the special days, the regions in need, the Donate page */
 export type EventsTab = 'now' | 'days' | 'regions' | 'donate';
 export type KakumaTab = 'about' | 'foods' | 'life' | 'donate';
-export const DEFAULT_SETTINGS: Settings = { art: 'anime', graphics: 'auto', reduceMotion: false, voice: false, sound: true, upgradeNotes: true, country: '', night: 'auto', pad: DEFAULT_PAD, tractor: DEFAULT_TRACTOR };
+export const DEFAULT_SETTINGS: Settings = { art: 'anime', graphics: 'auto', reduceMotion: false, voice: false, sound: true, upgradeNotes: true, country: '', night: 'auto', pad: DEFAULT_PAD, tractor: DEFAULT_TRACTOR, volume: DEFAULT_VOLUME };
 
 /** Stage index: 0–5 = the farming step being worked on, 6 = harvested and selling, 7 = season sold. */
 export const SELLING = 6;

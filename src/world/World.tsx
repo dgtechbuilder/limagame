@@ -79,6 +79,7 @@ import { careJob, choresCount, choresLeft, jobsOf, type Job, type JobStop } from
 import { ActivityLoading } from '../components/ActivityLoading';
 import { lazyPage, prefetchActivities } from '../prefetch';
 import { LEFT_SLOTS, RIGHT_ORDER, RIGHT_SLOTS, hudShown, slotTop, type HudKey } from '../hud/prefs';
+import { farmAnimals } from '../audio/ambience';
 
 // from Wakala Agent: the screens after a right call, at the shed and at the Hire spot, loaded when first opened
 const Prescribe = lazyPage(() => import('../care/Prescribe'), m => m.Prescribe, 0);
@@ -530,6 +531,11 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
   useEffect(() => {
     eng.current?.setLife({ cows: herd.cows, hens: herd.hens, coop, shed });
   }, [herd.cows, herd.hens, coop, shed]);
+  // the hens cluck every 20 seconds and a cow moos every minute while the farm is showing (src/audio/ambience.ts)
+  useEffect(() => {
+    farmAnimals(herd.cows, herd.hens);
+    return () => farmAnimals(0, 0);
+  }, [herd.cows, herd.hens]);
 
   // the power yard as built, and the lights lit (src/power)
   const pw = powerOf(s.power);

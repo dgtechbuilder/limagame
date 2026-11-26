@@ -10,6 +10,8 @@ import { ArtContext } from '../art/style';
 import { img } from '../assets';
 import { canSpeak, speak } from '../speech';
 import { setSoundOn, sfx } from '../sfx';
+import { DEFAULT_VOLUME, setVolume, volumeSettings, type VolumeSettings } from '../audio/volume';
+import { COW_EVERY_S, HEN_EVERY_S, preview } from '../audio/ambience';
 import { COUNTRIES, countryOf, money } from '../money';
 import { activeFamily, captureInput, connectedPads, onPadPress, onPads, type PadInfo } from '../input/gamepad';
 import { FAMILY_NAME, padKey, padLabel, padSettings, type PadAction, type PadFamily, type PadMap, type PadSettings } from '../input/pad';
@@ -20,8 +22,9 @@ import { HUD_GROUPS, HUD_KEYS, hudHiddenCount, hudShown } from '../hud/prefs';
 import { clearSave, initialState, replaceSave, type Action, type GameState, type Settings, type SettingsTab } from '../state';
 import { cleanCode, cloudEnabled, cloudPlayerId, cloudRestore, adoptPlayer, type RestoreResult } from '../net/cloud';
 
-/* Settings: a full page with seven sections. Every control changes the game straight away and is kept on this device.
-   Farmer: rename and change look. Game: character style, farm view, read aloud. Display: graphics, motion, full
+/* Settings: a full page with eight sections. Every control changes the game straight away and is kept on this device.
+   Farmer: rename and change look. Game: character style, farm view, read aloud. Sound: the overall volume (2% to
+   start) and the music, footsteps, farm animals and effects (src/audio). Display: graphics, motion, full
    screen. Home screen: which of the farm's buttons show. Tractor: the business drive's speed, steering, touch controls, sounds, dust and smoke. Controller: the controller connected, its button names, Confirm on the bottom or right, dead zone, rumble,
    and setting up the buttons of a controller the browser does not know. Help & data: about the game and its name, the intro, design review, and reset (which keeps these settings). */
 
@@ -30,6 +33,7 @@ type Props = { s: GameState; dispatch: Dispatch<Action>; tab?: SettingsTab };
 const TABS: { id: SettingsTab; label: string; icon: string }[] = [
   { id: 'farmer', label: 'My farmer', icon: '☺' },
   { id: 'game', label: 'Game', icon: '✦' },
+  { id: 'sound', label: 'Sound', icon: '♪' },
   { id: 'display', label: 'Display', icon: '☀' },
   { id: 'home', label: 'Home screen', icon: '▦' },
   { id: 'tractor', label: 'Tractor', icon: '🚜' },
@@ -101,6 +105,7 @@ export function SettingsPage({ s, dispatch, tab: startTab }: Props) {
         <section className="set-content" aria-label={TABS.find(t => t.id === tab)!.label}>
           {tab === 'farmer' && <FarmerTab s={s} dispatch={dispatch} />}
           {tab === 'game' && <GameTab s={s} dispatch={dispatch} set={set} />}
+          {tab === 'sound' && <SoundTab s={s} dispatch={dispatch} set={set} />}
           {tab === 'display' && <DisplayTab s={s} dispatch={dispatch} set={set} />}
           {tab === 'home' && <HomeTab s={s} dispatch={dispatch} set={set} />}
           {tab === 'tractor' && <TractorTab s={s} dispatch={dispatch} set={set} />}
@@ -287,6 +292,74 @@ function GameTab({ s, dispatch, set }: Props & { set: (p: Partial<Settings>) => 
             { id: 'on', label: 'On' },
           ]}
         />
+      </Row>
+    </div>
+  );
+}
+
+/* ---------------- Sound (src/audio) ---------------- */
+
+/** A level from 0 to 100%, with its number beside it. */
+function Level({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+  return (
+    <span className="vol-level">
+      <input type="range" className="vol-range" min={0} max={100} step={1} value={value} onChange={e => onChange(Number(e.target.value))} aria-label={label} aria-valuetext={`${value}%`} />
+      <b className="vol-pct">{value}%</b>
+    </span>
+  );
+}
+
+function SoundTab({ s, set }: Props & { set: (p: Partial<Settings>) => void }) {
+  const v = volumeSettings(s.settings.volume);
+  const change = (patch: Partial<VolumeSettings>) => {
+    const next = { ...v, ...patch };
+    // straight away, so a test button pressed next plays at the new level
+    setVolume(next);
+    set({ volume: next });
+  };
+  const fx = s.settings.sound !== false;
+  return (
+    <div className="set-rows">
+      <Row title="Overall volume" body={v.master === 0 ? 'Every sound is off.' : `Every sound in the game. It starts at ${DEFAULT_VOLUME.master}%, so the game is only lightly heard; turn the phone up or this up for more.`}>
+        <Level label="Overall volume" value={v.master} onChange={master => change({ master })} />
+      </Row>
+      <Row title="Music" body="The calm background score: a soft pad, a round bass and a kalimba.">
+        <Level label="Music" value={v.music} onChange={music => change({ music })} />
+      </Row>
+      <Row title="Footsteps" body="The farmer’s steps on the farm: a soft swish on grass, a drier crunch on soil.">
+        <div className="vol-ctl">
+          <Level label="Footsteps" value={v.steps} onChange={steps => change({ steps })} />
+          <button type="button" className="set-link" disabled={!v.master || !v.steps} onClick={() => preview('grass')}>
+            Grass
+          </button>
+          <button type="button" className="set-link" disabled={!v.master || !v.steps} onClick={() => preview('soil')}>
+            Soil
+          </button>
+        </div>
+      </Row>
+      <Row title="Farm animals" body={`On the farm, the hens cluck every ${HEN_EVERY_S} seconds and a cow moos every ${COW_EVERY_S === 60 ? 'minute' : `${COW_EVERY_S} seconds`}.`}>
+        <div className="vol-ctl">
+          <Level label="Farm animals" value={v.animals} onChange={animals => change({ animals })} />
+          <button type="button" className="set-link" disabled={!v.master || !v.animals} onClick={() => preview('cluck')}>
+            Cluck
+          </button>
+          <button type="button" className="set-link" disabled={!v.master || !v.animals} onClick={() => preview('moo')}>
+            Moo
+          </button>
+        </div>
+      </Row>
+      <Row title="Effects" body={fx ? 'The ping and fanfare for each action and flow, and the tractor’s drive.' : 'Sound effects are off (Game): turn them on to hear these.'}>
+        <div className="vol-ctl">
+          <Level label="Effects" value={v.effects} onChange={effects => change({ effects })} />
+          <button type="button" className="set-link" disabled={!fx || !v.master || !v.effects} onClick={() => sfx.action()}>
+            Ping
+          </button>
+        </div>
+      </Row>
+      <Row title="Start again" body={`Back to ${DEFAULT_VOLUME.master}% overall, every sound at its full share.`}>
+        <button type="button" className="set-link" onClick={() => change(DEFAULT_VOLUME)}>
+          Reset volume
+        </button>
       </Row>
     </div>
   );
