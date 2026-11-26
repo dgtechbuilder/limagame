@@ -44,7 +44,12 @@ export interface LifeEvent {
   value?: number;
   /** what would have helped */
   tip?: string;
+  /** the little animated picture the morning dialog shows for it (security/NightScene.tsx) */
+  scene?: NightSceneId;
 }
+
+/** What the morning dialog can show happening: who got in, what was taken, which animal is unwell. */
+export type NightSceneId = 'mongoose' | 'henThief' | 'cowThief' | 'crops' | 'shed' | 'house' | 'water' | 'diesel' | 'sickCow' | 'sickHen' | 'deadCow' | 'deadHen' | 'thirst';
 
 /** The full farming period, in farm days: the HUD counts the day out of this (Day 5/30). */
 export const FARM_PERIOD_DAYS = 30;
@@ -354,7 +359,7 @@ export function animalNight<S extends LifeHost>(s: S, seed: string): { state: S;
   const wasted = w.heatDrink + w.extra;
   const thirsty = (tank.days[0]?.short ?? 0) > 0 || tank.level < wasted;
   tank = { ...tank, level: Math.max(0, tank.level - wasted) };
-  if (thirsty && herd.cows + herd.hens > 0) events.push({ kind: 'thirst', text: 'The tank ran dry in the night: the animals went thirsty. Buy water in Climate › Water.', tip: 'Keep the tank above what the animals drink in a day.' });
+  if (thirsty && herd.cows + herd.hens > 0) events.push({ kind: 'thirst', text: 'The tank ran dry in the night: the animals went thirsty. Buy water in Climate › Water.', tip: 'Keep the tank above what the animals drink in a day.', scene: 'thirst' });
   const health = { ...l.health };
   let issues = [...l.issues];
   let deaths = 0;
@@ -379,7 +384,7 @@ export function animalNight<S extends LifeHost>(s: S, seed: string): { state: S;
         herd[g] -= lost;
         deaths += lost;
         const value = lost * LIFE.price[g === 'cows' ? 'cow' : 'hen'];
-        events.push({ kind: 'death', text: `${def.name} was left untreated: ${lost} ${g === 'cows' ? (lost === 1 ? 'cow' : 'cows') : lost === 1 ? 'hen' : 'hens'} died.`, value, tip: def.prevent });
+        events.push({ kind: 'death', text: `${def.name} was left untreated: ${lost} ${g === 'cows' ? (lost === 1 ? 'cow' : 'cows') : lost === 1 ? 'hen' : 'hens'} died.`, value, tip: def.prevent, scene: g === 'cows' ? 'deadCow' : 'deadHen' });
       }
     }
     if (ok) h += LIFE.health.recover;
@@ -388,7 +393,7 @@ export function animalNight<S extends LifeHost>(s: S, seed: string): { state: S;
       const lost = g === 'cows' ? 1 : Math.max(1, Math.round(herd[g] * 0.1));
       herd[g] -= Math.min(herd[g], lost);
       deaths += lost;
-      events.push({ kind: 'death', text: `Weak from missed care, ${lost} ${g === 'cows' ? (lost === 1 ? 'cow' : 'cows') : lost === 1 ? 'hen' : 'hens'} died in the night.`, value: lost * LIFE.price[g === 'cows' ? 'cow' : 'hen'], tip: 'Feed, water and clean every day: health comes back slowly.' });
+      events.push({ kind: 'death', text: `Weak from missed care, ${lost} ${g === 'cows' ? (lost === 1 ? 'cow' : 'cows') : lost === 1 ? 'hen' : 'hens'} died in the night.`, value: lost * LIFE.price[g === 'cows' ? 'cow' : 'hen'], tip: 'Feed, water and clean every day: health comes back slowly.', scene: g === 'cows' ? 'deadCow' : 'deadHen' });
       h = LIFE.health.afterDeath;
     }
     health[g] = h;
@@ -407,7 +412,7 @@ export function animalNight<S extends LifeHost>(s: S, seed: string): { state: S;
     const pick = pool.find(x => (r -= x.w) < 0) ?? pool[pool.length - 1];
     if (!pick) continue;
     issues.push({ id: pick.id, since: l.day + 1 });
-    events.push({ kind: 'issue', text: `In the morning, the ${g}: ${issueOf(pick.id).signs}`, tip: 'Open Animals › Health to choose what to do.' });
+    events.push({ kind: 'issue', text: `In the morning, the ${g}: ${issueOf(pick.id).signs}`, tip: 'Open Animals › Health to choose what to do.', scene: g === 'cows' ? 'sickCow' : 'sickHen' });
   }
   const life: LifeState = {
     ...l,
