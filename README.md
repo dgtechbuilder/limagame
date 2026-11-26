@@ -1521,6 +1521,13 @@ stolen are priced (a share of that farm's expected harvest; water at a bowser's 
 A cash theft never takes more than the farmer still has. While last night had a theft, the farm shows a red **!** (on
 MENU in the 3D farm, on the PROGRESS chip in the classic one), since Security sits inside My Progress.
 
+*Protect* lays the measures out as cards, three to a row, so it is clear what is being bought: each has a real,
+openly licensed photo of the thing itself (neighbours at a community meeting, a padlocked hasp, askaris at a gate, an
+M-Pesa agent, a locked tap, an ear-tagged cow, a farm dog, a yard light, a farm gate, a tractor at night), a chip for
+each thing it protects with how much it cuts the chance, whether it is paid once or each night, and its price on the
+button. Photos live in [`src/security/photos/`](src/security/photos/) with their credits in
+[`CREDITS.md`](src/security/photos/CREDITS.md); the card shows the author and licence on the photo.
+
 Nights are seeded (`src/livestock/rand.ts`): the same farm, night and target always draw the same result, so a reload
 never re-rolls a night. `tests/livestock.spec.ts` plays all of this through the reducer and the two pages.
 

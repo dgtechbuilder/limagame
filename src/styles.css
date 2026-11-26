@@ -2998,6 +2998,40 @@ a.ach-claim.pj-mail { display: inline-flex; align-items: center; text-decoration
 .lv-photo.is-empty .lv-size { position: static; }
 .lv-size svg { display: block; color: #ffd27a; }
 .lv-size .lv-scale { fill: none; stroke: #fff; stroke-opacity: 0.55; stroke-dasharray: 2 1.5; }
+/* Security → Protect: a card per measure, three to a row, each with a photo of what is being bought */
+.sc-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 2px; }
+.sc-card {
+  position: relative; display: flex; flex-direction: column; min-width: 0; border-radius: 12px; overflow: hidden;
+  background: #fff8ea; border: 1px solid var(--brown-10); box-shadow: 0 2px 0 rgba(120, 80, 30, 0.08);
+}
+.sc-card.is-done { border: 1.5px solid #2f9b14; background: #f1f8e8; }
+.sc-card.is-gated .sc-photo { filter: grayscale(0.7); opacity: 0.75; }
+.sc-photo { position: relative; aspect-ratio: 16 / 9; background: #e8dcc4; overflow: hidden; }
+.sc-photo.is-empty { display: grid; place-items: center; }
+.sc-icon { font-size: 34px; opacity: 0.6; }
+.sc-photo .rr-credit { font-size: 6px; padding: 1px 5px; background: rgba(0, 0, 0, 0.5); }
+.sc-kind, .sc-on {
+  position: absolute; top: 5px; padding: 2px 7px; border-radius: 100px; font-size: 6.5px; font-weight: 800; line-height: 1.35; white-space: nowrap;
+}
+.sc-kind { left: 5px; background: rgba(40, 24, 12, 0.72); color: #fff; }
+.sc-kind.is-nightly { background: rgba(28, 30, 74, 0.82); color: #ffe39a; }
+.sc-on { right: 5px; background: #2f9b14; color: #fff; }
+.sc-body { flex: 1; display: flex; flex-direction: column; gap: 3px; padding: 6px 8px 4px; }
+.sc-name { margin: 0; font-size: 8.5px; font-weight: 800; line-height: 1.25; color: var(--brown); }
+.sc-does { margin: 0; font-size: 7px; line-height: 1.35; opacity: 0.8; }
+.sc-cuts { list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 3px; }
+.sc-cuts li {
+  display: inline-flex; align-items: center; gap: 2px; padding: 1px 5px 1px 3px; border-radius: 100px; background: #e6f2dc; color: #2e6b35;
+  font-size: 6.5px; font-weight: 600; line-height: 1.4; white-space: nowrap;
+}
+.sc-cuts li i { font-style: normal; font-size: 7px; }
+.sc-cuts li b { font-weight: 800; }
+.sc-finds { margin: 0; font-size: 6.5px; font-weight: 700; color: #6a4a12; }
+.sc-finds i { font-style: normal; }
+.sc-act { padding: 4px 8px 8px; }
+.sc-act .lv-btn { width: 100%; text-align: center; }
+.sc-act .lv-done { display: block; text-align: center; white-space: normal; padding: 5px 0; }
+.sc-act .lock-tag { width: 100%; justify-content: center; }
 .lv-room { margin-top: 8px !important; max-width: none !important; }
 .lv-table { width: 100%; border-collapse: collapse; font-size: 7.5px; }
 .lv-table th, .lv-table td { text-align: left; padding: 4px 6px; border-top: 1px solid var(--brown-10); vertical-align: top; }

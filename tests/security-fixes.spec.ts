@@ -115,6 +115,27 @@ test('in the game: a theft last night shows on PROGRESS, and Security shows the 
   await expect(light.getByRole('button')).toHaveCount(0);
 });
 
+test('Protect shows each measure as a card with a real photo of what is bought, and its credit', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const L = (window as unknown as Win).__lima;
+    L.jump({ view: 'classic', coins: 20000, life: { day: 9, started: 2, date: new Date().toISOString().slice(0, 10) }, modal: { kind: 'security', tab: 'protect' } });
+  });
+  const cards = page.locator('.sc-card');
+  await expect(cards).toHaveCount(9); // the GPS tracker shows only with the tractor business
+  for (const id of ['watch', 'locks', 'watchman', 'mpesa', 'taplock', 'tags', 'dog', 'light', 'fence']) {
+    const card = page.locator(`.sc-card[data-option="${id}"]`);
+    await expect(card.locator('img.rr-photo')).toHaveCount(1);
+    await expect(card.locator('.rr-credit')).toContainText(/Photo: .+ · (CC|Public domain)/);
+  }
+  // three to a row (layout positions: the panel scales in, so on-screen boxes move while it opens)
+  const tops = await cards.evaluateAll(els => els.slice(0, 4).map(e => ({ top: (e as HTMLElement).offsetTop, h: (e as HTMLElement).offsetHeight })));
+  expect(tops[1].top).toBe(tops[0].top);
+  expect(tops[2].top).toBe(tops[0].top);
+  expect(tops[3].top).toBeGreaterThanOrEqual(tops[0].top + tops[0].h);
+  await expect(page.locator('.sc-card[data-option="watch"] .sc-cuts li')).toHaveCount(7);
+});
+
 test('each night’s event carries its picture: the mongoose at the coop, the thief with the diesel, a fever for a sick cow', () => {
   const herd = { tank: { ...tankOf(undefined), herd: { cows: 3, hens: 20 } } };
   expect(firstHit(game(herd), 'predator', /mongoose/).event.scene).toBe('mongoose');

@@ -2,6 +2,7 @@
 
    src/rounds/photos/<path>.<ext>     ->  src/rounds/photos-lite/<path>.webp     (the crop checks)
    src/livestock/photos/<path>.<ext>  ->  src/livestock/photos-lite/<path>.webp  (the coops)
+   src/security/photos/<path>.<ext>   ->  src/security/photos-lite/<path>.webp   (the Security measures)
    480 x 336, WebP quality 50: about a third of the size. Run it after adding or changing a photo:  python3 scripts/lite-photos.py   (needs Pillow).
    Copies that are up to date are left alone; copies of photos that were removed are deleted."""
 
@@ -12,7 +13,7 @@ from pathlib import Path
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
-FOLDERS = [(ROOT / 'src' / d / 'photos', ROOT / 'src' / d / 'photos-lite') for d in ('rounds', 'livestock')]
+FOLDERS = [(ROOT / 'src' / d / 'photos', ROOT / 'src' / d / 'photos-lite') for d in ('rounds', 'livestock', 'security')]
 EXTS = {'.jpg', '.jpeg', '.png', '.webp', '.avif'}
 SIZE = (480, 336)
 
