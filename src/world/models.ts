@@ -1143,6 +1143,52 @@ export function hailTile(): THREE.BufferGeometry {
   return merge(parts);
 }
 
+/** Striga (witchweed): short stems of red-pink flowers at the foot of the maize. */
+export function strigaTile(): THREE.BufferGeometry {
+  const parts: Part[] = [];
+  for (const [x, z, s] of [
+    [-0.28, 0.12, 1],
+    [0.3, -0.2, 0.85],
+    [0.1, 0.36, 0.75],
+  ] as const) {
+    parts.push({ geo: G.cyl6, color: '#6f8a3a', m: at(x, 0.2 * s, z, { sx: 0.035, sy: 0.4 * s, sz: 0.035 }) });
+    for (let i = 0; i < 5; i++) parts.push({ geo: G.ico, color: i % 2 ? '#ff2f6e' : '#ff5ab0', m: at(x + (i % 2 ? 0.05 : -0.05), (0.24 + i * 0.07) * s, z + (i > 2 ? 0.05 : -0.05), { s: 0.12 * s }) });
+  }
+  return merge(parts);
+}
+
+/** A rat's or mole rat's heap of fresh soil, with its hole. */
+export function moundTile(): THREE.BufferGeometry {
+  return merge([
+    { geo: G.sphere, color: '#4a2c18', m: at(-0.15, 0.14, 0.1, { sx: 0.55, sy: 0.26, sz: 0.48 }) },
+    { geo: G.sphere, color: '#5a3a22', m: at(0.27, 0.12, -0.24, { sx: 0.34, sy: 0.18, sz: 0.3 }) },
+    { geo: G.disc, color: '#120a05', m: at(0.08, 0.19, 0.36, { sx: 0.16, sz: 0.13 }) },
+  ]);
+}
+
+/** A gully the rain cut down the slope: a red-brown channel along the tile. */
+export function gullyTile(): THREE.BufferGeometry {
+  return merge([
+    { geo: G.disc, color: '#5a2610', m: at(0, 0.18, 0, { sx: 0.5, sz: 1.18 }) },
+    { geo: G.disc, color: '#8a3a18', m: at(0.03, 0.185, 0.05, { sx: 0.24, sz: 0.95 }) },
+  ]);
+}
+
+/** A trench dug across the slope, its soil thrown uphill in a ridge (fanya juu). */
+export function trenchTile(): THREE.BufferGeometry {
+  return merge([
+    { geo: G.box, color: '#3d2614', m: at(0, 0.15, 0.1, { sx: 1.0, sy: 0.04, sz: 0.16 }) },
+    { geo: G.box, color: '#7a4a2a', m: at(0, 0.18, -0.08, { sx: 1.0, sy: 0.08, sz: 0.14 }) },
+  ]);
+}
+
+/** Mulch laid over the soil: cut weeds and stalks. */
+export function mulchTile(): THREE.BufferGeometry {
+  const parts: Part[] = [];
+  for (let i = 0; i < 9; i++) parts.push({ geo: G.box, color: i % 2 ? '#c9a45a' : '#a8843e', m: at(((i * 37) % 9) / 10 - 0.4, 0.165, ((i * 53) % 9) / 10 - 0.4, { sx: 0.34, sy: 0.02, sz: 0.05, ry: i * 0.9 }) });
+  return merge(parts);
+}
+
 export function pestTile(): THREE.BufferGeometry {
   const parts: Part[] = [];
   for (let i = 0; i < 5; i++) parts.push({ geo: G.sphere, color: '#5a3b1e', m: at(((i * 31) % 7) / 8 - 0.35, 0.55 + (i % 3) * 0.15, ((i * 17) % 7) / 8 - 0.35, { sx: 0.12, sy: 0.06, sz: 0.06 }) });

@@ -109,6 +109,52 @@ export function CallIcon({ id }: { id: Call }) {
         ))}
       </svg>
     );
+  if (id === 'virus')
+    return (
+      <svg {...common}>
+        <path d="M4,22 Q4,6 24,5 Q26,24 8,26 Z" fill="#9fcf5a" stroke="#2a6f24" strokeWidth={1.1} />
+        <path d="M7,22 Q14,13 23,7 M9,25 Q16,17 24,11" stroke="#eef2b8" strokeWidth={2} fill="none" strokeLinecap="round" />
+        <path d="M18,6 Q24,5 24,5 Q25,12 22,14 Z" fill="#b08a4a" />
+      </svg>
+    );
+  if (id === 'wind')
+    return (
+      <svg {...common}>
+        <path d="M3,9 h14 q5,0 5,-4 M3,14 h20 q5,0 5,4 M3,19 h10" stroke="#6b8aa0" strokeWidth={2} fill="none" strokeLinecap="round" />
+        <path d="M8,28 Q15,26 27,22" stroke="#3f9b35" strokeWidth={2.6} fill="none" strokeLinecap="round" />
+        <path d="M18,25 q3,-5 8,-5 M13,26 q2,-4 6,-5" stroke="#4fae3c" strokeWidth={1.8} fill="none" />
+      </svg>
+    );
+  if (id === 'striga')
+    return (
+      <svg {...common}>
+        <path d="M4,27 L26,27" stroke="#7a5230" strokeWidth={2} />
+        <path d="M11,27 L11,6" stroke="#3f9b35" strokeWidth={2.4} />
+        <path d="M20,27 L20,14" stroke="#5f8a3a" strokeWidth={1.6} />
+        {[[20, 12], [18, 16], [22, 17], [19, 20], [22, 21]].map(([x, y], k) => (
+          <circle key={k} cx={x} cy={y} r={1.9} fill="#e85aa8" stroke="#a02a6a" strokeWidth={0.5} />
+        ))}
+      </svg>
+    );
+  if (id === 'erosion')
+    return (
+      <svg {...common}>
+        <path d="M2,10 L28,22 L28,28 L2,28 Z" fill="#b5653a" stroke="#7a3f1f" strokeWidth={1} />
+        <path d="M2,10 L28,22" stroke="#5f3a1f" strokeWidth={2} />
+        <path d="M9,15 q2,4 0,8 M17,19 q2,3 0,7" stroke="#22ade2" strokeWidth={1.8} fill="none" strokeLinecap="round" />
+        <path d="M6,11 q-1,-5 2,-7 M14,15 q0,-5 3,-6" stroke="#4fae3c" strokeWidth={1.6} fill="none" />
+      </svg>
+    );
+  if (id === 'rodents')
+    return (
+      <svg {...common}>
+        <path d="M2,26 q6,-7 12,0 Z" fill="#7a5230" />
+        <ellipse cx={18} cy={19} rx={7} ry={4.6} fill="#8a7a6a" stroke="#4a3e32" strokeWidth={1} />
+        <circle cx={24} cy={16} r={3} fill="#8a7a6a" stroke="#4a3e32" strokeWidth={1} />
+        <circle cx={23} cy={13} r={1.6} fill="#c9a8a0" />
+        <path d="M11,20 Q5,22 4,17" stroke="#c9a8a0" strokeWidth={1.2} fill="none" />
+      </svg>
+    );
   if (id === 'plantEarly' || id === 'plantLate' || id === 'harvestEarly' || id === 'harvestLate')
     return (
       <svg {...common}>

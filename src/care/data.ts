@@ -71,6 +71,32 @@ export const PRESCRIBE: Record<string, FixOption[]> = {
     { id: 'insecticide', label: 'Spray an insecticide on the cobs', right: false, lesson: 'Spray on ripe cobs is unsafe to eat. Scare the birds off.' },
     { id: 'pick', label: 'Pick the cobs now, dry or not', right: false, lesson: 'Cobs picked wet lose weight and rot. Guard them until ready.' },
   ],
+  // new: the newer problems (trials/model.ts NEW_HAZARDS)
+  virus: [
+    { id: 'uproot', label: 'Pull out and burn the sick plants', right: true, lesson: 'Maize lethal necrosis is a virus: no spray cures it. Out and burnt, it cannot spread.' },
+    { id: 'fungicide', label: 'Spray a fungicide on the leaves', right: false, lesson: 'Fungicide kills fungus. This is a virus: pull the sick plants out.' },
+    { id: 'fertilizer', label: 'Top-dress so they grow out of it', right: false, lesson: 'Food cannot cure a virus. The sick plants spread it: pull them out.' },
+  ],
+  wind: [
+    { id: 'prop', label: 'Stand the plants up and earth up the roots', right: true, lesson: 'Stood up within a day and earthed up, a flattened plant still fills its cobs.' },
+    { id: 'cut', label: 'Cut the fallen plants for fodder', right: false, lesson: 'Most fallen plants still have a harvest in them. Stand them up first.' },
+    { id: 'fertilizer', label: 'Top-dress to make them stronger', right: false, lesson: 'Fertilizer cannot lift a plant off the ground. Stand them up and earth up.' },
+  ],
+  striga: [
+    { id: 'pull', label: 'Pull the striga before it flowers, and burn it', right: true, lesson: 'Striga feeds on the maize roots. Pulled before it seeds, next season has less.' },
+    { id: 'glyphosate', label: 'Spray glyphosate over the field', right: false, lesson: 'Glyphosate would kill the maize too.' },
+    { id: 'water', label: 'Water more: the maize is wilting', right: false, lesson: 'The soil is damp. The maize wilts because striga drinks from its roots.' },
+  ],
+  erosion: [
+    { id: 'trench', label: 'Dig trenches across the slope', right: true, lesson: 'Trenches across the slope slow the water so it soaks in, and the soil stays.' },
+    { id: 'down', label: 'Dig channels straight down the slope', right: false, lesson: 'Channels down the slope make the water faster and carry more soil away.' },
+    { id: 'fertilizer', label: 'Add fertilizer to replace the lost soil', right: false, lesson: 'The next rain washes it off too. Stop the water first.' },
+  ],
+  rodents: [
+    { id: 'trap', label: 'Set traps on their runs and clear the bush', right: true, lesson: 'Traps on the runs catch them; with the bush cleared they have nowhere to hide.' },
+    { id: 'poison', label: 'Scatter rat poison over the rows', right: false, lesson: 'Loose poison kills hens, dogs and the owls that hunt rats, and children find it.' },
+    { id: 'flood', label: 'Flood the field to drive them out', right: false, lesson: 'Flooding drowns the maize roots too, and the rats come back.' },
+  ],
 };
 
 /** The order the three fixes are shown in: shuffled, but the same every time for the same farm and day. */
@@ -127,6 +153,18 @@ export const PRODUCTS: Record<string, Product[]> = {
     { id: 'glyphosate', name: 'Glyphosate', kind: 'weed killer', right: false, lesson: 'Glyphosate kills plants. It would kill the maize, not the borers.' },
     { id: 'mancozeb', name: 'Mancozeb', kind: 'fungicide', right: false, lesson: 'Mancozeb treats leaf disease. It does not kill stem borers.' },
   ],
+  // new: herbicide against weeds (the "selective herbicide" way of weeding: care/treatments.ts)
+  weeds: [
+    { id: 'nicosulfuron', name: 'Nicosulfuron', kind: 'herbicide safe for maize', right: true, lesson: 'A selective herbicide kills grass and broad-leaf weeds but not the maize.' },
+    { id: 'glyphosate', name: 'Glyphosate', kind: 'weed killer for everything', right: false, lesson: 'Glyphosate kills every green plant, the maize too.' },
+    { id: 'mancozeb', name: 'Mancozeb', kind: 'fungicide', right: false, lesson: 'Mancozeb treats leaf disease. It does not kill weeds.' },
+  ],
+  // new: the insects that carry maize lethal necrosis (the "spray the carriers" way: care/treatments.ts)
+  virus: [
+    { id: 'lambda', name: 'Lambda-cyhalothrin', kind: 'insecticide for thrips and beetles', right: true, lesson: 'It kills the thrips and beetles that carry the virus from plant to plant.' },
+    { id: 'mancozeb', name: 'Mancozeb', kind: 'fungicide', right: false, lesson: 'Mancozeb treats fungus. The virus is carried by insects.' },
+    { id: 'glyphosate', name: 'Glyphosate', kind: 'weed killer', right: false, lesson: 'Glyphosate kills the maize, not the insects.' },
+  ],
   // new: leaf rust on maize
   disease: [
     { id: 'mancozeb', name: 'Mancozeb', kind: 'fungicide for leaf disease', right: true, lesson: 'Fungicide protects leaves rust hasn’t reached.' },
@@ -140,7 +178,7 @@ export const PRODUCTS: Record<string, Product[]> = {
 /** Care that has to be done again after the first treatment: the job (a TreatJob in world/field.ts) and how many
     check days later. A follow-up is only set if it still falls inside the cycle's six check days. Follow-ups cost no
     coins: it is the work that counts. Missing one brings the problem back the next day. */
-export const FOLLOW_UP: Partial<Record<TrialHazard, { afterDays: number; job: 'water' | 'spray' | 'weed' | 'feed' | 'drain'; title: string; why: string }>> = {
+export const FOLLOW_UP: Partial<Record<TrialHazard, { afterDays: number; job: 'water' | 'spray' | 'weed' | 'feed' | 'drain' | 'uproot' | 'pull'; title: string; why: string }>> = {
   // Wakala: water morning and evening for 3 days
   drought: { afterDays: 1, job: 'water', title: 'Water {farm} again', why: 'Dry soil needs water again the next day.' },
   // Wakala: spray again in 7 days
@@ -152,6 +190,8 @@ export const FOLLOW_UP: Partial<Record<TrialHazard, { afterDays: number; job: 'w
   weeds: { afterDays: 2, job: 'weed', title: 'Weed {farm} again', why: 'Weeds come back: catch them while small.' },
   // new
   disease: { afterDays: 2, job: 'spray', title: 'Spray {farm} again', why: 'Fungicide wears off: respray for new leaves.' },
+  virus: { afterDays: 2, job: 'uproot', title: 'Pull new sick plants on {farm}', why: 'The virus shows late on some plants: walk the farm again and pull any new ones.' },
+  striga: { afterDays: 2, job: 'pull', title: 'Pull the striga on {farm} again', why: 'Striga seed keeps waking: pull the new ones before they flower.' },
 };
 
 /** Words on the task card for a follow-up. */

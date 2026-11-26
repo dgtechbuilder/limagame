@@ -19,6 +19,11 @@ export type HazardId =
   | 'livestock'
   | 'wildlife'
   | 'hail'
+  | 'virus'
+  | 'wind'
+  | 'striga'
+  | 'erosion'
+  | 'rodents'
   | 'plantEarly'
   | 'plantLate'
   | 'harvestEarly'
@@ -63,11 +68,11 @@ const c = (id: Call, label: string): CallInfo => ({ id, label });
 
 export const CALL_GROUPS: CallGroup[] = [
   { id: 'ok', label: 'Healthy', icon: 'healthy', calls: [c('healthy', 'Healthy: leave it')] },
-  { id: 'water', label: 'Water', icon: 'water', calls: [c('water', 'Needs water'), c('flood', 'Too much water')] },
+  { id: 'water', label: 'Water & soil', icon: 'water', calls: [c('water', 'Needs water'), c('flood', 'Too much water'), c('erosion', 'Soil washed away')] },
   { id: 'food', label: 'Plant food', icon: 'fertiliser', calls: [c('fertiliser', 'Needs fertiliser')] },
-  { id: 'pests', label: 'Pests & disease', icon: 'pests', calls: [c('pests', 'Pests'), c('disease', 'Disease')] },
-  { id: 'weeds', label: 'Weeds', icon: 'weeds', calls: [c('weeds', 'Needs weeding')] },
-  { id: 'damage', label: 'Animals & weather', icon: 'animals', calls: [c('animals', 'Animals got in'), c('hail', 'Hail or storm damage')] },
+  { id: 'pests', label: 'Pests & disease', icon: 'pests', calls: [c('pests', 'Pests'), c('disease', 'Disease'), c('virus', 'Virus')] },
+  { id: 'weeds', label: 'Weeds', icon: 'weeds', calls: [c('weeds', 'Needs weeding'), c('striga', 'Striga (witchweed)')] },
+  { id: 'damage', label: 'Animals & weather', icon: 'animals', calls: [c('animals', 'Animals got in'), c('rodents', 'Rats or mole rats'), c('hail', 'Hail or storm damage'), c('wind', 'Wind flattened it')] },
   {
     id: 'timing',
     label: 'Plant & harvest time',
@@ -300,6 +305,98 @@ export const HAZARDS: Record<HazardId, Hazard> = {
     clue: { part: 'crop', text: 'Shredded leaves and ice on the ground, {name}: hail came through.' },
     right: 'Hail damage! Well read, {name}.',
     practice: 'Wait a few days: hail-cut plants can recover. Fill only real gaps; ask about insurance.',
+  },
+  /* The newer problems. They show on the six farms only (weights {}: never drawn in the everyday rounds), from the
+     second cycle on (trials/model.ts NEW_HAZARDS). */
+  virus: {
+    id: 'virus',
+    call: 'virus',
+    name: 'Maize lethal necrosis',
+    crops: ['maize'],
+    weights: {},
+    diary: 'Saved our own seed this season. Thrips in the funnels last week.',
+    captions: {
+      crop: 'Look at the top of the plant.',
+      pests: 'Look along the leaf.',
+      soil: 'Feel the soil.',
+      water: waterCaption,
+      farm: 'Where are the sick plants?',
+    },
+    clue: { part: 'pests', text: 'Pale streaks along the leaves and the top drying from the edges in, {name}: a virus, maize lethal necrosis.' },
+    right: 'A virus disease! Sharp eyes, {name}.',
+    practice: 'Pull out and burn sick plants, plant certified seed, and rotate with beans: the virus cannot live in beans.',
+  },
+  wind: {
+    id: 'wind',
+    call: 'wind',
+    name: 'Flattened by the wind',
+    crops: ['maize', 'beans', 'tomato'],
+    weights: {},
+    diary: 'A strong wind all night. No trees on the windy side.',
+    captions: {
+      crop: 'Is the plant standing?',
+      pests: 'Look at the base of the stem.',
+      soil: 'Look at the roots.',
+      water: waterCaption,
+      farm: 'Which way do the rows lean?',
+    },
+    clue: { part: 'farm', text: 'The stalks lie flat, {name}, all one way: the wind blew them over.' },
+    right: 'Wind damage! Well read, {name}.',
+    practice: 'Stand fallen plants up within a day and earth up their roots. Plant a line of trees on the windy side.',
+  },
+  striga: {
+    id: 'striga',
+    call: 'striga',
+    name: 'Striga (witchweed)',
+    crops: ['maize'],
+    weights: {},
+    diary: 'Maize on this plot for five seasons. No fertilizer this time.',
+    captions: {
+      crop: 'The plant wilts: is the soil dry?',
+      pests: 'Look at the foot of the stem.',
+      soil: 'Feel the soil.',
+      water: waterCaption,
+      farm: 'Small red or pink flowers between the rows?',
+    },
+    clue: { part: 'pests', text: 'Red- or pink-flowered striga grows from the maize roots, {name}: it feeds on them, so the maize wilts in damp soil.' },
+    right: 'Striga! Good eye, {name}.',
+    practice: 'Pull striga before it flowers and burn it. Feed the soil, rotate with beans and plant desmodium between the rows.',
+  },
+  erosion: {
+    id: 'erosion',
+    call: 'erosion',
+    name: 'Soil washed away',
+    crops: ALL,
+    weights: {},
+    diary: 'Heavy rain on a sloping farm. The rows run down the slope.',
+    captions: {
+      crop: 'Look at the foot of the plant.',
+      pests: 'Check one leaf.',
+      soil: 'Where has the topsoil gone?',
+      water: 'Where did the rain go?',
+      farm: 'Look for channels down the slope.',
+    },
+    clue: { part: 'soil', text: 'Gullies cut down the farm and the roots stand bare, {name}: the rain washed the topsoil away.' },
+    right: 'Soil erosion! Well read, {name}.',
+    practice: 'Dig trenches across the slope, plant grass strips along them, and keep the soil covered.',
+  },
+  rodents: {
+    id: 'rodents',
+    call: 'rodents',
+    name: 'Rats and mole rats',
+    crops: ALL,
+    weights: {},
+    diary: 'Tall bush along the edge. Something busy at night.',
+    captions: {
+      crop: 'Look at the stems near the ground.',
+      pests: 'What made these marks?',
+      soil: 'Look at the ground between the rows.',
+      water: waterCaption,
+      farm: 'Where are the gaps?',
+    },
+    clue: { part: 'soil', text: 'Fresh mounds, holes and cut stems, {name}: rats and mole rats are digging and gnawing.' },
+    right: 'Rats and mole rats! Sharp eyes, {name}.',
+    practice: 'Clear the bush at the edge, set traps on their runs, and put up perches for owls.',
   },
   plantEarly: {
     id: 'plantEarly',

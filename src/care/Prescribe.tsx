@@ -14,7 +14,9 @@ import { money } from '../money';
 import { Confetti, iconFor } from '../minigames/fun';
 
 /* From Wakala Agent: after a right call in the farm world, pick the fix. One of three is right; a wrong one costs
-   coins and says why it would not work, then the player picks again. The right one leads to the work by hand. */
+   coins and says why it would not work, then the player picks again. The right one asks how to do it (the ways in
+   care/treatments.ts, a climate-smart one among them); the player buys the way chosen, and the farmer walks straight
+   off to do the work by hand on the farm (World.tsx goWork). */
 
 export function Prescribe({
   round,
@@ -33,6 +35,9 @@ export function Prescribe({
   treatment,
   baseCost = 0,
   onTreat,
+  coins = Infinity,
+  paid,
+  onBuy,
 }: {
   /** after the right fix: the ways to do it, each with its cost, labour and payoff (care/treatments.ts) */
   treatments?: Treatment[];
@@ -41,6 +46,12 @@ export function Prescribe({
   /** the standard treatment's cost, which each way's costX multiplies */
   baseCost?: number;
   onTreat?: (t: Treatment) => void;
+  /** the player's coins, for the buy button */
+  coins?: number;
+  /** coins already paid for the way chosen (it is bought: the work is left) */
+  paid?: number;
+  /** buy the way chosen and go and do the work */
+  onBuy?: () => void;
   round: Round;
   hazard: TrialHazard;
   farmName: string;
@@ -73,7 +84,24 @@ export function Prescribe({
   let line = `${name}, what will fix ${farmName}? A wrong fix costs ${money(cost)}.`;
   if (wrongBefore > 0 && !picked) line = `Pick again, ${name}. A wrong fix costs ${money(cost)}.`;
   if (picked && !picked.right) line = `${picked.lesson} −${money(cost)}. Pick again.`;
-  if (right) line = `${right.lesson} Now ${then}`;
+  const ways = treatments ?? [];
+  const way = ways.find(w => w.id === treatment) ?? ways[0];
+  const price = way ? Math.round(baseCost * way.costX) : baseCost;
+  const bought = paid !== undefined;
+  const short = !bought && coins < price;
+  if (right) {
+    line = bought
+      ? `${right.lesson} Bought. Now ${then}`
+      : onBuy
+        ? `${right.lesson} ${ways.length > 1 ? 'Choose how, buy it, then ' : 'Buy it, then '}${then}`
+        : `${right.lesson} Now ${then}`;
+    if (short) line = `${right.lesson} ${way?.label ?? 'This fix'} costs ${money(price)} and you have ${money(coins)}: pick a cheaper way, or sell some harvest first.`;
+  }
+  const action = !right
+    ? undefined
+    : bought || !onBuy
+      ? { label: 'Back to the farm', onClick: onDone }
+      : { label: short ? `Need ${money(price)}` : `Buy · ${money(price)} → work`, onClick: onBuy, aria: short ? `Need ${money(price)} for ${way?.label ?? 'the fix'}` : `Buy ${way?.label ?? 'the fix'} for ${money(price)} and go to the farm` };
 
   return (
     <div className="abs fs-screen review care-screen" style={{ inset: 0 }}>
@@ -134,8 +162,9 @@ export function Prescribe({
                     <button
                       type="button"
                       key={w.id}
-                      className={`care-way${on ? ' is-on' : ''}${w.smart ? ' is-smart' : ''}`}
+                      className={`care-way${on ? ' is-on' : ''}${w.smart ? ' is-smart' : ''}${bought && on ? ' is-bought' : ''}`}
                       aria-pressed={on}
+                      disabled={bought && !on}
                       onClick={() => onTreat?.(w)}
                       title={w.does}
                     >
@@ -146,7 +175,7 @@ export function Prescribe({
                       <small>
                         {money(Math.round(baseCost * w.costX))} · {w.labour} day{w.labour === 1 ? '' : 's'} · stops {Math.round(w.effect * 100)}%
                       </small>
-                      <i>{w.smart ? 'Climate-smart' : i === 0 ? 'Standard' : ''}</i>
+                      <i>{bought && on ? '✓ Bought' : w.smart ? 'Climate-smart' : i === 0 ? 'Standard' : ''}</i>
                     </button>
                   );
                 })}
@@ -156,7 +185,7 @@ export function Prescribe({
         </div>
       </div>
 
-      <GuideLine text={line} action={right ? { label: 'Back to the farm', onClick: onDone } : undefined} />
+      <GuideLine text={line} action={action} />
     </div>
   );
 }

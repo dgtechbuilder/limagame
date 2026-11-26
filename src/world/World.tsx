@@ -11,7 +11,7 @@ import { dayNumber, ROUND_POINTS } from '../rounds/farms';
 import { CROP_NAME } from '../rounds/hazards';
 import { trialRounds } from '../rounds/trial';
 import type { Action, GameState } from '../state';
-import { CHECK_DAYS, DAMAGE, WRONG_FIX_COST, canTreat, causeOf, checkKey, farmName, hazardFor, plantedFarms, plotsOf, returnedProblem } from '../trials/model';
+import { CHECK_DAYS, DAMAGE, WRONG_FIX_COST, canTreat, causeOf, checkKey, farmName, hazardFor, plantedFarms, plotsOf, returnedProblem, type TrialHazard } from '../trials/model';
 import { fmt } from '../components/ui';
 import { track } from '../first/track';
 import { FOLLOW_UP, PRESCRIBE, fixOrder } from '../care/data';
@@ -24,6 +24,8 @@ import {
   rowName,
   rowsLeft,
   TREAT_JOB,
+  JOB_CARRY,
+  jobOf,
   allHarvested,
   careLeft,
   doneMask,
@@ -125,7 +127,21 @@ const JOB_HINT: Record<TreatJob, string> = {
   drain: 'walk over the puddles to dig drains',
   goat: 'walk up to the goat to chase it out',
   birds: 'walk into the birds to scare them off',
+  uproot: 'walk over the sick plants to pull them out and burn them',
+  prop: 'walk over the flattened maize to stand it up and earth it up',
+  pull: 'walk over the striga to pull it out',
+  trench: 'walk over the gullies to dig trenches across the slope',
+  trap: 'walk to each burrow to set a trap',
+  mulch: 'walk over the bare soil to cover it with stalks',
 };
+
+/** What the work by hand is, for a problem and the way chosen to treat it. */
+function jobHint(job: TreatJob, h: TrialHazard): string {
+  if (job === 'mulch' && h === 'weeds') return 'walk over the weeds to cut them and lay them as mulch';
+  if (job === 'spray' && h === 'weeds') return 'get the sprayer, then spray the weeds';
+  if (job === 'spray' && h === 'virus') return 'get the sprayer, then spray every row';
+  return JOB_HINT[job];
+}
 
 const CHECK_WAIT_S = 30;
 
@@ -662,6 +678,31 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     w.enterPlace();
   }
 
+  /** After a fix is bought: off to the work. A job that needs something carried (the sprayer, the can, fertilizer)
+      walks to the shed or the pond first; otherwise straight onto the farm's first tile to work. */
+  function goWork(farm: number) {
+    const w = eng.current;
+    const st = sRef.current;
+    const tr = st.trial;
+    if (!w || !tr) return;
+    const f = st.field.cycle === tr.cycle ? st.field : { ...st.field, marks: {} };
+    const pend = careLeft(f, tr, farm, fieldDay(tr, dayNumber()));
+    if (!pend) return;
+    if (w.isRiding()) w.dismount();
+    intent.current = null;
+    const hint = jobHint(pend.job, pend.hazard);
+    const item = JOB_CARRY[pend.job];
+    if (item && f.carry !== item) {
+      const place: Place = item === 'water' ? 'pond' : item === 'sprayer' ? 'shed-sprayer' : item === 'fertilizer' ? 'shed-fertilizer' : 'shed-seeds';
+      const p = PLACES[place];
+      w.walkTo(p.x, p.z);
+      return say(`Walking to the ${item === 'water' ? 'pond' : 'shed'} first. Then ${farmName(farm)}: ${hint}`);
+    }
+    const tile = w.nextTile(farm);
+    w.walkTo(tile.x, tile.z);
+    say(`Walking to ${farmName(farm)}: ${hint}`);
+  }
+
   /** From the at-risk list: straight to that farm's sign, into its check (or the fix, or the work left). */
   function goToProblem(item: RiskItem) {
     const w = eng.current;
@@ -674,7 +715,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       const st = sRef.current;
       const tr = st.trial;
       const pend = tr ? careLeft(st.field.cycle === tr.cycle ? st.field : { ...st.field, marks: {} }, tr, item.farm, fieldDay(tr, dayNumber())) : null;
-      if (pend) say(`${farmName(item.farm)}: ${JOB_HINT[pend.job]}`);
+      if (pend) say(`${farmName(item.farm)}: ${jobHint(pend.job, pend.hazard)}`);
       const tile = w.nextTile(item.farm);
       w.walkTo(tile.x, tile.z);
       return;
@@ -799,7 +840,8 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     };
     if (!before && once('started')) track('care_started', info);
     const complete = ((before | bits) & pend.need) === pend.need;
-    if (complete && (kind === 'follow-up' || st.coins >= treatCost(pend.hazard)) && once('done')) track('care_done', info);
+    const bought = tr.checks[checkKey(farm, day)]?.paid !== undefined;
+    if (complete && (kind === 'follow-up' || bought || st.coins >= treatCost(pend.hazard)) && once('done')) track('care_done', info);
   }
 
   // a follow-up whose day ended undone: logged once, and its problem is back on that farm the next day
@@ -840,8 +882,8 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
   function careScreen(c: Care, tr: NonNullable<GameState['trial']>) {
     if (c.kind === 'fix') {
       const h = hazardFor(tr, c.farm, c.day);
-      const job = TREAT_JOB[h];
       const rec = tr.checks[checkKey(c.farm, c.day)];
+      const job = jobOf(h, rec?.treatment);
       return (
         <Prescribe
           key={`${c.farm}:${c.day}`}
@@ -853,7 +895,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
           name={name}
           cost={WRONG_FIX_COST[h] ?? 0}
           wrongBefore={rec?.wrongFixes ?? 0}
-          then={job ? `${JOB_HINT[job]} (${money(treatCostFor(tr, c.farm, c.day, h))}).${FOLLOW_UP[h] ? ` ${FOLLOW_UP[h]!.why}` : ''}` : 'deal with it.'}
+          then={job ? `${jobHint(job, h)}${rec?.paid !== undefined ? '' : ` (${money(treatCostFor(tr, c.farm, c.day, h))})`}.${FOLLOW_UP[h] ? ` ${FOLLOW_UP[h]!.why}` : ''}` : 'deal with it.'}
           onPick={op => dispatch({ type: 'prescribe', farm: c.farm, day: c.day, pick: op.id, right: op.right })}
           treatments={TREATMENTS[h]}
           treatment={rec?.treatment}
@@ -862,9 +904,21 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
             dispatch({ type: 'treatChoose', farm: c.farm, day: c.day, id: w.id });
             track('treatment_choice', { farm: c.farm, day: c.day, hazard: h, way: w.id });
           }}
+          coins={s.coins}
+          paid={rec?.paid}
+          onBuy={() => {
+            const cost = treatCostFor(tr, c.farm, c.day, h);
+            // short of coins: the reducer says so, and the screen stays open to pick a cheaper way
+            dispatch({ type: 'treatBuy', farm: c.farm, day: c.day });
+            if (sRef.current.coins < cost) return;
+            track('treatment_buy', { farm: c.farm, day: c.day, hazard: h, way: rec?.treatment ?? TREATMENTS[h]?.[0]?.id ?? '', cost });
+            setCare(null);
+            // straight to the work: the farmer sets off for the shed or the pond first if the job needs carrying
+            window.setTimeout(() => goWork(c.farm), 0);
+          }}
           onDone={() => {
             setCare(null);
-            if (job) say(`Now: ${JOB_HINT[job]}`);
+            if (job) say(`Now: ${jobHint(job, h)}`);
           }}
           onLeave={() => setCare(null)}
         />
@@ -952,7 +1006,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     let then = '';
     if (h === 'hail') then = 'Nothing to treat: hail-damaged plants often recover.';
     else if (job && canTreat(h, plan) && PRESCRIBE[h]) then = 'Next: choose the fix.';
-    else if (job && canTreat(h, plan)) then = `Now ${JOB_HINT[job]} (${money(DAMAGE[h].treat)}).`;
+    else if (job && canTreat(h, plan)) then = `Now ${jobHint(job, h)} (${money(DAMAGE[h].treat)}).`;
     else if (DAMAGE[h].treat > 0) then = 'Untreated: the damage goes on.';
     const voice = voiceFor(t.cycle, checking.farm, checking.day, h, !!returnedProblem(t, checking.farm, checking.day));
     return { r, voice, after: { right: [cause, h === 'healthy' ? '' : then].filter(Boolean).join(' '), wrong: DAMAGE[h].missed ? `Look again in ${CHECK_WAIT_S} seconds: until read right, it costs harvest.` : '' } };
