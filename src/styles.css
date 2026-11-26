@@ -1445,12 +1445,12 @@ button.card:active { transform: scale(0.98); }
 }
 .set-title-bar b { color: var(--peach); }
 .set-tabs {
-  width: 168px; flex-shrink: 0; display: flex; flex-direction: column; gap: 4px;
-  padding: 14px 12px 12px; background: #f1dcbd; border-right: 1.5px solid var(--brown-20);
+  width: 168px; flex-shrink: 0; display: flex; flex-direction: column; gap: 3px; overflow-y: auto;
+  padding: 12px 12px 10px; background: #f1dcbd; border-right: 1.5px solid var(--brown-20);
 }
 .set-heading { margin: 0 0 6px 6px; font-size: 12.5px; font-weight: 700; }
 .set-tab {
-  display: flex; align-items: center; gap: 9px; height: 34px; flex-shrink: 0; padding: 0 12px;
+  display: flex; align-items: center; gap: 9px; height: 30px; flex-shrink: 0; padding: 0 12px;
   border-radius: 10px; border: 1.5px solid transparent; background: transparent;
   color: var(--brown); font: inherit; font-size: 10px; font-weight: 600; text-align: left;
 }
@@ -1503,6 +1503,11 @@ button.card:active { transform: scale(0.98); }
   color: var(--brown); font: inherit; font-size: 8.5px; font-weight: 600;
 }
 .set-link:disabled { opacity: 0.45; }
+/* Settings → Sound: a level slider with its percentage, and the buttons to hear each sound */
+.vol-ctl { display: flex; align-items: center; gap: 6px; }
+.vol-level { display: inline-flex; align-items: center; gap: 8px; }
+.vol-range { width: 140px; accent-color: var(--gold); margin: 0; }
+.vol-pct { min-width: 30px; font-size: 9px; text-align: right; }
 .set-farmer { display: flex; gap: 22px; height: 100%; }
 .set-preview {
   position: relative; width: 190px; flex-shrink: 0; display: grid; place-items: end center; padding-bottom: 6px;

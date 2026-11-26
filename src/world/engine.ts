@@ -12,6 +12,7 @@ import { FEEDER } from '../onsite/spots';
 import { JOB_INFO, ROUTINE, TRACTOR_PLOT, toolJobs, toolName, type PlotJob, type TractorId } from '../plots/data';
 import { CHECK_DAYS, CROP_WORDS, checkKey, cropOf, farmName, harvestFarm, hazardFor, isResting, plotGrowth, restOf, type Trial, type TrialHazard } from '../trials/model';
 import { REST } from '../soil/model';
+import { footstep, type Ground } from '../audio/ambience';
 import {
   FULL,
   PLOTS,
@@ -155,6 +156,16 @@ function phoneLike() {
     return false;
   }
 }
+/** The dirt yard and the paths (x0, z0, x1, z1): drawn as packed soil, and walked on as soil. */
+const PATHS: [number, number, number, number][] = [
+  [-12.8, -10.0, 12.8, 10.0],
+  [-1.5, -16.6, 1.5, -9.5],
+  [-17.0, -2.9, -12.3, 2.9],
+  [12.3, -1.5, 14.8, 1.5],
+  [-1.5, 9.5, 1.5, 14.2],
+  [-16.0, 4.8, -12.3, 7.8],
+];
+
 /** Where the tractor waits, and a spot beside it to walk to (clear of the Hire spot, which opens the hire screen). */
 const TRACTOR_HOME = { x: -17.4, z: 6.4 };
 /** The mini forest: 10 acres of idle land, bottom right of the farm, below the pond (the pond is at x 18.4, z 0). */
@@ -315,6 +326,10 @@ export class FarmWorld {
   private joy = new THREE.Vector2();
   private keys = new Set<string>();
   private walking = 0;
+  /** each farm's cleared or tilled plots (bare soil underfoot; the rest of a farm is grass) */
+  private soilBits: number[] = PLOTS.map(() => 0);
+  /** which half-stride the farmer is in: a footstep sounds as it changes */
+  private stride = 0;
   /** play-tests shorten the plot timer (1 = the real 3 seconds) */
   workScale = 1;
   private work = 0;
@@ -593,14 +608,7 @@ export class FarmWorld {
     const flat: Part[] = [];
     // ground and paths
     smooth.push({ geo: G.plane, color: C.grass, m: at(0, 0, -2, { sx: 120, sz: 110 }) });
-    const pathRects: [number, number, number, number][] = [
-      [-12.8, -10.0, 12.8, 10.0],
-      [-1.5, -16.6, 1.5, -9.5],
-      [-17.0, -2.9, -12.3, 2.9],
-      [12.3, -1.5, 14.8, 1.5],
-      [-1.5, 9.5, 1.5, 14.2],
-      [-16.0, 4.8, -12.3, 7.8],
-    ];
+    const pathRects = PATHS;
     for (const [x0, z0, x1, z1] of pathRects) {
       smooth.push({ geo: roundRect(x0 - 0.3, z0 - 0.3, x1 + 0.3, z1 + 0.3, 1.2), color: C.pathEdge, m: at(0, 0.008, 0) });
     }
@@ -1555,6 +1563,7 @@ export class FarmWorld {
       // the farm grows with its seed, fertilizer and machines: taller or shorter, greener or paler
       const growth = active && t ? this.grown(t, farm, day).plots : [1];
 
+      this.soilBits[farm] = active ? prep : 0;
       col.set(active && prep ? '#7a4224' : rest === 'cover' ? '#4f9e2c' : '#93cf33');
       this.base.setColorAt(farm, col);
 
@@ -2373,6 +2382,13 @@ export class FarmWorld {
     this.farmer.root.visible = false;
   }
 
+  /** What is underfoot: a farm's cleared or tilled plot, the dirt yard and the paths are soil; the rest is grass. */
+  groundAt(x: number, z: number): Ground {
+    const on = plotAt(x, z);
+    if (on) return this.soilBits[on.farm] & (1 << on.plot) ? 'soil' : 'grass';
+    return PATHS.some(([x0, z0, x1, z1]) => x >= x0 && x <= x1 && z >= z0 && z <= z1) ? 'soil' : 'grass';
+  }
+
   private animateFarmer(dt: number, time: number) {
     const F = this.farmer;
     if (this.nightOn) this.lantern.position.set(this.pos.x, 2.2, this.pos.y + 0.4);
@@ -2388,6 +2404,12 @@ export class FarmWorld {
     F.legR.rotation.x = -sw;
     F.armL.rotation.x = -sw * 0.8;
     F.body.position.y = Math.abs(Math.sin(time * 11)) * 0.06 * w;
+    // a footstep as each foot lands (the legs swing through the middle twice a stride), on grass or on soil
+    const stride = Math.floor((time * 11) / Math.PI);
+    if (stride !== this.stride) {
+      this.stride = stride;
+      if (w > 0.5 && !this.riding) footstep(this.groundAt(this.pos.x, this.pos.y));
+    }
     this.work = Math.max(0, this.work - dt);
     const fx = this.work > 0 ? this.workFx : null;
     if (fx) F.armR.rotation.x = -1.0 + Math.sin(time * 18) * 0.7;

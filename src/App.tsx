@@ -47,6 +47,8 @@ import { InfoLayer } from './learn/Info';
 import { ArtContext, VoiceContext } from './art/style';
 import { speak, stopSpeaking } from './speech';
 import { setSoundOn, sfx, warmSfx } from './sfx';
+import { setVolume, volumeSettings } from './audio/volume';
+import { startAudio } from './audio/ambience';
 import { rumble, setPadConfig, startPads, type PadInfo } from './input/gamepad';
 import { FAMILY_NAME, padSettings } from './input/pad';
 import { MainMenu } from './screens/MainMenu';
@@ -252,6 +254,22 @@ export default function App() {
     startPads();
     return () => window.removeEventListener('lima:pad', on);
   }, [dispatch]);
+  // Settings → Sound (src/audio): every sound's level, and the music, footsteps and animals, started by the first tap
+  // or key (browsers start sound only after one)
+  useLayoutEffect(() => setVolume(volumeSettings(s.settings.volume)), [s.settings.volume]);
+  useEffect(() => {
+    const go = () => {
+      startAudio();
+      window.removeEventListener('pointerdown', go);
+      window.removeEventListener('keydown', go);
+    };
+    window.addEventListener('pointerdown', go);
+    window.addEventListener('keydown', go);
+    return () => {
+      window.removeEventListener('pointerdown', go);
+      window.removeEventListener('keydown', go);
+    };
+  }, []);
   // the cues are made once, after the first tap (browsers start sound only after one)
   useEffect(() => {
     if (s.settings.sound === false) return;

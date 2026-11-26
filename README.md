@@ -41,6 +41,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 - [Navigation and the main menu](#navigation-and-the-main-menu)
 - [Page addresses](#page-addresses)
 - [Sound effects](#sound-effects)
+  - [Music, footsteps and the farm animals](#music-footsteps-and-the-farm-animals)
 - [Money on screen](#money-on-screen)
 - [Settings](#settings)
 - [Game controllers](#game-controllers)
@@ -1115,6 +1116,29 @@ Each cue is rendered once into a buffer off the main thread (an `OfflineAudioCon
 it is a single buffer source, and the audio context sleeps between cues, so sound never slows the 3D farm.
 Settings → Game → *Sound effects* turns them off.
 
+### Music, footsteps and the farm animals
+
+Light audio runs under the whole game (`src/audio/ambience.ts`, made on the phone with the Web Audio API, nothing
+downloaded). It starts with the first tap or key, because browsers start sound only after one, and rests while the
+game is in the background.
+
+- **The score** — a calm background piece that never quite repeats: a soft pad on a four-chord loop (G, Em, C, D), a
+  round bass, a kalimba picking notes of the G major pentatonic with a little echo, and a faint shaker. Every 16 bars
+  it thins out to breathe. Notes are laid down a second ahead, so a slow frame of the 3D farm never makes it stumble.
+- **Footsteps** — one for each footfall of the farmer on the 3D farm (as the legs swing through, twice a stride; none
+  while riding). **On grass**, a soft swish and a fine rustle over a cushioned thud; **on soil** (the dirt yard and
+  paths, or a cleared or tilled plot), a drier crunch and a little grit over a firmer thud. They are close, just
+  different enough to hear where you walk. `groundAt()` in `src/world/engine.ts` says which is underfoot.
+- **The animals** — while the 3D farm is showing, **the hens cluck every 20 seconds** (a run of short *buk*s, now and
+  then a *ba-gawk*) and **a cow gives a light moo every minute** (half a minute out of step with the hens' minute).
+  Only when the farm has hens, or cows.
+
+**Volume.** Settings → **Sound** sets an **overall volume, 2% to start**, so the whole game is only lightly heard, and
+a share of it for each kind of sound: *Music*, *Footsteps*, *Farm animals* and *Effects* (the reward cues above and the
+tractor's drive). Each is a 0–100% slider, with buttons to hear a step on grass or soil, a cluck, a moo and a ping;
+*Reset volume* goes back to 2%. The levels live in `settings.volume` (`src/audio/volume.ts`); every sound in the game
+reads them. `tests/audio.spec.ts` plays them.
+
 ## Money on screen
 
 **The money audit (November 2026).** Every screen with money was checked in shillings and in dollars:
@@ -1158,6 +1182,7 @@ its own sections. Every control works at once and is saved on the device; *Reset
 | --- | --- |
 | **My farmer** | rename the farmer; change the look (the farm, the rounds and the HUD all follow) |
 | **Game** | *Character style*: Retro anime or Original · *Farm view*: 3D farm or Classic · *Read aloud*: speaks the guide's lines and the game's messages with the phone's voice (a Kenyan English voice when the phone has one), with a Test button · *Sound effects*: on or off, with a button to hear each one · *Upgrade messages*: the dialog after a storage upgrade, on or off |
+| **Sound** | *Overall volume*: every sound in the game, **2% to start** · *Music* · *Footsteps* (with *Grass* and *Soil* to hear one) · *Farm animals* (*Cluck*, *Moo*) · *Effects*: the reward cues and the tractor (*Ping*) · *Reset volume*. Each is a share of the overall volume (see [Music, footsteps and the farm animals](#music-footsteps-and-the-farm-animals)) |
 | **Display** | *Graphics*: Auto (shadows and a picture sized to the phone, lighter by itself if it slows down; see [Performance](#performance-on-low-cost-phones)), High (always shadows, the sharpest picture), Low (no shadows, 1× resolution) · *Reduce motion*: ends every animation and transition at once · *Full screen* |
 | **Home screen** | which of the farm's buttons show, each with *Hide* / *Show*, plus *Hide all* and *Show all*. Side buttons: Mission, Shop, Water tank, Climate, Partners · top of the screen: the day counter, Points · daily chips and notes: Animal chores, Daily tidy-up, Climate-smart drill, Farm basics lesson, Today's build, Carrying and riding. Settings, Menu, the money, the tractor and the next task always stay, and anything hidden is still in the Main menu. The left and right button columns close up over a hidden button. The list is `src/hud/prefs.ts` |
 | **Controller** | the controllers connected, by name and make · *Use a controller*: on or off · *Button names*: Auto (as printed on the controller in use), Xbox, PlayStation or Nintendo · *Confirm button*: Bottom (Xbox, PlayStation) or Right (Nintendo style) · *Stick dead zone*: Small, Medium or Large · *Rumble* · a chart of every button, lit while held · *Set up buttons*: press each button in turn, for a controller the browser does not know (see [Game controllers](#game-controllers)) |
