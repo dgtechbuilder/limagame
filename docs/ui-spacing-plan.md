@@ -283,3 +283,17 @@ Before and after screenshots of every screen go with each phase, so each change 
 - **Text floor**: 10 / 12 (labels / sentences), as above.
 - **The Figma frames**: kept. Phase 2 re-lays out what is inside them.
 - **The guide character on pop-ups**: beside the panel, never over a button (Shop, Rewards).
+
+## One look: the Shop
+
+Every panel, card and button takes the look of the Shop (`src/screens/Catalog.tsx`), as Dean asked on 2026-11-27. The
+tokens are at the top of `src/styles.css`:
+
+- **Panel** (`--sheet`, `--frame`, `--sheet-shadow`, `--sheet-radius`): the cream (`--cream`) in the wooden frame art,
+  or, where a panel has no frame art, its orange-and-brown edge (`--frame`; `--frame-thin` on the farm's HUD cards).
+  Titles stay white on the wooden plank.
+- **Card** (`--tile`, `--tile-edge`, `--tile-radius`): the Shop's beige (#f6e4cc) in a soft brown edge.
+- **Button**: the orange-gold `.gold-btn` (`--gold`, `--gold-inset`) with dark text (`--ink-on-gold`).
+
+New screens use these, or the `.ui-sheet`, `.ui-tile`, `.ui-title` and `.ui-lead` classes. Green and red stay for money
+gained and lost.
