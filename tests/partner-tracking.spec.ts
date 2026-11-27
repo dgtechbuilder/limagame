@@ -104,10 +104,20 @@ test('the game records partner leads, products and learning', async ({ page }) =
   await page.evaluate(() => (window as unknown as Win).__lima.jump({ coins: 5000, settings: { ...(window as unknown as Win).__lima.state.settings, country: 'KE' } }));
   await page.evaluate(() => window.localStorage.removeItem('lima-partner-events'));
   const d = (a: Record<string, unknown>) => page.evaluate(x => (window as unknown as Win).__lima.dispatch(x), a);
+  const seen = async () => (await partnerEvents(page)).map(e => `${e.type}:${e.brand}`);
+  const game = () => page.evaluate(() => {
+    const st = (window as unknown as Win).__lima.state;
+    return { coins: st.coins as number, inventory: st.inventory as string[], toast: st.toast?.text as string | undefined };
+  });
+  // the jump has landed before anything is played
+  await expect.poll(async () => (await game()).coins).toBe(5000);
   await d({ type: 'partnerSave', id: 'rutuba' });
+  await expect.poll(seen).toEqual(['lead:rutuba']);
   await d({ type: 'buy', id: 'rutuba-npk', name: 'Lima NPK', price: 315 });
+  await expect.poll(async () => (await game()).inventory, { message: `the purchase went through (${JSON.stringify(await game())})` }).toContain('rutuba-npk');
+  await expect.poll(seen).toEqual(['lead:rutuba', 'product:rutuba']);
   await d({ type: 'basicsRead', lesson: 0 });
-  await expect.poll(async () => (await partnerEvents(page)).map(e => `${e.type}:${e.brand}`)).toEqual(['lead:rutuba', 'product:rutuba', 'learning:ujuzi']);
+  await expect.poll(seen).toEqual(['lead:rutuba', 'product:rutuba', 'learning:ujuzi']);
   const [lead, product] = await partnerEvents(page);
   expect(lead).toMatchObject({ kind: 'offer_code', ctx: { country: 'KE', region: 'East Africa', experience: 'new' } });
   expect(product).toMatchObject({ product: 'rutuba-npk', stage: 'bought', qty: 1 });
