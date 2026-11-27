@@ -48,50 +48,50 @@ export function WaterSaveGame({ onDone }: GameProps) {
 
   const stage = (
     <svg viewBox={`0 0 ${W} ${H}`} className="csa-svg" aria-label="A tomato plant through a hot day, and its soil's water">
-      <rect width={W} height={H} fill={sunUp ? '#cfe9f7' : '#2b3a5a'} />
+      <rect width={W} height={H} fill={sunUp ? '#dceadc' : '#344f51'} />
       {/* the sun (or the moon) */}
-      {sunUp ? <circle cx={sunX} cy={30 + Math.abs(sunX - 140) * 0.15} r={14} fill="#ffc93c" /> : <circle cx={220} cy={34} r={10} fill="#f3f0d0" />}
+      {sunUp ? <circle cx={sunX} cy={30 + Math.abs(sunX - 140) * 0.15} r={14} fill="#ecc050" /> : <circle cx={220} cy={34} r={10} fill="#efedd4" />}
       {/* the soil in section */}
-      <rect x={0} y={150} width={290} height={H - 150} fill="#8b5e3c" />
-      <rect x={0} y={150} width={290} height={H - 150} fill="#3aa7e0" opacity={Math.max(0, Math.min(0.55, (now / WATER_GAME.cap) * 0.6))} />
-      {(shown ?? c).mulch && <rect x={0} y={142} width={290} height={10} rx={3} fill="#d8b45a" stroke="#b18c36" />}
+      <rect x={0} y={150} width={290} height={H - 150} fill="#835f44" />
+      <rect x={0} y={150} width={290} height={H - 150} fill="#5bbfb2" opacity={Math.max(0, Math.min(0.55, (now / WATER_GAME.cap) * 0.6))} />
+      {(shown ?? c).mulch && <rect x={0} y={142} width={290} height={10} rx={3} fill="#cbaf67" stroke="#a58742" />}
       {/* roots */}
-      <path d="M145 152 q -6 30 -24 54 M145 152 q 4 34 22 58 M145 152 l 0 70" stroke="#e7d2b0" strokeWidth={2} fill="none" />
+      <path d="M145 152 q -6 30 -24 54 M145 152 q 4 34 22 58 M145 152 l 0 70" stroke="#e2d1b5" strokeWidth={2} fill="none" />
       {/* the plant: droops when the soil is below the wilting line */}
       <g transform={`translate(145 150) rotate(${wilting ? 18 : 0})`}>
-        <path d="M0 0 L0 -70" stroke="#4b7a2a" strokeWidth={4} />
+        <path d="M0 0 L0 -70" stroke="#4c7635" strokeWidth={4} />
         {[-60, -44, -28].map((y, i) => (
           <g key={y}>
-            <path d={`M0 ${y} q ${-22 - i * 2} ${wilting ? 14 : -6} ${-34} ${wilting ? 22 : 2}`} stroke="#3e9b2f" strokeWidth={6} fill="none" strokeLinecap="round" />
-            <path d={`M0 ${y + 6} q ${22 + i * 2} ${wilting ? 14 : -6} ${34} ${wilting ? 22 : 2}`} stroke="#3e9b2f" strokeWidth={6} fill="none" strokeLinecap="round" />
+            <path d={`M0 ${y} q ${-22 - i * 2} ${wilting ? 14 : -6} ${-34} ${wilting ? 22 : 2}`} stroke="#54933d" strokeWidth={6} fill="none" strokeLinecap="round" />
+            <path d={`M0 ${y + 6} q ${22 + i * 2} ${wilting ? 14 : -6} ${34} ${wilting ? 22 : 2}`} stroke="#54933d" strokeWidth={6} fill="none" strokeLinecap="round" />
           </g>
         ))}
-        {!wilting && <circle cx={10} cy={-34} r={6} fill="#e0452f" />}
+        {!wilting && <circle cx={10} cy={-34} r={6} fill="#c75d48" />}
       </g>
       {/* water lost to the air: steam off bare soil in the heat */}
       {day && running && sunUp &&
         Array.from({ length: (shown?.mulch ? 3 : 7) }, (_, i) => (
-          <path key={i} d={`M${20 + i * 38} ${146 - ((t * 400 + i * 23) % 40)} q 5 -6 0 -12 q -5 -6 0 -12`} stroke="#ffffff" strokeWidth={2} fill="none" opacity={0.7} />
+          <path key={i} d={`M${20 + i * 38} ${146 - ((t * 400 + i * 23) % 40)} q 5 -6 0 -12 q -5 -6 0 -12`} stroke="#fbf8ee" strokeWidth={2} fill="none" opacity={0.7} />
         ))}
       <text x={10} y={H - 8} className="csa-svg-note is-light">
         {shown ? `${shown.mulch ? 'Mulched' : 'Bare'} · ${HOW_NAME[shown.how].toLowerCase()} · ${WHEN_NAME[shown.when]} · ${shown.litres} L` : 'Choose, then run the day'}
       </text>
       {/* the chart */}
-      <rect x={CHART.x - 8} y={CHART.y - 18} width={CHART.w + 18} height={CHART.h + 68} rx={8} fill="#fffaf0" opacity={0.95} />
+      <rect x={CHART.x - 8} y={CHART.y - 18} width={CHART.w + 18} height={CHART.h + 68} rx={8} fill="#fdfaf2" opacity={0.95} />
       <text x={CHART.x} y={CHART.y - 6} className="csa-svg-note">
         Water in the soil
       </text>
-      <line x1={CHART.x} x2={CHART.x + CHART.w} y1={yOf(WATER_GAME.wilt)} y2={yOf(WATER_GAME.wilt)} stroke="#c0432f" strokeDasharray="4 3" />
+      <line x1={CHART.x} x2={CHART.x + CHART.w} y1={yOf(WATER_GAME.wilt)} y2={yOf(WATER_GAME.wilt)} stroke="#ac5543" strokeDasharray="4 3" />
       <text x={CHART.x + CHART.w} y={yOf(WATER_GAME.wilt) - 3} textAnchor="end" className="csa-svg-note is-bad">
         wilting line
       </text>
-      <rect x={xOf(12)} y={CHART.y} width={xOf(24) - xOf(12)} height={CHART.h} fill="#2b3a5a" opacity={0.08} />
+      <rect x={xOf(12)} y={CHART.y} width={xOf(24) - xOf(12)} height={CHART.h} fill="#344f51" opacity={0.08} />
       {['6am', 'noon', '6pm', 'midnight', '6am'].map((l, i) => (
         <text key={i} x={xOf(i * 6)} y={CHART.y + CHART.h + 14} textAnchor={i === 0 ? 'start' : i === 4 ? 'end' : 'middle'} className="csa-svg-tick">
           {l}
         </text>
       ))}
-      {day && <polyline points={pts} fill="none" stroke={day.alive ? '#2b8fd0' : '#c0432f'} strokeWidth={3} strokeLinejoin="round" />}
+      {day && <polyline points={pts} fill="none" stroke={day.alive ? '#4cafa5' : '#ac5543'} strokeWidth={3} strokeLinejoin="round" />}
       {day && !running && (
         <g>
           <text x={CHART.x} y={CHART.y + CHART.h + 29} className={`csa-svg-note${day.alive ? '' : ' is-bad'}`}>

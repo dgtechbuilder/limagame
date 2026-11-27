@@ -456,12 +456,12 @@ function Burst() {
             key={k}
             d="M0,-6 L1.8,-1.8 L6,0 L1.8,1.8 L0,6 L-1.8,1.8 L-6,0 L-1.8,-1.8 Z"
             transform={`translate(${Math.cos(a) * r},${Math.sin(a) * r}) scale(${k % 2 ? 0.8 : 1.2})`}
-            fill={['#ffb005', '#2f9b14', '#e05a4a', '#22ade2'][k % 4]}
+            fill={['#e6a71e', '#449224', '#cb715f', '#48bca9'][k % 4]}
           />
         );
       })}
-      <circle r={26} fill="#ffcf4d" stroke="#fff" strokeWidth={4} />
-      <path d="M-11,1 L-3,9 L12,-8" stroke="#fff" strokeWidth={5.5} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <circle r={26} fill="#edc75f" stroke="#fbf8ee" strokeWidth={4} />
+      <path d="M-11,1 L-3,9 L12,-8" stroke="#fbf8ee" strokeWidth={5.5} fill="none" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -488,8 +488,8 @@ function Ring({ frac }: { frac: number }) {
   const L = 2 * Math.PI * R;
   return (
     <svg className="story-ring" viewBox="-11 -11 22 22" width={22} height={22} role="timer" aria-label="Working">
-      <circle r={R} fill="#fff" stroke="#f1e2c8" strokeWidth={3.5} />
-      <circle r={R} fill="none" stroke="#f39c12" strokeWidth={3.5} strokeDasharray={`${L * frac} ${L}`} transform="rotate(-90)" />
+      <circle r={R} fill="#fbf8ee" stroke="#ede1cc" strokeWidth={3.5} />
+      <circle r={R} fill="none" stroke="#dc9728" strokeWidth={3.5} strokeDasharray={`${L * frac} ${L}`} transform="rotate(-90)" />
     </svg>
   );
 }
@@ -520,36 +520,36 @@ function StoryArt({ page, look, name, p, running, planting, holding, caring }: {
       <svg viewBox="0 0 300 220" width={300} height={220}>
         <defs>
           <linearGradient id="story-sky" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#9fd6ee" />
-            <stop offset="1" stopColor="#e9f4dc" />
+            <stop offset="0" stopColor="#b9d4b9" />
+            <stop offset="1" stopColor="#c8e1b7" />
           </linearGradient>
         </defs>
         <rect width={300} height={220} fill="url(#story-sky)" />
-        <circle cx={250} cy={40} r={20} fill="#ffd45a" />
-        <path d="M0,120 Q80,100 160,116 T300,108 L300,220 L0,220 Z" fill="#8cc163" />
-        <path d="M0,150 Q120,134 300,148 L300,220 L0,220 Z" fill="#a8743f" />
+        <circle cx={250} cy={40} r={20} fill="#eecc6b" />
+        <path d="M0,120 Q80,100 160,116 T300,108 L300,220 L0,220 Z" fill="#8bb870" />
+        <path d="M0,150 Q120,134 300,148 L300,220 L0,220 Z" fill="#9e744a" />
         {[0, 1, 2].map(r => (
-          <path key={r} d={`M10,${166 + r * 18} Q150,${158 + r * 18} 290,${166 + r * 18}`} stroke="#7d5229" strokeWidth={3} fill="none" opacity={0.6} />
+          <path key={r} d={`M10,${166 + r * 18} Q150,${158 + r * 18} 290,${166 + r * 18}`} stroke="#755231" strokeWidth={3} fill="none" opacity={0.6} />
         ))}
         <Tree x={32} y={118} s={0.95} />
         <Hut x={228} y={128} s={1.1} />
         {/* the water tank */}
         <g transform="translate(278,130)">
-          <rect x={-12} y={-34} width={24} height={34} rx={4} fill="#2b7fb8" />
-          <path d="M-12,-24 H12 M-12,-14 H12" stroke="#1d5f8c" strokeWidth={1.4} />
-          <ellipse cx={0} cy={-34} rx={12} ry={3} fill="#3a93cf" />
+          <rect x={-12} y={-34} width={24} height={34} rx={4} fill="#479c94" />
+          <path d="M-12,-24 H12 M-12,-14 H12" stroke="#33766f" strokeWidth={1.4} />
+          <ellipse cx={0} cy={-34} rx={12} ry={3} fill="#58b1a8" />
         </g>
         {/* the signpost: blank until the farmer signs, then their name and SOLD */}
         <g transform="translate(86,154)">
-          <rect x={-2.5} y={-46} width={5} height={46} fill="#6a4a2a" />
-          <rect x={-46} y={-62} width={92} height={22} rx={3} fill="#f7e2b8" stroke="#8a5a30" strokeWidth={1.6} />
-          <text x={0} y={-47} textAnchor="middle" fontSize={8.5} fontWeight={700} fill={p.signed ? '#6b402b' : '#b8a07a'}>
+          <rect x={-2.5} y={-46} width={5} height={46} fill="#644a30" />
+          <rect x={-46} y={-62} width={92} height={22} rx={3} fill="#f1e0be" stroke="#815b39" strokeWidth={1.6} />
+          <text x={0} y={-47} textAnchor="middle" fontSize={8.5} fontWeight={700} fill={p.signed ? '#6b402b' : '#b29f80'}>
             {p.signed ? (name.length > 9 ? 'My farm' : `${name}'s farm`) : 'FOR SALE'}
           </text>
           {p.signed && (
             <g transform="rotate(-8)" className="story-pop">
-              <rect x={-6} y={-40} width={40} height={14} rx={2} fill="#c0392b" />
-              <text x={14} y={-30} textAnchor="middle" fontSize={7} fontWeight={800} fill="#fff" letterSpacing={1}>
+              <rect x={-6} y={-40} width={40} height={14} rx={2} fill="#ab5240" />
+              <text x={14} y={-30} textAnchor="middle" fontSize={7} fontWeight={800} fill="#fbf8ee" letterSpacing={1}>
                 SOLD
               </text>
             </g>
@@ -568,8 +568,8 @@ function StoryArt({ page, look, name, p, running, planting, holding, caring }: {
     const stage = running !== null ? running : p.steps;
     return (
       <svg viewBox="0 0 300 220" width={300} height={220}>
-        <rect width={300} height={220} fill="#e7d7b2" />
-        <rect width={300} height={70} fill="#d9cfa8" />
+        <rect width={300} height={220} fill="#e2d5b7" />
+        <rect width={300} height={70} fill="#d4ccad" />
         {stage === 0 && (planting ? <PlantBeds sown={p.sown} holding={holding} /> : <BareField />)}
         {stage === 1 && <Sprouts />}
         {stage === 2 && (
@@ -579,20 +579,20 @@ function StoryArt({ page, look, name, p, running, planting, holding, caring }: {
             </svg>
             {/* the sukuma wiki at the back, dry */}
             {[24, 52, 80].map((x, k) => (
-              <Kale key={x} x={x} y={74} s={0.55} cond="drought" seed={k + 4} bg="#d9cfa8" />
+              <Kale key={x} x={x} y={74} s={0.55} cond="drought" seed={k + 4} bg="#d4ccad" />
             ))}
           </>
         )}
         {stage >= 3 && <Harvested />}
-        {stage === 2 && <path d="M206,92 L184,116" stroke="#8a5a30" strokeWidth={5} strokeLinecap="round" />}
-        {running !== null && <rect width={300} height={220} fill="#fff" opacity={0.18} className="story-working" />}
+        {stage === 2 && <path d="M206,92 L184,116" stroke="#815b39" strokeWidth={5} strokeLinecap="round" />}
+        {running !== null && <rect width={300} height={220} fill="#fbf8ee" opacity={0.18} className="story-working" />}
       </svg>
     );
   }
 
   return (
     <svg viewBox="0 0 300 220" width={300} height={220}>
-      <rect width={300} height={220} fill="#eaf3dc" />
+      <rect width={300} height={220} fill="#c9dfb9" />
       <svg x={0} y={60} width={300} height={160} viewBox={`0 0 ${FIELD_W} ${FIELD_H}`} preserveAspectRatio="xMidYMid slice">
         <Field crop="maize" cond="armyworm" problemRows={[]} rows={5} seed={3} />
       </svg>
@@ -601,19 +601,19 @@ function StoryArt({ page, look, name, p, running, planting, holding, caring }: {
         <FarmerFigure look={look} />
       </g>
       <g transform="translate(180,40) rotate(4)">
-        <rect x={0} y={0} width={96} height={112} rx={6} fill="#fffaf0" stroke="#8a5a30" strokeWidth={2} />
-        <rect x={0} y={0} width={96} height={18} rx={6} fill="#c98d55" />
-        <text x={48} y={13} textAnchor="middle" fontSize={7} fontWeight={800} fill="#fff">
+        <rect x={0} y={0} width={96} height={112} rx={6} fill="#fdfaf2" stroke="#815b39" strokeWidth={2} />
+        <rect x={0} y={0} width={96} height={18} rx={6} fill="#bd8d61" />
+        <text x={48} y={13} textAnchor="middle" fontSize={7} fontWeight={800} fill="#fbf8ee">
           THIS SEASON
         </text>
         {['Every 2 days', 'Feel the soil', 'Store, sell later'].map((l, k) => (
           <g key={l} transform={`translate(8,${34 + k * 28})`}>
             {p.flipped.includes(k) ? (
-              <path className="story-pop" d="M0,0 L4,5 L11,-5" stroke="#2f9b14" strokeWidth={2.4} fill="none" strokeLinecap="round" />
+              <path className="story-pop" d="M0,0 L4,5 L11,-5" stroke="#449224" strokeWidth={2.4} fill="none" strokeLinecap="round" />
             ) : (
-              <rect x={0} y={-6} width={11} height={11} rx={2} fill="none" stroke="#c9b18a" strokeWidth={1.5} />
+              <rect x={0} y={-6} width={11} height={11} rx={2} fill="none" stroke="#c3b090" strokeWidth={1.5} />
             )}
-            <text x={15} y={4} fontSize={7} fontWeight={600} fill={p.flipped.includes(k) ? '#6b402b' : '#b8a07a'}>
+            <text x={15} y={4} fontSize={7} fontWeight={600} fill={p.flipped.includes(k) ? '#6b402b' : '#b29f80'}>
               {l}
             </text>
           </g>
@@ -635,22 +635,22 @@ function StoryAnimals({ cared, caring }: { cared: StoryChore['id'][]; caring: St
       <g transform="translate(44,150)">
         <ellipse cy={1} rx={24} ry={3.5} fill="rgba(0,0,0,0.15)" />
         {[-14, -8, 9, 15].map(x => (
-          <rect key={x} x={x - 1.6} y={-12} width={3.2} height={12} rx={1.2} fill="#5a4636" />
+          <rect key={x} x={x - 1.6} y={-12} width={3.2} height={12} rx={1.2} fill="#56463a" />
         ))}
-        <ellipse cy={-17} rx={19} ry={9.5} fill="#f7f3ea" stroke="#5a4636" strokeWidth={1.2} />
-        <path d="M-8,-24 Q-2,-20 -6,-12 Q-12,-14 -12,-20 Z M6,-25 Q12,-22 10,-15 Q4,-17 5,-22 Z" fill="#3a2f28" />
-        <path d="M-19,-18 Q-24,-14 -22,-8" stroke="#5a4636" strokeWidth={1.4} fill="none" />
-        <ellipse cx={-2} cy={-8} rx={4} ry={2.4} fill="#f2b8b0" />
+        <ellipse cy={-17} rx={19} ry={9.5} fill="#f6f2eb" stroke="#56463a" strokeWidth={1.2} />
+        <path d="M-8,-24 Q-2,-20 -6,-12 Q-12,-14 -12,-20 Z M6,-25 Q12,-22 10,-15 Q4,-17 5,-22 Z" fill="#4d3e30" />
+        <path d="M-19,-18 Q-24,-14 -22,-8" stroke="#56463a" strokeWidth={1.4} fill="none" />
+        <ellipse cx={-2} cy={-8} rx={4} ry={2.4} fill="#e9c1b9" />
         <g transform={fed ? 'translate(21,-8) rotate(28)' : 'translate(21,-18)'} className={fed || caring === 'cowFeed' ? 'story-eat' : undefined}>
-          <ellipse rx={6.5} ry={5.5} fill="#f7f3ea" stroke="#5a4636" strokeWidth={1.2} />
-          <ellipse cx={4} cy={2} rx={3.4} ry={2.6} fill="#f2b8b0" />
-          <circle cx={-1} cy={-1.5} r={1} fill="#2a1d14" />
-          <path d="M-4,-5 L-7,-9 M2,-5 L4,-9" stroke="#d9c7a0" strokeWidth={1.6} strokeLinecap="round" />
+          <ellipse rx={6.5} ry={5.5} fill="#f6f2eb" stroke="#56463a" strokeWidth={1.2} />
+          <ellipse cx={4} cy={2} rx={3.4} ry={2.6} fill="#e9c1b9" />
+          <circle cx={-1} cy={-1.5} r={1} fill="#46372a" />
+          <path d="M-4,-5 L-7,-9 M2,-5 L4,-9" stroke="#d3c5a6" strokeWidth={1.6} strokeLinecap="round" />
         </g>
         {/* the feeder: empty, then full of hay */}
         <g transform="translate(30,-2)">
-          <path d="M-10,-6 L10,-6 L7,0 L-7,0 Z" fill="#8a5a30" />
-          {(fed || caring === 'cowFeed') && <path className="story-pop" d="M-9,-6 Q-6,-12 -2,-8 Q1,-13 4,-8 Q7,-12 9,-6 Z" fill="#e8c867" stroke="#b8963a" strokeWidth={0.8} />}
+          <path d="M-10,-6 L10,-6 L7,0 L-7,0 Z" fill="#815b39" />
+          {(fed || caring === 'cowFeed') && <path className="story-pop" d="M-9,-6 Q-6,-12 -2,-8 Q1,-13 4,-8 Q7,-12 9,-6 Z" fill="#dbc274" stroke="#ab9047" strokeWidth={0.8} />}
         </g>
       </g>
       {/* the hens and their drinker */}
@@ -662,25 +662,25 @@ function StoryAnimals({ cared, caring }: { cared: StoryChore['id'][]; caring: St
       ].map(([x, y, f], k) => (
         <g key={k} transform={`translate(${x},${y}) scale(${f},1)`} className={watered || caring === 'henWater' ? 'story-peck' : undefined} style={{ animationDelay: `${k * 120}ms` }}>
           <ellipse cy={1} rx={6} ry={1.5} fill="rgba(0,0,0,0.15)" />
-          <path d="M-2,-1 L-2,1 M2,-1 L2,1" stroke="#d9862a" strokeWidth={1.2} />
-          <ellipse cy={-5} rx={6.5} ry={4.8} fill={k % 2 ? '#8a4b22' : '#b5642c'} />
-          <path d="M-6,-6 L-9,-10 L-5,-8 Z" fill="#5a2e12" />
-          <circle cx={5} cy={-9} r={3} fill={k % 2 ? '#8a4b22' : '#b5642c'} />
-          <path d="M4.5,-12.5 Q5.5,-14.5 6.5,-12.5" stroke="#d9302a" strokeWidth={1.6} fill="none" />
-          <path d="M8,-9 L10,-8.4 L8,-7.8 Z" fill="#f2b234" />
+          <path d="M-2,-1 L-2,1 M2,-1 L2,1" stroke="#c7853c" strokeWidth={1.2} />
+          <ellipse cy={-5} rx={6.5} ry={4.8} fill={k % 2 ? '#804d2c' : '#a7663a'} />
+          <path d="M-6,-6 L-9,-10 L-5,-8 Z" fill="#533019" />
+          <circle cx={5} cy={-9} r={3} fill={k % 2 ? '#804d2c' : '#a7663a'} />
+          <path d="M4.5,-12.5 Q5.5,-14.5 6.5,-12.5" stroke="#c05742" strokeWidth={1.6} fill="none" />
+          <path d="M8,-9 L10,-8.4 L8,-7.8 Z" fill="#dfac47" />
         </g>
       ))}
       <g transform="translate(232,196)">
-        <ellipse cy={0} rx={9} ry={2.4} fill="#9aa3a8" />
-        <path d="M-6,-1 L-5,-9 L5,-9 L6,-1 Z" fill="#c9d1d6" stroke="#7d8489" strokeWidth={0.8} />
-        {(watered || caring === 'henWater') && <ellipse className="story-pop" cy={-1.2} rx={7.5} ry={1.6} fill="#56b9f0" />}
+        <ellipse cy={0} rx={9} ry={2.4} fill="#a9a499" />
+        <path d="M-6,-1 L-5,-9 L5,-9 L6,-1 Z" fill="#cdd2cd" stroke="#8d8679" strokeWidth={0.8} />
+        {(watered || caring === 'henWater') && <ellipse className="story-pop" cy={-1.2} rx={7.5} ry={1.6} fill="#88be88" />}
       </g>
       {/* the egg basket */}
       <g transform="translate(266,200)">
-        <path d="M-10,-6 Q0,-16 10,-6" stroke="#8a5a30" strokeWidth={1.6} fill="none" />
+        <path d="M-10,-6 Q0,-16 10,-6" stroke="#815b39" strokeWidth={1.6} fill="none" />
         {(eggs || caring === 'eggs') &&
-          [-5, 0, 5].map((x, k) => <ellipse key={x} className="story-pop" style={{ animationDelay: `${k * 150}ms` }} cx={x} cy={-7} rx={3} ry={3.8} fill="#f6efe0" stroke="#c9b18a" strokeWidth={0.6} />)}
-        <path d="M-10,-6 L10,-6 L7,2 L-7,2 Z" fill="#c9a05a" stroke="#8a5a30" strokeWidth={1} />
+          [-5, 0, 5].map((x, k) => <ellipse key={x} className="story-pop" style={{ animationDelay: `${k * 150}ms` }} cx={x} cy={-7} rx={3} ry={3.8} fill="#f4eee2" stroke="#c3b090" strokeWidth={0.6} />)}
+        <path d="M-10,-6 L10,-6 L7,2 L-7,2 Z" fill="#be9d65" stroke="#815b39" strokeWidth={1} />
       </g>
     </g>
   );
@@ -695,15 +695,15 @@ function PlantBeds({ sown, holding }: { sown: Seed[]; holding: Seed | null }) {
   ];
   return (
     <g>
-      <path d="M40,58 L260,58 L298,220 L2,220 Z" fill="#8a5a34" />
+      <path d="M40,58 L260,58 L298,220 L2,220 Z" fill="#815b3d" />
       {/* the path between the two beds */}
-      <path d="M26,118 L274,118 L278,126 L22,126 Z" fill="#c9a26a" />
+      <path d="M26,118 L274,118 L278,126 L22,126 Z" fill="#c0a073" />
       {beds.map(bed => (
         <g key={bed.id} className={holding === bed.id ? 'story-bed-glow' : undefined}>
           {bed.rows.map(r => {
             const y = 78 + r * 30 + (r >= 2 ? 6 : 0);
             const w = 110 + r * 26;
-            return <path key={r} d={`M${150 - w},${y} L${150 + w},${y}`} stroke="#6b4226" strokeWidth={6 + r} strokeLinecap="round" />;
+            return <path key={r} d={`M${150 - w},${y} L${150 + w},${y}`} stroke="#64432d" strokeWidth={6 + r} strokeLinecap="round" />;
           })}
           {sown.includes(bed.id) &&
             bed.rows.map(r => {
@@ -717,13 +717,13 @@ function PlantBeds({ sown, holding }: { sown: Seed[]; holding: Seed | null }) {
                   <g key={`${r}-${k}`} transform={`translate(${x},${y}) scale(${s})`} className="story-pop" style={{ animationDelay: `${(k + r) * 30}ms` }}>
                     {bed.id === 'maize' ? (
                       <>
-                        <ellipse cx={0} cy={1} rx={3} ry={2.2} fill="#f2c230" />
-                        <path d="M0,0 Q-6,-8 -9,-12 M0,0 Q5,-9 9,-13 M0,0 L0,-6" stroke="#5fbf3a" strokeWidth={2.4} fill="none" strokeLinecap="round" />
+                        <ellipse cx={0} cy={1} rx={3} ry={2.2} fill="#dfb843" />
+                        <path d="M0,0 Q-6,-8 -9,-12 M0,0 Q5,-9 9,-13 M0,0 L0,-6" stroke="#6bb44a" strokeWidth={2.4} fill="none" strokeLinecap="round" />
                       </>
                     ) : (
                       <>
-                        <circle cx={0} cy={1} r={1.8} fill="#3a2414" />
-                        <path d="M0,0 Q-8,-4 -7,-10 Q-1,-8 0,0 Q8,-4 7,-10 Q1,-8 0,0" fill="#4f9a3a" stroke="#2f6b22" strokeWidth={0.8} />
+                        <circle cx={0} cy={1} r={1.8} fill="#4a3a2c" />
+                        <path d="M0,0 Q-8,-4 -7,-10 Q-1,-8 0,0 Q8,-4 7,-10 Q1,-8 0,0" fill="#5d9346" stroke="#3d682c" strokeWidth={0.8} />
                       </>
                     )}
                   </g>
@@ -745,13 +745,13 @@ function SeedBunch({ seed }: { seed: Seed }) {
   return (
     <svg viewBox="-20 -16 40 30" width={46} height={34} aria-hidden="true">
       {/* an open palm under the seeds */}
-      <path d="M-18,6 Q-18,13 -8,13 L9,13 Q18,12 18,5 L18,2 L-18,2 Z" fill="#a46a43" />
-      <path d="M-18,4 Q0,10 18,4" fill="none" stroke="#7a4a2a" strokeWidth={1.2} />
+      <path d="M-18,6 Q-18,13 -8,13 L9,13 Q18,12 18,5 L18,2 L-18,2 Z" fill="#9a6c4d" />
+      <path d="M-18,4 Q0,10 18,4" fill="none" stroke="#724c32" strokeWidth={1.2} />
       {spots.map(([x, y], k) =>
         maize ? (
-          <path key={k} d={`M${x - 3},${y + 2} Q${x},${y - 4} ${x + 3},${y + 2} Z`} fill="#f2c230" stroke="#b8901a" strokeWidth={0.8} />
+          <path key={k} d={`M${x - 3},${y + 2} Q${x},${y - 4} ${x + 3},${y + 2} Z`} fill="#dfb843" stroke="#a8882a" strokeWidth={0.8} />
         ) : (
-          <circle key={k} cx={x} cy={y} r={1.9} fill="#4a2c18" stroke="#2a180c" strokeWidth={0.5} />
+          <circle key={k} cx={x} cy={y} r={1.9} fill="#4f3e2f" stroke="#443529" strokeWidth={0.5} />
         ),
       )}
     </svg>
@@ -762,11 +762,11 @@ function SeedBunch({ seed }: { seed: Seed }) {
 function BareField() {
   return (
     <g>
-      <path d="M40,58 L260,58 L298,220 L2,220 Z" fill="#8a5a34" />
+      <path d="M40,58 L260,58 L298,220 L2,220 Z" fill="#815b3d" />
       {[0, 1, 2, 3, 4].map(r => {
         const y = 78 + r * 30;
         const w = 110 + r * 26;
-        return <path key={r} d={`M${150 - w},${y} L${150 + w},${y}`} stroke="#6b4226" strokeWidth={6 + r} strokeLinecap="round" />;
+        return <path key={r} d={`M${150 - w},${y} L${150 + w},${y}`} stroke="#64432d" strokeWidth={6 + r} strokeLinecap="round" />;
       })}
     </g>
   );
@@ -785,7 +785,7 @@ function Sprouts() {
           const x = 150 - w + (k / 8) * 2 * w;
           return (
             <g key={`${r}-${k}`} transform={`translate(${x},${y}) scale(${s})`} className="story-pop">
-              <path d="M0,0 Q-6,-8 -9,-12 M0,0 Q5,-9 9,-13 M0,0 L0,-6" stroke="#5fbf3a" strokeWidth={2.4} fill="none" strokeLinecap="round" />
+              <path d="M0,0 Q-6,-8 -9,-12 M0,0 Q5,-9 9,-13 M0,0 L0,-6" stroke="#6bb44a" strokeWidth={2.4} fill="none" strokeLinecap="round" />
             </g>
           );
         });
@@ -804,12 +804,12 @@ function Harvested() {
         const w = 100 + r * 26;
         return Array.from({ length: 9 }, (_, k) => {
           const x = 150 - w + (k / 8) * 2 * w;
-          return <path key={`${r}-${k}`} d={`M${x},${y} L${x},${y - 6 - r}`} stroke="#c9a85c" strokeWidth={2.5 + r * 0.4} strokeLinecap="round" />;
+          return <path key={`${r}-${k}`} d={`M${x},${y} L${x},${y - 6 - r}`} stroke="#bea467" strokeWidth={2.5 + r * 0.4} strokeLinecap="round" />;
         });
       })}
       {/* the harvest: one small sack and a few cobs */}
       <g transform="translate(150,40)" className="story-pop">
-        <rect x={-62} y={-24} width={124} height={26} rx={13} fill="#fff8ec" stroke="#8a6a3a" strokeWidth={1.5} />
+        <rect x={-62} y={-24} width={124} height={26} rx={13} fill="#fdf8ee" stroke="#826842" strokeWidth={1.5} />
         <text y={-6} textAnchor="middle" fontSize={8.5} fontWeight={800} fill="#6b402b">
           The whole harvest
         </text>
@@ -817,12 +817,12 @@ function Harvested() {
       <g transform="translate(232,182)" className="story-pop">
         <ellipse cy={2} rx={34} ry={6} fill="rgba(0,0,0,0.2)" />
         {/* a half-full sack, tied at the neck */}
-        <path d="M-18,0 Q-24,-22 -12,-30 Q0,-34 12,-30 Q24,-22 18,0 Z" fill="#c8a46a" stroke="#7a5a2a" strokeWidth={2} />
-        <path d="M-12,-30 Q0,-24 12,-30" fill="none" stroke="#7a5a2a" strokeWidth={2} />
-        <path d="M-6,-31 L-9,-40 M6,-31 L9,-40" stroke="#7a5a2a" strokeWidth={2} strokeLinecap="round" />
-        <path d="M-10,-14 H10 M-12,-6 H12" stroke="#a8844a" strokeWidth={1.2} />
+        <path d="M-18,0 Q-24,-22 -12,-30 Q0,-34 12,-30 Q24,-22 18,0 Z" fill="#bfa273" stroke="#725832" strokeWidth={2} />
+        <path d="M-12,-30 Q0,-24 12,-30" fill="none" stroke="#725832" strokeWidth={2} />
+        <path d="M-6,-31 L-9,-40 M6,-31 L9,-40" stroke="#725832" strokeWidth={2} strokeLinecap="round" />
+        <path d="M-10,-14 H10 M-12,-6 H12" stroke="#9f8253" strokeWidth={1.2} />
         {[-30, -22, 28].map((x, k) => (
-          <ellipse key={x} cx={x} cy={-4 - (k % 2) * 3} rx={4} ry={9} transform={`rotate(${-35 + k * 30} ${x} ${-4 - (k % 2) * 3})`} fill="#f2c230" stroke="#b8901a" strokeWidth={1} />
+          <ellipse key={x} cx={x} cy={-4 - (k % 2) * 3} rx={4} ry={9} transform={`rotate(${-35 + k * 30} ${x} ${-4 - (k % 2) * 3})`} fill="#dfb843" stroke="#a8882a" strokeWidth={1} />
         ))}
       </g>
     </g>

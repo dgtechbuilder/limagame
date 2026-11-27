@@ -478,64 +478,64 @@ const TRACTOR_AT = { x: 20, y: -10 };
 function BigTractor({ running }: { running: boolean }) {
   return (
     <g className={`mg-bigtractor${running ? ' is-running' : ''}`}>
-      <rect width={W} height={H} fill="#d7eef7" />
-      <path d={`M0,116 Q70,92 150,108 T290,100 T${W},106 V${H} H0 Z`} fill="#a8d48a" />
-      <rect y={160} width={W} height={H - 160} fill="#c79a62" />
+      <rect width={W} height={H} fill="#e2ede1" />
+      <path d={`M0,116 Q70,92 150,108 T290,100 T${W},106 V${H} H0 Z`} fill="#a9cd94" />
+      <rect y={160} width={W} height={H - 160} fill="#bd996c" />
       <ellipse cx={196} cy={167} rx={150} ry={6} fill="rgba(0,0,0,0.18)" />
       {/* the tractor itself is drawn 360 wide and moved into the middle of the stage */}
       <g transform={`translate(${TRACTOR_AT.x},${TRACTOR_AT.y})`}>
       {/* the hitch at the back */}
-      <rect x={32} y={140} width={44} height={6} rx={2} fill="#6d6d6d" />
-      <rect x={40} y={128} width={4} height={18} fill="#6d6d6d" />
-      <circle cx={44} cy={143} r={3.5} fill="#d6402f" />
+      <rect x={32} y={140} width={44} height={6} rx={2} fill="#767064" />
+      <rect x={40} y={128} width={4} height={18} fill="#767064" />
+      <circle cx={44} cy={143} r={3.5} fill="#bf5a46" />
       {/* the chassis and the wheels */}
-      <rect x={140} y={112} width={140} height={24} fill="#1f6b39" />
-      <circle cx={116} cy={134} r={42} fill="#2a2a2a" />
-      <circle cx={116} cy={134} r={37} fill="none" stroke="#454545" strokeWidth={6} strokeDasharray="6 5" />
-      <circle cx={116} cy={134} r={17} fill="#f2c230" />
-      <circle cx={116} cy={134} r={6} fill="#b8901a" />
-      <circle cx={262} cy={152} r={24} fill="#2a2a2a" />
-      <circle cx={262} cy={152} r={20} fill="none" stroke="#454545" strokeWidth={5} strokeDasharray="5 4" />
-      <circle cx={262} cy={152} r={10} fill="#f2c230" />
-      <circle cx={262} cy={152} r={4} fill="#b8901a" />
+      <rect x={140} y={112} width={140} height={24} fill="#306829" />
+      <circle cx={116} cy={134} r={42} fill="#433c35" />
+      <circle cx={116} cy={134} r={37} fill="none" stroke="#4b473f" strokeWidth={6} strokeDasharray="6 5" />
+      <circle cx={116} cy={134} r={17} fill="#dfb843" />
+      <circle cx={116} cy={134} r={6} fill="#a8882a" />
+      <circle cx={262} cy={152} r={24} fill="#433c35" />
+      <circle cx={262} cy={152} r={20} fill="none" stroke="#4b473f" strokeWidth={5} strokeDasharray="5 4" />
+      <circle cx={262} cy={152} r={10} fill="#dfb843" />
+      <circle cx={262} cy={152} r={4} fill="#a8882a" />
       {/* the bonnet: the dipstick, the radiator cap, the grille and a headlight */}
-      <rect x={146} y={88} width={140} height={40} rx={8} fill="#2b8a4a" />
-      <rect x={152} y={91} width={128} height={5} rx={2.5} fill="#47a964" />
-      <rect x={280} y={92} width={10} height={34} rx={3} fill="#1d5e33" />
+      <rect x={146} y={88} width={140} height={40} rx={8} fill="#3f8437" />
+      <rect x={152} y={91} width={128} height={5} rx={2.5} fill="#5ca254" />
+      <rect x={280} y={92} width={10} height={34} rx={3} fill="#2c5c26" />
       {[98, 104, 110, 116].map(y => (
-        <rect key={y} x={282} y={y} width={6} height={2} fill="#2b8a4a" />
+        <rect key={y} x={282} y={y} width={6} height={2} fill="#3f8437" />
       ))}
-      <circle cx={290} cy={98} r={4} fill="#fff3b0" stroke="#c9a227" strokeWidth={1.5} />
-      <circle cx={214} cy={85} r={3} fill="none" stroke="#f2c230" strokeWidth={2} />
-      <rect x={213} y={87} width={2} height={4} fill="#f2c230" />
-      <rect x={262} y={82} width={10} height={6} rx={2} fill="#555" />
+      <circle cx={290} cy={98} r={4} fill="#f7edb8" stroke="#b99a37" strokeWidth={1.5} />
+      <circle cx={214} cy={85} r={3} fill="none" stroke="#dfb843" strokeWidth={2} />
+      <rect x={213} y={87} width={2} height={4} fill="#dfb843" />
+      <rect x={262} y={82} width={10} height={6} rx={2} fill="#5c574e" />
       {/* the exhaust (it puffs once the engine is running) */}
-      <rect x={236} y={50} width={7} height={40} fill="#555" />
-      <rect x={234} y={46} width={11} height={6} rx={1.5} fill="#444" />
+      <rect x={236} y={50} width={7} height={40} fill="#5c574e" />
+      <rect x={234} y={46} width={11} height={6} rx={1.5} fill="#49463f" />
       <g className="mg-smoke">
         <circle cx={240} cy={40} r={5} />
         <circle cx={246} cy={30} r={7} />
         <circle cx={254} cy={18} r={9} />
       </g>
       {/* the cab: glass, the seat and its belt, the levers, the steering wheel and the key */}
-      <rect x={84} y={26} width={72} height={60} fill="#bfe3f2" opacity={0.6} />
-      <rect x={92} y={54} width={10} height={32} rx={3} fill="#3a3a3a" />
-      <rect x={92} y={82} width={32} height={8} rx={3} fill="#3a3a3a" />
-      <line x1={97} y1={60} x2={120} y2={84} stroke="#e8742a" strokeWidth={2} />
-      <line x1={128} y1={92} x2={126} y2={70} stroke="#333" strokeWidth={2.5} />
-      <circle cx={126} cy={69} r={3} fill="#d6402f" />
-      <line x1={134} y1={92} x2={136} y2={74} stroke="#333" strokeWidth={2.5} />
-      <circle cx={136} cy={73} r={3} fill="#f2c230" />
-      <line x1={150} y1={90} x2={140} y2={62} stroke="#333" strokeWidth={4} />
-      <ellipse cx={138} cy={60} rx={10} ry={3.2} transform="rotate(-28 138 60)" fill="none" stroke="#222" strokeWidth={3} />
-      <rect x={146} y={70} width={10} height={16} rx={2} fill="#2a2a2a" />
-      <circle cx={151} cy={77} r={2.4} fill="#f2c230" />
-      <rect x={78} y={24} width={6} height={90} fill="#1d5e33" />
-      <rect x={156} y={24} width={6} height={66} fill="#1d5e33" />
-      <rect x={70} y={16} width={100} height={10} rx={4} fill="#2b8a4a" />
+      <rect x={84} y={26} width={72} height={60} fill="#d0e1d0" opacity={0.6} />
+      <rect x={92} y={54} width={10} height={32} rx={3} fill="#3f3c35" />
+      <rect x={92} y={82} width={32} height={8} rx={3} fill="#3f3c35" />
+      <line x1={97} y1={60} x2={120} y2={84} stroke="#d5783d" strokeWidth={2} />
+      <line x1={128} y1={92} x2={126} y2={70} stroke="#37342f" strokeWidth={2.5} />
+      <circle cx={126} cy={69} r={3} fill="#bf5a46" />
+      <line x1={134} y1={92} x2={136} y2={74} stroke="#37342f" strokeWidth={2.5} />
+      <circle cx={136} cy={73} r={3} fill="#dfb843" />
+      <line x1={150} y1={90} x2={140} y2={62} stroke="#37342f" strokeWidth={4} />
+      <ellipse cx={138} cy={60} rx={10} ry={3.2} transform="rotate(-28 138 60)" fill="none" stroke="#403832" strokeWidth={3} />
+      <rect x={146} y={70} width={10} height={16} rx={2} fill="#433c35" />
+      <circle cx={151} cy={77} r={2.4} fill="#dfb843" />
+      <rect x={78} y={24} width={6} height={90} fill="#2c5c26" />
+      <rect x={156} y={24} width={6} height={66} fill="#2c5c26" />
+      <rect x={70} y={16} width={100} height={10} rx={4} fill="#3f8437" />
       {/* the mudguard over the big wheel, and the step */}
-      <path d="M62,134 A54,54 0 0 1 170,134 L162,134 A46,46 0 0 0 70,134 Z" fill="#237a3f" />
-      <rect x={150} y={138} width={18} height={4} rx={1} fill="#555" />
+      <path d="M62,134 A54,54 0 0 1 170,134 L162,134 A46,46 0 0 0 70,134 Z" fill="#36752f" />
+      <rect x={150} y={138} width={18} height={4} rx={1} fill="#5c574e" />
       </g>
     </g>
   );
@@ -546,16 +546,16 @@ function MiniTractor() {
   return (
     <g transform="scale(1.35)" className="mg-minitractor">
       <ellipse cx={0} cy={0} rx={17} ry={2.5} fill="rgba(0,0,0,0.2)" />
-      <rect x={-4} y={-19} width={20} height={10} rx={2.5} fill="#2b8a4a" />
-      <rect x={11} y={-25} width={2.5} height={8} fill="#555" />
-      <rect x={-16} y={-31} width={13} height={3} rx={1.2} fill="#2b8a4a" />
-      <rect x={-15} y={-29} width={2} height={18} fill="#1d5e33" />
-      <rect x={-6} y={-29} width={2} height={14} fill="#1d5e33" />
-      <rect x={-13} y={-28} width={7} height={11} fill="#bfe3f2" opacity={0.75} />
-      <circle cx={-8} cy={-9} r={9} fill="#2a2a2a" />
-      <circle cx={-8} cy={-9} r={4} fill="#f2c230" />
-      <circle cx={11} cy={-5} r={5} fill="#2a2a2a" />
-      <circle cx={11} cy={-5} r={2.2} fill="#f2c230" />
+      <rect x={-4} y={-19} width={20} height={10} rx={2.5} fill="#3f8437" />
+      <rect x={11} y={-25} width={2.5} height={8} fill="#5c574e" />
+      <rect x={-16} y={-31} width={13} height={3} rx={1.2} fill="#3f8437" />
+      <rect x={-15} y={-29} width={2} height={18} fill="#2c5c26" />
+      <rect x={-6} y={-29} width={2} height={14} fill="#2c5c26" />
+      <rect x={-13} y={-28} width={7} height={11} fill="#d0e1d0" opacity={0.75} />
+      <circle cx={-8} cy={-9} r={9} fill="#433c35" />
+      <circle cx={-8} cy={-9} r={4} fill="#dfb843" />
+      <circle cx={11} cy={-5} r={5} fill="#433c35" />
+      <circle cx={11} cy={-5} r={2.2} fill="#dfb843" />
     </g>
   );
 }
@@ -564,9 +564,9 @@ function MiniTractor() {
 function FarmRoad() {
   return (
     <g>
-      <rect width={W} height={H} fill="#9bd06a" />
+      <rect width={W} height={H} fill="#96c678" />
       {[0, 1, 2, 3, 4, 5, 6].map(i => (
-        <rect key={i} x={0} y={i * 28 + 6} width={W} height={12} fill="#8fc75e" />
+        <rect key={i} x={0} y={i * 28 + 6} width={W} height={12} fill="#8bbd6d" />
       ))}
       {[
         [374, 30],
@@ -576,9 +576,9 @@ function FarmRoad() {
         [320, 166],
       ].map(([x, y], i) => (
         <g key={i} transform={`translate(${x},${y})`}>
-          <rect x={-2} y={0} width={4} height={10} fill="#7a4a24" />
-          <circle r={11} fill="#3f8f2c" />
-          <circle cx={-3} cy={-3} r={5} fill="#5bb043" />
+          <rect x={-2} y={0} width={4} height={10} fill="#714b2d" />
+          <circle r={11} fill="#4f8939" />
+          <circle cx={-3} cy={-3} r={5} fill="#6aa851" />
         </g>
       ))}
     </g>

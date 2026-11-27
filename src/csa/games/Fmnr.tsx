@@ -57,15 +57,15 @@ export function FmnrGame({ seed, onDone }: GameProps) {
 
   const stage = (
     <svg viewBox={`0 0 ${W} ${H}`} className="csa-svg" aria-label="Four stumps in a field">
-      <rect width={W} height={H} fill={grow > 0.5 ? '#d9eef7' : '#f3e2b6'} />
+      <rect width={W} height={H} fill={grow > 0.5 ? '#e3ede3' : '#eddfbc'} />
       {/* wind across the bare field, slowed once the trees are up */}
       {[50, 90, 130].map(y => (
-        <path key={y} d={`M0 ${y} q 60 -8 120 0 t 120 0 t 120 0 ${grow > 0.6 ? '' : 't 120 0 t 120 0'}`} stroke="#c9b48a" strokeWidth={2} fill="none" opacity={0.6 - grow * 0.3} strokeDasharray="10 8" />
+        <path key={y} d={`M0 ${y} q 60 -8 120 0 t 120 0 t 120 0 ${grow > 0.6 ? '' : 't 120 0 t 120 0'}`} stroke="#c3b290" strokeWidth={2} fill="none" opacity={0.6 - grow * 0.3} strokeDasharray="10 8" />
       ))}
-      <rect x={0} y={GROUND} width={W} height={H - GROUND} fill={grow > 0.4 ? '#7d5a3a' : '#a07a4f'} />
+      <rect x={0} y={GROUND} width={W} height={H - GROUND} fill={grow > 0.4 ? '#765a41' : '#987a57'} />
       {/* the crop under the trees: greener as they grow */}
       {Array.from({ length: 22 }, (_, i) => (
-        <path key={i} d={`M${14 + i * 27} ${H - 8} l 0 -${10 + grow * 10}`} stroke={grow > 0.5 ? '#3e9b2f' : '#9aa35a'} strokeWidth={3} />
+        <path key={i} d={`M${14 + i * 27} ${H - 8} l 0 -${10 + grow * 10}`} stroke={grow > 0.5 ? '#54933d' : '#949c61'} strokeWidth={3} />
       ))}
       {stumps.map((stems, s) => {
         const x = STUMP_X[s];
@@ -78,13 +78,13 @@ export function FmnrGame({ seed, onDone }: GameProps) {
                 if (cut[s][i]) return null;
                 const p = stemPath(st, x, grow);
                 const k = st.kind === 'strong' ? 1 : st.kind === 'thin' ? 0.5 : 0.35;
-                return <circle key={`c${i}`} cx={p.ex} cy={p.ey} r={(6 + 22 * k) * grow} fill={st.kind === 'strong' ? '#3f8f3a' : '#8aa35a'} opacity={0.85} />;
+                return <circle key={`c${i}`} cx={p.ex} cy={p.ey} r={(6 + 22 * k) * grow} fill={st.kind === 'strong' ? '#568a45' : '#7e9d65'} opacity={0.85} />;
               })}
             {stems.map((st, i) => {
               const isCut = cut[s][i];
               const p = stemPath(st, x, grow);
               const width = st.kind === 'strong' ? 6 + grow * 6 : st.kind === 'thin' ? 2 + grow : 4;
-              const colour = st.kind === 'broken' ? '#8c6b3f' : '#6b4a2a';
+              const colour = st.kind === 'broken' ? '#846a47' : '#644a31';
               return (
                 <g
                   key={i}
@@ -102,19 +102,19 @@ export function FmnrGame({ seed, onDone }: GameProps) {
                   {isCut ? (
                     <g>
                       <path d={stemPath({ ...st, height: 0.12 }, x).d} stroke={colour} strokeWidth={width} strokeLinecap="round" />
-                      {phase === 'prune' && <path d={p.d} stroke="#6b4a2a" strokeWidth={1.5} strokeDasharray="3 4" fill="none" opacity={0.45} />}
+                      {phase === 'prune' && <path d={p.d} stroke="#644a31" strokeWidth={1.5} strokeDasharray="3 4" fill="none" opacity={0.45} />}
                     </g>
                   ) : (
                     <g>
                       <path d={p.d} stroke={colour} strokeWidth={width} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                      {grow === 0 && st.kind !== 'broken' && <circle cx={p.ex} cy={p.ey} r={st.kind === 'strong' ? 6 : 4} fill="#5fae3c" />}
-                      {grow === 0 && st.kind === 'broken' && <path d={`M${p.ex - 4} ${p.ey - 4} l 8 8 M${p.ex + 4} ${p.ey - 4} l -8 8`} stroke="#a0522d" strokeWidth={2} />}
+                      {grow === 0 && st.kind !== 'broken' && <circle cx={p.ex} cy={p.ey} r={st.kind === 'strong' ? 6 : 4} fill="#68a54a" />}
+                      {grow === 0 && st.kind === 'broken' && <path d={`M${p.ex - 4} ${p.ey - 4} l 8 8 M${p.ex + 4} ${p.ey - 4} l -8 8`} stroke="#904b3d" strokeWidth={2} />}
                     </g>
                   )}
                 </g>
               );
             })}
-            <ellipse cx={x} cy={GROUND - 2} rx={16} ry={7} fill="#5a3a1f" />
+            <ellipse cx={x} cy={GROUND - 2} rx={16} ry={7} fill="#543a25" />
             <text x={x} y={GROUND + 18} textAnchor="middle" className={`csa-svg-note${phase === 'prune' && (kept < FMNR.keepMin || kept > FMNR.keepMax) ? ' is-bad' : ''}`}>
               Keeping {kept}
             </text>

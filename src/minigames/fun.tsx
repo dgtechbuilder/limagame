@@ -79,7 +79,7 @@ export function iconFor(text: string, fallback = '🔸') {
 
 /* ---------------- confetti ---------------- */
 
-const COLOURS = ['#ffae00', '#2f9b14', '#22ade2', '#e8742a', '#d9473a', '#ffd25c', '#7ccf5a'];
+const COLOURS = ['#ffae00', '#449224', '#48bca9', '#d5783d', '#d9473a', '#efcb6c', '#86c36a'];
 
 /** A burst of confetti from the middle of its box; re-key it to fire again. */
 export function Confetti({ n = 26, spread = 1, className = '' }: { n?: number; spread?: number; className?: string }) {
@@ -126,64 +126,64 @@ export function Coach({ mood = 'idle', size = 64 }: { mood?: Mood; size?: number
     <svg viewBox="0 0 80 90" width={size} height={size * 1.125} className={`fun-coach is-${mood}`} aria-hidden="true">
       <ellipse cx={40} cy={86} rx={22} ry={4} fill="rgba(0,0,0,0.15)" />
       {/* body: overalls */}
-      <path d="M18 88 Q18 60 40 58 Q62 60 62 88 Z" fill="#2b8a4a" />
-      <rect x={30} y={62} width={20} height={16} rx={3} fill="#237a3f" />
-      <circle cx={33} cy={66} r={1.6} fill="#ffd25c" />
-      <circle cx={47} cy={66} r={1.6} fill="#ffd25c" />
+      <path d="M18 88 Q18 60 40 58 Q62 60 62 88 Z" fill="#3f8437" />
+      <rect x={30} y={62} width={20} height={16} rx={3} fill="#36752f" />
+      <circle cx={33} cy={66} r={1.6} fill="#efcb6c" />
+      <circle cx={47} cy={66} r={1.6} fill="#efcb6c" />
       {/* arms */}
       {mood === 'cheer' ? (
         <>
-          <path d="M20 66 L8 44" stroke="#8a5634" strokeWidth={7} strokeLinecap="round" />
-          <path d="M60 66 L72 44" stroke="#8a5634" strokeWidth={7} strokeLinecap="round" />
+          <path d="M20 66 L8 44" stroke="#81583d" strokeWidth={7} strokeLinecap="round" />
+          <path d="M60 66 L72 44" stroke="#81583d" strokeWidth={7} strokeLinecap="round" />
         </>
       ) : mood === 'think' ? (
         <>
-          <path d="M21 70 L16 84" stroke="#8a5634" strokeWidth={7} strokeLinecap="round" />
-          <path d="M59 68 Q66 56 52 50" stroke="#8a5634" strokeWidth={7} strokeLinecap="round" fill="none" />
+          <path d="M21 70 L16 84" stroke="#81583d" strokeWidth={7} strokeLinecap="round" />
+          <path d="M59 68 Q66 56 52 50" stroke="#81583d" strokeWidth={7} strokeLinecap="round" fill="none" />
         </>
       ) : (
         <>
-          <path d="M21 70 L16 84" stroke="#8a5634" strokeWidth={7} strokeLinecap="round" />
-          <path d="M59 70 L64 84" stroke="#8a5634" strokeWidth={7} strokeLinecap="round" />
+          <path d="M21 70 L16 84" stroke="#81583d" strokeWidth={7} strokeLinecap="round" />
+          <path d="M59 70 L64 84" stroke="#81583d" strokeWidth={7} strokeLinecap="round" />
         </>
       )}
       {/* head */}
-      <circle cx={40} cy={36} r={19} fill="#8a5634" />
-      <ellipse cx={22} cy={38} rx={3} ry={4.5} fill="#7a4a2c" />
-      <ellipse cx={58} cy={38} rx={3} ry={4.5} fill="#7a4a2c" />
+      <circle cx={40} cy={36} r={19} fill="#81583d" />
+      <ellipse cx={22} cy={38} rx={3} ry={4.5} fill="#724c34" />
+      <ellipse cx={58} cy={38} rx={3} ry={4.5} fill="#724c34" />
       {/* cap */}
       <path d="M21 30 Q22 14 40 14 Q58 14 59 30 Z" fill="#ffae00" />
-      <rect x={36} y={18} width={8} height={5} rx={1.5} fill="#fff" opacity={0.85} />
+      <rect x={36} y={18} width={8} height={5} rx={1.5} fill="#fbf8ee" opacity={0.85} />
       <path d="M21 30 Q12 31 10 34 L30 32 Z" fill="#c88900" />
       {/* eyes */}
       {happy ? (
         <>
-          <path d="M31 37 q3 -4 6 0" stroke="#2a1a10" strokeWidth={2.2} fill="none" strokeLinecap="round" />
-          <path d="M43 37 q3 -4 6 0" stroke="#2a1a10" strokeWidth={2.2} fill="none" strokeLinecap="round" />
+          <path d="M31 37 q3 -4 6 0" stroke="#453629" strokeWidth={2.2} fill="none" strokeLinecap="round" />
+          <path d="M43 37 q3 -4 6 0" stroke="#453629" strokeWidth={2.2} fill="none" strokeLinecap="round" />
         </>
       ) : mood === 'sad' ? (
         <>
-          <path d="M31 35 l6 2" stroke="#2a1a10" strokeWidth={2.2} strokeLinecap="round" />
-          <path d="M49 35 l-6 2" stroke="#2a1a10" strokeWidth={2.2} strokeLinecap="round" />
-          <circle cx={34} cy={39} r={2} fill="#2a1a10" />
-          <circle cx={46} cy={39} r={2} fill="#2a1a10" />
+          <path d="M31 35 l6 2" stroke="#453629" strokeWidth={2.2} strokeLinecap="round" />
+          <path d="M49 35 l-6 2" stroke="#453629" strokeWidth={2.2} strokeLinecap="round" />
+          <circle cx={34} cy={39} r={2} fill="#453629" />
+          <circle cx={46} cy={39} r={2} fill="#453629" />
         </>
       ) : (
         <>
-          <circle cx={34} cy={37} r={2.4} fill="#2a1a10" />
-          <circle cx={46} cy={37} r={2.4} fill="#2a1a10" />
-          <circle cx={34.8} cy={36.2} r={0.8} fill="#fff" />
-          <circle cx={46.8} cy={36.2} r={0.8} fill="#fff" />
+          <circle cx={34} cy={37} r={2.4} fill="#453629" />
+          <circle cx={46} cy={37} r={2.4} fill="#453629" />
+          <circle cx={34.8} cy={36.2} r={0.8} fill="#fbf8ee" />
+          <circle cx={46.8} cy={36.2} r={0.8} fill="#fbf8ee" />
         </>
       )}
-      <circle cx={29} cy={43} r={2.6} fill="#e8742a" opacity={happy ? 0.55 : 0.25} />
-      <circle cx={51} cy={43} r={2.6} fill="#e8742a" opacity={happy ? 0.55 : 0.25} />
+      <circle cx={29} cy={43} r={2.6} fill="#d5783d" opacity={happy ? 0.55 : 0.25} />
+      <circle cx={51} cy={43} r={2.6} fill="#d5783d" opacity={happy ? 0.55 : 0.25} />
       {/* mouth */}
-      {happy ? <path d="M33 45 Q40 53 47 45 Z" fill="#5a1d10" /> : mood === 'sad' ? <path d="M34 49 Q40 44 46 49" stroke="#5a1d10" strokeWidth={2.2} fill="none" strokeLinecap="round" /> : mood === 'think' ? <path d="M36 47 h7" stroke="#5a1d10" strokeWidth={2.2} strokeLinecap="round" /> : <path d="M35 46 Q40 50 45 46" stroke="#5a1d10" strokeWidth={2.2} fill="none" strokeLinecap="round" />}
+      {happy ? <path d="M33 45 Q40 53 47 45 Z" fill="#50231a" /> : mood === 'sad' ? <path d="M34 49 Q40 44 46 49" stroke="#50231a" strokeWidth={2.2} fill="none" strokeLinecap="round" /> : mood === 'think' ? <path d="M36 47 h7" stroke="#50231a" strokeWidth={2.2} strokeLinecap="round" /> : <path d="M35 46 Q40 50 45 46" stroke="#50231a" strokeWidth={2.2} fill="none" strokeLinecap="round" />}
       {mood === 'think' && (
         <g className="fun-think">
-          <circle cx={66} cy={22} r={2} fill="#fff" />
-          <circle cx={71} cy={14} r={3} fill="#fff" />
+          <circle cx={66} cy={22} r={2} fill="#fbf8ee" />
+          <circle cx={71} cy={14} r={3} fill="#fbf8ee" />
           <text x={71} y={17} fontSize={6} textAnchor="middle" fill="#6b402b" fontWeight={800}>
             ?
           </text>
@@ -211,27 +211,27 @@ export type ArtId = 'pto' | 'linkage' | 'radiator' | 'slope' | 'getoff' | 'rider
 function MiniTractor({ x = 0, y = 0, s = 1, tilt = 0, hi }: { x?: number; y?: number; s?: number; tilt?: number; hi?: 'pto' | 'linkage' | 'radiator' | 'tyre' }) {
   return (
     <g transform={`translate(${x},${y}) rotate(${tilt}) scale(${s})`}>
-      <rect x={-44} y={-30} width={60} height={22} rx={5} fill="#2b8a4a" />
-      <rect x={4} y={-58} width={30} height={34} rx={4} fill="#2b8a4a" stroke="#1d5e33" strokeWidth={2} />
-      <rect x={9} y={-53} width={20} height={16} rx={3} fill="#bfe3f2" />
-      <rect x={-38} y={-40} width={5} height={12} fill="#555" />
+      <rect x={-44} y={-30} width={60} height={22} rx={5} fill="#3f8437" />
+      <rect x={4} y={-58} width={30} height={34} rx={4} fill="#3f8437" stroke="#2c5c26" strokeWidth={2} />
+      <rect x={9} y={-53} width={20} height={16} rx={3} fill="#d0e1d0" />
+      <rect x={-38} y={-40} width={5} height={12} fill="#5c574e" />
       {/* radiator grille at the front */}
-      <rect x={-48} y={-28} width={7} height={18} rx={2} fill={hi === 'radiator' ? '#ffd25c' : '#1d5e33'} className={hi === 'radiator' ? 'fun-hi' : ''} />
-      <circle cx={-30} cy={-4} r={13} fill="#2a2a2a" className={hi === 'tyre' ? 'fun-hi' : ''} />
-      <circle cx={-30} cy={-4} r={5} fill="#f2c230" />
-      <circle cx={22} cy={-12} r={20} fill="#2a2a2a" className={hi === 'tyre' ? 'fun-hi' : ''} />
-      <circle cx={22} cy={-12} r={8} fill="#f2c230" />
+      <rect x={-48} y={-28} width={7} height={18} rx={2} fill={hi === 'radiator' ? '#efcb6c' : '#2c5c26'} className={hi === 'radiator' ? 'fun-hi' : ''} />
+      <circle cx={-30} cy={-4} r={13} fill="#433c35" className={hi === 'tyre' ? 'fun-hi' : ''} />
+      <circle cx={-30} cy={-4} r={5} fill="#dfb843" />
+      <circle cx={22} cy={-12} r={20} fill="#433c35" className={hi === 'tyre' ? 'fun-hi' : ''} />
+      <circle cx={22} cy={-12} r={8} fill="#dfb843" />
       {/* linkage arms and PTO at the back */}
-      <path d="M38 -16 L58 -8 M38 -26 L56 -18" stroke={hi === 'linkage' ? '#ffd25c' : '#777'} strokeWidth={4} strokeLinecap="round" className={hi === 'linkage' ? 'fun-hi' : ''} />
-      <rect x={38} y={-15} width={22} height={4} rx={2} fill={hi === 'pto' ? '#ffd25c' : '#999'} className={hi === 'pto' ? 'fun-hi' : ''} />
+      <path d="M38 -16 L58 -8 M38 -26 L56 -18" stroke={hi === 'linkage' ? '#efcb6c' : '#817a6d'} strokeWidth={4} strokeLinecap="round" className={hi === 'linkage' ? 'fun-hi' : ''} />
+      <rect x={38} y={-15} width={22} height={4} rx={2} fill={hi === 'pto' ? '#efcb6c' : '#a19c91'} className={hi === 'pto' ? 'fun-hi' : ''} />
     </g>
   );
 }
 
 const Sky = () => (
   <>
-    <rect width={160} height={110} fill="#cfeaf6" />
-    <circle cx={138} cy={18} r={9} fill="#ffd25c" />
+    <rect width={160} height={110} fill="#dce9dc" />
+    <circle cx={138} cy={18} r={9} fill="#efcb6c" />
   </>
 );
 
@@ -245,9 +245,9 @@ export function QuizArt({ art }: { art: ArtId }) {
       body = (
         <>
           <Sky />
-          <rect y={92} width={160} height={18} fill="#9a6b3e" />
+          <rect y={92} width={160} height={18} fill="#916b47" />
           <MiniTractor x={66} y={92} s={1} hi={art} />
-          {art !== 'radiator' && <rect x={128} y={76} width={26} height={14} rx={3} fill="#c0432f" />}
+          {art !== 'radiator' && <rect x={128} y={76} width={26} height={14} rx={3} fill="#ac5543" />}
           <text x={art === 'radiator' ? 16 : 124} y={art === 'radiator' ? 48 : 60} fontSize={14} textAnchor="middle">
             👉
           </text>
@@ -258,12 +258,12 @@ export function QuizArt({ art }: { art: ArtId }) {
       body = (
         <>
           <Sky />
-          <rect y={86} width={160} height={24} fill="#7a4a24" />
-          <ellipse cx={52} cy={86} rx={30} ry={6} fill="#2a2a2a" />
-          <circle cx={52} cy={62} r={26} fill="#2a2a2a" className="fun-hi" />
-          <circle cx={52} cy={62} r={10} fill="#f2c230" />
-          <circle cx={118} cy={56} r={22} fill="#fff" stroke="#6b402b" strokeWidth={3} />
-          <path d="M118 56 L106 66" stroke="#c0432f" strokeWidth={3} strokeLinecap="round" />
+          <rect y={86} width={160} height={24} fill="#714b2d" />
+          <ellipse cx={52} cy={86} rx={30} ry={6} fill="#433c35" />
+          <circle cx={52} cy={62} r={26} fill="#433c35" className="fun-hi" />
+          <circle cx={52} cy={62} r={10} fill="#dfb843" />
+          <circle cx={118} cy={56} r={22} fill="#fbf8ee" stroke="#6b402b" strokeWidth={3} />
+          <path d="M118 56 L106 66" stroke="#ac5543" strokeWidth={3} strokeLinecap="round" />
           <text x={118} y={44} fontSize={7} textAnchor="middle" fill="#6b402b" fontWeight={800}>
             PSI
           </text>
@@ -274,7 +274,7 @@ export function QuizArt({ art }: { art: ArtId }) {
       body = (
         <>
           <Sky />
-          <path d="M0 110 L0 92 L160 40 L160 110 Z" fill="#7cb342" />
+          <path d="M0 110 L0 92 L160 40 L160 110 Z" fill="#74aa50" />
           <MiniTractor x={84} y={70} s={0.8} tilt={-18} />
           <text x={30} y={46} fontSize={17.5}>
             ⚠️
@@ -286,7 +286,7 @@ export function QuizArt({ art }: { art: ArtId }) {
       body = (
         <>
           <Sky />
-          <rect y={92} width={160} height={18} fill="#9a6b3e" />
+          <rect y={92} width={160} height={18} fill="#916b47" />
           <MiniTractor x={60} y={92} s={0.9} />
           <text x={128} y={62} fontSize={17.5} textAnchor="middle">
             🛑
@@ -301,7 +301,7 @@ export function QuizArt({ art }: { art: ArtId }) {
       body = (
         <>
           <Sky />
-          <rect y={92} width={160} height={18} fill="#9a6b3e" />
+          <rect y={92} width={160} height={18} fill="#916b47" />
           <MiniTractor x={70} y={92} s={1} />
           <text x={86} y={46} fontSize={12.5} textAnchor="middle">
             🧑‍🌾
@@ -315,13 +315,13 @@ export function QuizArt({ art }: { art: ArtId }) {
     case 'wetsoil':
       body = (
         <>
-          <rect width={160} height={110} fill="#9fb6c4" />
+          <rect width={160} height={110} fill="#abb8ab" />
           {[20, 50, 80, 110, 140].map((x, i) => (
-            <path key={x} d={`M${x} ${8 + (i % 2) * 8} l-4 10`} stroke="#fff" strokeWidth={2} strokeLinecap="round" opacity={0.8} />
+            <path key={x} d={`M${x} ${8 + (i % 2) * 8} l-4 10`} stroke="#fbf8ee" strokeWidth={2} strokeLinecap="round" opacity={0.8} />
           ))}
-          <rect y={84} width={160} height={26} fill="#5a3a20" />
-          <ellipse cx={50} cy={92} rx={20} ry={4} fill="#3e2714" />
-          <ellipse cx={110} cy={92} rx={20} ry={4} fill="#3e2714" />
+          <rect y={84} width={160} height={26} fill="#543b26" />
+          <ellipse cx={50} cy={92} rx={20} ry={4} fill="#4b3b2d" />
+          <ellipse cx={110} cy={92} rx={20} ry={4} fill="#4b3b2d" />
           <MiniTractor x={80} y={88} s={0.85} />
           <text x={140} y={36} fontSize={14} textAnchor="middle">
             🌧️
@@ -333,11 +333,11 @@ export function QuizArt({ art }: { art: ArtId }) {
       body = (
         <>
           <Sky />
-          <rect y={52} width={160} height={20} fill="#6b4320" />
-          <rect y={72} width={160} height={38} fill="#b98a55" />
-          <path d="M70 52 L74 98" stroke="#555" strokeWidth={5} strokeLinecap="round" />
-          <path d="M74 98 L96 92" stroke="#555" strokeWidth={5} strokeLinecap="round" />
-          <text x={124} y={92} fontSize={7} textAnchor="middle" fill="#5a3a20" fontWeight={800}>
+          <rect y={52} width={160} height={20} fill="#644428" />
+          <rect y={72} width={160} height={38} fill="#af895f" />
+          <path d="M70 52 L74 98" stroke="#5c574e" strokeWidth={5} strokeLinecap="round" />
+          <path d="M74 98 L96 92" stroke="#5c574e" strokeWidth={5} strokeLinecap="round" />
+          <text x={124} y={92} fontSize={7} textAnchor="middle" fill="#543b26" fontWeight={800}>
             subsoil
           </text>
           <text x={124} y={66} fontSize={7} textAnchor="middle" fill="#fdedd4" fontWeight={800}>

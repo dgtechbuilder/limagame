@@ -13,11 +13,11 @@ const MAX_H = 21;
 
 /** The sky's colour at an hour. */
 function skyColour(h: number) {
-  if (h < 5 || h > 19.5) return ['#1d2547', '#33406b'];
-  if (h < 6.5) return ['#f5a35c', '#f7d6a0'];
-  if (h > 18) return ['#e07a4f', '#f5c48a'];
-  if (h >= 11 && h <= 15) return ['#6cc3f0', '#fff3c4'];
-  return ['#8fd0f5', '#e6f6ff'];
+  if (h < 5 || h > 19.5) return ['#4f3e30', '#3e5d60'];
+  if (h < 6.5) return ['#e6a46b', '#eed4a9'];
+  if (h > 18) return ['#cc7563', '#eac395'];
+  if (h >= 11 && h <= 15) return ['#97c597', '#f9f0ca'];
+  return ['#b0d4b0', '#eef7ee'];
 }
 
 export function DayClockGame({ seed, drill, onDone }: GameProps) {
@@ -62,26 +62,26 @@ export function DayClockGame({ seed, drill, onDone }: GameProps) {
       </defs>
       <rect width={W} height={H} fill="url(#clock-sky)" />
       {sky.day || (hour >= 6 && hour < 19) ? (
-        <circle cx={sunX} cy={sunY} r={hour >= 11 && hour <= 15 ? 20 : 16} fill={hour >= 11 && hour <= 15 ? '#ffd23f' : '#ffb347'} />
+        <circle cx={sunX} cy={sunY} r={hour >= 11 && hour <= 15 ? 20 : 16} fill={hour >= 11 && hour <= 15 ? '#ecc852' : '#edb059'} />
       ) : (
-        <circle cx={hour < 6 ? 360 : 60} cy={46} r={12} fill="#f3f0d0" />
+        <circle cx={hour < 6 ? 360 : 60} cy={46} r={12} fill="#efedd4" />
       )}
       {/* heat shimmer at midday */}
       {sky.temp >= 28 &&
-        [0, 1, 2].map(i => <path key={i} d={`M${80 + i * 90} 196 q 6 -8 0 -16 q -6 -8 0 -16`} stroke="#fff" strokeWidth={2} fill="none" opacity={0.6} />)}
+        [0, 1, 2].map(i => <path key={i} d={`M${80 + i * 90} 196 q 6 -8 0 -16 q -6 -8 0 -16`} stroke="#fbf8ee" strokeWidth={2} fill="none" opacity={0.6} />)}
       {/* the field */}
-      <rect x={0} y={198} width={420} height={62} fill="#7aa548" />
+      <rect x={0} y={198} width={420} height={62} fill="#729e54" />
       {Array.from({ length: 9 }, (_, i) => (
         <g key={i} transform={`translate(${24 + i * 44} 206)`}>
-          <path d="M0 18 L0 0" stroke="#3e7d24" strokeWidth={3} />
-          <path d="M0 8 q -9 -3 -12 -10 M0 4 q 9 -3 12 -10" stroke="#4e9a2f" strokeWidth={3} fill="none" />
-          {sky.dew && <circle cx={6} cy={-6} r={1.8} fill="#e9f8ff" />}
+          <path d="M0 18 L0 0" stroke="#477830" strokeWidth={3} />
+          <path d="M0 8 q -9 -3 -12 -10 M0 4 q 9 -3 12 -10" stroke="#58933d" strokeWidth={3} fill="none" />
+          {sky.dew && <circle cx={6} cy={-6} r={1.8} fill="#f0f8f0" />}
         </g>
       ))}
       {/* the wind sock */}
       <g transform="translate(395 150)">
         <line x1={0} y1={0} x2={0} y2={48} stroke="#6b402b" strokeWidth={3} />
-        <path d={sky.wind === 'Calm' ? 'M0 2 L6 2 L4 22 L0 22 Z' : sky.wind === 'Breezy' ? 'M0 2 L22 6 L22 14 L0 18 Z' : 'M0 2 L34 4 L34 10 L0 14 Z'} fill="#e05a3a" />
+        <path d={sky.wind === 'Calm' ? 'M0 2 L6 2 L4 22 L0 22 Z' : sky.wind === 'Breezy' ? 'M0 2 L22 6 L22 14 L0 18 Z' : 'M0 2 L34 4 L34 10 L0 14 Z'} fill="#c96551" />
       </g>
       {/* bees */}
       {sky.bees && [0, 1, 2].map(i => <text key={i} x={140 + i * 70} y={186 - i * 6} className="csa-bee">🐝</text>)}
@@ -93,7 +93,7 @@ export function DayClockGame({ seed, drill, onDone }: GameProps) {
       )}
       {/* the readouts */}
       <g transform="translate(430 18)">
-        <rect width={156} height={150} rx={10} fill="#fffaf0" opacity={0.94} />
+        <rect width={156} height={150} rx={10} fill="#fdfaf2" opacity={0.94} />
         <text x={12} y={26} className="csa-clock-time">
           {hourText(hour)}
         </text>

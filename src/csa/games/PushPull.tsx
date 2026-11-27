@@ -97,32 +97,32 @@ export function PushPullGame({ seed, onDone }: GameProps) {
       onPointerLeave={stop}
       onPointerCancel={stop}
     >
-      <rect width={W} height={H} fill="#e9d6a8" />
+      <rect width={W} height={H} fill="#e2d3af" />
       {PP_CELLS.map(i => {
         const { x, y } = cellXY(i);
         const kind = ppKind(i);
         const p = plants[i];
         return (
           <g key={i} role={kind === 'maize' ? undefined : 'button'} tabIndex={kind === 'maize' ? undefined : 0} aria-label={kind === 'maize' ? undefined : `${KIND_NAME[kind]}, row ${Math.floor(i / PP.w) + 1}, square ${(i % PP.w) + 1}: ${p ?? 'empty'}`} onKeyDown={e => e.key === 'Enter' && paint(i)} className="csa-cell">
-            <rect x={x + 1} y={y + 1} width={C - 2} height={C - 2} rx={4} fill={kind === 'border' ? '#d9c08a' : kind === 'gap' ? '#cfb27a' : '#b8925c'} />
+            <rect x={x + 1} y={y + 1} width={C - 2} height={C - 2} rx={4} fill={kind === 'border' ? '#d1bd92' : kind === 'gap' ? '#c6af83' : '#af9065'} />
             {kind === 'maize' && (
               <g>
-                <path d={`M${x + C / 2} ${y + C - 5} L${x + C / 2} ${y + 6}`} stroke="#3f7f23" strokeWidth={3} />
-                <path d={`M${x + C / 2} ${y + 18} q -9 -3 -11 -9 M${x + C / 2} ${y + 13} q 9 -3 11 -9`} stroke="#57a332" strokeWidth={3} fill="none" />
-                {striga.has(i) && <circle cx={x + 7} cy={y + C - 7} r={4} fill="#b04fc7" />}
+                <path d={`M${x + C / 2} ${y + C - 5} L${x + C / 2} ${y + 6}`} stroke="#477a2f" strokeWidth={3} />
+                <path d={`M${x + C / 2} ${y + 18} q -9 -3 -11 -9 M${x + C / 2} ${y + 13} q 9 -3 11 -9`} stroke="#5e9b40" strokeWidth={3} fill="none" />
+                {striga.has(i) && <circle cx={x + 7} cy={y + C - 7} r={4} fill="#a75eb8" />}
               </g>
             )}
             {p === 'desmodium' && (
               <g>
                 {[8, 17, 26].map(d => (
-                  <circle key={d} cx={x + d} cy={y + C / 2 + ((d / 9) % 2 ? 3 : -3)} r={5} fill="#6fbf4a" stroke="#3f8a2a" />
+                  <circle key={d} cx={x + d} cy={y + C / 2 + ((d / 9) % 2 ? 3 : -3)} r={5} fill="#78b45a" stroke="#4d8436" />
                 ))}
               </g>
             )}
             {p === 'grass' && (
               <g>
                 {[7, 13, 19, 25].map(d => (
-                  <path key={d} d={`M${x + d} ${y + C - 4} l -3 -20 M${x + d} ${y + C - 4} l 3 -18`} stroke="#2f7d22" strokeWidth={2.4} />
+                  <path key={d} d={`M${x + d} ${y + C - 4} l -3 -20 M${x + d} ${y + C - 4} l 3 -18`} stroke="#42782e" strokeWidth={2.4} />
                 ))}
               </g>
             )}
@@ -164,14 +164,14 @@ export function PushPullGame({ seed, onDone }: GameProps) {
           }
           return (
             <g key={k} transform={`translate(${x} ${y})`} aria-hidden="true">
-              <path d="M0 0 l -6 -5 l 0 10 z M0 0 l 6 -5 l 0 10 z" fill={m.fate === 'eggs' ? '#9b6b3a' : m.fate === 'trapped' ? '#7c6a4e' : '#bfa37a'} opacity={phase === 'season' && m.fate === 'pushed' ? 0 : 0.95} />
-              {phase === 'season' && m.fate === 'eggs' && <circle r={3} fill="#e0452f" />}
+              <path d="M0 0 l -6 -5 l 0 10 z M0 0 l 6 -5 l 0 10 z" fill={m.fate === 'eggs' ? '#916b44' : m.fate === 'trapped' ? '#776953' : '#b8a281'} opacity={phase === 'season' && m.fate === 'pushed' ? 0 : 0.95} />
+              {phase === 'season' && m.fate === 'eggs' && <circle r={3} fill="#c75d48" />}
             </g>
           );
         })}
       {/* the key */}
       <g transform="translate(296 16)" className="csa-key">
-        <rect width={292} height={110} rx={10} fill="#fffaf0" opacity={0.94} />
+        <rect width={292} height={110} rx={10} fill="#fdfaf2" opacity={0.94} />
         <text x={12} y={22}>🌽 Maize rows, sown</text>
         <text x={12} y={42}>🍀 Desmodium: pushes moths, stops striga</text>
         <text x={12} y={62}>🌾 Brachiaria / Napier grass: pulls, traps moths</text>
@@ -180,7 +180,7 @@ export function PushPullGame({ seed, onDone }: GameProps) {
       </g>
       {phase === 'season' && (
         <g transform="translate(296 136)" className="csa-key">
-          <rect width={292} height={110} rx={10} fill="#fffaf0" opacity={0.94} />
+          <rect width={292} height={110} rx={10} fill="#fdfaf2" opacity={0.94} />
           <text x={12} y={24}>Pulled into the border grass: {r.moths.filter(m => m.fate === 'trapped' && !m.turned).length}</text>
           <text x={12} y={46}>Pushed out by desmodium: {r.moths.filter(m => m.turned && m.fate !== 'eggs').length}</text>
           <text x={12} y={68}>Eggs on the maize: {r.moths.filter(m => m.fate === 'eggs').length}</text>

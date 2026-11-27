@@ -62,7 +62,7 @@ export function SeedsGame({ seed, drill, onDone }: GameProps) {
 
   const stage = (
     <svg viewBox={`0 0 ${W} ${H}`} className="csa-svg" aria-label={`Season ${round + 1}: ${S.name}`}>
-      <rect width={W} height={H} fill="#fbf3e2" />
+      <rect width={W} height={H} fill="#f9f2e4" />
       <text x={16} y={24} className="csa-svg-title">
         📻 {S.name}
       </text>
@@ -74,7 +74,7 @@ export function SeedsGame({ seed, drill, onDone }: GameProps) {
         const seen = !result || w <= weekNow;
         return (
           <g key={w}>
-            <rect x={CH.x + w * bw + 3} y={CH.y + CH.h - r * CH.h} width={bw - 6} height={r * CH.h} rx={3} fill="#3aa7e0" opacity={seen ? 0.8 : 0.25} />
+            <rect x={CH.x + w * bw + 3} y={CH.y + CH.h - r * CH.h} width={bw - 6} height={r * CH.h} rx={3} fill="#5bbfb2" opacity={seen ? 0.8 : 0.25} />
             <text x={CH.x + w * bw + bw / 2} y={CH.y + CH.h + 13} textAnchor="middle" className="csa-svg-tick">
               {w + 1}
             </text>
@@ -90,12 +90,12 @@ export function SeedsGame({ seed, drill, onDone }: GameProps) {
       {/* the crops' weeks in the ground, and their need */}
       {crop && (
         <g>
-          <rect x={CH.x + pw * bw} y={CH.y + CH.h + 30} width={Math.min(16 - pw, crop.weeks) * bw} height={10} rx={5} fill="#e0a92a" />
-          <line x1={CH.x + pw * bw} x2={CH.x + Math.min(16, pw + crop.weeks) * bw} y1={CH.y + CH.h - crop.need * CH.h} y2={CH.y + CH.h - crop.need * CH.h} stroke="#c0432f" strokeDasharray="4 3" strokeWidth={2} />
+          <rect x={CH.x + pw * bw} y={CH.y + CH.h + 30} width={Math.min(16 - pw, crop.weeks) * bw} height={10} rx={5} fill="#cea23c" />
+          <line x1={CH.x + pw * bw} x2={CH.x + Math.min(16, pw + crop.weeks) * bw} y1={CH.y + CH.h - crop.need * CH.h} y2={CH.y + CH.h - crop.need * CH.h} stroke="#ac5543" strokeDasharray="4 3" strokeWidth={2} />
           <text x={CH.x + pw * bw + 4} y={CH.y + CH.h - crop.need * CH.h - 4} className="csa-svg-note is-bad">
             {SHORT_CROP[ch!.crop]} needs
           </text>
-          {part && <rect x={CH.x + pw * bw} y={CH.y + CH.h + 44} width={Math.min(16 - pw, part.weeks) * bw} height={8} rx={4} fill="#7cbf4a" />}
+          {part && <rect x={CH.x + pw * bw} y={CH.y + CH.h + 44} width={Math.min(16 - pw, part.weeks) * bw} height={8} rx={4} fill="#7bb45a" />}
           <text x={CH.x + pw * bw} y={CH.y + CH.h + 64} className="csa-svg-tick">
             Planted week {pw + 1}
             {shown?.result.failed ? ': the seed sprouted, then died in the dry weeks' : ''}
@@ -104,7 +104,7 @@ export function SeedsGame({ seed, drill, onDone }: GameProps) {
       )}
       {result && !running && (
         <g transform="translate(400 6)">
-          <rect width={190} height={50} rx={8} fill="#fffaf0" stroke="#e0c99a" />
+          <rect width={190} height={50} rx={8} fill="#fdfaf2" stroke="#d9c7a1" />
           <text x={10} y={20} className="csa-svg-note">
             Harvest: <tspan fontWeight={800}>{result.total} bags</tspan>
           </text>
