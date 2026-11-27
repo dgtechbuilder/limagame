@@ -68,6 +68,8 @@
   --tile: #f6e4cc;            /* a card on the cream: the Shop's beige */
   --tile-edge: var(--brown-20);
   --tile-radius: 10px;
+  --stat: #eefbe8;            /* the green accent: a stat box or a good result, light green in a green edge */
+  --stat-edge: #bfe3ad;
 }
 
 * { box-sizing: border-box; }
@@ -571,7 +573,7 @@ button.card:active { transform: scale(0.98); }
 }
 .story-step.is-turn { color: var(--ink-on-gold); background: var(--gold); border-color: #e08e0b; animation: glowbtn 1.4s ease-in-out infinite; }
 .story-step.is-on { color: var(--brown); background: #fff3d6; border-color: #f39c12; }
-.story-step.is-done { color: var(--green-text); background: var(--tile); border-color: #9fd58a; }
+.story-step.is-done { color: var(--green-text); background: var(--stat); border-color: #9fd58a; }
 .story-step-n { width: 22px; height: 22px; border-radius: 100px; display: grid; place-items: center; background: rgba(255, 255, 255, 0.85); color: var(--brown); font-size: 8.5px; }
 .story-step.is-done .story-step-n { background: #2f9b14; color: #fff; }
 .story-ring { flex-shrink: 0; }
@@ -630,7 +632,7 @@ button.card:active { transform: scale(0.98); }
   font-size: 8px; font-weight: 800; line-height: 1.25; box-shadow: 0 0 0 2px #e05a4a, 0 3px 8px rgba(0, 0, 0, 0.25); animation: pop 0.3s ease both;
 }
 .stake span { flex-shrink: 0; width: 20px; height: 20px; border-radius: 100px; display: grid; place-items: center; background: #c0392b; color: #fff; font-size: 10px; }
-.stake.is-saved { background: var(--tile); color: #23720f; box-shadow: 0 0 0 2px #2f9b14, 0 3px 8px rgba(0, 0, 0, 0.25); }
+.stake.is-saved { background: var(--stat); color: #23720f; box-shadow: 0 0 0 2px #2f9b14, 0 3px 8px rgba(0, 0, 0, 0.25); }
 
 /* review */
 .review-steps {
@@ -2662,7 +2664,7 @@ button.card:active { transform: scale(0.98); }
 .sheet-stats { display: flex; gap: var(--space-2); margin: 0 0 var(--space-3); }
 .sheet-stats > span {
   flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: var(--space-2) 10px; border-radius: 12px;
-  background: var(--tile); box-shadow: inset 0 0 0 2px var(--tile-edge);
+  background: var(--stat); box-shadow: inset 0 0 0 2px var(--stat-edge);
 }
 .sheet-stats small { font-size: var(--text-label); font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); line-height: 1.25; }
 .sheet-stats b { font-size: var(--text-subhead); font-weight: 900; color: #2f7d12; white-space: nowrap; }
@@ -2671,7 +2673,7 @@ button.card:active { transform: scale(0.98); }
 .sheet-stats > span.is-loss b { color: #b8281c; }
 .sheet-stats > span.is-soft { background: #fff8f6; box-shadow: inset 0 0 0 1.5px #f3d0ca; }
 .sheet-stats > span.is-soft b { color: #c0574b; }
-.sheet-stats.is-clear > span.is-loss { background: var(--tile); box-shadow: inset 0 0 0 2px var(--tile-edge); }
+.sheet-stats.is-clear > span.is-loss { background: var(--stat); box-shadow: inset 0 0 0 2px var(--stat-edge); }
 .sheet-stats.is-clear > span.is-loss b { color: #2f7d12; }
 .sheet-foot {
   position: sticky; bottom: calc(-1 * var(--space-3)); display: flex; justify-content: flex-end; margin: 0 calc(-1 * var(--space-4)) calc(-1 * var(--space-3));
@@ -2699,7 +2701,7 @@ button.card:active { transform: scale(0.98); }
 .risk-shocks small { width: 100%; font-size: 8px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.06em; color: #8a6a4d; }
 .risk-cheer {
   position: absolute; left: 50%; bottom: 56px; z-index: 30; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; white-space: nowrap;
-  padding: 8px 40px 8px 10px; border-radius: 14px; background: var(--tile); color: #1f5f10;
+  padding: 8px 40px 8px 10px; border-radius: 14px; background: var(--stat); color: #1f5f10;
   box-shadow: 0 0 0 3px #2f9b14, 0 8px 20px rgba(0, 0, 0, 0.3); animation: risk-cheer-in 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both;
 }
 .risk-cheer > .x-btn { position: absolute; right: 8px; top: 8px; width: 22px; height: 22px; }
@@ -2762,7 +2764,7 @@ button.card:active { transform: scale(0.98); }
 .tr-rowres-farm { display: grid; grid-template-columns: 70px repeat(4, minmax(0, 1fr)); gap: 3px; align-items: stretch; }
 .tr-rowres-farm > b { font-size: 8.5px; display: flex; align-items: center; }
 .tr-rowres-cell { padding: 3px 6px; border-radius: 6px; background: var(--tile); border: 1.5px solid #ecd2ac; font-size: 8.5px; line-height: 1.25; }
-.tr-rowres-cell.is-best { border-color: #4caf2c; background: var(--tile); }
+.tr-rowres-cell.is-best { border-color: #4caf2c; background: var(--stat); }
 .tr-rowres-cell b { font-size: 8.5px; }
 .tr-rowres-cell small { display: block; font-size: 8px; font-weight: 700; color: #8a6a4d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* diagnose, then choose how to treat (care/treatments.ts) */

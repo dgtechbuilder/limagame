@@ -294,6 +294,8 @@ tokens are at the top of `src/styles.css`:
   Titles stay white on the wooden plank.
 - **Card** (`--tile`, `--tile-edge`, `--tile-radius`): the Shop's beige (#f6e4cc) in a soft brown edge.
 - **Button**: the orange-gold `.gold-btn` (`--gold`, `--gold-inset`) with dark text (`--ink-on-gold`).
+- **Green accent** (`--stat`, `--stat-edge`): light green in a green edge, for stat boxes and good results, with green
+  numbers.
 
 New screens use these, or the `.ui-sheet`, `.ui-tile`, `.ui-title` and `.ui-lead` classes. Green and red stay for money
 gained and lost.
