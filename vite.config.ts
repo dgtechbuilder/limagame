@@ -1,6 +1,7 @@
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { createHash } from 'node:crypto';
+import { execSync } from 'node:child_process';
 import { readFileSync, readdirSync, statSync, writeFileSync, existsSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 
@@ -92,7 +93,22 @@ function serviceWorkerManifest(): Plugin {
   };
 }
 
+/** The game's version for analytics (src/analytics): package version and the commit it was built from. */
+function gameVersion(): string {
+  const pkg = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf8')) as { version: string };
+  let sha = process.env.GITHUB_SHA ?? '';
+  if (!sha) {
+    try {
+      sha = execSync('git rev-parse HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+    } catch {
+      sha = '';
+    }
+  }
+  return sha ? `${pkg.version}+${sha.slice(0, 7)}` : pkg.version;
+}
+
 export default defineConfig({
   plugins: [react(), serviceWorkerManifest()],
+  define: { __LIMA_VERSION__: JSON.stringify(gameVersion()) },
   base: './',
 });
