@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { COUNTRIES, countryOf, guessCountry, moneyIn } from '../money';
 import { initialState } from '../state';
-import { img } from '../assets';
 import { GoldButton } from '../components/ui';
 import { FarmerFigure, FarmerPortrait } from './art';
 import { LOOKS, NAME_SUGGESTIONS } from './data';
@@ -48,7 +47,7 @@ export function CreateFarmer({ onDone, country: startCountry }: { onDone: (name:
         }}
       >
         <div className="abs" style={{ left: 124, top: -22, width: 203, height: 58 }}>
-          <img src={img.plank} alt="" width={203} height={58} />
+          <span className="title-tab" aria-hidden="true" />
           <span className="label abs" style={{ left: 0, right: 0, top: 21, textAlign: 'center', fontSize: 11 }}>
             Karibu TemoLima
           </span>

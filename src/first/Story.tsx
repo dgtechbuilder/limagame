@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { img } from '../assets';
 import { GoldButton } from '../components/ui';
 import { CloseX } from '../components/Success';
 import { useVoice } from '../art/style';
@@ -145,7 +144,7 @@ export function Story({ name, look, page: at, onPage, onDone }: { name: string; 
       <div className="abs" style={{ inset: 0, background: 'rgba(20,30,12,0.5)' }} />
       <section className="fs-panel story-card" style={{ left: 40, top: 40, width: 794, height: 334 }} aria-label="The story so far" aria-roledescription="story">
         <div className="abs" style={{ left: 280, top: -22, width: 234, height: 58 }}>
-          <img src={img.plank} alt="" width={234} height={58} />
+          <span className="title-tab" aria-hidden="true" />
           <h2 className="label abs story-title">{page.title}</h2>
         </div>
         <button type="button" className="story-skip" onClick={skip}>

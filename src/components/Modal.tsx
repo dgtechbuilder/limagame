@@ -1,17 +1,18 @@
 import { useEffect, type CSSProperties, type ReactNode } from 'react';
-import { img } from '../assets';
 import { CheckBadge } from './Icons';
 import { Img, shrink } from './ui';
 import { NavBar } from './Nav';
 import { CloseX } from './Success';
 
+/* The three pop-up sizes from the Figma file. Each is drawn as the harvest estimate's sheet (a cream panel in a
+   thick tan edge) where the old wooden frame art's board was, with the title on a tab across its top edge. */
 const FRAMES = {
-  /** 518 × 346 frame: Shop, Farming Steps, Storage, Value Addition, Select Process, Harvest Info */
-  shop: { src: img.modalShop, w: 518, h: 346, titleTop: 20 },
-  /** 647 × 346 frame: Sale of produce, Outcome comparison */
-  wide: { src: img.modalWide, w: 647, h: 346, titleTop: 16 },
-  /** 616 × 402 frame: Harvest timing, Rewards & Discounts Hub */
-  tall: { src: img.modalTall, w: 616, h: 402, titleTop: 18 },
+  /** 518 × 346: Shop, Farming Steps, Storage, Value Addition, Select Process, Harvest Info */
+  shop: { w: 518, h: 346, sheet: { top: 38, right: 26, bottom: 30, left: 26 } },
+  /** 647 × 346: Sale of produce, Outcome comparison */
+  wide: { w: 647, h: 346, sheet: { top: 32, right: 11, bottom: 22, left: 11 } },
+  /** 616 × 402: Harvest timing, Rewards & Discounts Hub */
+  tall: { w: 616, h: 402, sheet: { top: 37, right: 31, bottom: 35, left: 31 } },
 } as const;
 
 export type FrameKind = keyof typeof FRAMES;
@@ -51,8 +52,8 @@ export function ModalShell({
     <div className="abs" style={{ inset: 0 }} role="dialog" aria-modal="true" aria-label={label ?? title}>
       <div className="scrim" onClick={onClose} />
       <div className="modal-frame" style={{ left: x, top: y, width: f.w, height: f.h }}>
-        <img className="frame-img" src={f.src} alt="" draggable={false} />
-        <p className="modal-title" style={{ top: f.titleTop, fontSize: shrink(titleSize) }}>{title}</p>
+        <div className="modal-sheet" style={f.sheet} />
+        <p className="modal-title" style={{ top: f.sheet.top - 12, fontSize: shrink(Math.min(titleSize, 13)) }}>{title}</p>
       </div>
       <div className="abs" style={{ inset: 0, pointerEvents: 'none', animation: 'pop 0.2s ease both' }}>
         <div style={{ pointerEvents: 'auto' }}>{children}</div>

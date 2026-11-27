@@ -3,7 +3,6 @@ import { Info } from '../learn/Info';
 import { isOpen, type UnlockHost } from '../unlock/model';
 import { useState, type Dispatch, type ReactNode } from 'react';
 import { NavBar } from '../components/Nav';
-import { img } from '../assets';
 import { FarmMap } from '../components/FarmMap';
 import { GuideLine } from '../first/Review';
 import type { Action } from '../state';
@@ -196,7 +195,7 @@ export function PlotScreen({
     <div className="abs fs-screen review care-screen" style={{ inset: 0 }}>
       <FarmMap dim={0.42} />
       <div className="abs" style={{ left: 336, top: -4, width: 203, height: 58 }}>
-        <img src={img.plank} alt="" width={203} height={58} />
+        <span className="title-tab" aria-hidden="true" />
         <span className="label abs" style={{ left: 0, right: 0, top: 21, textAlign: 'center', fontSize: 8.5 }}>
           Farm inputs
         </span>
