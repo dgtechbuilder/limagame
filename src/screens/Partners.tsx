@@ -3,6 +3,7 @@ import { NavBar } from '../components/Nav';
 import { CloseX } from '../components/Success';
 import { BRANDS, REWARD_SPONSOR, SLOTS, activeBrands, brandOf, offerCode, type Brand, type BrandId } from '../partners/data';
 import { engagement } from '../partners/track';
+import { partnerVisit } from '../partners/tracking';
 import { BrandMark } from '../partners/ui';
 import { AREAS, PARTNER_EMAIL, PARTNER_FORM_URL, RULES, WAYS, applicationText, areaOf, shortlistText, wayOf, type AreaId, type PartnerApplication, type WayToPartner } from '../partners/catalogue';
 import { REWARDS } from '../data';
@@ -128,7 +129,7 @@ function Offers({ s, dispatch, focus }: { s: GameState; dispatch: Dispatch<Actio
                   </button>
                 )}
                 {b.url && (
-                  <a className="set-link pt-visit" href={b.url} target="_blank" rel="noopener noreferrer">
+                  <a className="set-link pt-visit" href={b.url} target="_blank" rel="noopener noreferrer" onClick={() => partnerVisit(b.id)}>
                     Visit site <span aria-hidden="true">›</span>
                   </a>
                 )}

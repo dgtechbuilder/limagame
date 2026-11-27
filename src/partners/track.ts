@@ -1,9 +1,11 @@
 import { useEffect } from 'react';
-import type { SlotId } from './data';
+import type { BrandId, SlotId } from './data';
+import { partnerImpression, partnerTap } from './tracking';
 
 /* Partner engagement on this device: how often each slot was seen and tapped. It is kept apart from the saved game
    (Reset progress does not clear it, and it never changes play), and shown on the Partners page's Placements tab,
-   so a partner can see what a slot does. Nothing leaves the phone. */
+   so a partner can see what a slot does. Each view and tap also goes to partner data tracking (tracking.ts), with the
+   brand on the slot. */
 
 const KEY = 'lima-farming-game:partners';
 
@@ -28,12 +30,19 @@ function bump(slot: SlotId, k: 'views' | 'taps') {
   }
 }
 
-/** A slot was tapped (its offer opened). */
-export const tapSlot = (slot: SlotId) => bump(slot, 'taps');
+/** A slot was tapped (its offer opened); brand: the one it showed, when the slot shows partners in turn. */
+export const tapSlot = (slot: SlotId, brand?: BrandId) => {
+  bump(slot, 'taps');
+  partnerTap(slot, brand);
+};
 
-/** Count one view each time a slot shows (once per showing, not per frame). */
-export function useSlotView(slot: SlotId, showing = true) {
+/** Count one view each time a slot shows (once per showing, not per frame). A slot that shows partners in turn passes
+    the brand showing, so each brand's turn is one impression for it (the slot's own count stays one per showing). */
+export function useSlotView(slot: SlotId, showing = true, brand?: BrandId) {
   useEffect(() => {
     if (showing) bump(slot, 'views');
   }, [slot, showing]);
+  useEffect(() => {
+    if (showing) partnerImpression(slot, brand);
+  }, [slot, showing, brand]);
 }
