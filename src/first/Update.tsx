@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { BasicsBox } from '../learn/Basics';
+import { img } from '../assets';
 import { GoldButton } from '../components/ui';
 import { useVoice } from '../art/style';
 import { speak } from '../speech';
@@ -30,7 +31,7 @@ export function FarmUpdate({ name, onDone }: { name: string; onDone: () => void 
       <div className="abs" style={{ inset: 0, background: 'rgba(20,30,12,0.5)' }} />
       <section className="fs-panel story-card update-card" style={{ left: 40, top: 40, width: 794, height: 334 }} aria-label={u.title}>
         <div className="abs" style={{ left: 280, top: -22, width: 234, height: 58 }}>
-          <span className="title-tab" aria-hidden="true" />
+          <img src={img.plank} alt="" width={234} height={58} />
           <h2 className="label abs story-title">{u.title}</h2>
         </div>
         <span className="update-week">Week {u.weeks} of the season</span>

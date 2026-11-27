@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { img } from '../assets';
 import { CheckBadge } from '../components/Icons';
 import { FarmMap } from '../components/FarmMap';
 import { PhotoPicture } from '../components/PhotoPicture';
@@ -320,7 +321,7 @@ export function Review({
     <div className="abs fs-screen review" style={{ inset: 0 }}>
       <FarmMap dim={0.42} world />
       <div className="abs" style={{ left: 336, top: -4, width: 203, height: 58 }}>
-        <span className="title-tab" aria-hidden="true" />
+        <img src={img.plank} alt="" width={203} height={58} />
         <span className="label abs" style={{ left: 0, right: 0, top: 21, textAlign: 'center', fontSize: 10 }}>
           {t(shamba.title)}
         </span>

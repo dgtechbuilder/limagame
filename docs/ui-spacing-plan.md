@@ -209,8 +209,8 @@ under any of them, and every visible gold button dark-on-gold at 10px or more.
 
 **Phase 2: the older pop-ups** ✅ (the smallest text in the game)
 
-All of them are re-laid out with flex and the tokens (`.pp-*` in `src/styles.css`). Since the harvest-estimate
-restyle (below) the wooden frame art is drawn as a cream sheet in a tan edge, with the title on a tab across its top. On every framed pop-up, *Back · Menu · Farm* sit in the top bar, top right, with the same ✕ as the
+All of them keep the wooden frame art and are re-laid out inside it with flex and the tokens (`.pp-*` in
+`src/styles.css`). On every framed pop-up, *Back · Menu · Farm* sit in the top bar, top right, with the same ✕ as the
 pages; the left-hand column and the red ✕ outside the frame are gone. A message (toast) shown over a pop-up moves to
 the top left so it never covers the frame's title.
 
@@ -283,21 +283,3 @@ Before and after screenshots of every screen go with each phase, so each change 
 - **Text floor**: 10 / 12 (labels / sentences), as above.
 - **The Figma frames**: kept. Phase 2 re-lays out what is inside them.
 - **The guide character on pop-ups**: beside the panel, never over a button (Shop, Rewards).
-
-## One look: the harvest estimate
-
-Every panel, card and button now takes the look of the harvest estimate pop-up (`HarvestSheet`, src/risk/RiskHud.tsx).
-The tokens are at the top of `src/styles.css`:
-
-- **Sheet** (`--sheet`, `--sheet-edge`, `--sheet-shadow`, `--sheet-radius`): a cream panel (#fff8ec) in a 3px tan edge
-  (#c9824a) with 18px corners. Pop-ups, pages, sidebars, the award toast and the old wooden frames and planks use it;
-  a title sits on a cream tab across the top edge (`.modal-title`, `.title-tab`).
-- **Kicker** (`--kicker`): the small uppercase green line over a title.
-- **Text**: dark brown `--ink` (#5b3418), Poppins 700 for titles.
-- **Card** (`--tile`, `--tile-edge`, `--tile-radius`): white with a 2px peach edge (#ecc9a6) and 12px corners.
-- **Stat box** (`--stat`, `--stat-edge`, `--stat-ink`): light green, green edge, green number; `--loss*` for money lost.
-- **Gold button** (`--btn`, `--btn-edge`): #ffc94d on a 3px ledge, dark text. `--gold` is the same gold.
-- **✕** (`--close`): dark red circle in a white ring.
-
-New screens use these, or the `.ui-sheet`, `.ui-kicker`, `.ui-title`, `.ui-lead`, `.ui-tile` and `.ui-stat` classes.
-

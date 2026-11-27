@@ -95,7 +95,7 @@ export function FarmScene({ s, dispatch }: { s: GameState; dispatch: Dispatch<Ac
 
       {!busy && (
         <div className="abs" style={{ left: 346, top: 6, width: 203, height: 58 }}>
-          <span className="title-tab" aria-hidden="true" />
+          <Img src={img.plank} w={203} h={58} />
           <span className="label abs" style={{ left: 0, right: 0, top: 23, textAlign: 'center', fontSize: 11 }}>
             TemoLima
           </span>

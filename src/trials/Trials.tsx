@@ -5,6 +5,7 @@ import { doneMask } from '../world/field';
 import { useState, type Dispatch, type ReactNode } from 'react';
 import { NavBar } from '../components/Nav';
 import { CloseX } from '../components/Success';
+import { img } from '../assets';
 import { FarmMap } from '../components/FarmMap';
 import { ClimateTag } from '../climate/Tag';
 import { optionDelta } from '../climate/model';
@@ -128,7 +129,7 @@ export function Trials({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
     <div className="abs fs-screen trials" style={{ inset: 0 }}>
       <FarmMap dim={0.45} />
       <div className="abs" style={{ left: 336, top: -4, width: 203, height: 58 }}>
-        <span className="title-tab" aria-hidden="true" />
+        <img src={img.plank} alt="" width={203} height={58} />
         <span className="label abs" style={{ left: 0, right: 0, top: 21, textAlign: 'center', fontSize: 9.5 }}>
           {titled(title)}
         </span>

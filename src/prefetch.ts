@@ -122,7 +122,7 @@ export function prefetchActivities() {
   if (started) return;
   started = true;
   // the farm picture behind the shed, Mission and the rounds, and their title plank
-  [(window.devicePixelRatio || 1) > 1 && !lowData() ? img.bg2x : img.bg].forEach(src => {
+  [(window.devicePixelRatio || 1) > 1 && !lowData() ? img.bg2x : img.bg, img.plank].forEach(src => {
     const p = new Image();
     p.decoding = 'async';
     p.src = src;
