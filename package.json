@@ -4,14 +4,18 @@
   "version": "1.0.0",
   "type": "module",
   "description": "TemoLima: a farming game for a landscape phone, built from the Figma file '29 Oct Farm Management App': a walkable 3D farm of 20-plot farms, six farms to compare plans, field rounds, climate tracking and page addresses.",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p packages/partner-tracking",
     "test": "playwright test"
   },
   "dependencies": {
+    "@temolima/partner-tracking": "*",
     "mixpanel-browser": "^2.86.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
