@@ -298,10 +298,8 @@ export function useAnalytics(s: GameState, dispatch: Dispatch<Action>): Dispatch
 
     const pt = p.trial?.phase;
     const stp = st.trial?.phase;
-    if (pt !== 'growing' && stp === 'growing') {
-      levelStart(st, 'six_farms_season');
-      activity(st, 'plant_completed', st.trial?.plans.length, { where: 'six_farms' });
-    }
+    // a season starts (the first one by itself when the farm opens); its planting is the sow job on the farm, below
+    if (pt !== 'growing' && stp === 'growing') levelStart(st, 'six_farms_season');
     if (pt === 'growing' && stp === 'done') {
       levelEnd('six_farms_season', 'completed');
       activity(st, 'harvest_completed', Math.max(0, Math.round(toUsd(st.coins - p.coins) * 100) / 100), { where: 'six_farms' });

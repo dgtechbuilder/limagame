@@ -66,11 +66,13 @@ test('a new player: first visit, onboarding, tutorial steps, learn pages, a leve
 
   // field rounds as a level: opened and left without a call is an exit
   await dispatch(page, { type: 'rounds', open: true });
-  await expect.poll(async () => (await named(page, 'level_started')).length).toBe(1);
-  expect((await named(page, 'level_started'))[0].props).toMatchObject({ level_id: 'field_rounds', difficulty_tier: 'Newcomer', campaign_cohort: 'none' });
+  // (the first six-farm season starts by itself when the farm opens: a level of its own)
+  const level = async (name: string) => (await named(page, name)).filter(e => e.props.level_id === 'field_rounds');
+  await expect.poll(async () => (await level('level_started')).length).toBe(1);
+  expect((await level('level_started'))[0].props).toMatchObject({ level_id: 'field_rounds', difficulty_tier: 'Newcomer', campaign_cohort: 'none' });
   await dispatch(page, { type: 'rounds', open: false });
-  await expect.poll(async () => (await named(page, 'level_completed_or_exited')).length).toBe(1);
-  expect((await named(page, 'level_completed_or_exited'))[0].props).toMatchObject({ level_id: 'field_rounds', outcome: 'exited', attempt_count: 1 });
+  await expect.poll(async () => (await level('level_completed_or_exited')).length).toBe(1);
+  expect((await level('level_completed_or_exited'))[0].props).toMatchObject({ level_id: 'field_rounds', outcome: 'exited', attempt_count: 1 });
 
   // a finished climate-smart lesson: an activity, and the player's first win
   await dispatch(page, { type: 'csaDone', id: 'halfmoon', score: 3 });
