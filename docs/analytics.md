@@ -33,5 +33,12 @@ itself unlocks the farm on any phone, so it is never sent). Player profile: coun
 | `activity_completed` | plant_completed, harvest_completed, field_job_completed, onsite_job_completed, tractor_job_completed, lesson_completed, round_check_completed, sale_completed | Extra `where`/`job`/`lesson` say which. `activity_value`: score, bags, points, or money in USD. |
 | `learn_page_viewed` | A Farm words section or Farm basics (`glossary/<section>`), or a climate-smart lesson page (`csa/<practice>`) | `partner_id`: the brand in that section's partner category (Fertilizer → feed, Seed → seed, Water → water, Tractors → machines, Solar → power, Training → basics). |
 
-Not set up: consent gating (the players so far are in East Africa; add `opt_out_tracking_by_default` before an EU/UK
-launch), autocapture, session replay.
+## Consent
+
+After the player has seen 7 pages (screens, counted by the game's address changing; `CONSENT_AFTER` in
+`src/analytics/mixpanel.ts`), a card at the foot of the screen asks "Help improve TemoLima?" (`src/analytics/Consent.tsx`).
+It does not stop play. Until they answer, analytics runs. **No thanks** opts the phone out through the SDK's own
+opt-out, and nothing more is sent on any later visit. **Allow** keeps it on. The card is not shown again either way.
+Kept in localStorage `lima-mp-consent` (pages counted in `lima-mp-pages`).
+
+Not set up: autocapture, session replay.

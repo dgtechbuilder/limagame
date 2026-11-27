@@ -45,8 +45,69 @@ function modeOf(): Mode {
   if (typeof window === 'undefined' || reviewing()) return (mode = 'off');
   if (testSink()) return (mode = 'test');
   if (str(env.VITE_MIXPANEL) === 'off' || navigator.webdriver) return (mode = 'off');
+  if (consent() === 'denied') return (mode = 'off');
   return (mode = 'live');
 }
+
+/* ---------------- consent ---------------- */
+
+/* The player is asked once, after CONSENT_AFTER pages (screens) of the game (src/analytics/Consent.tsx). Until they
+   answer, analytics runs; "No thanks" opts this phone out at once (the SDK's own opt-out, kept on the phone) and
+   nothing more is sent; "Allow" keeps it on. The answer is kept in localStorage 'lima-mp-consent'. */
+export const CONSENT_AFTER = 7;
+const CONSENT_KEY = 'lima-mp-consent';
+export type Consent = 'granted' | 'denied' | null;
+
+export function consent(): Consent {
+  try {
+    const v = window.localStorage.getItem(CONSENT_KEY);
+    return v === 'granted' || v === 'denied' ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+const consentListeners = new Set<() => void>();
+export const onConsentChange = (f: () => void) => (consentListeners.add(f), () => void consentListeners.delete(f));
+const consentChanged = () => consentListeners.forEach(f => f());
+
+export function setConsent(c: 'granted' | 'denied') {
+  try {
+    window.localStorage.setItem(CONSENT_KEY, c);
+  } catch {
+    /* storage blocked: the answer holds for this visit */
+  }
+  const m = modeOf();
+  if (c === 'denied') {
+    if (m === 'test') (window as unknown as { __limaMixpanel: MpEvent[] }).__limaMixpanel.push({ name: '$opt_out', props: {} });
+    if (m === 'live') withSdk(mp => mp.opt_out_tracking());
+    mode = 'off';
+    queue.length = 0;
+  } else if (m === 'live') withSdk(mp => mp.opt_in_tracking());
+  consentChanged();
+}
+
+/** Pages of the game seen on this phone, counted until the player has answered. */
+const PAGES_KEY = 'lima-mp-pages';
+export function pagesSeen(): number {
+  try {
+    return Number(window.localStorage.getItem(PAGES_KEY) ?? 0) || 0;
+  } catch {
+    return 0;
+  }
+}
+export function countPage() {
+  if (consent() || modeOf() === 'off') return;
+  const n = pagesSeen() + 1;
+  try {
+    window.localStorage.setItem(PAGES_KEY, String(n));
+  } catch {
+    /* storage blocked: counted for this visit only */
+  }
+  if (n === CONSENT_AFTER) consentChanged();
+}
+/** Whether to ask now: enough pages seen, analytics on, and no answer yet. */
+export const askConsent = () => modeOf() !== 'off' && !consent() && pagesSeen() >= CONSENT_AFTER;
 
 /** Whether events are being recorded at all (sent, or kept for a test). */
 export const mpOn = () => modeOf() !== 'off';

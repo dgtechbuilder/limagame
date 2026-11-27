@@ -1,5 +1,6 @@
 import { trackContext } from './first/track';
 import { useAnalytics } from './analytics/useAnalytics';
+import { AnalyticsConsent } from './analytics/Consent';
 import { evidenceOf } from './evidence/model';
 import { Suspense, lazy, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { FarmScene } from './components/FarmScene';
@@ -320,6 +321,7 @@ export default function App() {
     <VoiceContext.Provider value={s.settings.voice}>
     <div className="viewport">
       <div className={`stage${s.settings.reduceMotion ? ' reduce-motion' : ''}`} style={{ transform: `translate(-50%, -50%) scale(${scale})` }}>
+        <AnalyticsConsent />
         {firstSession ? (
           <>
             <FirstSession s={s} dispatch={dispatch} />

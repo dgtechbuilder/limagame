@@ -114,3 +114,60 @@ test('nothing is recorded in a play-test without the test sink', async ({ page }
   expect(await page.evaluate(() => (window as unknown as { __limaMixpanel?: unknown }).__limaMixpanel)).toBeUndefined();
   expect(requests.filter(u => !u.includes('localhost'))).toEqual([]);
 });
+
+/** Open a different screen each time (Farm words sections), so each is a new page. */
+async function openPages(page: Page, n: number) {
+  const tabs = ['feed', 'protect', 'pests', 'seed', 'tools', 'machines', 'water', 'animals', 'power'];
+  for (let i = 0; i < n; i++) {
+    await dispatch(page, { type: 'open', modal: { kind: 'glossary', tab: tabs[i % tabs.length] } });
+    await page.waitForTimeout(50);
+  }
+}
+
+async function bootDone(page: Page) {
+  await bootTracked(page);
+  await page.evaluate(() => (window as unknown as Win).__lima.jump({ onboarded: true, farmer: { name: 'Wanjiku', look: 0 }, fs: { phase: 'done', at: 'first', opened: true }, view: 'classic' }));
+  await page.evaluate(() => window.localStorage.setItem('lima-mp-pages', '0'));
+}
+
+test('consent: asked after 7 pages; No thanks stops every event after it', async ({ page }) => {
+  await bootDone(page);
+  const card = page.getByRole('dialog', { name: 'Help improve TemoLima' });
+  await openPages(page, 5);
+  await expect(card).toHaveCount(0);
+  await openPages(page, 3);
+  await expect(card).toBeVisible();
+  await page.screenshot({ path: 'test-results/consent-card.png' });
+
+  await card.getByRole('button', { name: 'No thanks' }).click();
+  await expect(card).toHaveCount(0);
+  expect(await page.evaluate(() => window.localStorage.getItem('lima-mp-consent'))).toBe('denied');
+  const before = (await sent(page)).length;
+  expect((await sent(page)).at(-1)?.name).toBe('$opt_out');
+  await openPages(page, 3);
+  await page.waitForTimeout(300);
+  expect((await sent(page)).length).toBe(before);
+
+  // a later visit: still not asked, and nothing recorded
+  await page.reload();
+  await page.waitForFunction(() => !!(window as unknown as Win).__lima);
+  await page.waitForTimeout(500);
+  await expect(card).toHaveCount(0);
+  expect(await sent(page)).toEqual([]);
+});
+
+test('consent: Allow keeps analytics on and the card does not come back', async ({ page }) => {
+  await bootDone(page);
+  const card = page.getByRole('dialog', { name: 'Help improve TemoLima' });
+  await openPages(page, 8);
+  await card.getByRole('button', { name: 'Allow' }).click();
+  await expect(card).toHaveCount(0);
+  expect(await page.evaluate(() => window.localStorage.getItem('lima-mp-consent'))).toBe('granted');
+  await dispatch(page, { type: 'close' });
+  await dispatch(page, { type: 'open', modal: { kind: 'glossary', tab: 'basics' } });
+  await expect.poll(async () => (await named(page, 'learn_page_viewed')).some(e => e.props.section === 'glossary/basics')).toBe(true);
+  await page.reload();
+  await page.waitForFunction(() => !!(window as unknown as Win).__lima);
+  await openPages(page, 8);
+  await expect(card).toHaveCount(0);
+});

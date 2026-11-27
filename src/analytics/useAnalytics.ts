@@ -13,7 +13,8 @@ import { LEVELS } from '../progress/model';
 import { BRANDS, type PartnerCategory } from '../partners/data';
 import { cloudPlayerId } from '../net/cloud';
 import { trackListeners } from '../first/track';
-import { mpIdentify, mpOn, mpPeopleSet, mpRegister, mpTrack } from './mixpanel';
+import { countPage, mpIdentify, mpOn, mpPeopleSet, mpRegister, mpTrack } from './mixpanel';
+import { pathOf } from '../route';
 import { browserOf, deepLinked, deviceOf, hashedId, keep, kept, landingOf, locale, randomId, referrerOf, secsSince, today, utmOf } from './context';
 
 /** The first session has one version so far; a new one (an A/B test) gets a new name here. */
@@ -148,6 +149,7 @@ export function useAnalytics(s: GameState, dispatch: Dispatch<Action>): Dispatch
     if (!mpOn()) return;
     boot(s);
     identify(s);
+    countPage();
     if (s.fs.phase === 'create' && !s.farmer) startOnboarding(s);
     const click = () => (session.clicks += 1);
     let ended = false;
@@ -233,6 +235,9 @@ export function useAnalytics(s: GameState, dispatch: Dispatch<Action>): Dispatch
 
     // the country can change in Settings: every event after carries the new one
     if (p.settings.country !== st.settings.country) mpRegister({ country: countryCode(st) });
+
+    // a new page (screen) seen: the consent card comes after a few (src/analytics/Consent.tsx)
+    if (pathOf(p) !== pathOf(st)) countPage();
 
     /* ---- the first session ---- */
     const from = p.fs.phase;
