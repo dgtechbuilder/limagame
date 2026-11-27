@@ -35,7 +35,7 @@ import { trackSystems, coldRoom, repairCut } from './systems/track';
 import { trackLife } from './livestock/track';
 import { MEASURES, measureOf, type MeasureId } from './security/config';
 import { cropsTaken, harvestLessTheft, securityOf, storeTheftShare, type SecurityState } from './security/model';
-import { useEffect, useReducer, useRef } from 'react';
+import { useCallback, useEffect, useReducer, useRef } from 'react';
 import { FARMS, ROUND_POINTS, dayNumber } from './rounds/farms';
 import {
   CHECK_DAYS,
@@ -93,6 +93,7 @@ import { trackCsa } from './csa/track';
 import { JOBS_MAX, onFarm, treatJob, type Job, type JobSpec } from './onsite/model';
 import { PAYG, SHOP, activitiesDone, bizOf, contractDay, demoSlots, farmerAccepts, graduation, hireOutDay, offersFor, partnerBlock, partnerOf, planDay, requestsFor, runDay, scanFarm, shopBlock, type Biz, type Bookings, type Crop, type Drives, type FleetItem, type PartnerId } from './business/model';
 import { cloudFlush, cloudSave } from './net/cloud';
+import { skipPartnerSignals, usePartnerSignals } from './partners/tracking';
 import { cloudRecords } from './net/cloudRecords';
 import {
   GROWING_STEPS,
@@ -2267,7 +2268,13 @@ function syncToCloud(state: GameState) {
 /** The game's state, saved to the phone. Saving waits for a short pause (the farm world changes the state many times a
     second while the farmer works), and happens at once when the game is hidden or closed. */
 export function useGame() {
-  const [state, dispatch] = useReducer(reducer, undefined, load);
+  const [state, send] = useReducer(reducer, undefined, load);
+  // a reset replaces the whole game: partner tracking (src/partners/tracking.ts) does not count it as play
+  const dispatch = useCallback((a: Action) => {
+    if (a.type === 'reset') skipPartnerSignals();
+    send(a);
+  }, []);
+  usePartnerSignals(state);
   const latest = useRef(state);
   // the state as last saved (or loaded): only a change is written
   const saved = useRef(state);

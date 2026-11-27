@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties, type Dispatch } from 'react';
 import type { Action } from '../state';
 import { ROTATION_MS, activeBrands, brandOf, slotBrand, type Brand, type BrandId, type SlotId } from './data';
 import { tapSlot, useSlotView } from './track';
+import { partnerImpression } from './tracking';
 
 /* The pieces every partner placement is made of: the brand's mark, a "with <brand>" line under a screen, and the
    billboard on the classic farm. Each counts its views and taps for the Placements tab, and opens the brand's offer
@@ -9,7 +10,7 @@ import { tapSlot, useSlotView } from './track';
 
 /** Open the Partners page at a brand's offer, counting the tap for the slot it came from. */
 export const openOffer = (dispatch: Dispatch<Action>, slot: SlotId, brand: BrandId) => {
-  tapSlot(slot);
+  tapSlot(slot, brand);
   dispatch({ type: 'open', modal: { kind: 'partners', tab: 'offers', brand } });
 };
 
@@ -39,6 +40,7 @@ export function SponsorLine({ slot, label, dispatch, style, className = '' }: { 
 /** A branded product's ribbon in the Shop. */
 export function PartnerRibbon({ brand }: { brand: BrandId }) {
   const b = brandOf(brand);
+  useEffect(() => partnerImpression('shop-product', brand), [brand]);
   if (!b) return null;
   return (
     <span className="partner-ribbon" style={{ background: b.color, color: '#fff' }}>
@@ -52,7 +54,7 @@ export function ClassicBillboard({ dispatch, left, top }: { dispatch: Dispatch<A
   const own = slotBrand('classic-billboard');
   const list = own ? [own] : activeBrands();
   const [i, setI] = useState(0);
-  useSlotView('classic-billboard', list.length > 0);
+  useSlotView('classic-billboard', list.length > 0, list[i % Math.max(1, list.length)]?.id);
   useEffect(() => {
     if (list.length < 2) return;
     const id = window.setInterval(() => setI(n => (n + 1) % list.length), ROTATION_MS);
