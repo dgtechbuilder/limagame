@@ -26,12 +26,16 @@ export function events(): LimaEvent[] {
   }
 }
 
+/** Other listeners on the same moments (src/analytics hears a skipped story this way). */
+export const trackListeners: ((name: string, data: Record<string, unknown>) => void)[] = [];
+
 /** The player's cohort / programme tags (src/evidence), added to every event; App keeps them current. */
 export const trackContext: { tags: string[] } = { tags: [] };
 
 export function track(name: string, data: Record<string, unknown> = {}) {
   // no browser (the reducer played in a test): nothing to keep
   if (typeof window === 'undefined' || reviewing()) return;
+  trackListeners.forEach(f => f(name, data));
   const list = events();
   const at = Date.now();
   const e: LimaEvent = { name, at, ms: list.length ? at - list[0].at : 0, ...data, ...(trackContext.tags.length ? { tags: trackContext.tags } : {}) };

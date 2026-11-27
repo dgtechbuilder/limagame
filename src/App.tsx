@@ -1,4 +1,5 @@
 import { trackContext } from './first/track';
+import { useAnalytics } from './analytics/useAnalytics';
 import { evidenceOf } from './evidence/model';
 import { Suspense, lazy, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { FarmScene } from './components/FarmScene';
@@ -121,7 +122,9 @@ function useStageScale(roomForPicker: boolean) {
 }
 
 export default function App() {
-  const [s, dispatch] = useGame();
+  const [s, gameDispatch] = useGame();
+  // Mixpanel (src/analytics): reads the game as it is played; the dispatch is the game's own, noted on the way
+  const dispatch = useAnalytics(s, gameDispatch);
   // money is shown in the currency of the player's country (src/money.ts): set before anything below is drawn
   setCountry(s.settings.country);
   // Data saver (Settings → Display; src/net/connection.ts): set before anything below picks a picture

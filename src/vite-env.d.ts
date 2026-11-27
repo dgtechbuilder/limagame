@@ -8,4 +8,7 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_KEY?: string;
   /** 'off' turns cloud saving off */
   readonly VITE_CLOUD_SAVE?: string;
+  /** Mixpanel (src/analytics): another project's token, or 'off' to send nothing */
+  readonly VITE_MIXPANEL_TOKEN?: string;
+  readonly VITE_MIXPANEL?: string;
 }
