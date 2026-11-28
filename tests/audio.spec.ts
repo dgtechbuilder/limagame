@@ -6,8 +6,16 @@ import { boot, scenario, state } from './helpers';
    and a cow moos every minute. */
 
 type W = Window & {
-  __lima: { audio: () => string[] };
-  __limaWorld: { spawn: (x: number, z: number) => void; walkTo: (x: number, z: number) => void; groundAt: (x: number, z: number) => string; speedScale: number };
+  __lima: { audio: () => string[]; hums: () => { fridge: number; freezer: number } };
+  __limaWorld: {
+    spawn: (x: number, z: number) => void;
+    walkTo: (x: number, z: number) => void;
+    groundAt: (x: number, z: number) => string;
+    speedScale: number;
+    plotWorking: (fx: string) => void;
+    jobWorking: (face: null, fx: string, tool: string | null) => void;
+    setPower: (p: { parts: string[]; lit: boolean }) => void;
+  };
 };
 const audio = (page: Page) => page.evaluate(() => (window as unknown as W).__lima.audio());
 const dialog = (page: Page) => page.getByRole('dialog', { name: 'Settings' });
@@ -15,7 +23,7 @@ const dialog = (page: Page) => page.getByRole('dialog', { name: 'Settings' });
 test('Settings → Sound: 2% overall to start, every level saved, and Reset volume brings it back', async ({ page }) => {
   await boot(page);
   await scenario(page, 'tractor');
-  expect((await state(page)).settings.volume).toMatchObject({ master: 2, music: 100, steps: 100, animals: 100, effects: 100 });
+  expect((await state(page)).settings.volume).toMatchObject({ master: 2, music: 100, steps: 100, animals: 100, work: 100, ambience: 100, effects: 100, muted: false });
 
   await page.getByRole('button', { name: 'Settings', exact: true }).first().click();
   await dialog(page).getByRole('button', { name: 'Sound', exact: true }).click();
@@ -81,4 +89,84 @@ test('On the farm the hens cluck every 20 seconds and a cow moos every minute', 
   expect(Date.now() - t0).toBeGreaterThan(15_000);
   await expect.poll(() => audio(page), { timeout: 20_000, intervals: [1000] }).toContain('moo');
   expect((await audio(page)).filter(a => a === 'moo').length).toBe(1);
+});
+
+test('Mute: the 🔊 on the farm and Settings → Sound turn every sound off and back on, the levels kept', async ({ page }) => {
+  await boot(page);
+  await scenario(page, 'tractor');
+  const mute = page.getByRole('button', { name: 'Mute every sound' });
+  await expect(mute).toBeVisible();
+  await mute.click();
+  await expect.poll(async () => (await state(page)).settings.volume).toMatchObject({ muted: true, master: 2 });
+  await expect(page.getByRole('button', { name: 'Sound is muted: turn it back on' })).toHaveAttribute('aria-pressed', 'true');
+
+  await page.getByRole('button', { name: 'Settings', exact: true }).first().click();
+  await dialog(page).getByRole('button', { name: 'Sound', exact: true }).click();
+  // muted: the test buttons stay quiet
+  await expect(dialog(page).getByRole('button', { name: 'Fridge', exact: true })).toBeDisabled();
+  await dialog(page).getByRole('radio', { name: 'Sound on' }).click();
+  await expect.poll(async () => (await state(page)).settings.volume).toMatchObject({ muted: false, master: 2 });
+
+  // the new levels, and a button to hear each new sound
+  await dialog(page).getByRole('slider', { name: 'Farm work' }).fill('60');
+  await dialog(page).getByRole('slider', { name: 'Ambience' }).fill('70');
+  await expect.poll(async () => (await state(page)).settings.volume).toMatchObject({ work: 60, ambience: 70 });
+  for (const b of ['Cut', 'Build', 'Power', 'Fridge', 'Freezer']) await dialog(page).getByRole('button', { name: b, exact: true }).click();
+  await expect.poll(() => audio(page)).toEqual(expect.arrayContaining(['work:grass', 'work:hammer', 'power:on', 'hum:fridge', 'hum:freezer']));
+});
+
+test('The fridge and the freezer hum louder as the farmer walks up to them, and fall silent away from them', async ({ page }) => {
+  await boot(page);
+  await scenario(page, 'tractor');
+  await page.mouse.click(5, 395);
+  const hums = () => page.evaluate(() => (window as unknown as W).__lima.hums());
+  const at = (x: number, z: number) => page.evaluate(([x, z]) => (window as unknown as W).__limaWorld.spawn(x, z), [x, z]);
+  // far from both: the middle of the farm
+  await at(-4, 0);
+  await expect.poll(hums).toEqual({ fridge: 0, freezer: 0 });
+  // the storage annex's door: the freezer, not the fridge
+  await at(11.4, 15.9);
+  await expect.poll(async () => (await hums()).freezer).toBeGreaterThan(0);
+  const near = (await hums()).freezer;
+  await at(11.4, 18.5);
+  await expect.poll(async () => (await hums()).freezer).toBeLessThan(near);
+  expect((await hums()).freezer).toBeGreaterThan(0);
+  // outside the restaurant's door, by its kitchen: the fridge
+  await at(-12.2, 12.0);
+  await expect.poll(async () => (await hums()).fridge).toBeGreaterThan(0);
+  await expect.poll(async () => (await audio(page)).filter(a => a.startsWith('hum:')).length).toBeGreaterThan(1);
+});
+
+test('Farm work: each swing of the tool sounds, and a part put in or the power switched on is heard', async ({ page }) => {
+  await boot(page);
+  await scenario(page, 'tractor');
+  await page.mouse.click(5, 395);
+  const swing = async (call: string, want: string) => {
+    await expect
+      .poll(
+        async () => {
+          await page.evaluate(c => {
+            const w = (window as unknown as W).__limaWorld;
+            const [kind, fx, tool] = c.split(':');
+            if (kind === 'plot') w.plotWorking(fx);
+            else w.jobWorking(null, fx, tool === '-' ? null : tool);
+          }, call);
+          return audio(page);
+        },
+        { intervals: [400] },
+      )
+      .toContain(want);
+  };
+  await swing('plot:clear:-', 'work:grass');
+  await swing('plot:weed:-', 'work:weed');
+  await swing('plot:dig:-', 'work:hoe');
+  await swing('job:stone:hammer', 'work:hammer');
+  await swing('job:stone:wrench', 'work:ratchet');
+  await swing('job:spark:-', 'work:zap');
+
+  await page.waitForTimeout(1600);
+  await page.evaluate(() => (window as unknown as W).__limaWorld.setPower({ parts: ['panels'], lit: false }));
+  await expect.poll(() => audio(page)).toContain('built:power:panels');
+  await page.evaluate(() => (window as unknown as W).__limaWorld.setPower({ parts: ['panels', 'switchOn'], lit: true }));
+  await expect.poll(() => audio(page)).toContain('power:on');
 });

@@ -77,6 +77,9 @@ export interface LifeState {
   tried: Partial<Record<IssueId, string[]>>;
   /** newest first: what happened to the animals */
   log: { day: number; text: string }[];
+  /** the milk and eggs the animals had already given when the game started, not sold yet (null once sold, and in
+      saves from before it) */
+  larder: { milk: number; eggs: number } | null;
 }
 
 export const newLife = (): LifeState => ({
@@ -93,11 +96,13 @@ export const newLife = (): LifeState => ({
   totals: { milk: 0, eggs: 0, earned: 0, spent: 0, deaths: 0, fixed: 0, wrong: 0 },
   tried: {},
   log: [],
+  larder: { ...LIFE.larder },
 });
 
 export const lifeOf = (l: Partial<LifeState> | undefined): LifeState => {
   const base = newLife();
-  return { ...base, ...(l ?? {}), health: { ...base.health, ...(l?.health ?? {}) }, today: { ...base.today, ...(l?.today ?? {}) }, totals: { ...base.totals, ...(l?.totals ?? {}) } };
+  // a farm saved before the starting larder existed has had its first morning already
+  return { ...base, ...(l ?? {}), larder: l ? (l.larder ?? null) : base.larder, health: { ...base.health, ...(l?.health ?? {}) }, today: { ...base.today, ...(l?.today ?? {}) }, totals: { ...base.totals, ...(l?.totals ?? {}) } };
 };
 
 /** What the animals need from the game state. */
@@ -229,6 +234,24 @@ export function doCare<S extends LifeHost>(s: S, id: CareId): Patch<S> {
     text = `${eggs} egg${eggs === 1 ? '' : 's'} collected and sold · +${earned}`;
   }
   return { state: { ...s, coins, life: { ...next, today, totals } }, text };
+}
+
+/** What the starting milk and eggs fetch: the dairy's and the shop's price. */
+export const larderValue = (k: { milk: number; eggs: number }) => Math.round(k.milk * LIFE.milk.price + k.eggs * LIFE.eggs.price);
+
+/** Sell the milk and eggs the farm started with (any day, once): the first money the animals make. */
+export function sellLarder<S extends LifeHost>(s: S): Patch<S> {
+  const l = lifeOf(s.life);
+  const k = l.larder;
+  if (!k || (k.milk <= 0 && k.eggs <= 0)) return { error: 'The first milk and eggs are sold already' };
+  const earned = larderValue(k);
+  const life: LifeState = {
+    ...l,
+    larder: null,
+    totals: { ...l.totals, milk: l.totals.milk + k.milk, eggs: l.totals.eggs + k.eggs, earned: l.totals.earned + earned },
+    log: [{ day: l.day, text: `Sold the first ${k.milk} L of milk and ${k.eggs} eggs` }, ...l.log].slice(0, 20),
+  };
+  return { state: { ...s, coins: s.coins + earned, life }, text: `${k.milk} L of milk to the dairy and ${k.eggs} eggs to the shop · +${earned}` };
 }
 
 /** Pick a fix for a problem showing: the right one clears it; a wrong one costs what it costs, and it stays. */
