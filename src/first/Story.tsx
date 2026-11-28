@@ -13,7 +13,7 @@ import { sfx } from '../sfx';
 
 /* The story so far: three pages between naming the farmer and the first walk, each with something to do.
    1 · the farmer bought this farm: they sign for it, and their name goes on the deed and the signpost; then they give
-       the cows and hens that came with it their morning care (feed, water, eggs)
+       the first morning's work: dig the soil and water the seedlings for the crops, feed the cows, collect the eggs
    2 · last season, replayed a step at a time (plant, look after the farm, harvest: each a button and a short timer),
        then the sum: spent − earned, and the = button shows the loss
    3 · what went wrong: tap each mistake to see what to do instead, then start with the maize.
@@ -33,7 +33,7 @@ interface Progress {
   flipped: number[];
   /** page 2's planting: the beds sown so far */
   sown: Seed[];
-  /** page 1's animal care: the jobs done so far */
+  /** page 1's morning work: the jobs done so far */
   cared: StoryChore['id'][];
 }
 
@@ -54,7 +54,7 @@ export function Story({ name, look, page: at, onPage, onDone }: { name: string; 
   const set = (patch: Partial<Progress>) => setP(v => ({ ...v, ...patch }));
   /** the replay step whose timer is running, and when it started */
   const [running, setRunning] = useState<{ step: number; start: number } | null>(null);
-  /** page 1: the animal job whose timer is running */
+  /** page 1: the morning job whose timer is running */
   const [caring, setCaring] = useState<StoryChore['id'] | null>(null);
   /** planting by hand: on while the player sows, and the bunch of seeds in their hand */
   const [planting, setPlanting] = useState(false);
@@ -118,7 +118,7 @@ export function Story({ name, look, page: at, onPage, onDone }: { name: string; 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running]);
 
-  // page 1's animal care: each job runs a short timer, and the last one ends with a pop-up
+  // page 1's morning work: each job runs a short timer, and the last one ends with a pop-up
   useEffect(() => {
     if (!caring) return;
     const id = window.setTimeout(() => {
@@ -127,15 +127,15 @@ export function Story({ name, look, page: at, onPage, onDone }: { name: string; 
       set({ cared });
       track('story_care', { job: caring });
       sfx.action();
-      if (page.animals && cared.length === page.animals.chores.length) celebrate(page.animals.cheer);
+      if (page.morning && cared.length === page.morning.chores.length) celebrate(page.morning.cheer);
     }, STORY_CHORE_S * 1000);
     return () => window.clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [caring]);
-  const caredAll = !page.animals || p.cared.length >= page.animals.chores.length;
+  const caredAll = !page.morning || p.cared.length >= page.morning.chores.length;
 
   const ready = !cheer && (page.id === 'bought' ? p.signed && caredAll : page.id === 'failed' ? p.summed : p.flipped.length === (page.mistakes?.length ?? 0));
-  const waiting = page.id === 'bought' ? (p.signed ? 'Care for your cows and hens to go on' : 'Sign for your farm to go on') : page.id === 'failed' ? (p.steps < 3 ? 'Play each step of last season' : 'Press = to see how it went') : 'Tap each mistake to go on';
+  const waiting = page.id === 'bought' ? (p.signed ? 'Do the morning work to go on' : 'Sign for your farm to go on') : page.id === 'failed' ? (p.steps < 3 ? 'Play each step of last season' : 'Press = to see how it went') : 'Tap each mistake to go on';
 
   const next = () => (last ? (track('story_done'), onDone()) : onPage(i + 1));
   const skip = () => (track('story_skipped', { page: page.id }), onDone());
@@ -209,12 +209,12 @@ export function Story({ name, look, page: at, onPage, onDone }: { name: string; 
           {page.lines.map(l => (
             <p key={l}>{t(l)}</p>
           ))}
-          {page.deed && <Deed deed={page.deed} name={name} signed={p.signed} compact={p.signed && !!page.animals} onSign={() => (set({ signed: true }), track('story_signed'), celebrate(page.deed!.cheer))} />}
-          {page.animals && p.signed && !(cheer && p.cared.length === 0) && (
-            <div className="story-care" role="group" aria-label="Morning care for the cows and hens">
-              <p className="story-hint">{page.animals.intro}</p>
+          {page.deed && <Deed deed={page.deed} name={name} signed={p.signed} compact={p.signed && !!page.morning} onSign={() => (set({ signed: true }), track('story_signed'), celebrate(page.deed!.cheer))} />}
+          {page.morning && p.signed && !(cheer && p.cared.length === 0) && (
+            <div className="story-care" role="group" aria-label="Morning work on the farm">
+              <p className="story-hint">{page.morning.intro}</p>
               <div className="story-care-row">
-                {page.animals.chores.map(c => {
+                {page.morning.chores.map(c => {
                   const done = p.cared.includes(c.id);
                   const on = caring === c.id;
                   return (
@@ -437,7 +437,7 @@ function Replay({
   );
 }
 
-/** The timer on one of the animals' morning jobs: a ring that fills. */
+/** The timer on one of the morning jobs: a ring that fills. */
 function ChoreRing() {
   const start = useRef(performance.now());
   const now = useNow(true);
@@ -531,6 +531,8 @@ function StoryArt({ page, look, name, p, running, planting, holding, caring }: {
         {[0, 1, 2].map(r => (
           <path key={r} d={`M10,${166 + r * 18} Q150,${158 + r * 18} 290,${166 + r * 18}`} stroke="#755231" strokeWidth={3} fill="none" opacity={0.6} />
         ))}
+        {/* the soil, once dug: dark turned beds with a light ridge along each */}
+        <StoryBeds dug={p.cared.includes('soil')} digging={caring === 'soil'} />
         <Tree x={32} y={118} s={0.95} />
         <Hut x={228} y={128} s={1.1} />
         {/* the water tank */}
@@ -555,7 +557,9 @@ function StoryArt({ page, look, name, p, running, planting, holding, caring }: {
             </g>
           )}
         </g>
-        {/* the cows and hens that came with the farm: fed, watered, the eggs collected */}
+        {/* the maize and sukuma wiki seedlings in their tray: limp and pale, then watered and green */}
+        <StorySeedlings watered={p.cared.includes('seedlings')} watering={caring === 'seedlings'} />
+        {/* the cows and hens that came with the farm: the cows fed, the eggs collected */}
         <StoryAnimals cared={p.cared} caring={caring ?? null} />
         <g transform="translate(172,198) scale(1.15)">
           <FarmerFigure look={look} pose={p.signed ? 'cheer' : 'stand'} />
@@ -623,11 +627,56 @@ function StoryArt({ page, look, name, p, running, planting, holding, caring }: {
   );
 }
 
-/** Page 1's cows and hens: a cow by the tree (a feeder of hay once fed, her head down to eat), hens by the hut (a
-    drinker once watered, pecking at it), and a basket that fills with eggs. */
+/** Page 1's beds: once the soil is prepared, the three furrows become dark turned beds, each with a light ridge. */
+function StoryBeds({ dug, digging }: { dug: boolean; digging: boolean }) {
+  if (!dug && !digging) return null;
+  return (
+    <g className={dug ? undefined : 'story-working'}>
+      {[0, 1, 2].map(r => (
+        <g key={r} className="story-pop" style={{ animationDelay: `${r * 120}ms` }}>
+          <path d={`M10,${166 + r * 18} Q150,${158 + r * 18} 290,${166 + r * 18}`} stroke="#5e3d22" strokeWidth={9} fill="none" strokeLinecap="round" />
+          <path d={`M14,${163 + r * 18} Q150,${155 + r * 18} 286,${163 + r * 18}`} stroke="#b88a5a" strokeWidth={1.6} fill="none" strokeDasharray="5 4" />
+        </g>
+      ))}
+    </g>
+  );
+}
+
+/** Page 1's seedling tray: maize and sukuma wiki seedlings, limp and pale until watered, then green and upright with
+    the soil in the tray dark and wet. */
+function StorySeedlings({ watered, watering }: { watered: boolean; watering: boolean }) {
+  const wet = watered || watering;
+  const leaf = wet ? '#5c9c3a' : '#b4b26a';
+  return (
+    <g transform="translate(130,202)">
+      <ellipse cy={3} rx={22} ry={3} fill="rgba(0,0,0,0.15)" />
+      <rect x={-20} y={-7} width={40} height={9} rx={1.5} fill="#a8754a" stroke="#6b4a2c" strokeWidth={1} />
+      <rect x={-18} y={-8} width={36} height={3} rx={1} fill={wet ? '#4a3220' : '#8a6744'} />
+      {[-13, -6.5, 0, 6.5, 13].map((x, k) => (
+        <g key={x} transform={`translate(${x},-8)`}>
+          {k % 2 ? (
+            // sukuma wiki: two round leaves
+            <g transform={wet ? undefined : 'rotate(18)'}>
+              <path d="M0,0 L0,-6" stroke={leaf} strokeWidth={1.1} />
+              <ellipse cx={-2.2} cy={-6.5} rx={2.4} ry={1.6} fill={leaf} />
+              <ellipse cx={2.2} cy={-7} rx={2.4} ry={1.6} fill={leaf} />
+            </g>
+          ) : (
+            // maize: two thin blades
+            <path d={wet ? 'M0,0 Q-1,-6 -3,-10 M0,0 Q1,-7 3,-11' : 'M0,0 Q-2,-4 -6,-5 M0,0 Q2,-4 6,-4'} stroke={leaf} strokeWidth={1.4} fill="none" strokeLinecap="round" />
+          )}
+        </g>
+      ))}
+      {/* the water drops while it is watered */}
+      {watering && [-10, 0, 10].map((x, k) => <ellipse key={x} className="story-pop" style={{ animationDelay: `${k * 150}ms` }} cx={x} cy={-20} rx={1.2} ry={2} fill="#6fb6d8" />)}
+    </g>
+  );
+}
+
+/** Page 1's cows and hens: a cow by the tree (a feeder of hay once fed, her head down to eat), hens by the hut at
+    their drinker, and a basket that fills with eggs. */
 function StoryAnimals({ cared, caring }: { cared: StoryChore['id'][]; caring: StoryChore['id'] | null }) {
   const fed = cared.includes('cowFeed');
-  const watered = cared.includes('henWater');
   const eggs = cared.includes('eggs');
   return (
     <g>
@@ -653,14 +702,14 @@ function StoryAnimals({ cared, caring }: { cared: StoryChore['id'][]; caring: St
           {(fed || caring === 'cowFeed') && <path className="story-pop" d="M-9,-6 Q-6,-12 -2,-8 Q1,-13 4,-8 Q7,-12 9,-6 Z" fill="#dbc274" stroke="#ab9047" strokeWidth={0.8} />}
         </g>
       </g>
-      {/* the hens and their drinker */}
+      {/* the hens and their drinker: they peck once the eggs are collected */}
       {[
         [204, 176, 1],
         [222, 182, -1],
         [244, 174, 1],
         [210, 192, -1],
       ].map(([x, y, f], k) => (
-        <g key={k} transform={`translate(${x},${y}) scale(${f},1)`} className={watered || caring === 'henWater' ? 'story-peck' : undefined} style={{ animationDelay: `${k * 120}ms` }}>
+        <g key={k} transform={`translate(${x},${y}) scale(${f},1)`} className={eggs || caring === 'eggs' ? 'story-peck' : undefined} style={{ animationDelay: `${k * 120}ms` }}>
           <ellipse cy={1} rx={6} ry={1.5} fill="rgba(0,0,0,0.15)" />
           <path d="M-2,-1 L-2,1 M2,-1 L2,1" stroke="#c7853c" strokeWidth={1.2} />
           <ellipse cy={-5} rx={6.5} ry={4.8} fill={k % 2 ? '#804d2c' : '#a7663a'} />
@@ -673,7 +722,7 @@ function StoryAnimals({ cared, caring }: { cared: StoryChore['id'][]; caring: St
       <g transform="translate(232,196)">
         <ellipse cy={0} rx={9} ry={2.4} fill="#a9a499" />
         <path d="M-6,-1 L-5,-9 L5,-9 L6,-1 Z" fill="#cdd2cd" stroke="#8d8679" strokeWidth={0.8} />
-        {(watered || caring === 'henWater') && <ellipse className="story-pop" cy={-1.2} rx={7.5} ry={1.6} fill="#88be88" />}
+        <ellipse cy={-1.2} rx={7.5} ry={1.6} fill="#88be88" />
       </g>
       {/* the egg basket */}
       <g transform="translate(266,200)">
