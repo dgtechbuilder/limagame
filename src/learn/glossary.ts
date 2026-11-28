@@ -6,6 +6,8 @@
    THIS FILE IS THE WHOLE TABLE: a new word is one more entry, and every name in `aka` finds it (termFor). Words are
    for an agronomist to review: rates are typical Kenyan smallholder advice, not a product label. No screens here. */
 
+import { PLANTS } from '../forest/model';
+
 export type SectionId = 'feed' | 'protect' | 'pests' | 'seed' | 'tools' | 'machines' | 'water' | 'animals' | 'power';
 
 export const SECTIONS: { id: SectionId; label: string; tab: string; icon: string; lead: string }[] = [
@@ -930,7 +932,32 @@ const T: Term[] = [
   { id: 'fieldClock', name: 'The field clock', section: 'power', type: 'Farm practice', icon: '🕖', what: 'Doing each job at the right hour of the day.', does: 'Water, weed and spray in the cool of the morning or evening; rest in the shade from noon to 3.', use: 'The CLIMATE-SMART chip on the farm shows what the hour is good for.', aka: ['time of day', 'right time of day'] },
   { id: 'fallow', name: 'Resting the land (fallow)', section: 'power', type: 'Farm practice', icon: '🌾', what: 'Leaving a farm unplanted for a cycle, in turns, so its soil can recover.', does: 'Natural fallow lets grass and bush grow back for free; a green-manure cover crop brings the soil back faster. A rested farm grows more next cycle.', use: 'In the plan, tap a farm’s Use · soil cell to rest it. Climate › Climate Smart Agriculture shows every farm’s soil and which to rest.', aka: ['fallow', 'natural fallow', 'resting the land', 'kupumzisha shamba'] },
   { id: 'greenManure', name: 'Green-manure cover crop', section: 'power', type: 'Legume', icon: '🍀', what: 'A legume such as lablab, mucuna or desmodium sown over a resting farm, then dug in.', does: 'Fixes nitrogen, adds organic matter, covers the ground and stores carbon while the farm rests.', use: 'Rest a farm under a cover crop in the plan: its soil gains the most.', aka: ['green manure', 'cover crop', 'lablab', 'mucuna'] },
+  /* ---------------- the mini forest (src/forest): its native plants are added below, from their cards ---------------- */
+  { id: 'reversal', name: 'Carbon credit reversal', section: 'power', type: 'Climate', icon: '🪓', what: 'When carbon that earned credits goes back into the air, for example when the trees that stored it are cut or burned.', does: 'The credits for that carbon are cancelled. Real carbon projects keep a buffer of spare credits for this, and pay no more until the carbon is stored again.', use: 'In the mini forest, felling a stand cancels its credits and your climate payments wait while the farm earns them back. Taking fruit, nuts, pods or cut grass cancels none.', aka: ['reversal', 'credits cancelled', 'cancelled credits'], see: ['carbonCredit', 'nativeTrees'] },
+  { id: 'nativeTrees', name: 'Native plants', section: 'power', type: 'Climate', icon: '🌳', what: 'Trees, bushes and grasses that grew in a place before people brought plants from elsewhere: baobab, acacia, croton and napier grass are native to Africa; grevillea (Australia) and eucalyptus are not.', does: 'Native plants suit the rain and the soil, feed local birds and bees, and rarely spread out of control.', use: 'The mini forest is planted with plants native to most of Africa. Croton and Nile tulip are native choices in place of grevillea.', aka: ['native', 'native species', 'indigenous trees'], see: ['croton', 'markhamia', 'reversal'] },
 ];
+
+const KIND_WORD = { tree: 'Native tree', bush: 'Native bush', grass: 'Native grass' } as const;
+const KIND_ICON = { tree: '🌳', bush: '🌿', grass: '🌾' } as const;
+for (const p of PLANTS) {
+  const t: Term = {
+    id: p.term,
+    name: p.name,
+    section: 'power',
+    type: KIND_WORD[p.kind],
+    icon: KIND_ICON[p.kind],
+    what: `${p.latin}. ${p.what}`,
+    does: `Stores about ${p.kgDay} kg of CO₂ an acre a day (${Math.round((p.kgDay * 365) / 100) / 10} t a year)${p.estimate ? ', an estimate' : ''}. ${p.good.join('. ')}.`,
+    use: `In the mini forest: ${p.crop.verb.toLowerCase()} (${p.crop.what})${p.fell ? `, or ${p.fell.verb.toLowerCase()} once it is grown` : ''}. ${p.real}.`,
+    care: p.fell ? `Felling puts its carbon back in the air and cancels its credits; its crop does not.` : p.noFell,
+    aka: [p.latin.split(' (')[0], ...p.local.split(', ')],
+    see: ['nativeTrees', 'reversal'],
+  };
+  const had = T.findIndex(x => x.id === t.id);
+  // napier grass is already a Farm word (Animals): its card gains the forest's lines
+  if (had >= 0) T[had] = { ...T[had], does: `${T[had].does} ${t.does}`, see: [...(T[had].see ?? []), ...t.see!] };
+  else T.push(t);
+}
 
 export const TERMS: Record<string, Term> = Object.fromEntries(T.map(t => [t.id, t]));
 export const termList = T;

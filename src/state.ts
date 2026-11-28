@@ -30,6 +30,7 @@ import { PRODUCE, produceOf, sell as sellProduce, sellGrades, sellTo, stock, typ
 import { STORAGE, methodsFor, isGraded, canUse, type StorageId } from './produce/quality';
 import { cook as cookMeal, dishOf, RESTAURANT, type DishId } from './produce/restaurant';
 import { harvestLine, nutritionOf, peopleDays } from './nutrition/data';
+import { FOREST, keepStanding, keptToday, plantOf, quoteSale, sell, type PlantId, type PlantKind, type ForestState } from './forest/model';
 import { BED_NAMES, GREENHOUSE, ghCropOf, greenhouseOf, pickBed, plantBed, type GhCropId, type GreenhouseState } from './greenhouse/model';
 import { make as makeProduct, recipeOf, STOREHOUSE, type RecipeId, type StorehouseState } from './storehouse/model';
 import { trackSystems, coldRoom, repairCut, storeCtx } from './systems/track';
@@ -73,8 +74,10 @@ import { FULL, ROUTINE_POINTS, carryNeeded, doneMask, emptyField, followUpLeft, 
 import { TRACTOR_BONUS, type ImplId } from './tractor/data';
 import { rewardFor } from './tractor/sim';
 import { OPTIONS, ROUTINE, TRACTOR_PLOT, plotCost, setPlotInput, toolName, tractorName, type PlotJob, type PlotKind, type TractorId } from './plots/data';
-import { initialClimate, type ClimateState } from './climate/model';
-import { settleDays, trackClimate } from './climate/track';
+import { FACTORS, initialClimate, record, type ClimateState } from './climate/model';
+import { payRate } from './climate/land';
+import { reverse } from './credits/ledger';
+import { payClock, settleDays, trackClimate } from './climate/track';
 import { achClock, trackAchievements } from './achievements/track';
 import { achOf, achOfSave, initialAch, streakReward, type AchState } from './achievements/model';
 import { levelOf } from './progress/model';
@@ -158,6 +161,8 @@ export type Modal =
   | { kind: 'serve'; shop: 'market' | 'restaurant' }
   /** the greenhouse, where Farm 7 was: its four beds (src/greenhouse), bed 0 to 3 */
   | { kind: 'greenhouse'; bed: number }
+  /** the mini forest: its native trees, bushes and grasses, and a plant's card (src/forest) */
+  | { kind: 'forest'; tab?: PlantKind; plant?: PlantId }
   /** the storehouse, where Farm 8 was: the store, the greenhouse's picks brought in, and what is made (src/storehouse) */
   | { kind: 'storehouse'; tab?: StoreTab }
   /** the tractor game: plough the mini farm in 30 seconds, round rocks, trees and holes (src/minifarm) */
@@ -401,6 +406,8 @@ export interface GameState {
   produce?: Partial<ProduceState>;
   /** the greenhouse, where Farm 7 was (src/greenhouse) */
   greenhouse?: Partial<GreenhouseState>;
+  /** the mini forest's stands of native plants (src/forest; missing in older saves: every stand grown) */
+  forest?: Partial<ForestState>;
   /** the storehouse, where Farm 8 was: what it has made (src/storehouse) */
   storehouse?: Partial<StorehouseState>;
   /** the seed, fertilizer and sprayer last chosen at the shed: new farms start with them */
@@ -756,6 +763,9 @@ export type Action =
   | { type: 'ghPlant'; bed: number; crop: GhCropId; score: number }
   | { type: 'ghWater'; bed: number }
   | { type: 'ghHarvest'; bed: number; score: number }
+  /** the mini forest: take a plant's crop or fell it, after seeing what it does to the climate; or keep it standing */
+  | { type: 'forestSell'; id: PlantId; kind: 'crop' | 'fell' }
+  | { type: 'forestKeep'; id: PlantId }
   /** the storehouse: make some batches of a product from the store (score: the making mini-game) */
   | { type: 'storeMake'; recipe: RecipeId; batches: number; score: number }
   /** at the shed: a seed, fertilizer or sprayer chosen for every farm that can still take it, then picked up */
@@ -1915,6 +1925,41 @@ function play(s: GameState, a: Action): GameState {
         ...gainXp(s, 0.05),
         toast: toast(`${r.kg} kg of ${c.name.toLowerCase()} into the storehouse · ${harvestLine({ [c.produce]: r.kg })} · +${GREENHOUSE.harvestPoints} points${r.spent ? ` · the plants are spent: plant ${BED_NAMES[a.bed].toLowerCase()} again` : ''}`),
       };
+    }
+    case 'forestSell': {
+      const day = lifeOf(s.life).day;
+      const p = plantOf(a.id);
+      const c = s.climate;
+      const q = quoteSale(s.forest, a.id, a.kind, day, FACTORS.credit.value, payRate(c.level));
+      if (!q.ok) return { ...s, toast: toast(`${p.name}: ${q.why}`) };
+      const forest = sell(s.forest, q, day);
+      if (a.kind === 'crop')
+        return {
+          ...s,
+          forest,
+          coins: s.coins + q.coins,
+          points: s.points + FOREST.cropPoints,
+          ...gainXp(s, 0.02),
+          toast: toast(`${p.name}: ${p.crop.what} sold for ${money(q.coins)} · the plant lives on, no credits lost · +${FOREST.cropPoints} points`),
+        };
+      // felled: the wood's carbon goes back into the air and the credits for it are cancelled (a reversal)
+      const { c: logged } = record(c, `Mini forest · ${p.name} felled for ${p.fell!.what}`, 'land', { emit: { trees: q.co2 } });
+      const cancelled = Math.min(logged.credits, q.credits);
+      return {
+        ...s,
+        forest,
+        coins: s.coins + q.coins,
+        climate: { ...logged, credits: logged.credits - cancelled, seasonCredits: Math.max(0, logged.seasonCredits - cancelled) },
+        ledger: reverse(s.ledger, 'co2', cancelled, `Mini forest: ${p.name} felled`, payClock.today()),
+        ...gainXp(s, 0.02),
+        toast: toast(`${p.name} felled: +${money(q.coins)} · ${Math.round(q.co2)} kg CO₂ back in the air · ${cancelled.toFixed(1)} credits cancelled`),
+      };
+    }
+    case 'forestKeep': {
+      const day = lifeOf(s.life).day;
+      const p = plantOf(a.id);
+      if (keptToday(s.forest, a.id, day)) return { ...s, toast: toast(`${p.name} stays standing`) };
+      return { ...s, forest: keepStanding(s.forest, a.id, day), points: s.points + FOREST.keepPoints, toast: toast(`${p.name} stays standing: it keeps storing carbon · +${FOREST.keepPoints} points`) };
     }
     case 'storeMake': {
       const day = lifeOf(s.life).day;

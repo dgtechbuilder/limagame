@@ -164,9 +164,9 @@ export async function signStory(page: Page) {
   await careForAnimals(page);
 }
 
-/** The story's page 1, once signed: feed the cows, water the hens, collect the eggs (each a short timer), then the pop-up. */
+/** The story's page 1, once signed: prepare the soil, water the seedlings, feed the cows, collect the eggs (each a short timer), then the pop-up. */
 export async function careForAnimals(page: Page) {
-  for (const job of ['Feed the cows', 'Water the hens', 'Collect the eggs']) {
+  for (const job of ['Prepare the soil', 'Water the seedlings', 'Feed the cows', 'Collect the eggs']) {
     await page.getByRole('button', { name: job, exact: true }).click();
     await expect(page.getByRole('button', { name: `${job}: done` })).toBeVisible({ timeout: 5000 });
   }
