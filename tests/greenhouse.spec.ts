@@ -196,10 +196,11 @@ test('the storage annex stands against the storehouse, built like a freezer, its
   expect(places.storage).toBeTruthy();
   expect(Math.hypot(places.storage.x - places.storehouse.x, places.storage.z - places.storehouse.z)).toBeGreaterThan(places.storage.r + places.storehouse.r);
   // its door is in the front wall: from the storehouse's door on the lane, the farmer walks round the annex to it
-  await page.evaluate(at => (window as unknown as Win).__limaWorld!.spawn(at.x, at.z), places.storehouse);
+  const door = { x: STOREHOUSE_AT.x + STOREHOUSE_AT.door, z: STOREHOUSE_AT.z - STOREHOUSE_AT.d / 2 - 1.95 };
+  await page.evaluate(at => (window as unknown as Win).__limaWorld!.spawn(at.x, at.z), door);
   await page.evaluate(() => ((window as unknown as Win).__limaWorld!.speedScale = 4));
   const side = STORAGE_AT.x + STORAGE_AT.w / 2 + 0.7;
-  for (const to of [{ x: side, z: places.storehouse.z }, { x: side, z: places.storage.z }, places.storage]) {
+  for (const to of [{ x: side, z: door.z }, { x: side, z: places.storage.z }, places.storage]) {
     await page.evaluate(at => (window as unknown as Win).__limaWorld!.walkTo(at.x, at.z), to);
     await expect.poll(async () => page.evaluate(at => { const f = (window as unknown as Win).__limaWorld!.farmerAt(); return Math.hypot(f.x - at.x, f.z - at.z); }, to), { timeout: 60_000 }).toBeLessThan(0.3);
   }
@@ -208,4 +209,32 @@ test('the storage annex stands against the storehouse, built like a freezer, its
   const sh = page.getByRole('dialog', { name: 'Storehouse', exact: true });
   await expect(sh).toBeVisible();
   await expect(page).toHaveURL(/#\/storehouse\/store$/);
+});
+
+test('the storehouse square is in front of the building; opting in walks the farmer round to the door at the back', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => (window as unknown as Win).__lima.jump({ view: 'world', coins: 50_000, life: { day: 6, date: null, started: 2 }, produce: { store: { tomatoes: 12 } } } as never));
+  await page.waitForFunction(() => !!(window as unknown as Win).__limaWorld);
+  const places = await page.evaluate(() => (window as unknown as Win).__lima.places);
+  // the square is on the camera's side of the building (+z), clear of its walls; the door stays in the back wall
+  expect(places.storehouse.z - places.storehouse.r).toBeGreaterThan(STOREHOUSE_AT.z + STOREHOUSE_AT.d / 2);
+  const door = { x: STOREHOUSE_AT.x + STOREHOUSE_AT.door, z: STOREHOUSE_AT.z - STOREHOUSE_AT.d / 2 - 1.95 };
+  const far = (at: { x: number; z: number }) => page.evaluate(p => { const f = (window as unknown as Win).__limaWorld!.farmerAt(); return Math.hypot(f.x - p.x, f.z - p.z); }, at);
+  await page.evaluate(at => (window as unknown as Win).__limaWorld!.spawn(at.x, at.z), places.storehouse);
+  await page.evaluate(() => ((window as unknown as Win).__limaWorld!.speedScale = 4));
+  await expect(page.locator('.hud-place .is-enter')).toContainText('Open the storehouse');
+  // a tap elsewhere on the way stops the walk: the store does not open somewhere along the lane
+  await optIn(page);
+  await page.waitForTimeout(300);
+  await page.evaluate(() => { const w = (window as unknown as Win).__limaWorld!; const f = w.farmerAt(); w.walkTo(f.x, f.z); });
+  await page.waitForTimeout(2500);
+  await expect(page.getByRole('dialog', { name: 'Storehouse', exact: true })).toBeHidden();
+  expect(await far(door)).toBeGreaterThan(1);
+  // back on the square: this time the farmer goes all the way round, and the store opens at the back door
+  await page.evaluate(at => (window as unknown as Win).__limaWorld!.spawn(at.x, at.z), places.storehouse);
+  await optIn(page);
+  const sh = page.getByRole('dialog', { name: 'Storehouse', exact: true });
+  await expect(sh).toBeVisible({ timeout: 60_000 });
+  expect(await far(door)).toBeLessThan(0.3);
+  await expect(page).toHaveURL(/#\/storehouse\/(store|harvest)$/);
 });
