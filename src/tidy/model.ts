@@ -49,14 +49,14 @@ export const TIDY_NAME: Record<TidyKind, string> = { bush: 'bush', rock: 'rock' 
 
 /** Where bushes can sprout: on the grass, clear of the paths, the farms, the buildings and the places. */
 export const BUSH_SPOTS: [number, number][] = [
-  [-11.6, 12.4],
+  [-14.6, 17.0],
   [13.9, 11.8],
   [-5.2, -11.2],
   [7.8, -10.9],
   [14.2, 4.0],
   [-16.4, -6.6],
   [10.2, -12.6],
-  [-13.8, 14.6],
+  [-20.6, 17.0],
   [7.8, 16.4],
   [-3.6, 15.9],
   [5.4, -15.8],
@@ -75,7 +75,7 @@ export const ROCK_SPOTS: [number, number][] = [
   [1.2, -8.7],
   [-17.6, -3.6],
   [16.2, -3.6],
-  [-11.2, 15.6],
+  [-9.6, 16.9],
   [14.4, 14.4],
 ];
 

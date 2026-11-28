@@ -4,10 +4,10 @@
    person who eats it (src/nutrition). No screens here (Market.tsx), so the saved game can use it. Money is stored money
    (src/money.ts: 1 = KSh 10). */
 
-import { nutritionOf, type Nutrition } from '../nutrition/data';
+import { FOODS, nutritionOf, type FoodGroup, type Nutrition } from '../nutrition/data';
 import { MARKET, PRODUCE, growCost, produceOf, rawValue, type MealSale, type ProduceId, type ProduceState } from './model';
 
-export type DishId = 'ugali-sukuma' | 'githeri' | 'beans-ugali' | 'pepper-stew' | 'kachumbari' | 'strawberry-cup' | 'juice' | 'stuffed-capsicum' | 'maize-bread';
+export type DishId = 'ugali-sukuma' | 'githeri' | 'bean-stew' | 'beans-ugali' | 'pepper-stew' | 'kachumbari' | 'strawberry-cup' | 'juice' | 'stuffed-capsicum' | 'maize-bread';
 
 export interface Dish {
   id: DishId;
@@ -24,17 +24,65 @@ export interface Dish {
 }
 
 export const DISHES: Dish[] = [
-  { id: 'ugali-sukuma', name: 'Ugali na sukuma wiki', icon: '🍽️', what: 'Maize ugali with fried sukuma wiki, tomato and capsicum: energy plus vitamins A and C.', plate: { maize: 0.2, sukuma: 0.15, tomatoes: 0.03, capsicum: 0.02 }, price: 9, cooking: 3 },
-  { id: 'githeri', name: 'Githeri', icon: '🍲', what: 'Maize and beans boiled together with tomato and capsicum: a complete protein in one pot.', plate: { maize: 0.15, drybeans: 0.1, tomatoes: 0.05, capsicum: 0.03 }, price: 10, cooking: 3 },
+  { id: 'ugali-sukuma', name: 'Ugali na sukuma wiki', icon: '🍽️', what: 'Maize ugali with sukuma wiki fried with tomato: energy plus vitamins A and C.', plate: { maize: 0.2, sukuma: 0.15, tomatoes: 0.03 }, price: 9, cooking: 3 },
+  { id: 'githeri', name: 'Githeri', icon: '🍲', what: 'Maize and beans boiled together with a little tomato: a complete protein in one pot.', plate: { maize: 0.15, drybeans: 0.1, tomatoes: 0.05 }, price: 10, cooking: 3 },
+  { id: 'bean-stew', name: 'Bean stew', icon: '🫘', what: 'Beans stewed in fresh tomatoes: protein and iron to build the body, vitamin C to take the iron in.', plate: { drybeans: 0.12, tomatoes: 0.08 }, price: 9, cooking: 2 },
   { id: 'beans-ugali', name: 'Ugali and bean stew', icon: '🫘', what: 'Ugali from the storehouse’s flour with a bean stew in tomato sauce: protein, iron and fibre.', plate: { flour: 0.2, drybeans: 0.1, sauce: 0.03 }, price: 11, cooking: 2.5 },
   { id: 'pepper-stew', name: 'Capsicum and tomato stew', icon: '🥘', what: 'Capsicum and tomatoes stewed with sukuma wiki and a little chilli, with ugali: the most vitamin C of any plate.', plate: { maize: 0.2, capsicum: 0.08, tomatoes: 0.06, sukuma: 0.05, chillies: 0.005 }, price: 10, cooking: 3 },
-  { id: 'kachumbari', name: 'Kachumbari', icon: '🍅', what: 'Fresh tomato, cucumber and chilli salad: vitamin C beside any meal.', plate: { tomatoes: 0.1, cucumber: 0.05, chillies: 0.01 }, price: 4, cooking: 1 },
+  { id: 'kachumbari', name: 'Kachumbari', icon: '🍅', what: 'Fresh tomato and cucumber salad: vitamin C beside any meal.', plate: { tomatoes: 0.1, cucumber: 0.05 }, price: 4, cooking: 1 },
   { id: 'strawberry-cup', name: 'Strawberry cup', icon: '🍓', what: 'Fresh strawberries in a cup: most of a day’s vitamin C.', plate: { strawberries: 0.15 }, price: 6, cooking: 0.5 },
   { id: 'juice', name: 'Strawberry and cucumber juice', icon: '🧃', what: 'A big cup of fresh strawberry juice, made longer with cucumber.', plate: { strawberries: 0.1, cucumber: 0.2 }, price: 6, cooking: 1 },
   { id: 'stuffed-capsicum', name: 'Baked stuffed capsicum', icon: '🫑', what: 'Capsicum filled with beans and tomato, baked in the oven: protein, iron and vitamin C.', plate: { capsicum: 0.1, drybeans: 0.05, tomatoes: 0.04 }, price: 9, cooking: 2.5 },
   { id: 'maize-bread', name: 'Baked maize bread', icon: '🍞', what: 'A loaf of the storehouse’s maize flour, baked in the oven: energy for the day.', plate: { flour: 0.12 }, price: 5, cooking: 1.5 },
 ];
 export const dishOf = (id: DishId) => DISHES.find(d => d.id === id)!;
+
+/* ---------------- what a plate does for the body ---------------- */
+
+/** The three kinds of food (as Kenyan schools teach them): energy-giving, body-building and protective. A restaurant
+    customer can ask for one of them instead of a dish, and the farmer picks a dish that fits. */
+export type Need = 'energy' | 'body' | 'protect';
+export const NEEDS: Record<Need, { name: string; short: string; icon: string; does: string; asks: string[] }> = {
+  energy: {
+    name: 'Energy-giving food',
+    short: 'Energy',
+    icon: '⚡',
+    does: 'Starch for work and play: maize, and the ugali made from it.',
+    asks: ['I’m ploughing all afternoon. Something for energy, please!', 'I have a long walk home. Give me something with energy.'],
+  },
+  body: {
+    name: 'Body-building food',
+    short: 'Body-building',
+    icon: '💪',
+    does: 'Protein for muscles and growing children: beans are the farm’s best.',
+    asks: ['My children are growing fast. Something body-building, with protein?', 'I train for football: I need protein, please.'],
+  },
+  protect: {
+    name: 'Protective food',
+    short: 'Protective',
+    icon: '🛡️',
+    does: 'Vitamins that fight sickness: sukuma wiki, tomatoes, cucumbers and fruit.',
+    asks: ['I keep catching colds. Something protective, full of vitamins?', 'Something fresh with vitamins, please: I want to stay well.'],
+  },
+};
+export const NEED_IDS = Object.keys(NEEDS) as Need[];
+const GROUP_NEED: Record<FoodGroup, Need> = { staple: 'energy', legume: 'body', leafy: 'protect', vegetable: 'protect', fruit: 'protect' };
+/** The kind of food each farm food is (flour and the storehouse's other makes count as what they are made from). */
+export const needOfFood = (id: ProduceId): Need => (id === 'flour' ? 'energy' : GROUP_NEED[FOODS[id]?.group ?? 'vegetable']);
+/** What a plate is: the kinds of food that make up at least a quarter of it. */
+export function needsOf(d: Dish): Need[] {
+  const total = Object.values(d.plate).reduce((n, kg) => n + (kg ?? 0), 0);
+  const out = new Set<Need>();
+  for (const [id, kg] of Object.entries(d.plate) as [ProduceId, number][]) if (kg >= total * 0.25) out.add(needOfFood(id));
+  return NEED_IDS.filter(n => out.has(n));
+}
+/** One line on what a dish is made of, and what each food does: githeri = maize (energy) + beans (body-building)… */
+export const lessonOf = (d: Dish) =>
+  `${d.name} = ${(Object.keys(d.plate) as ProduceId[]).map(id => `${PRODUCE[id].name.toLowerCase().replace(/ \(.*\)/, '')} (${NEEDS[needOfFood(id)].short.toLowerCase()})`).join(' + ')}`;
+
+/** The restaurant's menu when it is played (src/shop): five simple dishes from the farm's own crops, two or three foods
+    each, that between them cover the three kinds of food. */
+export const MENU: DishId[] = ['githeri', 'ugali-sukuma', 'bean-stew', 'kachumbari', 'strawberry-cup'];
 
 export const RESTAURANT = {
   /** plates the restaurant serves a day, in all */

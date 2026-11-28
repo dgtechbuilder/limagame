@@ -13,6 +13,8 @@ import { JOB_INFO, ROUTINE, TRACTOR_PLOT, toolJobs, toolName, type PlotJob, type
 import { CHECK_DAYS, CROP_WORDS, checkKey, cropOf, farmName, harvestFarm, hazardFor, isResting, plotGrowth, restOf, type Trial, type TrialHazard } from '../trials/model';
 import { REST } from '../soil/model';
 import { footstep, type Ground } from '../audio/ambience';
+import { SB } from '../art/storybook';
+import { Diners, RESTAURANT_AT, RESTAURANT_DOOR, restaurantInside, restaurantShell } from './restaurant';
 import {
   FULL,
   PLOTS,
@@ -97,7 +99,6 @@ import {
   sharpText,
   signTexture,
   stall,
-  restaurant,
   tree,
   trough,
   vcMaterial,
@@ -164,6 +165,8 @@ const PATHS: [number, number, number, number][] = [
   [12.3, -1.5, 14.8, 1.5],
   [-1.5, 9.5, 1.5, 14.2],
   [-16.0, 4.8, -12.3, 7.8],
+  // from the yard's bottom-left corner down to the restaurant's door
+  [-13.0, 9.6, -10.9, 14.6],
 ];
 
 /** Where the tractor waits, and a spot beside it to walk to (clear of the Hire spot, which opens the hire screen). */
@@ -222,8 +225,8 @@ export const PLACES: Record<Place, { x: number; z: number; r: number }> = {
       a roof or an awning hides the ground just north of it. The market's and the restaurant's squares stand out in
       front of their awnings, the storehouse's on the lane before its door, the house's below the porch step. */
   market: { x: 0, z: 11.6, r: 1.3 },
-  /** the mini restaurant beside the stall: meals from the store (src/produce/restaurant.ts) */
-  restaurant: { x: 3.4, z: 11.9, r: 0.95 },
+  /** the restaurant's door, bottom left of the farm: the restaurant game (src/shop), meals from the store */
+  restaurant: { x: RESTAURANT_DOOR.x, z: RESTAURANT_DOOR.z, r: 0.95 },
   /** the greenhouse's door, facing the market path, and the storehouse's door, on the lane (src/greenhouse, src/storehouse) */
   greenhouse: { x: GREENHOUSE_AT.x + GREENHOUSE_AT.w / 2 + 1.3, z: GREENHOUSE_AT.z - 0.3, r: 0.85 },
   storehouse: { x: STOREHOUSE_AT.x + STOREHOUSE_AT.door, z: STOREHOUSE_AT.z - STOREHOUSE_AT.d / 2 - 1.95, r: 0.85 },
@@ -479,6 +482,7 @@ export class FarmWorld {
 
   dispose() {
     this.disposed = true;
+    this.dinerCrowd?.dispose();
     this.firstFrame?.();
     this.firstFrame = null;
     cancelAnimationFrame(this.raf);
@@ -619,9 +623,6 @@ export class FarmWorld {
     smooth.push(...place(house(), at(0, 0, -18.6)));
     smooth.push(...place(shed(), at(-18.6, 0, 0, { ry: Math.PI / 2 })));
     smooth.push(...place(stall(), at(0, 0, 15.6, { ry: Math.PI })));
-    // the mini restaurant beside the stall, its counter facing the lane
-    smooth.push(...place(restaurant(), at(3.5, 0, 15.75, { ry: Math.PI })));
-    this.obstacles.push({ x: 3.5, z: 15.9, r: 0.95 });
     smooth.push(...place(board(), at(4.4, 0, -12.4)));
     // partner billboards (a slot with no partner has no billboard): one pole each, the only thing that blocks
     for (const bb of BILLBOARDS) {
@@ -658,13 +659,12 @@ export class FarmWorld {
     smooth.push(...fence(-21.4, -20.4, -21.4, -11.6));
     // trees, bushes, grass, rocks, flowers on the grass around
     const trees: [number, number, number][] = [
-      [-20, 12, 1],
-      [-17.5, 14.8, 0.8],
+      [-21.2, 8.2, 1],
+      [-6.4, 16.6, 0.8],
       [-6.8, -19.4, 0.9],
       [13.2, -19.6, 0.9],
-      [-11.4, 16.0, 0.85],
       [14.2, 16.2, 0.9],
-      [-20.0, 9.0, 0.7],
+      [-21.4, 16.6, 0.7],
     ];
     for (const [x, z, s] of trees) {
       flat.push(...place(tree(s, (x * 7 + z) % 2 ? 1 : 0), at(x, 0, z)));
@@ -687,7 +687,7 @@ export class FarmWorld {
       this.obstacles.push({ x: FOREST.sign.x, z: FOREST.sign.z, r: 0.3 });
     }
     const bushes: [number, number, number][] = [
-      [-14.2, 10.6, 1],
+      [-19.4, 9.4, 1],
       [-3.6, -14.0, 0.7],
       [-19.6, 2.8, 0.8],
     ];
@@ -697,7 +697,7 @@ export class FarmWorld {
       [14.2, -3.4, 1.1],
       [-4.2, 11.6, 0.9],
       [4.0, 12.0, 1],
-      [-11.0, 11.4, 1.1],
+      [-10.2, 16.4, 1.1],
       [11.4, 11.0, 0.9],
       [13.8, 6.2, 1],
       [-3.4, -11.6, 0.9],
@@ -941,6 +941,7 @@ export class FarmWorld {
     this.scene.add(this.oxen);
     this.buildPower();
     this.buildGreenhouse();
+    this.buildRestaurant();
     this.buildStorehouse();
     this.buildStorage();
   }
@@ -1125,6 +1126,25 @@ export class FarmWorld {
       this.scene.add(badge);
       this.bedBadges.push(badge);
     }
+  }
+
+  /** The restaurant, bottom left of the farm (src/world/restaurant.ts): its kitchen and tables under a glass roof, and
+      the customers who come and eat there. */
+  private dinerCrowd: Diners | null = null;
+  /** What each of the restaurant's customers is doing (the play-tests read it). */
+  diners() {
+    return this.dinerCrowd?.phases() ?? [];
+  }
+  private buildRestaurant() {
+    const r = RESTAURANT_AT;
+    const fm = new THREE.Mesh(merge(place(restaurantInside(), at(r.x, 0, r.z))), vcMaterial(true));
+    fm.receiveShadow = true;
+    fm.castShadow = true;
+    this.scene.add(fm);
+    this.addGlassHouse(r.x, r.z, restaurantShell(), 0.12);
+    this.addBoard(r.x + 1.6, 2.25, r.z + r.d / 2 + 0.08, 'RESTAURANT', 'good food from the farm', SB.roof);
+    this.rects.push({ x0: r.x - r.w / 2, x1: r.x + r.w / 2, z0: r.z - r.d / 2, z1: r.z + r.d / 2 });
+    this.dinerCrowd = new Diners(this.scene);
   }
 
   private buildStorehouse() {
@@ -2151,6 +2171,7 @@ export class FarmWorld {
     this.places();
     this.animateFarmer(dt, time);
     this.animateAnimals(dt, time);
+    this.dinerCrowd?.update(dt, time);
     this.animateHire(dt);
     this.animateParticles(dt);
     this.sweepBillboards(time);

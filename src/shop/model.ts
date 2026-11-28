@@ -1,9 +1,10 @@
-/* The shop floor: the market stall and the restaurant played as a game. Customers walk in and queue at the counter;
-   each one orders. At the stall the farmer packs the order from the store into one bag or two, as the customer asks,
-   and hands it over; at the restaurant the farmer takes the order, gathers the food from the store, chops and cooks it
-   at the kitchen's stations (the chopping board, the jiko, the stove, the oven, the blender), plates it or boxes it
-   to take away, and serves it. A customer pays for what they asked for and got, and tips for a good, quick job; one
-   kept waiting too long walks out.
+/* The shop floor: the market stall and the restaurant played as a game. At the stall customers walk in and queue at
+   the counter; the farmer packs each order from the store into one bag or two, as the customer asks, and hands it
+   over. At the restaurant customers walk in, sit down at a table and order, either a dish by name or a kind of food
+   ("something for energy", "something body-building", "something protective"); the farmer picks a dish off the menu
+   that fits, it cooks by itself at its station, and the farmer serves it. The menu is five simple dishes from the
+   farm's own crops (MENU in src/produce/restaurant.ts), so the game teaches what each food does for the body. A
+   customer pays for what they got, and tips for the right food served quickly; one kept waiting too long walks out.
 
    The stall's 25 kg a day and the restaurant's 30 plates a day hold here too, and every order is made from what is
    in the store, so the game sells the farm's own harvest. No screens here (Shop.tsx draws it, scene.ts is the 3D
@@ -11,7 +12,7 @@
 
 import type { Look } from '../first/data';
 import { MARKET, PRODUCE, leftToday, priceOf, produceOf, type ProduceId, type ProduceState } from '../produce/model';
-import { DISHES, dishOf, platesLeft, type DishId } from '../produce/restaurant';
+import { MENU, NEEDS, NEED_IDS, dishOf, lessonOf, needsOf, platesLeft, type DishId, type Need } from '../produce/restaurant';
 
 export type ShopKind = 'market' | 'restaurant';
 
@@ -64,12 +65,16 @@ export interface MarketOrder {
 
 export interface MealOrder {
   kind: 'restaurant';
-  dishes: DishId[];
-  /** eat here (on a plate) or take away (in a box) */
-  to: 'here' | 'away';
-  /** the farmer has taken the order */
-  taken: boolean;
+  /** what they asked for: a dish by name, or a kind of food (any dish that is that kind fits) */
+  ask: { dish: DishId } | { need: Need };
+  /** the dish the farmer is cooking for them (null until one is picked off the menu) */
+  dish: DishId | null;
 }
+
+/** The dish a meal order holds back from the store: the one cooking, or the one asked for. */
+const heldDish = (o: MealOrder): DishId | null => o.dish ?? ('dish' in o.ask ? o.ask.dish : null);
+/** Does a dish fit what the customer asked for? */
+export const fits = (o: MealOrder, d: DishId) => ('dish' in o.ask ? o.ask.dish === d : needsOf(dishOf(d)).includes(o.ask.need));
 
 /* ---------------- the kitchen ---------------- */
 
@@ -84,25 +89,18 @@ export const STATIONS: Record<StationId, { name: string; short: string; icon: st
 };
 export const STATION_IDS = Object.keys(STATIONS) as StationId[];
 
-export interface Step {
-  at: StationId;
-  /** taps on the board */
-  chops?: number;
-  /** seconds on the fire (or in the blender) until it is done */
-  secs?: number;
-}
-
-/** How each dish is made, after its food is gathered from the store. */
-export const RECIPES: Record<DishId, Step[]> = {
-  'ugali-sukuma': [{ at: 'board', chops: 4 }, { at: 'pan', secs: 5 }, { at: 'pot', secs: 6 }],
-  githeri: [{ at: 'board', chops: 3 }, { at: 'pot', secs: 8 }],
-  'beans-ugali': [{ at: 'pot', secs: 7 }, { at: 'pan', secs: 4 }],
-  'pepper-stew': [{ at: 'board', chops: 4 }, { at: 'pan', secs: 6 }],
-  kachumbari: [{ at: 'board', chops: 6 }],
-  'strawberry-cup': [{ at: 'board', chops: 3 }],
-  juice: [{ at: 'board', chops: 2 }, { at: 'blender', secs: 4 }],
-  'stuffed-capsicum': [{ at: 'board', chops: 3 }, { at: 'oven', secs: 8 }],
-  'maize-bread': [{ at: 'oven', secs: 9 }],
+/** Where each dish cooks, and how long it takes (seconds): it cooks by itself once it is picked off the menu. */
+export const COOK: Record<DishId, { at: StationId; secs: number }> = {
+  githeri: { at: 'pot', secs: 7 },
+  'ugali-sukuma': { at: 'pan', secs: 6 },
+  'bean-stew': { at: 'pot', secs: 6 },
+  kachumbari: { at: 'board', secs: 3 },
+  'strawberry-cup': { at: 'board', secs: 2 },
+  'beans-ugali': { at: 'pot', secs: 7 },
+  'pepper-stew': { at: 'pan', secs: 6 },
+  juice: { at: 'blender', secs: 4 },
+  'stuffed-capsicum': { at: 'oven', secs: 8 },
+  'maize-bread': { at: 'oven', secs: 9 },
 };
 
 export const SHOP = {
@@ -112,45 +110,25 @@ export const SHOP = {
   /** people in the queue at most */
   queue: 4,
   /** seats at the restaurant's tables */
-  seats: 4,
+  seats: 6,
   /** patience at the stall: a base, and more for each thing on the order */
   marketPatience: 40,
   marketPerItem: 10,
-  /** patience at the restaurant, from the moment the order is taken: a base, and more for each dish */
-  mealPatience: 45,
-  mealPerDish: 30,
-  /** seconds a customer waits at the counter for the order to be taken */
-  takePatience: 25,
-  /** a cooked dish is just right from `secs` to this many times it; burnt after `burnAt` times */
-  doneUntil: 1.7,
-  burnAt: 2.2,
+  /** patience at the restaurant, from the moment a customer sits down to order until their food comes */
+  mealPatience: 60,
   /** the most a customer tips, as a share of the bill */
   tip: 0.15,
   /** seconds a customer sits and eats */
   eatSecs: 5,
 };
 
+/** A dish cooking for a customer. */
 export interface Job {
   id: number;
   patron: number;
   dish: DishId;
-  /** the food gathered from the store so far */
-  got: ProduceId[];
-  /** 0: gathering; 1..n: the recipe's steps still to do (step i is RECIPES[dish][i - 1]); n + 1: ready to pack */
-  step: number;
-  where: 'ticket' | 'hands' | StationId | 'pass';
-  /** 1 when everything went right; a burn or the wrong pack takes some off */
-  quality: number;
-  pack: 'plate' | 'box' | null;
-  /** notes for the ticket: "burnt", "boxed, not plated" */
-  notes: string[];
-}
-
-export interface StationState {
-  job: number | null;
-  /** seconds on the fire, or taps on the board */
+  /** seconds it has cooked */
   t: number;
-  chops: number;
 }
 
 export interface Shift {
@@ -164,10 +142,8 @@ export interface Shift {
   /** the stall: the bags on the counter, and the one the farmer is filling */
   bags: Partial<Record<ProduceId, number>>[];
   bag: number;
-  /** the restaurant */
+  /** the restaurant: the dishes cooking or ready to serve */
   jobs: Job[];
-  hands: number | null;
-  stations: Record<StationId, StationState>;
   /** what happened, for the shift's end */
   served: number;
   walked: number;
@@ -199,8 +175,6 @@ export function newShift(kind: ShopKind): Shift {
     bags: [{}],
     bag: 0,
     jobs: [],
-    hands: null,
-    stations: Object.fromEntries(STATION_IDS.map(id => [id, { job: null, t: 0, chops: 0 }])) as Record<StationId, StationState>,
     served: 0,
     walked: 0,
     earned: 0,
@@ -230,20 +204,20 @@ export const kgOf = (items: Partial<Record<ProduceId, number>>) => round1(Object
 export const billOf = (o: MarketOrder, cold: boolean) => round2((Object.entries(orderItems(o)) as [ProduceId, number][]).reduce((n, [id, kg]) => n + kg * priceOf(id, cold), 0));
 
 /** What the store has left once the waiting customers' orders are set aside, and what the day still allows. */
-export function free(sh: Shift, p0: Partial<ProduceState> | undefined, day: number) {
+export function free(sh: Shift, p0: Partial<ProduceState> | undefined, day: number, except?: number) {
   const p = produceOf(p0);
   const store = { ...p.store };
   let kg = leftToday(p, day);
   let plates = platesLeft(p, day);
   for (const c of waiting(sh)) {
+    if (c.id === except) continue;
     if (c.order.kind === 'market') {
       for (const [id, n] of Object.entries(orderItems(c.order)) as [ProduceId, number][]) store[id] = round2((store[id] ?? 0) - n);
       kg -= kgOf(orderItems(c.order));
     } else {
-      for (const d of c.order.dishes) {
-        for (const [id, n] of Object.entries(dishOf(d).plate) as [ProduceId, number][]) store[id] = round2((store[id] ?? 0) - n);
-        plates -= 1;
-      }
+      const d = heldDish(c.order);
+      if (d) for (const [id, n] of Object.entries(dishOf(d).plate) as [ProduceId, number][]) store[id] = round2((store[id] ?? 0) - n);
+      plates -= 1;
     }
   }
   return { store, kg: round1(kg), plates };
@@ -278,20 +252,19 @@ export function marketOrder(store: Partial<Record<ProduceId, number>>, kgLeft: n
   return { kind: 'market', bags: [items] };
 }
 
-/** A new meal order from what is free: one dish or two the store can make. Null when the kitchen cannot cook any. */
+/** The menu's dishes the store has the food for. */
+export const canMake = (store: Partial<Record<ProduceId, number>>) => MENU.filter(d => (Object.entries(dishOf(d).plate) as [ProduceId, number][]).every(([id, kg]) => (store[id] ?? 0) >= kg - 1e-6));
+
+/** A new meal order from what is free: a dish off the menu the store can make, or (about half the time) a kind of
+    food that one of those dishes is. Null when the kitchen cannot cook any. */
 export function mealOrder(store: Partial<Record<ProduceId, number>>, platesFree: number, rng: Rng): MealOrder | null {
-  const makes = (d: (typeof DISHES)[number], n: number) => (Object.entries(d.plate) as [ProduceId, number][]).every(([id, kg]) => (store[id] ?? 0) >= kg * n - 1e-6);
-  const can = DISHES.filter(d => makes(d, 1));
+  const can = canMake(store);
   if (!can.length || platesFree < 1) return null;
-  const first = pick(rng, can);
-  const dishes: DishId[] = [first.id];
-  if (platesFree >= 2 && rng() < 0.4) {
-    const left = { ...store };
-    for (const [id, kg] of Object.entries(first.plate) as [ProduceId, number][]) left[id] = (left[id] ?? 0) - kg;
-    const more = DISHES.filter(d => (Object.entries(d.plate) as [ProduceId, number][]).every(([id, kg]) => (left[id] ?? 0) >= kg - 1e-6));
-    if (more.length) dishes.push(pick(rng, more).id);
+  if (rng() < 0.5) {
+    const needs = NEED_IDS.filter(n => can.some(d => needsOf(dishOf(d)).includes(n)));
+    if (needs.length) return { kind: 'restaurant', ask: { need: pick(rng, needs) }, dish: null };
   }
-  return { kind: 'restaurant', dishes, to: rng() < 0.5 ? 'here' : 'away', taken: false };
+  return { kind: 'restaurant', ask: { dish: pick(rng, can) }, dish: null };
 }
 
 const words = (items: Partial<Record<ProduceId, number>>) =>
@@ -302,13 +275,18 @@ export function lineFor(o: MarketOrder | MealOrder, name: string): string {
     if (o.bags.length === 1) return `Habari! ${words(o.bags[0])}, please. One bag is fine.`;
     return `Hi, I'm ${name}. ${words(o.bags[0])} in one bag, and ${words(o.bags[1])} in another, please.`;
   }
-  const ds = o.dishes.map(d => dishOf(d).name.toLowerCase());
-  const what = ds.length === 2 ? `${ds[0]} and ${ds[1]}` : ds[0];
-  return o.to === 'here' ? `Habari! ${what}, to eat here please.` : `${what} to take away, please. I'm in a hurry!`;
+  if ('need' in o.ask) {
+    const asks = NEEDS[o.ask.need].asks;
+    return asks[name.length % asks.length];
+  }
+  return `Habari! ${dishOf(o.ask.dish).name}, please.`;
 }
 
 /** A new customer at the door, with an order from what the store can spare. Null when there is nothing left to sell. */
 export function newPatron(sh: Shift, p0: Partial<ProduceState> | undefined, day: number, rng: Rng): Patron | null {
+  // the restaurant: a customer comes in only when there is a seat for them
+  const seat = sh.kind === 'restaurant' ? freeSeat(sh) : null;
+  if (sh.kind === 'restaurant' && seat === null) return null;
   const f = free(sh, p0, day);
   const order = sh.kind === 'market' ? marketOrder(f.store, f.kg, rng) : mealOrder(f.store, f.plates, rng);
   if (!order) return null;
@@ -316,9 +294,15 @@ export function newPatron(sh: Shift, p0: Partial<ProduceState> | undefined, day:
   const taken = new Set(inShop(sh).map(p => p.name));
   const name = pick(rng, NAMES.filter(n => !taken.has(n)).length ? NAMES.filter(n => !taken.has(n)) : NAMES);
   const look: Look = { skin: pick(rng, SKINS), outfit: pick(rng, OUTFITS), trim: pick(rng, TRIMS), head: pick(rng, HEADS), headColor: pick(rng, HEAD_COLORS) };
-  const max = order.kind === 'market' ? SHOP.marketPatience + SHOP.marketPerItem * Object.keys(orderItems(order)).length : SHOP.takePatience;
-  const slot = inShop(sh).filter(p => p.phase === 'enter' || p.phase === 'queue' || p.phase === 'order').length;
-  return { id: sh.nextId, name, look, extra: pick(rng, EXTRAS), kid: rng() < 0.15, phase: 'enter', t: 0, slot, seat: null, patience: max, max, order, line: lineFor(order, name), mood: null, said: '', carry: null, paid: 0 };
+  const max = order.kind === 'market' ? SHOP.marketPatience + SHOP.marketPerItem * Object.keys(orderItems(order)).length : SHOP.mealPatience;
+  const slot = order.kind === 'market' ? inShop(sh).filter(p => p.phase === 'enter' || p.phase === 'queue' || p.phase === 'order').length : -1;
+  return { id: sh.nextId, name, look, extra: pick(rng, EXTRAS), kid: rng() < 0.15, phase: 'enter', t: 0, slot, seat, patience: max, max, order, line: lineFor(order, name), mood: null, said: '', carry: null, paid: 0 };
+}
+
+/** A seat no one in the restaurant has. */
+function freeSeat(sh: Shift): number | null {
+  const used = new Set(sh.patrons.filter(p => p.phase !== 'gone' && p.phase !== 'leave' && p.seat !== null).map(p => p.seat));
+  return Array.from({ length: SHOP.seats }, (_, i) => i).find(i => !used.has(i)) ?? null;
 }
 
 /** The customer at the counter now (ordering, or waiting for their bags). */
@@ -339,7 +323,7 @@ export function tick(sh: Shift, dt: number, w: World) {
   // a new customer at the door
   sh.spawnIn -= dt;
   const queued = sh.patrons.filter(p => p.phase === 'enter' || p.phase === 'queue' || p.phase === 'order').length;
-  if (!sh.closing && sh.spawnIn <= 0 && queued < SHOP.queue) {
+  if (!sh.closing && sh.spawnIn <= 0 && (sh.kind === 'restaurant' || queued < SHOP.queue)) {
     const p = newPatron(sh, w.produce, w.day, w.rng);
     sh.spawnIn = (sh.kind === 'market' ? SHOP.every : SHOP.mealEvery) * (0.75 + w.rng() * 0.5);
     if (p) {
@@ -350,27 +334,23 @@ export function tick(sh: Shift, dt: number, w: World) {
   for (const p of sh.patrons) {
     if (p.phase === 'gone') continue;
     p.t += dt;
-    if (p.phase === 'enter' && p.t >= WALK.enter) to(p, 'queue');
+    // at the restaurant they walk in to a table, sit and order; at the stall they join the queue
+    if (p.phase === 'enter' && p.order.kind === 'restaurant' && p.t >= WALK.enter + WALK.seat) to(p, 'order');
+    if (p.phase === 'enter' && p.order.kind === 'market' && p.t >= WALK.enter) to(p, 'queue');
     if (p.phase === 'queue' && p.slot === 0 && p.t >= WALK.step) to(p, 'order');
     if (p.phase === 'order' || p.phase === 'wait') {
       p.patience -= dt;
       if (p.patience <= 0) walkOut(sh, p);
     }
-    if (p.phase === 'pickup' && p.t >= WALK.pickup) {
-      if (p.order.kind === 'restaurant' && p.order.to === 'here' && p.seat !== null) to(p, 'eat');
-      else to(p, 'leave');
-    }
+    if (p.phase === 'pickup' && p.t >= WALK.pickup) to(p, 'leave');
     if (p.phase === 'eat' && p.t >= SHOP.eatSecs) {
       p.carry = null;
       to(p, 'leave');
     }
     if (p.phase === 'leave' && p.t >= WALK.leave) to(p, 'gone');
   }
-  // the restaurant's stations
-  for (const id of STATION_IDS) {
-    const st = sh.stations[id];
-    if (st.job !== null && STATIONS[id].kind !== 'chop') st.t += dt;
-  }
+  // the restaurant's dishes cook
+  for (const j of sh.jobs) j.t += dt;
   // nothing left to sell, and no one waiting: the shift is over
   if (!sh.closing && sh.spawnIn > 0 && !waiting(sh).length && !newPatron({ ...sh, patrons: sh.patrons }, w.produce, w.day, () => 0.5)) sh.closing = true;
 }
@@ -391,14 +371,14 @@ function shuffleUp(sh: Shift, from: number) {
 
 function walkOut(sh: Shift, p: Patron) {
   const was = p.slot;
-  const counter = p.phase === 'order';
+  const counter = p.phase === 'order' && p.order.kind === 'market';
   p.mood = 'upset';
-  p.said = p.order.kind === 'restaurant' && p.order.taken ? 'I waited too long. Never mind!' : 'Too slow! I’ll shop somewhere else.';
+  p.said = p.order.kind === 'restaurant' ? 'I waited too long. Never mind!' : 'Too slow! I’ll shop somewhere else.';
   p.carry = null;
   to(p, 'leave');
   sh.walked++;
   // their food goes back: the jobs for them are dropped
-  if (p.order.kind === 'restaurant') dropJobs(sh, p.id);
+  if (p.order.kind === 'restaurant') sh.jobs = sh.jobs.filter(j => j.patron !== p.id);
   if (counter) {
     p.slot = -1;
     shuffleUp(sh, was);
@@ -409,13 +389,6 @@ function walkOut(sh: Shift, p: Patron) {
   }
   if (p.seat !== null) p.seat = null;
   flash(sh, `${p.name} walked out: they waited too long`, true);
-}
-
-function dropJobs(sh: Shift, patron: number) {
-  const gone = new Set(sh.jobs.filter(j => j.patron === patron).map(j => j.id));
-  if (sh.hands !== null && gone.has(sh.hands)) sh.hands = null;
-  for (const id of STATION_IDS) if (sh.stations[id].job !== null && gone.has(sh.stations[id].job!)) sh.stations[id] = { job: null, t: 0, chops: 0 };
-  sh.jobs = sh.jobs.filter(j => !gone.has(j.id));
 }
 
 /* ---------------- the stall ---------------- */
@@ -529,198 +502,74 @@ function finishPatron(sh: Shift, c: Patron, mood: Patron['mood'] & string, said:
 
 /* ---------------- the restaurant ---------------- */
 
-/** Take the order of the customer at the counter: their dishes go on the kitchen's board, and they sit and wait. */
-export function takeOrder(sh: Shift): Patron | null {
-  const c = atCounter(sh);
-  if (!c || c.order.kind !== 'restaurant' || c.order.taken) return null;
-  c.order.taken = true;
-  for (const d of c.order.dishes) sh.jobs.push({ id: sh.jobs.reduce((n, j) => Math.max(n, j.id), 0) + 1, patron: c.id, dish: d, got: [], step: 0, where: 'ticket', quality: 1, pack: null, notes: [] });
-  const used = new Set(sh.patrons.filter(p => p.phase !== 'gone' && p.seat !== null).map(p => p.seat));
-  const seat = Array.from({ length: SHOP.seats }, (_, i) => i).find(i => !used.has(i)) ?? null;
-  c.seat = seat;
-  c.max = SHOP.mealPatience + SHOP.mealPerDish * c.order.dishes.length;
-  c.patience = c.max;
-  const was = c.slot;
-  c.slot = -1;
-  to(c, 'wait');
-  shuffleUp(sh, was);
-  return c;
-}
+export const jobOf = (sh: Shift, patron: number) => sh.jobs.find(j => j.patron === patron) ?? null;
+/** How far a dish has cooked, 0 to 1. */
+export const progressOf = (j: Job) => Math.min(1, j.t / COOK[j.dish].secs);
+export const isReady = (j: Job) => j.t >= COOK[j.dish].secs;
 
-export const jobOf = (sh: Shift, id: number | null) => (id === null ? null : (sh.jobs.find(j => j.id === id) ?? null));
-const stepsOf = (j: Job) => RECIPES[j.dish];
-/** The station the job goes to next, or null (gathering, or ready to pack). */
-export const nextStation = (j: Job): StationId | null => (j.step >= 1 && j.step <= stepsOf(j).length ? stepsOf(j)[j.step - 1].at : null);
-export const needsFood = (j: Job): ProduceId[] => (Object.keys(dishOf(j.dish).plate) as ProduceId[]).filter(id => !j.got.includes(id));
-export const readyToPack = (j: Job) => j.step > stepsOf(j).length && j.where === 'hands';
+/** The customers sitting at the tables who have ordered and have no dish cooking yet. */
+export const ordering = (sh: Shift) => sh.patrons.filter(p => p.phase === 'order' && p.order.kind === 'restaurant');
 
-/** Pick a dish off the board to start it (hands must be free). */
-export function startJob(sh: Shift, id: number): boolean {
-  const j = jobOf(sh, id);
-  if (!j || j.where !== 'ticket') return false;
-  if (sh.hands !== null) {
-    flash(sh, 'Your hands are full: finish or set down what you hold', true);
-    return false;
-  }
-  j.where = 'hands';
-  sh.hands = j.id;
-  return true;
-}
-
-/** Take some food from the store for the dish in hand. */
-export function gather(sh: Shift, food: ProduceId): 'ok' | 'wrong' | 'none' | 'done' {
-  const j = jobOf(sh, sh.hands);
-  if (!j || j.step !== 0) {
-    flash(sh, j ? 'This dish has all its food: take it to the next station' : 'Pick a dish off the orders first', true);
-    return 'none';
-  }
-  if (!(food in dishOf(j.dish).plate)) {
-    flash(sh, `${PRODUCE[food].name} is not in ${dishOf(j.dish).name.toLowerCase()}`, true);
-    return 'wrong';
-  }
-  if (!j.got.includes(food)) j.got.push(food);
-  if (!needsFood(j).length) {
-    j.step = 1;
-    return 'done';
-  }
-  return 'ok';
-}
-
-/** Tap a station: put the dish in hand on it, chop on the board, or take what is done off the fire. */
-export function atStation(sh: Shift, id: StationId): 'placed' | 'chop' | 'chopped' | 'taken' | 'notyet' | 'busy' | 'wrong' | 'none' {
-  const st = sh.stations[id];
-  const kind = STATIONS[id].kind;
-  const onIt = jobOf(sh, st.job);
-  if (onIt) {
-    const step = stepsOf(onIt)[onIt.step - 1];
-    if (kind === 'chop') {
-      st.chops++;
-      if (st.chops >= (step.chops ?? 3)) {
-        if (sh.hands !== null) {
-          flash(sh, 'Chopped! Free your hands to pick it up', false);
-          return 'chop';
-        }
-        onIt.step++;
-        onIt.where = 'hands';
-        sh.hands = onIt.id;
-        sh.stations[id] = { job: null, t: 0, chops: 0 };
-        return 'chopped';
-      }
-      return 'chop';
-    }
-    const secs = step.secs ?? 5;
-    if (st.t < secs) {
-      flash(sh, `${dishOf(onIt.dish).name} is not ready yet`, true);
-      return 'notyet';
-    }
-    if (sh.hands !== null) {
-      flash(sh, 'Your hands are full', true);
-      return 'busy';
-    }
-    if (kind === 'cook' && st.t > secs * SHOP.burnAt) {
-      onIt.quality = round2(onIt.quality - 0.5);
-      onIt.notes.push('burnt');
-    } else if (kind === 'cook' && st.t > secs * SHOP.doneUntil) {
-      onIt.quality = round2(onIt.quality - 0.2);
-      onIt.notes.push('overcooked');
-    }
-    onIt.step++;
-    onIt.where = 'hands';
-    sh.hands = onIt.id;
-    sh.stations[id] = { job: null, t: 0, chops: 0 };
-    return 'taken';
-  }
-  const j = jobOf(sh, sh.hands);
-  if (!j) {
-    flash(sh, `The ${STATIONS[id].name.toLowerCase()} is empty`, true);
-    return 'none';
-  }
-  if (j.step === 0) {
-    flash(sh, `Gather the food first: ${needsFood(j).map(f => PRODUCE[f].name.toLowerCase()).join(', ')}`, true);
-    return 'wrong';
-  }
-  const want = nextStation(j);
-  if (want !== id) {
-    flash(sh, want ? `${dishOf(j.dish).name} goes to the ${STATIONS[want].name.toLowerCase()} next` : `${dishOf(j.dish).name} is ready: plate it or box it`, true);
-    return 'wrong';
-  }
-  st.job = j.id;
-  st.t = 0;
-  st.chops = kind === 'chop' ? 1 : 0;
-  j.where = id;
-  sh.hands = null;
-  return 'placed';
-}
-
-/** How a dish on a station is getting on: 0 to 1 until done, then done, then overcooked or burnt. */
-export function stationStatus(sh: Shift, id: StationId): { job: Job | null; progress: number; state: 'empty' | 'working' | 'done' | 'over' | 'burnt' } {
-  const st = sh.stations[id];
-  const j = jobOf(sh, st.job);
-  if (!j) return { job: null, progress: 0, state: 'empty' };
-  const step = stepsOf(j)[j.step - 1];
-  if (STATIONS[id].kind === 'chop') return { job: j, progress: st.chops / (step.chops ?? 3), state: 'working' };
-  const secs = step.secs ?? 5;
-  const progress = Math.min(1, st.t / secs);
-  if (st.t < secs) return { job: j, progress, state: 'working' };
-  if (STATIONS[id].kind === 'blend') return { job: j, progress: 1, state: 'done' };
-  return { job: j, progress: 1, state: st.t > secs * SHOP.burnAt ? 'burnt' : st.t > secs * SHOP.doneUntil ? 'over' : 'done' };
-}
-
-/** Put the dish in hand on a plate or in a takeaway box; it waits on the pass to be served. */
-export function packDish(sh: Shift, pack: 'plate' | 'box'): boolean {
-  const j = jobOf(sh, sh.hands);
-  if (!j || !readyToPack(j)) {
-    flash(sh, j ? `${dishOf(j.dish).name} is not cooked yet` : 'Nothing in your hands to pack', true);
-    return false;
-  }
-  const c = sh.patrons.find(p => p.id === j.patron);
-  const want = c && c.order.kind === 'restaurant' ? (c.order.to === 'here' ? 'plate' : 'box') : pack;
-  if (pack !== want) {
-    j.quality = round2(j.quality - 0.3);
-    j.notes.push(pack === 'box' ? 'boxed, not plated' : 'plated, not boxed');
-  }
-  j.pack = pack;
-  j.where = 'pass';
-  sh.hands = null;
-  return true;
-}
-
-/** Throw away the dish in hand and start it again from the board (the food is only used when it is served). */
-export function binDish(sh: Shift) {
-  const j = jobOf(sh, sh.hands);
-  if (!j) return;
-  j.got = [];
-  j.step = 0;
-  j.quality = 1;
-  j.notes = [];
-  j.where = 'ticket';
-  sh.hands = null;
-}
-
-/** Every dish for this customer is on the pass. */
-export const mealReady = (sh: Shift, patron: number) => {
-  const js = sh.jobs.filter(j => j.patron === patron);
-  return js.length > 0 && js.every(j => j.where === 'pass');
-};
-
-/** Serve a customer their meal: they pay for it (the caller cooks it from the store with the game's restaurant), and
-    tip good food served quickly; burnt food is half price. */
-export function serveMeal(sh: Shift, patron: number): (Paid & { dishes: DishId[]; discount: number }) | null {
+/** Cook a dish off the menu for a seated customer: it goes on its station and cooks by itself. The store must have the
+    food for it (counting what the other orders hold back). Any dish can be cooked; the customer says if it fits. */
+export function cookFor(sh: Shift, patron: number, dish: DishId, p0: Partial<ProduceState> | undefined, day: number): boolean {
   const c = sh.patrons.find(p => p.id === patron);
-  if (!c || c.order.kind !== 'restaurant' || !mealReady(sh, patron) || c.phase !== 'wait') return null;
-  const js = sh.jobs.filter(j => j.patron === patron);
-  const q = js.reduce((n, j) => n + j.quality, 0) / js.length;
-  const bill = round2(js.reduce((n, j) => n + dishOf(j.dish).price, 0));
-  const discount = round2(js.filter(j => j.quality < 0.6).reduce((n, j) => n + dishOf(j.dish).price / 2, 0));
+  if (!c || c.order.kind !== 'restaurant' || c.phase !== 'order') return false;
+  // what is free once everyone else's food is held back
+  const o = c.order;
+  const f = free(sh, p0, day, patron);
+  if (!canMake(f.store).includes(dish)) {
+    const d = dishOf(dish);
+    const short = (Object.entries(d.plate) as [ProduceId, number][]).filter(([id, kg]) => (f.store[id] ?? 0) < kg - 1e-6).map(([id]) => PRODUCE[id].name.toLowerCase().replace(/ \(.*\)/, ''));
+    flash(sh, `Not enough in the store for ${d.name.toLowerCase()}: you need ${short.join(' and ')}`, true);
+    return false;
+  }
+  o.dish = dish;
+  sh.jobs.push({ id: sh.jobs.reduce((n, j) => Math.max(n, j.id), 0) + 1, patron, dish, t: 0 });
+  to(c, 'wait');
+  // they wait a little longer now that their food is on the fire
+  c.patience = Math.max(c.patience, COOK[dish].secs + 20);
+  return true;
+}
+
+/** A station: what is cooking on it (the first dish not yet ready), or the last one ready. */
+export function stationStatus(sh: Shift, id: StationId): { job: Job | null; progress: number; state: 'empty' | 'working' | 'done' } {
+  const here = sh.jobs.filter(j => COOK[j.dish].at === id);
+  const cooking = here.find(j => !isReady(j));
+  if (cooking) return { job: cooking, progress: progressOf(cooking), state: 'working' };
+  if (here.length) return { job: here[0], progress: 1, state: 'done' };
+  return { job: null, progress: 0, state: 'empty' };
+}
+
+/** Serve a customer the dish cooked for them: they pay for it (the caller cooks it from the store with the game's
+    restaurant) and eat at their table. The right food quickly earns a tip; a kind of food that does not fit what they
+    needed earns none, and a different dish from the one they named is half price. Every plate says what it is. */
+export function serveMeal(sh: Shift, patron: number): (Paid & { dishes: DishId[]; discount: number; fit: boolean; lesson: string; ask: string }) | null {
+  const c = sh.patrons.find(p => p.id === patron);
+  const j = jobOf(sh, patron);
+  if (!c || c.order.kind !== 'restaurant' || c.phase !== 'wait' || !j || !isReady(j)) return null;
+  const o = c.order;
+  const d = dishOf(j.dish);
+  const fit = fits(o, j.dish);
+  const named = 'dish' in o.ask;
+  const discount = !fit && named ? round2(d.price / 2) : 0;
   const quick = Math.max(0, c.patience / c.max);
-  const tip = q >= 0.95 ? round2(bill * SHOP.tip * (0.5 + 0.5 * quick)) : 0;
-  const mood = q >= 0.95 ? 'happy' : q >= 0.6 ? 'ok' : 'upset';
-  const notes = [...new Set(js.flatMap(j => j.notes))];
-  const said = mood === 'happy' ? (c.order.to === 'here' ? 'Tamu sana! Delicious.' : 'Just right, asante! See you tomorrow.') : notes.includes('burnt') ? 'This is burnt! I’ll only pay half for it.' : notes.length ? `Hmm: ${notes.join(', ')}.` : 'It is fine, I suppose.';
-  sh.jobs = sh.jobs.filter(j => j.patron !== patron);
-  const dishes = c.order.dishes;
-  finishPatron(sh, c, mood, said, c.order.to === 'here' ? 'plate' : 'box', round2(bill - discount + tip));
-  return { patron: c, bill: round2(bill - discount), tip, mood, said, dishes, discount };
+  const tip = fit ? round2(d.price * SHOP.tip * (0.5 + 0.5 * quick)) : 0;
+  const mood = fit ? 'happy' : named ? 'upset' : 'ok';
+  const want = 'need' in o.ask ? NEEDS[o.ask.need] : null;
+  const said = fit
+    ? want
+      ? `Just what I needed: ${want.short.toLowerCase()} food. Asante!`
+      : 'Tamu sana! Delicious.'
+    : want
+      ? `Tasty, but it isn’t ${want.short.toLowerCase()} food.`
+      : `I asked for ${dishOf((o.ask as { dish: DishId }).dish).name.toLowerCase()}! Half price.`;
+  sh.jobs = sh.jobs.filter(x => x !== j);
+  finishPatron(sh, c, mood, said, 'plate', round2(d.price - discount + tip));
+  // they sit and eat at their table before they go
+  to(c, 'eat');
+  if (!fit) flash(sh, want ? `${want.name}: ${want.does}` : `${c.name} asked for ${dishOf((o.ask as { dish: DishId }).dish).name}`, true);
+  return { patron: c, bill: round2(d.price - discount), tip, mood, said, dishes: [j.dish], discount, fit, lesson: lessonOf(d), ask: 'need' in o.ask ? o.ask.need : o.ask.dish };
 }
 
 /** The money taken, once the game has sold the food (Shop.tsx adds it here). */
@@ -743,8 +592,8 @@ export const stockOf = (p0: Partial<ProduceState> | undefined) => {
   return (Object.keys(PRODUCE) as ProduceId[]).filter(id => (p.store[id] ?? 0) > 0).map(id => ({ id, kg: p.store[id]! }));
 };
 
-/** A dish's recipe as station icons, for the menu cards. */
-export const recipeIcons = (d: DishId) => RECIPES[d].map(st => STATIONS[st.at].icon).join(' → ');
+/** Where a dish cooks, for the menu cards. */
+export const recipeIcons = (d: DishId) => `${STATIONS[COOK[d].at].icon} ${STATIONS[COOK[d].at].name}`;
 
 /** The shop's clock: the tests run it faster. */
 export const shopClock = { scale: 1 };

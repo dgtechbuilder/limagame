@@ -4860,3 +4860,24 @@ button.pp-card:active { transform: scale(0.98); }
 /* four people (or parts) sit two by two, so the pedals stay in view */
 .ws-tray:has(> .ws-part:nth-of-type(4)) { display: grid; grid-template-columns: 1fr 1fr; }
 .ws-tray:has(> .ws-part:nth-of-type(4)) > small { grid-column: 1 / -1; }
+
+/* The restaurant played (src/shop/Shop.tsx): the menu along the bottom, the order asked on each ticket, and the
+   three kinds of food (energy-giving, body-building, protective) on the right */
+.sf-menu .sf-dishcard { flex: 1 0 128px; display: grid; grid-template-columns: 24px 1fr; grid-template-rows: auto auto auto; column-gap: 5px; row-gap: 1px; align-items: center; justify-items: start; text-align: left; padding: 3px 6px; }
+.sf-dishcard > i { grid-row: 1 / 4; font-size: 19px; }
+.sf-dishcard > b { font-size: 8.5px; }
+.sf-kinds { display: flex; flex-wrap: wrap; gap: 2px; }
+.sf-kind { display: inline-block; padding: 0 4px; border-radius: 6px; font-weight: 800; font-size: 7px; line-height: 1.5; background: var(--brown-05); color: var(--brown-70); }
+.sf-kind.is-energy { background: #fff1c7; color: #8a5a00; }
+.sf-kind.is-body { background: #f8e0d4; color: #8a3a1a; }
+.sf-kind.is-protect { background: #e3f6d8; color: #2f6a2a; }
+.sf-ask { margin: 0; display: flex; gap: 4px; align-items: flex-start; font-size: 8px; line-height: 1.3; font-weight: 700; color: var(--ink); }
+.sf-ask i { font-style: normal; font-size: 11px; }
+.sf-learn { padding: 6px 7px; border-radius: 10px; background: var(--stat, #eefbe8); border: 1.5px solid var(--stat-edge, #bfe3ad); display: flex; flex-direction: column; gap: 2px; animation: sf-pop 0.3s ease; }
+.sf-learn.is-miss { background: #fff3d1; border-color: var(--gold); }
+.sf-learn small { font-size: 7.5px; line-height: 1.35; color: var(--brown-70); }
+.sf-kindlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.sf-kindlist li.sf-kind { display: flex; flex-direction: column; gap: 1px; padding: 4px 6px; border-radius: 8px; font-size: 8px; line-height: 1.3; }
+.sf-kindlist li small { font-weight: 600; font-size: 7px; }
+.sf-tip { font-size: 7.5px; font-weight: 700; color: var(--brown-70); }
+@keyframes sf-pop { from { transform: scale(0.9); opacity: 0; } to { transform: none; opacity: 1; } }

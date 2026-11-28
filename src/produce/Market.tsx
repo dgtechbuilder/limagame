@@ -12,7 +12,7 @@ import { DISHES, RESTAURANT, dishOf, foodFor, plateNutrition, platesInStore, pla
 import { recipeIcons } from '../shop/model';
 
 /* The market stall: up to 25 kg of the store sold a day (what the farmer does not choose is sold for them when the
-   day ends), the mini restaurant beside it, what each crop is worth to eat, and every sale. Opened by walking to the
+   day ends), the restaurant (bottom left of the farm), what each crop is worth to eat, and every sale. Opened by walking to the
    Sell stall or the restaurant (when the six farms' harvest is not waiting), or the main menu. */
 
 const itemsWords = (items: Partial<Record<ProduceId, number>>) =>
@@ -153,7 +153,7 @@ function RestaurantTab({ s, dispatch, day, cold }: { s: GameState; dispatch: Dis
   return (
     <>
       <p className="pg-lead">
-        Package food from your store as meals beside the stall. A plate sells for more than its food raw, after the cooking (fuel, oil, salt, the cook), and every plate shows what it gives the
+        Package food from your store as meals in the restaurant. A plate sells for more than its food raw, after the cooking (fuel, oil, salt, the cook), and every plate shows what it gives the
         person who eats it.
       </p>
       <div className="pg-tiles">
