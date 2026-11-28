@@ -85,9 +85,10 @@ test('the farm HUD: business in the tractor screen, animals and security in My P
   const prog = page.getByRole('dialog', { name: 'My Progress' });
   await prog.getByRole('button', { name: /^Animals:/ }).click();
   await expect(page.getByRole('dialog', { name: 'Animals' })).toBeVisible();
+  // Back from Animals returns to My Progress, the page it was opened from
   await page.keyboard.press('Escape');
-  await myProgress();
-  await page.getByRole('dialog', { name: 'My Progress' }).getByRole('button', { name: /^Security:/ }).click();
+  await expect(prog).toBeVisible();
+  await prog.getByRole('button', { name: /^Security:/ }).click();
   await expect(page.getByRole('dialog', { name: 'Security' })).toBeVisible();
 });
 

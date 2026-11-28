@@ -10,7 +10,7 @@ import { StarIcon } from '../components/Icons';
 import { TractorArt } from '../components/TractorArt';
 import { GoldButton } from '../components/ui';
 import { GuideLine } from '../first/Review';
-import type { Action, GameState } from '../state';
+import type { Action, BizTab, GameState } from '../state';
 import {
   ACTIVITIES,
   ACTIVITY_NAME,
@@ -100,7 +100,7 @@ const pct = (x: number) => `${Math.round(x * 100)}%`;
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const cap = (t: string) => t[0].toUpperCase() + t.slice(1);
 const shortName = (id: string) => clientOf(id).name.replace('Mama ', '');
-type Tab = 'today' | 'hub' | 'calendar' | 'trend' | 'partners' | 'fleet';
+type Tab = BizTab;
 
 /** The jobs in a word or two, for chips and rows. */
 const JOB: Record<Activity, string> = { landprep: 'Land prep', planting: 'Planting', fertilizer: 'Fertilizer', transport: 'Transport', harvest: 'Harvest' };
@@ -120,7 +120,9 @@ const MAP_BOX = { w: Math.round(MAP_W * MAP_SCALE), h: Math.round(MAP_H * MAP_SC
 
 export function Business({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
   const b = useMemo(() => bizOf(s.biz), [s.biz]);
-  const [tab, setTab] = useState<Tab>('today');
+  // each section has its own address (src/route.ts): /tractor-business/hub
+  const tab: Tab = s.bizTab ?? 'today';
+  const setTab = (t: Tab) => dispatch({ type: 'biz', open: true, tab: t });
   const [result, setResult] = useState<DayResult | null>(null);
   // the graduation offer, put off until the business is opened again
   const [gradLater, setGradLater] = useState(false);
