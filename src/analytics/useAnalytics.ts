@@ -13,6 +13,10 @@ import { LEVELS } from '../progress/model';
 import { BRANDS, type PartnerCategory } from '../partners/data';
 import { cloudPlayerId } from '../net/cloud';
 import { trackListeners } from '../first/track';
+import { infoListeners } from '../learn/Info';
+import { remindListeners, type RemindEvent } from '../produce/remind';
+import { produceOf } from '../produce/model';
+import { STORAGE } from '../produce/quality';
 import { countPage, mpIdentify, mpOn, mpPeopleSet, mpRegister, mpTrack } from './mixpanel';
 import { pathOf } from '../route';
 import { browserOf, deepLinked, deviceOf, hashedId, keep, kept, landingOf, locale, randomId, referrerOf, secsSince, today, utmOf } from './context';
@@ -170,11 +174,23 @@ export function useAnalytics(s: GameState, dispatch: Dispatch<Action>): Dispatch
     const heard = (name: string) => {
       if (name === 'story_skipped') storySkipped.current = true;
     };
+    // a word's card opened from an ⓘ (the storage and grade words on the market stall and in the storehouse among them)
+    const info = (t: { id: string; section: string }) => mpTrack('info_viewed', { term_id: t.id, section: t.section, screen: live.current.modal?.kind ?? live.current.view });
+    // the daily sell reminder's notification (src/produce/remind.ts)
+    const remind = (e: RemindEvent) => {
+      if (e.name === 'shown') mpTrack('sell_reminder_shown', { reminder_kind: e.kind, kg: e.kg });
+      else if (e.name === 'opened') mpTrack('sell_reminder_opened', {});
+      else mpTrack('notification_permission', { result: e.result, asked_from: 'sell_reminder' });
+    };
     document.addEventListener('pointerdown', click, true);
     document.addEventListener('visibilitychange', vis);
     window.addEventListener('pagehide', end);
     trackListeners.push(heard);
+    infoListeners.push(info);
+    remindListeners.push(remind);
     return () => {
+      infoListeners.splice(infoListeners.indexOf(info), 1);
+      remindListeners.splice(remindListeners.indexOf(remind), 1);
       document.removeEventListener('pointerdown', click, true);
       document.removeEventListener('visibilitychange', vis);
       window.removeEventListener('pagehide', end);
@@ -329,7 +345,29 @@ export function useAnalytics(s: GameState, dispatch: Dispatch<Action>): Dispatch
       win(p, st, 'classic_harvest');
     }
     if (did('completeSale').length && p.stage !== st.stage) activity(st, 'sale_completed', Math.round(toUsd(st.coins - p.coins) * 100) / 100, { where: 'classic_farm' });
-    if (did('produceSell').length && st.coins > p.coins) activity(st, 'sale_completed', Math.round(toUsd(st.coins - p.coins) * 100) / 100, { where: 'market_stall' });
+    if ((did('produceSell').length || did('produceSellGrades').length) && st.coins > p.coins) activity(st, 'sale_completed', Math.round(toUsd(st.coins - p.coins) * 100) / 100, { where: 'market_stall' });
+
+    /* ---- the market stall by grade, and the store's storage ---- */
+    const pp = produceOf(p.produce);
+    const sp = produceOf(st.produce);
+    if (did('produceSellGrades').length && sp.sales.length && sp.sales[0] !== pp.sales[0] && sp.sales[0].grades) {
+      const sale = sp.sales[0];
+      const g = Object.values(sale.grades!).reduce<[number, number, number]>((n, x) => (x ? [n[0] + x[0], n[1] + x[1], n[2] + x[2]] : n), [0, 0, 0]);
+      mpTrack('produce_sold', {
+        kg: sale.kg,
+        earned_usd: Math.round(toUsd(sale.earned) * 100) / 100,
+        foods: Object.keys(sale.items).join(','),
+        grade1_kg: Math.round(g[0] * 10) / 10,
+        grade2_kg: Math.round(g[1] * 10) / 10,
+        grade3_kg: Math.round(g[2] * 10) / 10,
+        farm_day: sale.day,
+      });
+    }
+    for (const a of did('storageSet'))
+      if (sp.storage?.[a.food] === a.method && pp.storage?.[a.food] !== a.method)
+        mpTrack('storage_changed', { food: a.food, method: a.method, from_method: pp.storage?.[a.food], cost_usd: STORAGE[a.method].buy && !(pp.owned ?? []).includes(a.method) ? Math.round(toUsd(STORAGE[a.method].buy!) * 100) / 100 : 0 });
+    if ((sp.totals.spoiled ?? 0) > (pp.totals.spoiled ?? 0)) mpTrack('produce_spoiled', { kg: Math.round(((sp.totals.spoiled ?? 0) - (pp.totals.spoiled ?? 0)) * 10) / 10 });
+    if (!!pp.remind !== !!sp.remind) mpTrack('sell_reminder_set', { enabled: !!sp.remind });
     for (const a of did('ghPlant')) if (st.greenhouse !== p.greenhouse) activity(st, 'plant_completed', a.score, { where: 'greenhouse' });
     for (const a of did('ghHarvest'))
       if (st.greenhouse !== p.greenhouse) {

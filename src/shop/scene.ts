@@ -18,6 +18,7 @@ export const FOOD_COLOR: Record<ProduceId, string> = {
   maize: '#f2c230',
   drybeans: '#8a3b2a',
   sukuma: '#2f7d1f',
+  spinach: '#3f8f2a',
   tomatoes: '#e0362b',
   capsicum: '#3aa856',
   cucumber: '#5c9e3a',

@@ -63,6 +63,12 @@ export const FOODS: Record<ProduceId, Food> = {
     strong: ['vitC', 'vitA', 'calcium'],
     note: 'Little energy, but 100 g gives a whole day’s vitamin C, over half the vitamin A, and calcium for bones.',
   },
+  spinach: {
+    group: 'leafy',
+    per100: { energy: 23, protein: 2.9, carbs: 3.6, fat: 0.4, fibre: 2.2, iron: 2.7, calcium: 99, vitA: 469, vitC: 28 },
+    strong: ['vitA', 'iron', 'vitC'],
+    note: 'Tender leaves with more iron than sukuma and plenty of vitamin A; it wilts fastest of all, so sell it first.',
+  },
   tomatoes: {
     group: 'vegetable',
     per100: { energy: 18, protein: 0.9, carbs: 2.7, fat: 0.2, fibre: 1.2, iron: 0.3, calcium: 10, vitA: 42, vitC: 14 },

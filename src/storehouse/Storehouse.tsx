@@ -4,9 +4,12 @@ import { MiniGame } from '../minigames/MiniGame';
 import { money } from '../money';
 import { lifeOf } from '../livestock/model';
 import type { Action, GameState, StoreTab } from '../state';
-import { coldRoom } from '../systems/track';
+import { coldRoom, storeCtx } from '../systems/track';
 import { NutriChips } from '../nutrition/Nutri';
-import { MARKET, PRODUCE, PRODUCE_IDS, priceOf, produceOf, storeKg, type ProduceId } from '../produce/model';
+import { MARKET, PRODUCE, PRODUCE_IDS, gradePriceOf, gradesOf, lotsOf, priceOf, produceOf, storeKg, storeValue, type ProduceId } from '../produce/model';
+import { GRADES, STORAGE, canUse, gradeName, gradeOf, isGraded, methodOf, methodsFor, nightsLeft, qualityOf, START_Q } from '../produce/quality';
+import { FoodIcon } from '../produce/FoodIcon';
+import { Info } from '../learn/Info';
 import { BED_NAMES, GREENHOUSE, bedStatus, ghCropOf, greenhouseOf, pickKg } from '../greenhouse/model';
 import { pickGame } from '../greenhouse/Greenhouse';
 import { RECIPES, STOREHOUSE, batchesInStore, batchesLeft, quoteMake, storehouseOf, type Recipe } from './model';
@@ -56,7 +59,7 @@ export function StorehousePage({ s, dispatch, tab }: { s: GameState; dispatch: D
 function StoreTabView({ s, dispatch, cold, open }: { s: GameState; dispatch: Dispatch<Action>; cold: boolean; open: boolean }) {
   const p = produceOf(s.produce);
   const have = PRODUCE_IDS.filter(id => (p.store[id] ?? 0) > 0);
-  const value = have.reduce((n, id) => n + (p.store[id] ?? 0) * priceOf(id, cold), 0);
+  const value = have.reduce((n, id) => n + storeValue(p, id, cold), 0);
   const fresh = have.filter(id => PRODUCE[id].fresh).reduce((n, id) => n + (p.store[id] ?? 0), 0);
   const made = have.filter(id => PRODUCE[id].made).reduce((n, id) => n + (p.store[id] ?? 0), 0);
   const wilt = cold ? 0 : MARKET.wilt * (open ? MARKET.shadeWilt : 1);
@@ -68,13 +71,15 @@ function StoreTabView({ s, dispatch, cold, open }: { s: GameState; dispatch: Dis
   return (
     <>
       <p className="pg-lead">
-        Everything your harvests keep back is stored here, behind glass walls you can see through from the farm. The market stall sells {MARKET.dailyKg} kg of it a day; fresh crops lose weight every
-        night, so sell them or make them into something that keeps.
+        Everything your harvests keep back is stored here, behind glass walls you can see through from the farm. The market stall sells {MARKET.dailyKg} kg of it a day. Every crop is sold by grade
+        <Info term="grades" size={13} />, and every night it loses quality <Info term="qualityScore" size={13} />: how fast depends on the food, its grade and how you store it{' '}
+        <Info term="storageQuality" size={13} />. Choose the storage for each crop below.
       </p>
       <div className="pg-tiles">
         <Tile label="In the store" value={`${Math.round(storeKg(p))} kg`} sub={`${Math.round(fresh)} kg fresh`} />
         <Tile label="Worth at the stall" value={money(value)} sub="at today’s prices" />
         <Tile label="Made here" value={`${Math.round(made)} kg`} sub="sauce, jam, pickles, flour" />
+        <Tile label="Spoiled so far" value={`${Math.round(p.totals.spoiled ?? 0)} kg`} sub="fell below Grade 3" tone={(p.totals.spoiled ?? 0) > 0 ? 'bad' : 'good'} />
         <Tile label="Fresh wilts" value={cold ? 'Not at all' : `${Math.round(wilt * 100)}% a night`} sub={cold ? 'the cold room keeps it' : open ? 'half, in the shade' : 'no shade yet'} tone={cold ? 'good' : wilt > MARKET.wilt * 0.75 ? 'bad' : undefined} />
       </div>
       {have.length ? (
@@ -82,21 +87,24 @@ function StoreTabView({ s, dispatch, cold, open }: { s: GameState; dispatch: Dis
           ids.length ? (
             <div key={title}>
               <p className="pg-h">{title}</p>
-              {ids.map(id => (
-                <div key={id} className="pg-row" aria-label={`${PRODUCE[id].name} in the store`}>
-                  <i aria-hidden="true">{PRODUCE[id].icon}</i>
-                  <span className="pg-row-text">
-                    <b>
-                      {PRODUCE[id].name} · {p.store[id]} kg
-                    </b>
-                    <small>
-                      {money(priceOf(id, cold))} a kg at the stall · worth {money((p.store[id] ?? 0) * priceOf(id, cold))}
-                      {PRODUCE[id].fresh && !cold ? ` · loses about ${Math.round((p.store[id] ?? 0) * wilt * 10) / 10} kg tonight` : ''}
-                    </small>
-                    <NutriChips food={id} max={2} />
-                  </span>
-                </div>
-              ))}
+              {ids.map(id =>
+                isGraded(id) ? (
+                  <StoredFood key={id} id={id} s={s} dispatch={dispatch} cold={cold} wilt={wilt} />
+                ) : (
+                  <div key={id} className="pg-row" aria-label={`${PRODUCE[id].name} in the store`}>
+                    <FoodIcon id={id} size={26} />
+                    <span className="pg-row-text">
+                      <b>
+                        {PRODUCE[id].name} · {p.store[id]} kg <Info term="processing" size={13} />
+                      </b>
+                      <small>
+                        {money(priceOf(id, cold))} a kg at the stall · worth {money((p.store[id] ?? 0) * priceOf(id, cold))} · keeps for months
+                      </small>
+                      <NutriChips food={id} max={2} />
+                    </span>
+                  </div>
+                ),
+              )}
             </div>
           ) : null,
         )
@@ -278,6 +286,58 @@ function RecipeCard({ r, s, left, cold, onMake }: { r: Recipe; s: GameState; lef
         <button type="button" className="gold-btn" disabled={batches <= 0 || s.coins < q.making} onClick={() => onMake(batches)} aria-label={`Make ${batches} batch${batches === 1 ? '' : 'es'} of ${out.name}`}>
           {can <= 0 ? (left <= 0 ? 'Done for today' : 'Not enough food') : `Make · ${money(q.making)}`}
         </button>
+      </span>
+    </div>
+  );
+}
+
+/** A graded crop in the store: its grades, and the ways it can be stored, with how long each keeps Grade 1. */
+function StoredFood({ id, s, dispatch, cold, wilt }: { id: ProduceId; s: GameState; dispatch: Dispatch<Action>; cold: boolean; wilt: number }) {
+  const p = produceOf(s.produce);
+  const ctx = storeCtx(s);
+  const q = qualityOf(id);
+  const now = methodOf(id, p.storage, ctx);
+  const kg = gradesOf(p, id);
+  const best = lotsOf(p, id)[0];
+  const name = PRODUCE[id].name.replace(/ \(.*\)/, '');
+  return (
+    <div className="pg-row sh-food" aria-label={`${PRODUCE[id].name} in the store`}>
+      <FoodIcon id={id} size={30} />
+      <span className="pg-row-text">
+        <b>
+          {PRODUCE[id].name} · {p.store[id]} kg <Info term={q.term} size={13} />
+        </b>
+        <small>
+          {GRADES.filter(g => kg[g] > 0)
+            .map(g => `${gradeName(g)} ${kg[g]} kg at ${money(gradePriceOf(id, g, cold))}`)
+            .join(' · ')}{' '}
+          · worth {money(storeValue(p, id, cold))}
+          {PRODUCE[id].fresh && !cold ? ` · loses about ${Math.round((p.store[id] ?? 0) * wilt * 10) / 10} kg of water tonight` : ''}
+        </small>
+        <span className="sh-ways" role="group" aria-label={`How ${name} is stored`}>
+          {methodsFor(id).map(m => {
+            const x = STORAGE[m];
+            const bought = !x.buy || (p.owned ?? []).includes(m);
+            const usable = canUse(m, { ...ctx, owned: [...ctx.owned, m] });
+            const nights = nightsLeft(id, best?.q ?? START_Q[0], m);
+            return (
+              <span key={m} className={`sh-way${m === now ? ' is-on' : ''}${usable ? '' : ' is-locked'}`}>
+                <button
+                  type="button"
+                  aria-pressed={m === now}
+                  disabled={!usable}
+                  onClick={() => dispatch({ type: 'storageSet', food: id, method: m })}
+                  aria-label={`Store ${name}: ${x.name}${bought ? '' : `, buy for ${money(x.buy!)}`}`}
+                >
+                  <b>{x.name}</b>
+                  <small>{!usable ? (x.needs === 'coldRoom' ? 'needs the cold room' : 'opens with the storehouse') : `${gradeName(best ? (gradeOf(best.q) ?? 2) : 0)} keeps ${nights} night${nights === 1 ? '' : 's'}`}</small>
+                  {!bought && usable && <small className="sh-buy">Buy {money(x.buy!)}</small>}
+                </button>
+                <Info term={x.term} size={12} />
+              </span>
+            );
+          })}
+        </span>
       </span>
     </div>
   );
