@@ -208,6 +208,10 @@ export function ShopFloor({ s, dispatch, kind }: { s: GameState; dispatch: Dispa
 
       {/* the bar along the top */}
       <header className="sf-top">
+        {/* Back: to the market page it was opened from, or the farm */}
+        <button type="button" className="sf-link sf-back" onClick={close} aria-label="Back">
+          ← Back
+        </button>
         <p className="sf-title">
           <span aria-hidden="true">{kind === 'market' ? '🧺' : '🍲'}</span> {kind === 'market' ? 'Market stall' : 'Restaurant'} · <b>{phase === 'over' ? 'closed' : 'open'}</b>
         </p>

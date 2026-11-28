@@ -105,7 +105,9 @@ export function Trials({ s, dispatch }: { s: GameState; dispatch: Dispatch<Actio
   const tr = s.trial;
   const close = () => dispatch({ type: 'trials', open: false });
   // Mission's two sections: the farms (plan, grow, results) and the farm's sustainability
-  const [section, setSection] = useState<'farms' | 'sustain'>('farms');
+  // (each has its own address, src/route.ts: /mission and /mission/sustainability)
+  const section = s.trialsTab ?? 'farms';
+  const setSection = (tab: 'farms' | 'sustain') => dispatch({ type: 'trials', open: true, tab });
   const sus = sustainability(s, achClock.today());
 
   let title = 'Six farms';

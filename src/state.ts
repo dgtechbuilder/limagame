@@ -291,6 +291,13 @@ export interface RoundRecord {
 }
 
 /** Which part of the field rounds to open in design review (the rounds keep their own place otherwise). */
+/** A screen to go back to, and whether it had been opened from the main menu. */
+export interface BackStep {
+  modal: Modal;
+  fromMenu: boolean;
+}
+export type TrialsTab = 'farms' | 'sustain';
+export type BizTab = 'today' | 'hub' | 'calendar' | 'trend' | 'partners' | 'fleet';
 export type RoundsView = 'map' | 'look' | 'judge' | 'right' | 'wrong' | 'summary';
 
 export interface GameState {
@@ -307,6 +314,10 @@ export interface GameState {
   view: 'world' | 'classic';
   /** the screen on top was opened from the main menu, so Back goes back to the menu */
   fromMenu: boolean;
+  /** the screens this one was opened from (Animals → Farm checks), so Back returns to them in turn (not saved) */
+  back?: BackStep[];
+  /** the screen on top was reached by typing or reloading its address, so Back goes up to its list (not saved) */
+  byAddress?: boolean;
   /** counts every "back to the farm", so screens the farm world keeps to itself (the tractor, a check) close too */
   navSeq: number;
   /** counts the menu's "Tractor" taps, which the farm world answers by walking to the tractor */
@@ -319,9 +330,13 @@ export interface GameState {
   /** the plan the player kept from an earlier cycle; the next cycle starts from it */
   recipe: Plan | null;
   trialsOpen: boolean;
+  /** Mission's section on show: the six farms, or the farm's sustainability (/mission/sustainability; not saved) */
+  trialsTab?: TrialsTab;
   /** the tractor business (business/model.ts); missing in saves from before it */
   biz?: Biz;
   bizOpen: boolean;
+  /** the tractor business's section on show (/tractor-business/hub; not saved) */
+  bizTab?: BizTab;
   /** the field rounds are checking the six farms (not the everyday beds) */
   roundsTrial: boolean;
   // field rounds
@@ -627,7 +642,7 @@ export type Action =
   | { type: 'farmer'; name: string; look: number }
   | { type: 'settings'; patch: Partial<Settings> }
   | { type: 'rounds'; open: boolean; view?: RoundsView | null; demo?: string | null; trial?: boolean }
-  | { type: 'trials'; open: boolean }
+  | { type: 'trials'; open: boolean; tab?: TrialsTab }
   | { type: 'trialNew' }
   | { type: 'trialPlan'; farm: number; key: StepKey; value: string }
   | { type: 'trialSuggest' }
@@ -667,7 +682,7 @@ export type Action =
   | { type: 'fs'; phase: FsPhase; at?: 'first' | 'lower'; opened?: boolean; note?: string; page?: number }
   /** the tractor business: open or close it; run a day (the plan is worked out again here); hire the tractor out
       for a day; sign a partner; buy for the fleet */
-  | { type: 'biz'; open: boolean }
+  | { type: 'biz'; open: boolean; tab?: BizTab }
   | { type: 'bizRun'; bookings: Bookings; route: string[]; drives?: Drives }
   | { type: 'bizHireOut' }
   | { type: 'bizPartner'; id: PartnerId }
@@ -771,6 +786,36 @@ export type Action =
 
 /** A morning's news waits for the screen on top to close (it is shown on the farm): opening or closing a screen keeps it. */
 export const MORNING_KINDS: Success['kind'][] = ['night', 'day2', 'morning'];
+/** One thing inside a screen (a farm check, a climate-smart lesson, a region, a partner's offer): the screen's list
+    it sits in, where Back goes when nothing else was open before it. */
+export function parentOf(m: Modal): Modal | null {
+  if (m.kind === 'checks' && m.subject) return { kind: 'checks' };
+  if (m.kind === 'climate' && m.practice) return { kind: 'climate', tab: 'csa' };
+  if (m.kind === 'events' && m.region) return { kind: 'events', tab: 'regions' };
+  if (m.kind === 'partners' && m.brand) return { kind: 'partners', tab: 'offers' };
+  return null;
+}
+
+/** Where Back goes after a screen opens. The screen it was opened from goes on the list (Animals → Farm checks), and so
+    does a screen's list when one thing in it opens (Farm checks → the water check). The main menu, and another section
+    of the same screen, do not: the menu has its own way back, and Back leaves a screen rather than stepping through
+    its tabs. Opening a screen already on the list steps back down to it, so Animals → Farm checks → Animals does not
+    loop. */
+function backAfterOpen(s: GameState, to: Modal): BackStep[] {
+  const back = s.back ?? [];
+  if (!s.modal || to.kind === 'menu') return [];
+  if (s.modal.kind === 'menu') return back;
+  const here: BackStep = { modal: s.modal, fromMenu: s.fromMenu };
+  if (s.modal.kind === to.kind) {
+    if (parentOf(to) && !parentOf(s.modal)) return [...back, here].slice(-8);
+    // back to the list from one thing in it
+    if (!parentOf(to) && back[back.length - 1]?.modal.kind === to.kind) return back.slice(0, -1);
+    return back;
+  }
+  const at = back.findIndex(b => b.modal.kind === to.kind);
+  if (at >= 0) return back.slice(0, at);
+  return [...back, here].slice(-8);
+}
 const morning = (x: Success | null) => (x && MORNING_KINDS.includes(x.kind) ? x : null);
 
 let toastId = 0;
@@ -797,8 +842,10 @@ const lowerFirst = (x: string) => x.charAt(0).toLowerCase() + x.slice(1);
 export function reducer(s: GameState, a: Action): GameState {
   // a job done by hand (src/onsite): its action runs now, as itself, so the wallet, climate and badges see it as usual
   if (a.type === 'jobDone') return jobDone(s, a.id);
-  const next = play(s, a);
+  let next = play(s, a);
   if (next === s) return s;
+  // a screen that something else opened or closed (a sale, a job taken on) starts a fresh way back
+  if (a.type !== 'open' && a.type !== 'close' && a.type !== 'route' && next.back?.length && next.modal?.kind !== s.modal?.kind) next = { ...next, back: [] };
   const kind = soundOf(s, next, a);
   // an action that finished something counts today as a day played (the streak)
   const tracked = trackFinance(s, trackWallet(s, trackSystems(s, trackEvidence(s, trackAchievements(s, trackLife(s, trackCsa(s, trackWater(s, trackClimate(s, next, a), a), a), a), a, kind !== null), a), a), a));
@@ -886,16 +933,26 @@ function play(s: GameState, a: Action): GameState {
   switch (a.type) {
     case 'climateTick':
       return settleDays(s, s);
-    case 'open':
+    case 'open': {
       // another section of the same screen (a Settings tab, a Shop tab) keeps where Back goes
-      return { ...s, success: morning(s.success), modal: a.modal, fromMenu: s.modal?.kind === a.modal.kind ? s.fromMenu : s.modal?.kind === 'menu' && a.modal.kind !== 'menu', plotSelected: false };
-    case 'close':
+      const fromMenu = s.modal?.kind === a.modal.kind ? s.fromMenu : s.modal?.kind === 'menu' && a.modal.kind !== 'menu';
+      return { ...s, success: morning(s.success), modal: a.modal, fromMenu, back: backAfterOpen(s, a.modal), byAddress: false, plotSelected: false };
+    }
+    case 'close': {
+      // a screen opened from another goes back to it (Farm checks → Animals, a check → the list of checks)
+      const back = s.back ?? [];
+      const to = back[back.length - 1];
+      if (s.modal && s.modal.kind !== 'menu' && to) return { ...s, success: morning(s.success), modal: to.modal, fromMenu: to.fromMenu, back: back.slice(0, -1) };
+      // one thing inside a screen, reached by its address: Back goes up to the screen's list (a check → Farm checks)
+      const up = s.byAddress && s.modal && parentOf(s.modal);
+      if (up) return { ...s, success: morning(s.success), modal: up, byAddress: false };
       // a screen opened from the main menu goes back to the menu
-      return s.fromMenu && s.modal && s.modal.kind !== 'menu' ? { ...s, success: morning(s.success), modal: { kind: 'menu' }, fromMenu: false } : { ...s, success: morning(s.success), modal: null, fromMenu: false };
+      return s.fromMenu && s.modal && s.modal.kind !== 'menu' ? { ...s, success: morning(s.success), modal: { kind: 'menu' }, fromMenu: false, back: [] } : { ...s, success: morning(s.success), modal: null, fromMenu: false, back: [] };
+    }
     case 'ride':
       return { ...s, success: null, modal: null, fromMenu: false, plotSelected: false, roundsOpen: false, roundsTrial: false, roundsView: null, roundsDemo: null, trialsOpen: false, bizOpen: false, worldDemo: null, navSeq: s.navSeq + 1, rideReq: s.rideReq + 1, toast: s.view === 'world' ? s.toast : toast('The tractor is on the 3D farm: switch the farm view in Settings') };
     case 'home':
-      return { ...s, success: morning(s.success), modal: null, fromMenu: false, plotSelected: false, roundsOpen: false, roundsTrial: false, roundsView: null, roundsDemo: null, trialsOpen: false, bizOpen: false, worldDemo: null, navSeq: s.navSeq + 1 };
+      return { ...s, success: morning(s.success), modal: null, fromMenu: false, back: [], plotSelected: false, roundsOpen: false, roundsTrial: false, roundsView: null, roundsDemo: null, trialsOpen: false, bizOpen: false, worldDemo: null, navSeq: s.navSeq + 1 };
     case 'selectPlot':
       return { ...s, plotSelected: a.on };
     case 'onboarded':
@@ -1170,6 +1227,7 @@ function play(s: GameState, a: Action): GameState {
       return {
         ...s,
         trialsOpen: a.open,
+        trialsTab: a.open ? (a.tab ?? 'farms') : undefined,
         roundsOpen: false,
         roundsTrial: false,
         // closed again after being opened from the main menu: back to the menu
@@ -1498,12 +1556,15 @@ function play(s: GameState, a: Action): GameState {
         // passing the first review completes onboarding, so it never repeats
         onboarded: s.onboarded || a.phase === 'walk2',
       };
-    case 'route':
-      return routeTo(s, a.path).reduce(play, s);
+    case 'route': {
+      const next = routeTo(s, a.path).reduce(play, s);
+      return next.modal && next.modal !== s.modal && !next.back?.length && parentOf(next.modal) ? { ...next, byAddress: true } : next;
+    }
     case 'biz':
       return {
         ...s,
         bizOpen: a.open,
+        bizTab: a.open ? (a.tab ?? (s.bizOpen ? s.bizTab : undefined) ?? 'today') : undefined,
         biz: bizOf(s.biz),
         roundsOpen: false,
         roundsTrial: false,
@@ -2220,7 +2281,7 @@ function hubAction(s: GameState, a: Extract<Action, { type: 'tractorHub' }>): Ga
 /* ------------------------------------------------------------------ */
 
 const SAVE_KEY = 'lima-farming-game:v2';
-const TRANSIENT: (keyof GameState)[] = ['award', 'success', 'sfx', 'fromMenu', 'navSeq', 'rideReq', 'modal', 'plotSelected', 'toast', 'roundsOpen', 'roundsView', 'roundsDemo', 'worldDemo', 'trialsOpen', 'roundsTrial', 'bizOpen'];
+const TRANSIENT: (keyof GameState)[] = ['award', 'success', 'sfx', 'fromMenu', 'back', 'byAddress', 'trialsTab', 'bizTab', 'navSeq', 'rideReq', 'modal', 'plotSelected', 'toast', 'roundsOpen', 'roundsView', 'roundsDemo', 'worldDemo', 'trialsOpen', 'roundsTrial', 'bizOpen'];
 
 /** Design-review links (?review or ?screen) use a throwaway game so they never touch a player's save. */
 export const reviewing = () => {

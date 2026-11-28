@@ -3,7 +3,8 @@ import { STORY } from './first/data';
 import { CHECK_DAYS, currentDay } from './trials/model';
 import { dayNumber } from './rounds/farms';
 import { PRACTICES, practiceOf } from './csa/data';
-import type { AchTab, Action, AnimalsTab, ClimateTab, EventsTab, FsPhase, GameState, GlossaryTab, KakumaTab, MarketTab, Modal, StoreTab, PartnersTab, PowerTab, SecurityTab, SettingsTab, WalletTab, FinanceTab, TrackingTab } from './state';
+import type { SubjectId } from './inspect/types';
+import type { AchTab, Action, AnimalsTab, BizTab, TrialsTab, ClimateTab, EventsTab, FsPhase, GameState, GlossaryTab, KakumaTab, MarketTab, Modal, StoreTab, PartnersTab, PowerTab, SecurityTab, SettingsTab, WalletTab, FinanceTab, TrackingTab } from './state';
 import { BRANDS, type BrandId } from './partners/data';
 import { REGIONS, type RegionId } from './events/regions';
 
@@ -36,6 +37,9 @@ const REGION_WORD: Record<RegionId, string> = { horn: 'horn-of-africa', sahel: '
 const KAKUMA: Record<KakumaTab, string> = { about: 'about', foods: 'foods', life: 'food-and-life', donate: 'donate' };
 const BRAND_WORD = Object.fromEntries(BRANDS.map(b => [b.id, b.id])) as Record<BrandId, string>;
 const SHOP: Record<ShopTab, string> = { food: 'food', fertilizer: 'fertilizer', tank: 'water-tanks', equipment: 'equipment' };
+const CHECKS: Record<SubjectId, string> = { cow: 'cow', hen: 'hen', plant: 'plant', tractor: 'tractor', farm: 'farm', water: 'water', power: 'power' };
+const MISSION: Record<TrialsTab, string> = { farms: 'six-farms', sustain: 'sustainability' };
+const BIZ: Record<BizTab, string> = { today: 'today', hub: 'hub', calendar: 'calendar', trend: 'my-trend', partners: 'partners', fleet: 'fleet' };
 const STEPS: Record<StepId, string> = { landprep: 'land-prep', planting: 'planting', fertilizer: 'fertilizer', pesticides: 'pesticides', water: 'water', harvest: 'harvest' };
 /** Screens with no sections, by address. */
 const SIMPLE = {
@@ -51,7 +55,6 @@ const SIMPLE = {
   rewards: 'rewards',
   training: 'training',
   tractorGame: 'tractor-game',
-  checks: 'farm-checks',
 } as const satisfies Partial<Record<Modal['kind'], string>>;
 
 /** First-session steps, by address. The story is /story/1 to /story/3. */
@@ -117,6 +120,8 @@ function modalPath(s: GameState, m: Modal): string {
       return `/events/${EVENTS[m.tab ?? 'now']}${m.tab === 'regions' && m.region ? `/${REGION_WORD[m.region]}` : ''}`;
     case 'kakuma':
       return `/kakuma/${KAKUMA[m.tab ?? 'about']}`;
+    case 'checks':
+      return m.subject ? `/farm-checks/${CHECKS[m.subject]}` : '/farm-checks';
     default:
       return `/${SIMPLE[m.kind]}`;
   }
@@ -129,8 +134,8 @@ export function pathOf(s: GameState): string {
   if (phase === 'story') return `/story/${Math.min(STORY_PAGES, (s.fs.page ?? 0) + 1)}`;
   if (phase !== 'done') return `/${FIRST[phase]}`;
   if (s.roundsOpen) return s.roundsTrial ? '/rounds/six-farms' : '/rounds';
-  if (s.trialsOpen) return '/mission';
-  if (s.bizOpen) return '/tractor-business';
+  if (s.trialsOpen) return s.trialsTab === 'sustain' ? `/mission/${MISSION.sustain}` : '/mission';
+  if (s.bizOpen) return s.bizTab && s.bizTab !== 'today' ? `/tractor-business/${BIZ[s.bizTab]}` : '/tractor-business';
   return '/farm';
 }
 
@@ -252,6 +257,11 @@ function modalFor(s: GameState, path: string[]): Modal | null | 'bad' {
     if (second === undefined || second === '7') return { kind: 'greenhouse', bed: 0 };
     return second === '8' ? { kind: 'storehouse', tab: 'store' } : 'bad';
   }
+  // Farm checks, and one check open: /farm-checks/water
+  if (first === 'farm-checks') {
+    const t = tab(CHECKS);
+    return t === 'bad' || parts.length > 2 ? 'bad' : { kind: 'checks', subject: t };
+  }
   if (first === 'loan-calculator') {
     if (second === undefined) return { kind: 'loan', view: 'calc' };
     return second === 'quote' ? { kind: 'loan', view: 'quote' } : 'bad';
@@ -301,8 +311,17 @@ export function routeTo(s: GameState, raw: string): Action[] {
   if (path === '/farm') return [{ type: 'home' }];
   if (path === '/rounds') return [{ type: 'home' }, { type: 'rounds', open: true, trial: false }];
   if (path === '/rounds/six-farms') return sixFarmsDue(s) ? [{ type: 'home' }, { type: 'rounds', open: true, trial: true }] : say('Your farms have no checks today: plant them from Mission.');
-  if (path === '/mission') return [{ type: 'home' }, { type: 'trials', open: true }];
-  if (path === '/tractor-business') return [{ type: 'home' }, { type: 'biz', open: true }];
+  if (parts[0] === 'mission' && parts.length <= 2) {
+    const t = parts[1] === undefined ? 'farms' : key(MISSION, parts[1]);
+    if (!t) return say(NOT_FOUND);
+    // a section of Mission while it is open stays on it (the farm under it keeps its place)
+    return s.trialsOpen && !s.modal ? [{ type: 'trials', open: true, tab: t }] : [{ type: 'home' }, { type: 'trials', open: true, tab: t }];
+  }
+  if (parts[0] === 'tractor-business' && parts.length <= 2) {
+    const t = parts[1] === undefined ? 'today' : key(BIZ, parts[1]);
+    if (!t) return say(NOT_FOUND);
+    return s.bizOpen && !s.modal ? [{ type: 'biz', open: true, tab: t }] : [{ type: 'home' }, { type: 'biz', open: true, tab: t }];
+  }
   if (parts[0] === 'story' || key(FIRST, parts.join('/'))) return say('You finished your first crop checks.');
   return say(NOT_FOUND);
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState, type Dispatch } from 'react';
+import { useEffect, type Dispatch } from 'react';
 import { NavBar } from '../components/Nav';
 import { CloseX } from '../components/Success';
 import { Exam } from '../livestock/Exam';
@@ -18,9 +18,11 @@ import { urgentOf } from './urgent';
    opens its examination (src/livestock/Exam.tsx). Below, every job planned from a check, soonest first, to do now.
    Opened from the main menu (Farm checks), and from the Animals, Power and tractor pages for their own check. */
 
-export function ChecksPage({ s, dispatch, subject: first }: { s: GameState; dispatch: Dispatch<Action>; subject?: SubjectId }) {
-  const [open, setOpen] = useState<SubjectId | null>(first ?? null);
+export function ChecksPage({ s, dispatch, subject: open }: { s: GameState; dispatch: Dispatch<Action>; subject?: SubjectId }) {
   const close = () => dispatch({ type: 'close' });
+  // a check opens at its own address (/farm-checks/water); Back from it comes back to this list, or to the screen it
+  // was opened from (Animals)
+  const setOpen = (id: SubjectId) => dispatch({ type: 'open', modal: { kind: 'checks', subject: id } });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && dispatch({ type: 'close' });
     window.addEventListener('keydown', onKey);
@@ -83,7 +85,7 @@ export function ChecksPage({ s, dispatch, subject: first }: { s: GameState; disp
       <p className="set-title-bar">
         <span aria-hidden="true">🔍</span> <b>Farm checks</b>
       </p>
-      {open && <CheckExam s={s} dispatch={dispatch} subject={open} onClose={() => (first ? close() : setOpen(null))} />}
+      {open && <CheckExam s={s} dispatch={dispatch} subject={open} onClose={close} />}
     </div>
   );
 }
