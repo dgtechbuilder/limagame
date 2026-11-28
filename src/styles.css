@@ -2956,6 +2956,10 @@ a.ach-claim.pj-mail { display: inline-flex; align-items: center; text-decoration
 .hud-badge.is-alert { background: #d9473a; color: #fff; }
 .lv-count { margin-left: auto; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 100px; background: #d9473a; color: #fff; font-size: 7px; display: grid; place-items: center; }
 .lv-locked { margin: 0 0 8px; padding: 6px 10px; border-radius: 10px; background: #fff1d6; border: 1px dashed #d9a24a; font-size: 8px; line-height: 1.45; }
+/* the milk and eggs the farm starts with (src/livestock: LIFE.larder), on Animals › Today until sold */
+.lv-larder { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; padding: 6px 10px; border-radius: 10px; background: #f3f7e4; border: 1px solid #b9cc86; font-size: 8px; line-height: 1.45; }
+.lv-larder p { margin: 0; flex: 1; }
+.lv-larder-icon { font-size: 16px; }
 .lv-meter { display: block; height: 7px; margin: 3px 0 2px; border-radius: 100px; background: #f1dcbd; overflow: hidden; }
 .lv-meter > span { display: block; height: 100%; border-radius: 100px; background: #3f8f46; transition: width 0.4s ease; }
 .lv-meter.is-mid > span { background: #d9a21f; }

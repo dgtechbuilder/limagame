@@ -14,7 +14,7 @@ import { trackWater } from './water/track';
 import { DIMENSIONS, ROWS_PER_FARM } from './strategy/data';
 import { riskReduce, type RiskAction, type RiskState } from './risk/model';
 import { LIFE, type CareId, type CoopId, type Group, type IssueId, type PreventId, type ShedId } from './livestock/config';
-import { buildCoop, buildShed, doCare, doPrevent, fixIssue, lifeOf, type LifeEvent, type LifeState } from './livestock/model';
+import { buildCoop, buildShed, doCare, doPrevent, fixIssue, lifeOf, sellLarder, type LifeEvent, type LifeState } from './livestock/model';
 import { checkDone, checkFix, checkPlan, type ChecksState } from './inspect/model';
 import type { SubjectId } from './inspect/types';
 import { addEntry, trackWallet, type WalletState } from './wallet/model';
@@ -713,6 +713,8 @@ export type Action =
   | { type: 'strategySet'; farm: number; row: number; dim: string; option: string }
   /** the animals (src/livestock): a day's job, a fix for a problem, a prevention, the coop, buying or selling */
   | { type: 'animalCare'; id: CareId }
+  /** sell the milk and eggs the farm started with (src/livestock: LIFE.larder) */
+  | { type: 'animalLarder' }
   | { type: 'animalFix'; issue: IssueId; fix: string }
   | { type: 'animalPrevent'; id: PreventId }
   /** a full check: an early sign dealt with now, planned for a day, or the check finished (`checked` parts of it) */
@@ -819,7 +821,7 @@ function trackFinance(prev: GameState, next: GameState): GameState {
 /** Flows: finishing one of these ends a whole piece of play. */
 const FLOWS = new Set<Action['type']>(['checkDone', 'achClaimAll', 'completeSale', 'trialHarvest', 'bizRun', 'bizHireOut', 'bizContract', 'bizGraduate', 'tractorDone']);
 /** Actions: finishing one of these is one thing done. Some only count when they earned something (their message). */
-const ACTIONS = new Set<Action['type']>(['achClaim', 'achDaily', 'levelClaim', 'partnerSave', 'buy', 'sell', 'bookTraining', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo', 'tidyClear', 'csaDone', 'animalCare', 'animalPrevent', 'checkFix', 'coopBuild', 'shedBuild', 'herdBuy', 'securityBuy', 'powerInstall', 'powerFuel', 'tractorHub', 'produceSell', 'restaurantCook', 'shopSell', 'shopMeal', 'ghPlant', 'ghWater', 'ghHarvest', 'storeMake', 'shedChoose', 'kakumaGive', 'kakumaGiveStore', 'give']);
+const ACTIONS = new Set<Action['type']>(['achClaim', 'achDaily', 'levelClaim', 'partnerSave', 'buy', 'sell', 'bookTraining', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo', 'tidyClear', 'csaDone', 'animalCare', 'animalLarder', 'animalPrevent', 'checkFix', 'coopBuild', 'shedBuild', 'herdBuy', 'securityBuy', 'powerInstall', 'powerFuel', 'tractorHub', 'produceSell', 'restaurantCook', 'shopSell', 'shopMeal', 'ghPlant', 'ghWater', 'ghHarvest', 'storeMake', 'shedChoose', 'kakumaGive', 'kakumaGiveStore', 'give']);
 const EARNED = new Set<Action['type']>(['roundResult', 'trialCheck', 'fieldMark']);
 const FS_ORDER: FsPhase[] = ['create', 'story', 'walk1', 'update', 'review1', 'walkRetry', 'retry', 'walk2', 'review2', 'done'];
 
@@ -1650,6 +1652,10 @@ function play(s: GameState, a: Action): GameState {
     }
     case 'animalCare': {
       const r = doCare(s, a.id);
+      return 'error' in r ? { ...s, toast: toast(r.error) } : { ...r.state, ...gainXp(s, 0.02), toast: toast(r.text) };
+    }
+    case 'animalLarder': {
+      const r = sellLarder(s);
       return 'error' in r ? { ...s, toast: toast(r.error) } : { ...r.state, ...gainXp(s, 0.02), toast: toast(r.text) };
     }
     case 'animalFix': {

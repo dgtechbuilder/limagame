@@ -741,7 +741,8 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       // the coop is upgraded from day 1, the cow shed from day 3; the daily care starts on day 2
       if (p === 'coop' && coopOpen(st) && (!l.coop || !careOpen(st))) return dispatch({ type: 'open', modal: { kind: 'animals', tab: 'coop' } });
       if (p === 'pen' && shedOpen(st) && !l.shed) return dispatch({ type: 'open', modal: { kind: 'animals', tab: 'shed' } });
-      if (!careOpen(st)) return say(`The cows are in your care from day ${LIFE.startDay}: sleep at the farmhouse first`);
+      // before the care starts, the pen opens on the milk and eggs the farm started with, while they wait to be sold
+      if (!careOpen(st) && !l.larder) return say(`The cows are in your care from day ${LIFE.startDay}: sleep at the farmhouse first`);
       return dispatch({ type: 'open', modal: { kind: 'animals', tab: 'today' } });
     }
     if (p === 'hire') return setHub(hireInfo(st).ready ? 'hire' : 'yard');
