@@ -70,9 +70,14 @@ function layoutOf(kind: ShopKind): Layout {
     { x: -3.8, z: -7.4 },
   ].map((q, i) => ({ x: q.x, z: Math.max(-8.4, q.z + dz * (1 - i * 0.15)) }));
   const spot = kind === 'market' ? { x: 1.1, z: -0.3 } : { x: 0.9, z: -1.45 };
-  const tables = [
+  // the restaurant has three tables (six seats: SHOP.seats); the stall's room keeps two
+  const tables = kind === 'market' ? [
     { x: 3.4, z: -5.4 },
     { x: 3.4, z: -7.8 },
+  ] : [
+    { x: 3.4, z: -5.4 },
+    { x: 3.4, z: -7.8 },
+    { x: 0.2, z: -6.6 },
   ];
   return {
     counterZ: kind === 'market' ? -1.2 : -2.2,
@@ -662,6 +667,11 @@ export class ShopScene {
 
   /** Where a customer should be now, and which way they face when they get there. */
   private targetOf(p: PatronView, w: Walker): { x: number; z: number; face: number; via?: { x: number; z: number } } {
+    // at the restaurant a customer walks in through the door to their table, and sits there to order
+    if (p.seat !== null && (p.phase === 'enter' || p.phase === 'order') && this.L.seats[p.seat]) {
+      const s = this.L.seats[p.seat];
+      return { x: s.x, z: s.z, face: s.face, via: w.pos.y < DOOR.z - 0.05 ? DOOR : undefined };
+    }
     switch (p.phase) {
       case 'enter':
       case 'queue':
@@ -738,7 +748,7 @@ export class ShopScene {
     while (d > Math.PI) d -= Math.PI * 2;
     while (d < -Math.PI) d += Math.PI * 2;
     F.root.rotation.y += d * Math.min(1, dt * 10);
-    const sitting = (p.phase === 'wait' || p.phase === 'eat') && p.seat !== null && w.walking < 0.1;
+    const sitting = (p.phase === 'wait' || p.phase === 'eat' || p.phase === 'order') && p.seat !== null && w.walking < 0.1;
     const sw = Math.sin(t * 10 + p.id) * 0.7 * w.walking;
     F.legL.rotation.x = sitting ? -1.45 : sw;
     F.legR.rotation.x = sitting ? -1.45 : -sw;

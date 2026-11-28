@@ -131,8 +131,8 @@ test('The fridge and the freezer hum louder as the farmer walks up to them, and 
   await at(11.4, 18.5);
   await expect.poll(async () => (await hums()).freezer).toBeLessThan(near);
   expect((await hums()).freezer).toBeGreaterThan(0);
-  // in front of the restaurant's counter: the fridge
-  await at(2.7, 13.6);
+  // outside the restaurant's door, by its kitchen: the fridge
+  await at(-12.2, 12.0);
   await expect.poll(async () => (await hums()).fridge).toBeGreaterThan(0);
   await expect.poll(async () => (await audio(page)).filter(a => a.startsWith('hum:')).length).toBeGreaterThan(1);
 });

@@ -349,6 +349,8 @@ export function useAnalytics(s: GameState, dispatch: Dispatch<Action>): Dispatch
     }
     if (did('completeSale').length && p.stage !== st.stage) activity(st, 'sale_completed', Math.round(toUsd(st.coins - p.coins) * 100) / 100, { where: 'classic_farm' });
     if ((did('produceSell').length || did('produceSellGrades').length) && st.coins > p.coins) activity(st, 'sale_completed', Math.round(toUsd(st.coins - p.coins) * 100) / 100, { where: 'market_stall' });
+    // a plate served in the restaurant game: what was asked (a dish or a kind of food) and whether the plate fitted it
+    for (const a of did('shopMeal')) if (st.coins > p.coins) activity(st, 'meal_served', Math.round(toUsd(st.coins - p.coins) * 100) / 100, { where: 'restaurant', dish: a.dishes[0], asked: a.ask, right_food: a.fit });
 
     /* ---- the market stall by grade, and the store's storage ---- */
     const pp = produceOf(p.produce);

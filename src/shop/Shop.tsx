@@ -3,56 +3,51 @@ import { CloseX } from '../components/Success';
 import { lifeOf } from '../livestock/model';
 import { money } from '../money';
 import { PRODUCE, leftToday, priceOf, produceOf, type ProduceId } from '../produce/model';
-import { dishOf, platesLeft } from '../produce/restaurant';
+import { MENU, NEEDS, dishOf, needsOf, platesLeft, type DishId } from '../produce/restaurant';
 import { LOOKS } from '../first/data';
 import type { Action, GameState } from '../state';
 import { coldRoom } from '../systems/track';
 import { useAnime } from '../art/style';
 import {
-  RECIPES,
+  COOK,
   STATIONS,
   STATION_IDS,
   atCounter,
-  binDish,
   billOf,
   booked,
+  canMake,
   closeShop,
-  gather,
+  cookFor,
+  free,
   handOver,
+  isReady,
   jobOf,
   kgOf,
-  mealReady,
-  needsFood,
   newPatron,
   newShift,
-  nextStation,
   orderItems,
-  packDish,
+  ordering,
   packItem,
-  readyToPack,
+  progressOf,
   serveMeal,
   setBags,
   shiftOver,
   shopClock,
-  startJob,
   stationStatus,
-  takeOrder,
   tick,
   unitOf,
   unpackItem,
-  atStation,
-  type Job,
   type Patron,
   type Shift,
   type ShopKind,
-  type StationId,
 } from './model';
 import { FOOD_COLOR, SHOP_H, SHOP_W, ShopScene, type SceneView } from './scene';
 
 /* The shop floor (rules in model.ts, the 3D room in scene.ts): the market stall or the restaurant, played. Opened by
    walking to the Sell stall or the restaurant on the farm (the world's Open the market and Open the restaurant), and
-   from the market page. Customers walk in and queue; the farmer packs each order into bags, or takes the order,
-   cooks it and serves it, and every customer served sells the food from the store, as the market page does. */
+   from the market page. At the stall customers queue and the farmer packs each order into bags; at the restaurant
+   they sit and order, the farmer picks a dish off the menu, it cooks, and the farmer serves it, learning what each
+   food does for the body. Every customer served sells the food from the store, as the market page does. */
 
 const short = (id: ProduceId) => PRODUCE[id].name.replace(/ \(.*\)/, '');
 
@@ -66,6 +61,9 @@ export function ShopFloor({ s, dispatch, kind }: { s: GameState; dispatch: Dispa
   const [phase, setPhase] = useState<Phase>('brief');
   const [farmer, setFarmer] = useState<{ at: SceneView['farmer']['at']; until: number }>({ at: 'counter', until: 0 });
   const [shake, setShake] = useState<string | null>(null);
+  // the restaurant: the seated customer the farmer is cooking for next, and what the last plate taught
+  const [picked, setPicked] = useState<number | null>(null);
+  const [learned, setLearned] = useState<{ id: number; dish: DishId; fit: boolean; text: string } | null>(null);
   const anime = useAnime();
   const live = useRef(s);
   live.current = s;
@@ -139,11 +137,11 @@ export function ShopFloor({ s, dispatch, kind }: { s: GameState; dispatch: Dispa
       STATION_IDS.map(id => {
         const st = stationStatus(sh, id);
         const food = st.job ? FOOD_COLOR[(Object.keys(dishOf(st.job.dish).plate) as ProduceId[])[0]] : null;
-        return [id, { state: st.state, food }];
+        return [id, { state: st.state === 'done' ? 'empty' : st.state, food }];
       }),
     ) as SceneView['stations'],
     bags: sh.bags.map(b => ({ kg: kgOf(b), colors: (Object.keys(b) as ProduceId[]).map(id => FOOD_COLOR[id]) })),
-    pass: sh.jobs.filter(j => j.where === 'pass').map(j => j.pack ?? 'plate'),
+    pass: sh.jobs.filter(isReady).map(() => 'plate'),
     store: p.store,
   };
   scene.current?.setView(view);
@@ -161,10 +159,6 @@ export function ShopFloor({ s, dispatch, kind }: { s: GameState; dispatch: Dispa
     if (kind === 'market') {
       if (packItem(sh, id, p.store)) go(id);
       else nope(id);
-    } else {
-      const r = gather(sh, id);
-      if (r === 'wrong' || r === 'none') nope(id);
-      else go('counter', 500);
     }
     bump();
   };
@@ -178,26 +172,35 @@ export function ShopFloor({ s, dispatch, kind }: { s: GameState; dispatch: Dispa
   };
 
   /* ---------------- the restaurant ---------------- */
-  const onStation = (id: StationId) => {
+  const waitingNow = ordering(sh);
+  // the farmer cooks for the customer picked, or else the one who sat down first
+  const chosen = waitingNow.find(c => c.id === picked) ?? waitingNow[0] ?? null;
+  const freeNow = free(sh, s.produce, day, chosen?.id);
+  const makeable = canMake(freeNow.store);
+  const onDish = (d: DishId) => {
     if (phase !== 'play') return;
-    const r = atStation(sh, id);
-    if (r === 'wrong' || r === 'none' || r === 'notyet' || r === 'busy') nope(id);
-    setFarmer({ at: id, until: r === 'chop' || r === 'placed' || r === 'chopped' || r === 'taken' ? performance.now() + 450 : 0 });
+    if (!chosen) {
+      nope(d);
+      return;
+    }
+    if (cookFor(sh, chosen.id, d, s.produce, day)) {
+      go(COOK[d].at, 700);
+      setPicked(null);
+    } else nope(d);
     bump();
   };
   const onServe = (c: Patron) => {
     const r = serveMeal(sh, c.id);
     if (r) {
-      dispatch({ type: 'shopMeal', dishes: r.dishes, discount: r.discount, tip: r.tip, name: r.patron.name });
+      dispatch({ type: 'shopMeal', dishes: r.dishes, discount: r.discount, tip: r.tip, name: r.patron.name, ask: r.ask, fit: r.fit });
       booked(sh, r.bill, r.tip);
+      setLearned({ id: r.patron.id, dish: r.dishes[0], fit: r.fit, text: r.lesson });
       go('counter', 600);
     }
     bump();
   };
 
   const stock = (Object.keys(PRODUCE) as ProduceId[]).filter(id => (p.store[id] ?? 0) > 0);
-  const hands = jobOf(sh, sh.hands);
-  const need = hands && hands.step === 0 ? needsFood(hands) : [];
   const orderAsk = counter && counter.order.kind === 'market' ? orderItems(counter.order) : {};
   const packedAll: Partial<Record<ProduceId, number>> = {};
   for (const b of sh.bags) for (const [id, kg] of Object.entries(b) as [ProduceId, number][]) packedAll[id] = Math.round(((packedAll[id] ?? 0) + kg) * 10) / 10;
@@ -284,7 +287,7 @@ export function ShopFloor({ s, dispatch, kind }: { s: GameState; dispatch: Dispa
             <p className="sf-empty">{phase === 'brief' ? 'Open the shop to let customers in.' : sh.closing ? 'No more customers today.' : 'The next customer is on the way…'}</p>
           )
         ) : (
-          <MealTickets sh={sh} phase={phase} onTake={() => (takeOrder(sh), bump())} onStart={j => (startJob(sh, j.id) ? go('counter', 300) : nope(`job${j.id}`), bump())} onServe={onServe} shake={shake} />
+          <MealTickets sh={sh} phase={phase} chosen={chosen} onPick={c => setPicked(c.id)} onServe={onServe} />
         )}
         {phase === 'play' && <Queue sh={sh} />}
       </section>
@@ -317,46 +320,69 @@ export function ShopFloor({ s, dispatch, kind }: { s: GameState; dispatch: Dispa
             </button>
           </>
         ) : (
-          <Hands sh={sh} hands={hands} onPack={k => (packDish(sh, k) ? go('counter', 500) : nope(k), bump())} onBin={() => (binDish(sh), bump())} shake={shake} />
+          <Plate learned={learned} />
         )}
       </section>
 
-      {/* the kitchen's stations, on the 3D room */}
+      {/* what is cooking on the kitchen's stations, on the 3D room */}
       {kind === 'restaurant' &&
         phase !== 'brief' &&
         STATION_IDS.map(id => {
           const a = anchors?.stations[id];
-          if (!a) return null;
           const st = stationStatus(sh, id);
-          const wants = hands && nextStation(hands) === id && hands.where === 'hands';
-          const word = st.state === 'empty' ? (wants ? 'Put it here' : STATIONS[id].short) : STATIONS[id].kind === 'chop' ? `Tap to chop` : st.state === 'working' ? `${STATIONS[id].verb.replace(/e$/, '')}ing…` : st.state === 'done' ? 'Take it out!' : st.state === 'over' ? 'Overcooking!' : 'Burnt!';
+          if (!a || st.state === 'empty' || !st.job) return null;
           return (
-            <button
-              key={id}
-              type="button"
-              className={`sf-station is-${st.state}${wants ? ' is-want' : ''}${shake === id ? ' is-shake' : ''}`}
-              style={{ left: a.x, top: a.y, ['--p' as string]: `${Math.round(st.progress * 100)}%` }}
-              aria-label={`${STATIONS[id].name}${st.job ? `: ${dishOf(st.job.dish).name}, ${word}` : ''}`}
-              onClick={() => onStation(id)}
-            >
-              <i aria-hidden="true">{STATIONS[id].icon}</i>
-              <span>{word}</span>
-              {st.job && <small>{dishOf(st.job.dish).name}</small>}
-            </button>
+            <p key={id} className={`sf-station is-${st.state}`} style={{ left: a.x, top: a.y, ['--p' as string]: `${Math.round(st.progress * 100)}%` }} aria-label={`${STATIONS[id].name}: ${dishOf(st.job.dish).name}, ${st.state === 'done' ? 'ready' : 'cooking'}`}>
+              <i aria-hidden="true">{dishOf(st.job.dish).icon}</i>
+              <span>{st.state === 'done' ? 'Ready!' : `${STATIONS[id].verb.replace(/e$/, '')}ing…`}</span>
+            </p>
           );
         })}
 
+      {/* the restaurant's menu: tap a dish to cook it for the customer picked */}
+      {kind === 'restaurant' && (
+        <section className="sf-pantry sf-menu" aria-label="The menu">
+          {MENU.map(id => {
+            const d = dishOf(id);
+            const ok = makeable.includes(id);
+            const want = !!chosen && chosen.order.kind === 'restaurant' && 'dish' in chosen.order.ask && chosen.order.ask.dish === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                className={`fm-card sf-food sf-dishcard${want ? ' is-want' : ''}${shake === id ? ' is-shake' : ''}`}
+                aria-label={`Cook ${d.name}${chosen ? ` for ${chosen.name}` : ''}`}
+                onClick={() => onDish(id)}
+                disabled={phase !== 'play' || !ok}
+              >
+                <i aria-hidden="true">{d.icon}</i>
+                <b>{d.name}</b>
+                <small className="sf-kinds">
+                  {needsOf(d).map(n => (
+                    <span key={n} className={`sf-kind is-${n}`} title={NEEDS[n].name}>
+                      {NEEDS[n].icon} {NEEDS[n].short}
+                    </span>
+                  ))}
+                </small>
+                <small>{ok ? (Object.keys(d.plate) as ProduceId[]).map(f => PRODUCE[f].icon).join(' ') : 'Not enough in the store'}</small>
+              </button>
+            );
+          })}
+        </section>
+      )}
+
       {/* the food: a mini card for everything in the store */}
+      {kind === 'market' && (
       <section className="sf-pantry" aria-label="The store">
         {stock.length ? (
           stock.map(id => {
-            const want = kind === 'market' ? (orderAsk[id] ?? 0) > (packedAll[id] ?? 0) : need.includes(id);
+            const want = (orderAsk[id] ?? 0) > (packedAll[id] ?? 0);
             return (
               <button
                 key={id}
                 type="button"
                 className={`fm-card sf-food${want ? ' is-want' : ''}${shake === id ? ' is-shake' : ''}`}
-                aria-label={kind === 'market' ? `Pack ${unitOf(id)} kg ${short(id)}` : `Take ${short(id)} from the store`}
+                aria-label={`Pack ${unitOf(id)} kg ${short(id)}`}
                 onClick={() => onFood(id)}
                 disabled={phase !== 'play'}
               >
@@ -372,6 +398,7 @@ export function ShopFloor({ s, dispatch, kind }: { s: GameState; dispatch: Dispa
           <p className="sf-empty">The store is empty: harvest the farms or the greenhouse first.</p>
         )}
       </section>
+      )}
 
       {sh.flash && phase === 'play' && (
         <p key={sh.flash.id} className={`sf-flash${sh.flash.bad ? ' is-bad' : ''}`} role="status">
@@ -387,8 +414,12 @@ export function ShopFloor({ s, dispatch, kind }: { s: GameState; dispatch: Dispa
 
 function bubbleOf(c: Patron, kind: ShopKind): string | null {
   if (c.phase === 'leave') return c.t < 2.6 && c.said ? c.said : null;
-  if (c.phase === 'order' && c.slot === 0) return kind === 'market' ? c.line : c.order.kind === 'restaurant' && !c.order.taken ? 'Ready to order!' : null;
-  if (c.phase === 'wait' && c.order.kind === 'restaurant') return c.order.dishes.map(d => dishOf(d).icon).join(' ') + (c.patience < c.max * 0.3 ? ' 😠' : '');
+  if (c.phase === 'order' && c.slot === 0 && kind === 'market') return c.line;
+  if (c.phase === 'order' && c.order.kind === 'restaurant') {
+    const a = c.order.ask;
+    return ('need' in a ? `${NEEDS[a.need].icon} ${NEEDS[a.need].short}?` : `${dishOf(a.dish).icon} ${dishOf(a.dish).name}`) + (c.patience < c.max * 0.3 ? ' 😠' : '');
+  }
+  if (c.phase === 'wait' && c.order.kind === 'restaurant' && c.order.dish) return `${dishOf(c.order.dish).icon} …` + (c.patience < c.max * 0.3 ? ' 😠' : '');
   if (c.phase === 'eat') return '😋';
   return null;
 }
@@ -419,54 +450,55 @@ function Queue({ sh }: { sh: Shift }) {
   );
 }
 
-const WHERE: Record<string, string> = { ticket: 'to start', hands: 'in your hands', pass: 'ready on the pass' };
-
-function MealTickets({ sh, phase, onTake, onStart, onServe, shake }: { sh: Shift; phase: Phase; onTake: () => void; onStart: (j: Job) => void; onServe: (c: Patron) => void; shake: string | null }) {
-  const counter = atCounter(sh);
-  const seated = sh.patrons.filter(c => c.phase === 'wait');
-  if (!counter && !seated.length) return <p className="sf-empty">{phase === 'brief' ? 'Open the shop to let customers in.' : sh.closing ? 'No more customers today.' : 'The next customer is on the way…'}</p>;
+function MealTickets({ sh, phase, chosen, onPick, onServe }: { sh: Shift; phase: Phase; chosen: Patron | null; onPick: (c: Patron) => void; onServe: (c: Patron) => void }) {
+  const seated = sh.patrons.filter(c => (c.phase === 'order' || c.phase === 'wait') && c.order.kind === 'restaurant');
+  if (!seated.length) return <p className="sf-empty">{phase === 'brief' ? 'Open the restaurant to let customers in.' : sh.closing ? 'No more customers today.' : 'The next customer is on the way…'}</p>;
   return (
     <div className="sf-tickets">
-      {counter && counter.order.kind === 'restaurant' && !counter.order.taken && (
-        <div className="sf-ticket is-new">
-          <p className="sf-who">
-            <Face c={counter} /> <b>{counter.name}</b> <small>at the counter</small>
-          </p>
-          <Patience c={counter} />
-          <button type="button" className="gold-btn sf-take" onClick={onTake} aria-label={`Take ${counter.name}'s order`}>
-            Take the order
-          </button>
-        </div>
-      )}
       {seated.map(c => {
         if (c.order.kind !== 'restaurant') return null;
-        const jobs = sh.jobs.filter(j => j.patron === c.id);
-        const ready = mealReady(sh, c.id);
+        const a = c.order.ask;
+        const j = jobOf(sh, c.id);
+        const ready = !!j && isReady(j);
+        const isChosen = chosen?.id === c.id;
         return (
-          <div key={c.id} className={`sf-ticket${ready ? ' is-ready' : ''}`} aria-label={`${c.name}'s order`}>
+          <div key={c.id} className={`sf-ticket${ready ? ' is-ready' : ''}${isChosen ? ' is-new' : ''}`} aria-label={`${c.name}'s order`}>
             <p className="sf-who">
               <Face c={c} /> <b>{c.name}</b>
-              <small>{c.order.to === 'here' ? '🍽️ eat here' : '🥡 take away'}</small>
+              <small>table {Math.floor((c.seat ?? 0) / 2) + 1}</small>
             </p>
             <Patience c={c} />
-            {jobs.map(j => (
-              <span key={j.id} className={`sf-dish is-${j.where === 'pass' ? 'done' : j.where === 'ticket' ? 'todo' : 'doing'}${shake === `job${j.id}` ? ' is-shake' : ''}`}>
+            <p className="sf-ask">
+              {'need' in a ? (
+                <>
+                  <i aria-hidden="true">{NEEDS[a.need].icon}</i> <span>“{c.line}”</span>
+                </>
+              ) : (
+                <>
+                  <i aria-hidden="true">{dishOf(a.dish).icon}</i> <span>{dishOf(a.dish).name}, please</span>
+                </>
+              )}
+            </p>
+            {c.phase === 'order' &&
+              (isChosen ? (
+                <small className="sf-todo">{'need' in a ? `Pick a dish that is ${NEEDS[a.need].short.toLowerCase()} food` : 'Pick it from the menu below'}</small>
+              ) : (
+                <button type="button" className="sf-mini" onClick={() => onPick(c)} aria-label={`Cook for ${c.name}`}>
+                  Cook for {c.name}
+                </button>
+              ))}
+            {j && !ready && (
+              <span className="sf-dish is-doing">
                 <i aria-hidden="true">{dishOf(j.dish).icon}</i>
                 <span>
                   <b>{dishOf(j.dish).name}</b>
-                  <small>{j.where in STATIONS ? `on the ${STATIONS[j.where as StationId].name.toLowerCase()}` : WHERE[j.where]}</small>
+                  <small>cooking… {Math.round(progressOf(j) * 100)}%</small>
                 </span>
-                {j.where === 'ticket' && (
-                  <button type="button" className="sf-mini" onClick={() => onStart(j)} aria-label={`Start ${dishOf(j.dish).name} for ${c.name}`}>
-                    Start
-                  </button>
-                )}
-                {j.where === 'pass' && <b aria-hidden="true">✓</b>}
               </span>
-            ))}
-            {ready && (
+            )}
+            {ready && j && (
               <button type="button" className="gold-btn sf-take" onClick={() => onServe(c)} aria-label={`Serve ${c.name}`}>
-                Serve {c.name}
+                Serve {dishOf(j.dish).name}
               </button>
             )}
           </div>
@@ -476,51 +508,30 @@ function MealTickets({ sh, phase, onTake, onStart, onServe, shake }: { sh: Shift
   );
 }
 
-function Hands({ sh, hands, onPack, onBin, shake }: { sh: Shift; hands: Job | null; onPack: (k: 'plate' | 'box') => void; onBin: () => void; shake: string | null }) {
-  const c = hands ? sh.patrons.find(x => x.id === hands.patron) : null;
-  let todo = 'Tap Start on an order to begin a dish.';
-  if (hands) {
-    const next = nextStation(hands);
-    if (hands.step === 0) todo = `Take from the store: ${needsFood(hands).map(short).join(', ')}`;
-    else if (next) todo = `${STATIONS[next].verb} it: tap the ${STATIONS[next].name.toLowerCase()}`;
-    else if (readyToPack(hands)) todo = c && c.order.kind === 'restaurant' && c.order.to === 'away' ? 'Ready! Box it to take away' : 'Ready! Plate it to eat here';
-  }
+/** The right-hand panel at the restaurant: the three kinds of food, and what the last plate served was made of. */
+function Plate({ learned }: { learned: { id: number; dish: DishId; fit: boolean; text: string } | null }) {
   return (
     <>
-      <p className="sf-h">In your hands</p>
-      {hands ? (
-        <div className="sf-hand">
+      <p className="sf-h">Good food</p>
+      {learned && (
+        <div key={learned.id} className={`sf-learn${learned.fit ? '' : ' is-miss'}`} role="status">
           <p className="sf-who">
-            <i aria-hidden="true">{dishOf(hands.dish).icon}</i> <b>{dishOf(hands.dish).name}</b>
+            <i aria-hidden="true">{dishOf(learned.dish).icon}</i> <b>{learned.fit ? 'Served!' : 'Served, but…'}</b>
           </p>
-          <small>for {c?.name ?? 'a customer'}</small>
-          <ol className="sf-steps" aria-label="The recipe">
-            <li className={hands.step > 0 ? 'is-done' : 'is-now'}>🧺 Gather</li>
-            {RECIPES[hands.dish].map((st, i) => (
-              <li key={i} className={hands.step > i + 1 ? 'is-done' : hands.step === i + 1 ? 'is-now' : ''}>
-                {STATIONS[st.at].icon} {STATIONS[st.at].verb}
-              </li>
-            ))}
-            <li className={readyToPack(hands) ? 'is-now' : ''}>🍽️ Pack</li>
-          </ol>
-          <p className="sf-todo">{todo}</p>
+          <small>{learned.text}</small>
         </div>
-      ) : (
-        <p className="sf-empty">{todo}</p>
       )}
-      <span className="sf-packs">
-        <button type="button" className={`gold-btn${shake === 'plate' ? ' is-shake' : ''}`} disabled={!hands || !readyToPack(hands)} onClick={() => onPack('plate')} aria-label="Plate it (eat here)">
-          🍽️ Plate
-        </button>
-        <button type="button" className={`gold-btn${shake === 'box' ? ' is-shake' : ''}`} disabled={!hands || !readyToPack(hands)} onClick={() => onPack('box')} aria-label="Box it (take away)">
-          🥡 Box
-        </button>
-      </span>
-      {hands && (
-        <button type="button" className="sf-link is-block" onClick={onBin}>
-          Start this dish again
-        </button>
-      )}
+      <ul className="sf-kindlist" aria-label="The three kinds of food">
+        {(Object.keys(NEEDS) as (keyof typeof NEEDS)[]).map(n => (
+          <li key={n} className={`sf-kind is-${n}`}>
+            <b>
+              {NEEDS[n].icon} {NEEDS[n].name}
+            </b>
+            <small>{NEEDS[n].does}</small>
+          </li>
+        ))}
+      </ul>
+      <small className="sf-tip">A good meal has all three: ugali, beans and greens.</small>
     </>
   );
 }
@@ -539,12 +550,12 @@ function Brief({ kind, canSell, onStart, onClose }: { kind: ShopKind; canSell: b
         </ul>
       ) : (
         <ul>
+          <li>Customers walk in, sit down and order a dish, or ask for a kind of food: ⚡ energy, 💪 body-building or 🛡️ protective.</li>
           <li>
-            Customers walk in and order at the counter: <b>take the order</b>, and they sit down to wait.
+            Tap a dish on the <b>menu</b> to cook it from your store. Pick one that fits what they asked for!
           </li>
-          <li>Start a dish, take its food from the store, then chop, boil, fry, bake or blend it at the kitchen’s stations. Take it off the fire before it burns!</li>
           <li>
-            <b>Plate</b> it to eat here, or <b>box</b> it to take away, as they asked; then serve them.
+            When it’s ready, <b>serve</b> it. The right food, served quickly, earns a tip.
           </li>
         </ul>
       )}

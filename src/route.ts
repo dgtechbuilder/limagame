@@ -222,7 +222,7 @@ function modalFor(s: GameState, path: string[]): Modal | null | 'bad' {
     const t = tab(MARKET_TABS);
     return t === 'bad' || parts.length > 2 ? 'bad' : { kind: 'market', tab: t ?? 'sell' };
   }
-  // the restaurant beside the stall, and what each crop is worth to eat
+  // the restaurant, and what each crop is worth to eat
   if ((first === 'restaurant' || first === 'nutrition') && parts.length === 1) return { kind: 'market', tab: first };
   if (first === 'farm-words') {
     const t = tab(GLOSSARY);

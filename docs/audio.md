@@ -29,7 +29,7 @@ from playing and listening to the game itself, not from Supercell's own notes. W
 | Footsteps | One per footfall, different on grass and on soil. | `src/audio/ambience.ts` |
 | Farm animals | Hens every 20 seconds, a cow every minute. | `src/audio/ambience.ts` |
 | Farm work | Strokes while working: dig, cut grass, cut weeds, sow, fertilise, water, spray, harvest, hammer, wrench, wiring, diesel, hay, milk. A bigger stroke when a spot is finished. *Built* when the coop, the cow shed or a part of the power system goes up, and *Power on* when the main switch is thrown. | `src/audio/farm.ts` |
-| Ambience | The breeze, the birds and the crickets. The **fridge** (in the restaurant kiosk) and the **freezer** (the storage annex) hum as the farmer walks up: full beside them, fading smoothly to silence about 5 m (fridge) and 6.5 m (freezer) away, and panned to the side they are on. The fridge is a lighter, higher hum (100 and 200 Hz); the freezer a deeper, fuller drone (60 to 240 Hz) with its condenser fan. Both breathe slowly like a real compressor. | `src/audio/farm.ts` |
+| Ambience | The breeze, the birds and the crickets. The **fridge** (in the kitchen of the glass-roofed restaurant, bottom left) and the **freezer** (the storage annex) hum as the farmer walks up: full beside them, fading smoothly to silence about 5 m (fridge) and 6.5 m (freezer) away, and panned to the side they are on. The fridge is a lighter, higher hum (100 and 200 Hz); the freezer a deeper, fuller drone (60 to 240 Hz) with its condenser fan. Both breathe slowly like a real compressor. | `src/audio/farm.ts` |
 | Effects | The action ding, the flow fanfare and the tractor's drive. | `src/sfx.ts`, `src/business/driveAudio.ts` |
 
 ## Mixing

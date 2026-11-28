@@ -4,35 +4,33 @@ import { initialState, reducer, type GameState } from '../src/state';
 import { payClock } from '../src/climate/track';
 import { achClock } from '../src/achievements/track';
 import { MARKET, PRODUCE, produceOf } from '../src/produce/model';
-import { dishOf, RESTAURANT } from '../src/produce/restaurant';
+import { MENU, dishOf, lessonOf, needsOf, RESTAURANT, type Need } from '../src/produce/restaurant';
 import { walletOf } from '../src/wallet/model';
 import {
   SHOP,
   atCounter,
-  atStation,
+  canMake,
+  cookFor,
   free,
-  gather,
   handOver,
   marketOrder,
   mealOrder,
   newShift,
-  packDish,
+  ordering,
   packItem,
   packScore,
   serveMeal,
   setBags,
   shiftOver,
-  startJob,
   stationStatus,
-  takeOrder,
   tick,
   type MarketOrder,
   type Shift,
 } from '../src/shop/model';
 
 /* The shop floor (src/shop): the market stall and the restaurant played. Customers walk in, queue and order from
-   what the store holds; the farmer packs bags at the stall, or takes the order, cooks it at the kitchen's stations,
-   plates or boxes it and serves it at the restaurant. Played through the rules, the reducer, then the browser. */
+   what the store holds; the farmer packs bags at the stall. At the restaurant they sit and order a dish or a kind of
+   food; the farmer picks a dish off the menu that fits, it cooks, and the farmer serves it. Played through the rules, the reducer, then the browser. */
 
 const day = '2026-11-21';
 payClock.today = () => day;
@@ -161,59 +159,74 @@ test('the shop closes when the store has nothing left to sell, once everyone has
   expect(shiftOver(sold)).toBe(true);
 });
 
-test('meal orders are dishes the store can cook, to eat here or to take away', () => {
+test('meal orders are a dish off the menu the store can cook, or a kind of food one of them is', () => {
   const rng = seeded(9);
-  for (let i = 0; i < 100; i++) {
-    const o = mealOrder({ maize: 1, drybeans: 1, tomatoes: 1, capsicum: 1 }, 30, rng)!;
-    // only githeri, pepper stew and the stuffed capsicum need nothing else
-    for (const d of o.dishes) expect(['githeri', 'pepper-stew', 'stuffed-capsicum']).toContain(d);
-    expect(['here', 'away']).toContain(o.to);
+  const asked = { dish: 0, need: 0 };
+  for (let i = 0; i < 200; i++) {
+    // maize and beans make githeri only: energy-giving and body-building
+    const o = mealOrder({ maize: 1, drybeans: 1, tomatoes: 1 }, 30, rng)!;
+    if ('dish' in o.ask) {
+      asked.dish++;
+      expect(MENU).toContain(o.ask.dish);
+      expect(canMake({ maize: 1, drybeans: 1, tomatoes: 1 })).toContain(o.ask.dish);
+    } else {
+      asked.need++;
+      // a kind of food some dish the store can make is
+      expect(canMake({ maize: 1, drybeans: 1, tomatoes: 1 }).some(d => needsOf(dishOf(d)).includes((o.ask as { need: Need }).need))).toBe(true);
+    }
+    expect(o.dish).toBeNull();
   }
+  expect(asked.dish).toBeGreaterThan(50);
+  expect(asked.need).toBeGreaterThan(50);
   expect(mealOrder({ maize: 1 }, 30, rng)).toBeNull();
-  expect(mealOrder({ maize: 1, drybeans: 1, tomatoes: 1, capsicum: 1 }, 0, rng)).toBeNull();
+  expect(mealOrder({ maize: 1, drybeans: 1, tomatoes: 1 }, 0, rng)).toBeNull();
 });
 
-test('in the kitchen: take the order, gather the food, chop, cook (not too long), plate or box it, and serve', () => {
-  // githeri only: maize, beans, tomatoes, capsicum
-  const store = { maize: 1, drybeans: 1, tomatoes: 1, capsicum: 0.05 };
+test('the menu: five simple dishes from the farm’s crops, between them every kind of food', () => {
+  expect(MENU).toHaveLength(5);
+  for (const id of MENU) expect(Object.keys(dishOf(id).plate).length).toBeLessThanOrEqual(3);
+  expect(needsOf(dishOf('githeri'))).toEqual(['energy', 'body']);
+  expect(needsOf(dishOf('ugali-sukuma'))).toEqual(['energy', 'protect']);
+  expect(needsOf(dishOf('bean-stew'))).toEqual(['body', 'protect']);
+  expect(needsOf(dishOf('kachumbari'))).toEqual(['protect']);
+  expect(lessonOf(dishOf('githeri'))).toBe('Githeri = maize (energy) + dry beans (body-building) + tomatoes (protective)');
+});
+
+/** Time passes until a restaurant customer has walked in, sat down and ordered. */
+function untilSeated(sh: Shift, produce: GameState['produce'], rng = seeded()) {
+  for (let i = 0; i < 400 && !ordering(sh).length; i++) tick(sh, 0.1, { produce, day: 5, rng });
+  return ordering(sh)[0];
+}
+
+test('in the restaurant: a customer sits and orders, the farmer cooks a dish that fits, and serves it', () => {
+  const store = { maize: 1, drybeans: 1, tomatoes: 1, sukuma: 1 };
   let s = game({ produce: { store } });
   const sh = newShift('restaurant');
   const rng = seeded(2);
-  const c = untilCounter(sh, s.produce, rng);
+  const c = untilSeated(sh, s.produce, rng);
   if (c.order.kind !== 'restaurant') throw new Error('a meal order');
-  c.order.dishes = ['githeri'];
-  expect(takeOrder(sh)).toBe(c);
-  expect(c.phase).toBe('wait');
+  // they walked straight to a table: no queue at a counter
   expect(c.seat).toBe(0);
-  const job = sh.jobs[0];
-  expect(startJob(sh, job.id)).toBe(true);
-  // the wrong food, then the right ones
-  expect(gather(sh, 'sukuma')).toBe('wrong');
-  for (const f of ['maize', 'drybeans', 'tomatoes'] as const) expect(gather(sh, f)).toBe('ok');
-  expect(gather(sh, 'capsicum')).toBe('done');
-  // the pot first? no: githeri is chopped first
-  expect(atStation(sh, 'pot')).toBe('wrong');
-  expect(atStation(sh, 'board')).toBe('placed');
-  expect(atStation(sh, 'board')).toBe('chop');
-  expect(atStation(sh, 'board')).toBe('chopped');
-  expect(sh.hands).toBe(job.id);
-  // on the jiko: not ready at first, ready after its time
-  expect(atStation(sh, 'pot')).toBe('placed');
-  expect(atStation(sh, 'pot')).toBe('notyet');
-  for (let t = 0; t < 8.2; t += 0.1) tick(sh, 0.1, { produce: s.produce, day: 5, rng });
+  expect(atCounter(sh)).toBeNull();
+  c.order.ask = { need: 'body' };
+  // githeri is body-building (beans): it cooks on the jiko by itself
+  expect(cookFor(sh, c.id, 'githeri', s.produce, 5)).toBe(true);
+  expect(c.phase).toBe('wait');
+  expect(stationStatus(sh, 'pot').state).toBe('working');
+  expect(serveMeal(sh, c.id)).toBeNull();
+  for (let t = 0; t < 7.2; t += 0.1) tick(sh, 0.1, { produce: s.produce, day: 5, rng });
   expect(stationStatus(sh, 'pot').state).toBe('done');
-  expect(atStation(sh, 'pot')).toBe('taken');
-  expect(job.quality).toBe(1);
-  // packed as they asked, it waits on the pass; served, they pay and tip
-  expect(packDish(sh, c.order.to === 'here' ? 'plate' : 'box')).toBe(true);
   const r = serveMeal(sh, c.id)!;
+  expect(r.fit).toBe(true);
   expect(r.mood).toBe('happy');
   expect(r.bill).toBe(dishOf('githeri').price);
   expect(r.tip).toBeGreaterThan(0);
-  expect(c.phase).toBe('pickup');
+  expect(r.lesson).toContain('dry beans (body-building)');
+  // they eat at their table, then go
+  expect(c.phase).toBe('eat');
   const coins = s.coins;
   const points = s.points;
-  s = act(s, { type: 'shopMeal', dishes: r.dishes, discount: r.discount, tip: r.tip, name: c.name });
+  s = act(s, { type: 'shopMeal', dishes: r.dishes, discount: r.discount, tip: r.tip, name: c.name, ask: r.ask, fit: r.fit });
   expect(s.coins).toBeCloseTo(coins + r.bill + r.tip, 5);
   expect(s.points).toBeGreaterThan(points);
   const p = produceOf(s.produce);
@@ -223,33 +236,38 @@ test('in the kitchen: take the order, gather the food, chop, cook (not too long)
   expect(walletOf(s.wallet).entries[0].label).toContain(`${c.name}'s meal`);
 });
 
-test('burnt food and the wrong pack: no tip, and a burnt dish is half price', () => {
-  const store = { flour: 1 };
+test('the wrong food: no tip for a dish of the wrong kind, half price for a dish they did not ask for', () => {
+  const store = { maize: 5, drybeans: 5, tomatoes: 5, cucumber: 5 };
   const sh = newShift('restaurant');
   const rng = seeded(4);
-  const c = untilCounter(sh, { store }, rng);
+  const c = untilSeated(sh, { store }, rng);
   if (c.order.kind !== 'restaurant') throw new Error('a meal order');
-  c.order.dishes = ['maize-bread'];
-  c.order.to = 'here';
-  takeOrder(sh);
   c.patience = c.max = 999;
-  startJob(sh, sh.jobs[0].id);
-  expect(gather(sh, 'flour')).toBe('done');
-  // straight into the oven, and left far too long
-  expect(atStation(sh, 'oven')).toBe('placed');
-  for (let t = 0; t < 9 * SHOP.burnAt + 1; t += 0.5) tick(sh, 0.5, { produce: { store }, day: 5, rng });
-  expect(stationStatus(sh, 'oven').state).toBe('burnt');
-  expect(atStation(sh, 'oven')).toBe('taken');
-  // boxed, though they eat here
-  expect(packDish(sh, 'box')).toBe(true);
+  // asked for energy, given a salad
+  c.order.ask = { need: 'energy' };
+  expect(cookFor(sh, c.id, 'kachumbari', { store }, 5)).toBe(true);
+  for (let t = 0; t < 4; t += 0.5) tick(sh, 0.5, { produce: { store }, day: 5, rng });
   const r = serveMeal(sh, c.id)!;
-  expect(r.mood).toBe('upset');
+  expect(r.fit).toBe(false);
+  expect(r.mood).toBe('ok');
   expect(r.tip).toBe(0);
-  expect(r.discount).toBe(dishOf('maize-bread').price / 2);
-  expect(r.said).toMatch(/burnt/i);
-  // the game takes the half off
-  const s = act(game({ produce: { store } }), { type: 'shopMeal', dishes: r.dishes, discount: r.discount, tip: r.tip, name: c.name });
-  expect(s.coins).toBeCloseTo(1000 + dishOf('maize-bread').price / 2, 5);
+  expect(r.discount).toBe(0);
+  expect(sh.flash?.text).toMatch(/^Energy-giving food/);
+  // asked for githeri by name, given bean stew
+  const d = untilSeated(sh, { store }, rng);
+  if (d.order.kind !== 'restaurant') throw new Error('a meal order');
+  d.order.ask = { dish: 'githeri' };
+  d.patience = d.max = 999;
+  expect(cookFor(sh, d.id, 'bean-stew', { store }, 5)).toBe(true);
+  for (let t = 0; t < 7; t += 0.5) tick(sh, 0.5, { produce: { store }, day: 5, rng });
+  const r2 = serveMeal(sh, d.id)!;
+  expect(r2.mood).toBe('upset');
+  expect(r2.discount).toBe(dishOf('bean-stew').price / 2);
+  const s = act(game({ produce: { store } }), { type: 'shopMeal', dishes: r2.dishes, discount: r2.discount, tip: r2.tip, name: d.name });
+  expect(s.coins).toBeCloseTo(1000 + dishOf('bean-stew').price / 2, 5);
+  // the store must have the food: no strawberries, no strawberry cup
+  const e = untilSeated(sh, { store }, rng);
+  expect(cookFor(sh, e.id, 'strawberry-cup', { store }, 5)).toBe(false);
   expect(produceOf(s.produce).kitchen.plates).toBeLessThanOrEqual(RESTAURANT.dailyPlates);
 });
 
@@ -298,27 +316,48 @@ test('Open the market on the farm opens the shop floor: a customer walks in, the
   await expect(page.getByRole('dialog', { name: 'Market stall', exact: true })).toBeVisible();
 });
 
-test('the restaurant’s shop floor: take an order and cook it at the stations', async ({ page }) => {
+test('the restaurant’s shop floor: a customer sits and orders, a dish off the menu cooks, and is served', async ({ page }) => {
   await boot(page);
   // githeri is the only dish the store can make
   await page.evaluate(() =>
-    (window as unknown as Win).__lima.jump({ view: 'world', coins: 1000, life: { day: 5, date: null, started: 2 }, produce: { store: { maize: 2, drybeans: 1, tomatoes: 1, capsicum: 0.05 } }, modal: { kind: 'serve', shop: 'restaurant' } } as never),
+    (window as unknown as Win).__lima.jump({ view: 'world', coins: 1000, life: { day: 5, date: null, started: 2 }, produce: { store: { maize: 2, drybeans: 1, tomatoes: 1 } }, modal: { kind: 'serve', shop: 'restaurant' } } as never),
   );
   const shop = page.getByRole('dialog', { name: 'Restaurant: serving customers' });
   await expect(shop).toBeVisible();
   await expect(page).toHaveURL(/#\/serve\/restaurant$/);
+  // the menu: five dishes, only githeri cookable, each marked with the kinds of food it is
+  await expect(shop.getByRole('button', { name: /^Cook / })).toHaveCount(5);
+  await expect(shop.getByRole('button', { name: /^Cook Githeri/ })).toContainText('Body-building');
+  await expect(shop.getByRole('button', { name: /^Cook Kachumbari/ })).toBeDisabled();
   await shop.getByRole('button', { name: 'Open the shop' }).click();
-  const take = shop.getByRole('button', { name: /^Take .*'s order$/ });
-  await expect(take).toBeVisible({ timeout: 30_000 });
-  await take.click();
+  const ticket = shop.getByLabel(/'s order$/);
+  await expect(ticket).toBeVisible({ timeout: 30_000 });
   await page.evaluate(() => (window as unknown as { __limaShop: { shift: Shift } }).__limaShop.shift.patrons.forEach(c => (c.patience = c.max = 999)));
-  await shop.getByRole('button', { name: /^Start Githeri/ }).first().click();
-  for (const f of ['Maize', 'Dry beans', 'Tomatoes', 'Capsicum']) await shop.getByRole('button', { name: `Take ${f} from the store` }).click();
-  await expect(shop.getByRole('button', { name: 'Chopping board' })).toHaveClass(/is-want/);
-  for (let i = 0; i < 3; i++) await shop.getByRole('button', { name: /^Chopping board/ }).click();
-  await shop.getByRole('button', { name: /^Jiko and sufuria/ }).click();
-  await expect(shop.getByRole('button', { name: /^Jiko and sufuria: Githeri, Boiling/ })).toBeVisible();
-  await expect(shop.getByRole('button', { name: /^Jiko and sufuria: Githeri, Take it out/ })).toBeVisible({ timeout: 30_000 });
-  await shop.getByRole('button', { name: /^Jiko and sufuria: Githeri, Take it out/ }).click();
-  await expect(shop.getByRole('button', { name: 'Plate it (eat here)' })).toBeEnabled();
+  await shop.getByRole('button', { name: /^Cook Githeri for / }).click();
+  await expect(shop.getByLabel(/^Jiko and sufuria: Githeri/)).toBeVisible();
+  const coins = (await state(page)).coins;
+  await shop.getByRole('button', { name: /^Serve / }).click({ timeout: 30_000 });
+  await expect.poll(async () => (await state(page)).coins).toBeGreaterThan(coins);
+  await expect(shop.getByRole('status').filter({ hasText: 'Githeri = maize (energy)' })).toBeVisible();
+  await expect(shop.getByLabel('Served 1')).toBeVisible();
+});
+
+test('the restaurant on the farm: a glass-roofed hall bottom left, its customers coming and going, and its door opens the game', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() =>
+    (window as unknown as Win).__lima.jump({ view: 'world', coins: 1000, life: { day: 5, date: null, started: 2 }, produce: { store: { maize: 2, drybeans: 1, tomatoes: 1 } } } as never),
+  );
+  await page.waitForFunction(() => !!(window as unknown as Win).__limaWorld);
+  // bottom left of the farm: left of the yard, toward the camera
+  const at = await page.evaluate(() => (window as unknown as Win).__lima.places.restaurant);
+  expect(at.x).toBeLessThan(-10);
+  expect(at.z).toBeGreaterThan(10);
+  // customers are at the tables already
+  const phases = () => page.evaluate(() => (window as unknown as { __limaWorld: { diners: () => string[] } }).__limaWorld.diners());
+  expect(await phases()).toEqual(expect.arrayContaining(['eat', 'order']));
+  await page.evaluate(() => ((window as unknown as Win).__limaWorld!.speedScale = 4));
+  await page.evaluate(p => (window as unknown as Win).__limaWorld!.walkTo(p.x, p.z), at);
+  await expect(page.locator('.hud-place .is-enter')).toContainText('Open the restaurant', { timeout: 60_000 });
+  await optIn(page);
+  await expect(page.getByRole('dialog', { name: 'Restaurant: serving customers' })).toBeVisible();
 });
