@@ -15,6 +15,7 @@ import { miniClock } from '../minifarm/sim';
 import { shopClock } from '../shop/model';
 import { sfxLog } from '../sfx';
 import { audioLog } from '../audio/ambience';
+import { humNow } from '../audio/farm';
 import { problemCase, wakalaCase, type WakalaCase } from '../trials/samples';
 import type { TrialHazard } from '../trials/model';
 import { PLACES } from '../world/engine';
@@ -77,6 +78,8 @@ export function install(get: () => GameState, dispatch: Dispatch<Action>) {
     /** the sound effects played so far, newest last */
     sfx: () => [...sfxLog],
     audio: () => [...audioLog],
+    /** how loud the fridge's and the freezer's hums are where the farmer stands (0 out of reach) */
+    hums: () => ({ ...humNow }),
     /** the tractor drive's game seconds run this many times faster */
     tractorClock(scale: number) {
       simClock.scale = scale;
