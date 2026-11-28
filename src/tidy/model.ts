@@ -53,7 +53,7 @@ export const BUSH_SPOTS: [number, number][] = [
   [13.9, 11.8],
   [-5.2, -11.2],
   [7.8, -10.9],
-  [14.2, 4.0],
+  [11.0, 6.8], // moved from 14.2, 4.0 when the mini forest's spot went there (src/forest)
   [-16.4, -6.6],
   [10.2, -12.6],
   [-13.8, 14.6],

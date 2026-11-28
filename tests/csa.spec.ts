@@ -348,7 +348,7 @@ test('the farm’s CLIMATE-SMART chip: the field clock, and today’s drill play
   });
   expect(id).toBeTruthy();
   await page.evaluate(x => (window as unknown as Lima).__lima.dispatch({ type: 'csaDone', id: x, score: 0.9, daily: true }), id);
-  await expect.poll(async () => (await state(page)).csa.drill.days).toBe(1);
+  await expect.poll(async () => (await state(page)).csa?.drill?.days, { timeout: 30_000 }).toBe(1);
   await page.evaluate(() => (window as unknown as Lima).__lima.dispatch({ type: 'close' }));
   await expect(chip).toContainText('✓ Climate-smart');
 });

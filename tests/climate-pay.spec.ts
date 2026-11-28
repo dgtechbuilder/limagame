@@ -1,3 +1,4 @@
+import { FOREST_FULL } from '../src/forest/model';
 import { expect, test } from '@playwright/test';
 import { initialState, reducer, type GameState } from '../src/state';
 import { produceOf } from '../src/produce/model';
@@ -85,7 +86,8 @@ test('every area is evaluated: the forest stores, the cows give off methane, the
   const s = farm();
   const ids = areasOf(s).map(a => a.id);
   expect(ids).toEqual(['farms', 'moja', 'forest', 'pasture', 'animals', 'pond', 'homestead']);
-  expect(area(s, 'forest').stored).toBeCloseTo(110, 6);
+  expect(area(s, 'forest').stored).toBeCloseTo(FOREST_FULL, 6);
+  expect(FOREST_FULL).toBeCloseTo(83.55, 6);
   expect(area(s, 'forest').tone).toBe('good');
   expect(area(s, 'animals').emit.livestock).toBeCloseTo(2 * (4.6 + 0.6) + 4 * 0.02, 6);
   expect(area(s, 'animals').water).toBeCloseTo(2 * 50 + 4 * 0.3, 6);
@@ -144,7 +146,7 @@ test('the end of a day pays every credit earned since the last payment, from eve
   expect(s.climate.total.water).toBeGreaterThan(200);
   // the pop-up: the payment, unless a badge or certificate the credits won takes its place
   expect(s.award?.title).toMatch(/^(Climate payment: \+\$[\d.,]+|Certificate: .*|Badge won: .*|\d+ badges won)$/);
-  expect(pay.areas?.forest.stored).toBeCloseTo(110, 6);
+  expect(pay.areas?.forest.stored).toBeCloseTo(FOREST_FULL, 6);
   expect(pay.day).toBe('2026-11-16');
   // paid once
   expect(tick(s)).toBe(s);

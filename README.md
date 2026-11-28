@@ -94,7 +94,7 @@ iPhone, *Add to Home screen* runs it full screen like an app.
 | When | What happens |
 | --- | --- |
 | **0:00** | Names a farmer (or taps *Wanjiku*, *Otieno* or *Chebet*) and picks a look. No menus or text walls first. |
-| **0:05** | **The story so far**, three short pages: they bought this farm (and give its cows and hens their morning care), last season's harvest results (they plant by hand, then watch the season fail and lose money), and this season they start by learning from each mistake. |
+| **0:05** | **The story so far**, three short pages: they bought this farm (and do its first morning's work: dig the soil, water the seedlings, feed the cows, collect the eggs), last season's harvest results (they plant by hand, then watch the season fail and lose money), and this season they start by learning from each mistake. |
 | **0:10** | Walks across their farm to the maize. The rest of the farm is under mist. |
 | **0:25** | Checks the maize by looking: spots the rows with fall armyworm and makes the right call. This is the moment the game is built around. |
 | **~2:00** | The whole farm opens. Their sukuma wiki needs the same kind of check, with fewer hints. |
@@ -314,12 +314,13 @@ A new player never sees the farm screen first. Everything happens on their own f
    done*, then *Your first harvest: here is the financial result* above the sum.
    - *A farm of my own*: the farmer saved from a job in town and bought this farm. The signpost says FOR SALE and the
      title deed's owner line is blank: **Sign for my farm** writes the player's name onto the deed a letter at a
-     time, and the signpost becomes *Chebet's farm* with a SOLD sticker. Then the **two cows and four hens** that
-     came with the farm get their morning care: **Feed the cows**, **Water the hens** and **Collect the eggs**, each a
-     tap and a short timer (`STORY_CHORE_S`, 1.2 seconds) while the picture changes (hay in the feeder and the cow's
-     head down to eat, the hens pecking at a full drinker, eggs in the basket), then *Well done, Chebet! Fed and
-     watered every day, cows give milk and hens lay eggs*. Next waits for all three (*Care for your cows and hens to
-     go on*). Words: `animals` on the page in `STORY` (`src/first/data.ts`); event `story_care`.
+     time, and the signpost becomes *Chebet's farm* with a SOLD sticker. Then the first morning's work, two jobs for
+     the crops and two for the **two cows and four hens** that came with the farm: **Prepare the soil**, **Water the
+     seedlings**, **Feed the cows** and **Collect the eggs**, each a tap and a short timer (`STORY_CHORE_S`, 1.2
+     seconds) while the picture changes (the furrows dug into dark beds, the tray of maize and sukuma seedlings
+     greening up, hay in the feeder and the cow's head down to eat, eggs in the basket and the hens pecking), then
+     *Well done, Chebet! The beds are dug and the seedlings are watered… cows give milk and hens lay eggs*. Next waits
+     for all four (*Do the morning work to go on*). Words: `morning` on the page in `STORY` (`src/first/data.ts`); event `story_care`.
    - *Last season's Harvest results*: last season, played a step at a time. **Plant the season** is done by hand:
      the picture shows a maize bed and a sukuma bed, with a bunch of maize seeds and a bunch of sukuma seeds in an
      open palm; the player taps the maize seeds, then the maize bed (the seed lands and shoots come up), then the

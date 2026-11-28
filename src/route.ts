@@ -7,6 +7,7 @@ import type { SubjectId } from './inspect/types';
 import type { AchTab, Action, AnimalsTab, BizTab, TrialsTab, ClimateTab, EventsTab, FsPhase, GameState, GlossaryTab, KakumaTab, MarketTab, Modal, StoreTab, PartnersTab, PowerTab, SecurityTab, SettingsTab, WalletTab, FinanceTab, TrackingTab } from './state';
 import { BRANDS, type BrandId } from './partners/data';
 import { REGIONS, type RegionId } from './events/regions';
+import { PLANTS, type PlantKind } from './forest/model';
 
 /* Web addresses: every screen has its own address after the # (…/limagame/#/settings/display), so a player can
    type one to go there, reload without losing their place, and use the browser's Back and Forward.
@@ -30,6 +31,7 @@ const TRACKING: Record<TrackingTab, string> = { overview: 'overview', sustainabi
 const POWER_TABS: Record<PowerTab, string> = { build: 'build', today: 'today', impact: 'impact', history: 'history' };
 const MARKET_TABS: Record<MarketTab, string> = { sell: 'sell', restaurant: 'restaurant', nutrition: 'nutrition', sales: 'sales' };
 const STORE_TABS: Record<StoreTab, string> = { store: 'store', harvest: 'harvest', produce: 'produce' };
+const FOREST_TABS: Record<PlantKind, string> = { tree: 'trees', bush: 'bushes', grass: 'grasses' };
 const SECURITY: Record<SecurityTab, string> = { protect: 'protect', risk: 'risks', reports: 'night-reports' };
 const GLOSSARY: Record<GlossaryTab, string> = { basics: 'basics', feed: 'fertilizer', protect: 'sprays', pests: 'pests', seed: 'seeds', tools: 'tools', machines: 'tractors', water: 'water-and-storage', animals: 'animals', power: 'power-and-climate' };
 const EVENTS: Record<EventsTab, string> = { now: 'happening-now', days: 'special-days', regions: 'regions', donate: 'donate' };
@@ -114,6 +116,8 @@ function modalPath(s: GameState, m: Modal): string {
       return `/greenhouse/bed-${m.bed + 1}`;
     case 'storehouse':
       return `/storehouse/${STORE_TABS[m.tab ?? 'store']}`;
+    case 'forest':
+      return `/mini-forest/${FOREST_TABS[m.tab ?? 'tree']}${m.plant ? `/${m.plant}` : ''}`;
     case 'glossary':
       return `/farm-words/${GLOSSARY[m.tab ?? 'basics']}`;
     case 'events':
@@ -246,6 +250,13 @@ function modalFor(s: GameState, path: string[]): Modal | null | 'bad' {
     if (parts.length > 2) return 'bad';
     const n = second === undefined ? 1 : Number(second.replace(/^bed-?/, ''));
     return Number.isInteger(n) && n >= 1 && n <= 4 ? { kind: 'greenhouse', bed: n - 1 } : 'bad';
+  }
+  if (first === 'mini-forest') {
+    const t = second === undefined ? 'tree' : key(FOREST_TABS, second);
+    if (!t || parts.length > 3) return 'bad';
+    if (parts[2] === undefined) return { kind: 'forest', tab: t };
+    const plant = PLANTS.find(p => p.id === parts[2] && p.kind === t);
+    return plant ? { kind: 'forest', tab: t, plant: plant.id } : 'bad';
   }
   if (first === 'storehouse') {
     const t = tab(STORE_TABS);

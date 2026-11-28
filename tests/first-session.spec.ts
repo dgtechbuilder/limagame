@@ -54,16 +54,16 @@ test('the story so far: sign for the farm, play last season, press =, turn over 
   await closeCheer(page, 'Congratulations!');
   await expect(card.locator('.story-sign')).toHaveText('Wanjiku', { timeout: 5000 });
   await expect(card).toContainText('Signed. This farm is yours, Wanjiku.');
-  // then the cows and hens that came with the farm get their morning care: Next waits for all three jobs
-  await expect(card.locator('.story-wait')).toHaveText('Care for your cows and hens to go on');
+  // then the first morning's work, two jobs for the crops and two for the animals: Next waits for all four
+  await expect(card.locator('.story-wait')).toHaveText('Do the morning work to go on');
   await expect(next).toHaveCount(0);
-  await page.getByRole('button', { name: 'Feed the cows', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Feed the cows: done' })).toBeVisible();
-  await expect(next).toHaveCount(0);
-  await page.getByRole('button', { name: 'Water the hens', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Water the hens: done' })).toBeVisible();
+  for (const job of ['Prepare the soil', 'Water the seedlings', 'Feed the cows']) {
+    await page.getByRole('button', { name: job, exact: true }).click();
+    await expect(page.getByRole('button', { name: `${job}: done` })).toBeVisible();
+    await expect(next).toHaveCount(0);
+  }
   await page.getByRole('button', { name: 'Collect the eggs', exact: true }).click();
-  await expect(page.locator('.story-cheer-line')).toHaveText(/cows give milk and hens lay eggs/, { timeout: 5000 });
+  await expect(page.locator('.story-cheer-line')).toHaveText(/seedlings are watered.*cows give milk and hens lay eggs/, { timeout: 5000 });
   await closeCheer(page, 'Well done, Wanjiku!');
   await next.click();
 

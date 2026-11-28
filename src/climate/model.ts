@@ -25,7 +25,7 @@ import { FORECASTS, WATER_TOO_MUCH } from '../trials/model';
 
 /* ---------------- what is tracked ---------------- */
 
-export type Source = 'fuel' | 'fertilizer' | 'manure' | 'chemicals' | 'water' | 'seed' | 'storage' | 'transport' | 'soil' | 'livestock' | 'cooking';
+export type Source = 'fuel' | 'fertilizer' | 'manure' | 'chemicals' | 'water' | 'seed' | 'storage' | 'transport' | 'soil' | 'livestock' | 'cooking' | 'trees';
 
 export const SOURCES: { id: Source; label: string; fix: string }[] = [
   { id: 'fertilizer', label: 'Fertilizer', fix: 'Use manure or beans for some nitrogen; never double-dose.' },
@@ -39,6 +39,7 @@ export const SOURCES: { id: Source; label: string; fix: string }[] = [
   { id: 'soil', label: 'Bare soil', fix: 'Plant soon after clearing, or mulch: bare ground loses carbon.' },
   { id: 'livestock', label: 'Cows and hens', fix: 'Good forage and spreading or digesting manure cut methane.' },
   { id: 'cooking', label: 'Cooking', fix: 'An efficient stove or biogas burns less wood.' },
+  { id: 'trees', label: 'Trees felled', fix: 'Take the fruit, nuts, pods and cut grass instead: the plants live on and keep their carbon.' },
 ];
 
 export interface Footprint {
@@ -152,7 +153,7 @@ export interface PayState {
 export const initialPay: PayState = { day: null, creditsAt: 0, paid: 0, creditsPaid: 0, payments: [], plotDays: { farmed: 0, bare: 0, idle: 0 }, landKg: { stored: 0, lost: 0 }, areas: {} };
 export const payOf = (c: ClimateState): PayState => ({ ...initialPay, ...(c.pay ?? {}) });
 
-const noSources = (): Record<Source, number> => ({ fuel: 0, fertilizer: 0, manure: 0, chemicals: 0, water: 0, seed: 0, storage: 0, transport: 0, soil: 0, livestock: 0, cooking: 0 });
+const noSources = (): Record<Source, number> => ({ fuel: 0, fertilizer: 0, manure: 0, chemicals: 0, water: 0, seed: 0, storage: 0, transport: 0, soil: 0, livestock: 0, cooking: 0, trees: 0 });
 
 export const initialClimate: ClimateState = {
   total: ZERO,
