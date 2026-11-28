@@ -14,7 +14,7 @@ import { CHECK_DAYS, CROP_WORDS, checkKey, cropOf, farmName, harvestFarm, hazard
 import { REST } from '../soil/model';
 import { footstep, type Ground } from '../audio/ambience';
 import { SB } from '../art/storybook';
-import { Diners, RESTAURANT_AT, RESTAURANT_DOOR, RESTAURANT_FRIDGE, restaurantInside, restaurantShell } from './restaurant';
+import { Diners, RESTAURANT_AT, RESTAURANT_DOOR, RESTAURANT_DOOR_GAP, RESTAURANT_FRIDGE, RESTAURANT_FURNITURE, restaurantInside, restaurantShell } from './restaurant';
 import { built, farmNight, farmSounds, hearAt, powerOn, workDone, working, type HumSpot } from '../audio/farm';
 import {
   FULL,
@@ -46,6 +46,9 @@ import {
   STOREHOUSE_AT,
   STORAGE_AT,
   ghBedCenter,
+  HOUSE_AT,
+  TOOL_SHED_AT,
+  GARAGE_AT,
   followUpLeft,
   routineLeft,
   type Carry,
@@ -70,7 +73,6 @@ import {
   flowers,
   grassClump,
   hailTile,
-  house,
   maizeTile,
   kaleTile,
   makeArrow,
@@ -96,7 +98,6 @@ import {
   rock,
   rockPile,
   roundRect,
-  shed,
   sharpText,
   signTexture,
   stall,
@@ -116,6 +117,21 @@ import {
   lampPole,
   roofedShed,
   zeroGrazing,
+  shedRoof,
+  wallRects,
+  houseShell,
+  houseInside,
+  HOUSE,
+  HOUSE_FURNITURE,
+  toolShedShell,
+  toolShedInside,
+  TOOL_SHED,
+  TOOL_SHED_FURNITURE,
+  garageShell,
+  garageInside,
+  GARAGE,
+  GARAGE_FURNITURE,
+  type DoorSide,
   crate,
   glassHouse,
   glassMaterial,
@@ -331,7 +347,80 @@ interface Rect {
   x1: number;
   z0: number;
   z1: number;
+  /** how close the farmer comes (0.3 if not given; a walk-in building's walls and furniture let them closer) */
+  pad?: number;
 }
+
+/** A walk-in building's floor, and the way in: just outside its door and just inside it (a walk from outside to a spot
+    inside, or back out, goes through the door). */
+interface Room {
+  x0: number;
+  x1: number;
+  z0: number;
+  z1: number;
+  out: THREE.Vector2;
+  in: THREE.Vector2;
+  /** what the way round it goes round, if more than the building (the storehouse and the storage annex on its side) */
+  block?: Rect;
+}
+
+/** Does the walk from a to b cross the box (Liang–Barsky)? */
+function crosses(a: THREE.Vector2, b: THREE.Vector2, x0: number, x1: number, z0: number, z1: number) {
+  let t0 = 0;
+  let t1 = 1;
+  const dx = b.x - a.x;
+  const dz = b.y - a.y;
+  for (const [p, q] of [[-dx, a.x - x0], [dx, x1 - a.x], [-dz, a.y - z0], [dz, z1 - a.y]] as const) {
+    if (p === 0) {
+      if (q < 0) return false;
+      continue;
+    }
+    const r = q / p;
+    if (p < 0) t0 = Math.max(t0, r);
+    else t1 = Math.min(t1, r);
+    if (t0 > t1) return false;
+  }
+  return true;
+}
+
+/** The corners to walk by so a walk from a to b goes round a building rather than into its wall (none if the way is
+    clear): the shortest way through the building's four outer corners. */
+function aroundRoom(room: Room, a: THREE.Vector2, b: THREE.Vector2): THREE.Vector2[] {
+  const r = room.block ?? room;
+  const m = 0.3;
+  const blocked = (p: THREE.Vector2, q: THREE.Vector2) => crosses(p, q, r.x0 - m, r.x1 + m, r.z0 - m, r.z1 + m);
+  if (!blocked(a, b)) return [];
+  const c = 0.75;
+  const corners = [new THREE.Vector2(r.x0 - c, r.z0 - c), new THREE.Vector2(r.x1 + c, r.z0 - c), new THREE.Vector2(r.x1 + c, r.z1 + c), new THREE.Vector2(r.x0 - c, r.z1 + c)];
+  // a, the corners, b: the shortest way, by Dijkstra over the six points
+  const pts = [a, ...corners, b];
+  const dist = pts.map((_, i) => (i ? Infinity : 0));
+  const prev = pts.map(() => -1);
+  const done = pts.map(() => false);
+  for (;;) {
+    let u = -1;
+    for (let i = 0; i < pts.length; i++) if (!done[i] && (u < 0 || dist[i] < dist[u])) u = i;
+    if (u < 0 || dist[u] === Infinity) break;
+    done[u] = true;
+    for (let v = 0; v < pts.length; v++) {
+      if (done[v] || blocked(pts[u], pts[v])) continue;
+      const d = dist[u] + pts[u].distanceTo(pts[v]);
+      if (d < dist[v]) {
+        dist[v] = d;
+        prev[v] = u;
+      }
+    }
+  }
+  const way: THREE.Vector2[] = [];
+  for (let v = prev[pts.length - 1]; v > 0; v = prev[v]) way.unshift(pts[v]);
+  return way;
+}
+
+/** How close the farmer comes to a walk-in building's walls and the things inside it. */
+const WALL_PAD = 0.2;
+/** The greenhouse's door, in the wall facing the market path, and the storehouse's, in its back wall on the lane. */
+const GH_DOOR = { side: 'x+' as const, at: 0, width: 0.9 };
+const SH_DOOR = { side: 'z-' as const, at: STOREHOUSE_AT.door, width: 0.95 };
 
 const BOUNDS: Rect = { x0: -21.6, x1: 21.6, z0: -20.4, z1: 16.8 };
 
@@ -577,7 +666,28 @@ export class FarmWorld {
 
   walkTo(x: number, z: number) {
     this.route = null;
-    this.target = new THREE.Vector2(x, z);
+    // into a building, out of one, or from one to another: by their doors
+    const from = this.roomAt(this.pos.x, this.pos.y);
+    const to = this.roomAt(x, z);
+    if (from === to) {
+      this.target = new THREE.Vector2(x, z);
+      return;
+    }
+    const goal = new THREE.Vector2(x, z);
+    const stops: THREE.Vector2[] = [];
+    let here = this.pos.clone();
+    if (from) {
+      stops.push(from.in, from.out);
+      here = from.out;
+    }
+    if (to) {
+      // round the corners of the building the farmer just left, and of the one they go into, to its door
+      stops.push(...(from ? aroundRoom(from, here, to.out) : []), ...aroundRoom(to, here, to.out), to.out, to.in);
+    } else if (from) stops.push(...aroundRoom(from, here, goal));
+    stops.push(goal);
+    const [first, ...rest] = stops.map(v => v.clone());
+    this.route = { stops: rest, then: () => {} };
+    this.target = first;
   }
 
   /** Walk spot by spot (round a building), then `then()` on the last one. Anything that stops the walk on the way (a
@@ -675,8 +785,6 @@ export class FarmWorld {
       smooth.push({ geo: roundRect(x0, z0, x1, z1, 1.0), color: C.path, m: at(0, 0.014, 0) });
     }
     // buildings
-    smooth.push(...place(house(), at(0, 0, -18.6)));
-    smooth.push(...place(shed(), at(-18.6, 0, 0, { ry: Math.PI / 2 })));
     smooth.push(...place(stall(), at(0, 0, 15.6, { ry: Math.PI })));
     smooth.push(...place(board(), at(4.4, 0, -12.4)));
     // partner billboards (a slot with no partner has no billboard): one pole each, the only thing that blocks
@@ -714,7 +822,7 @@ export class FarmWorld {
     smooth.push(...fence(-21.4, -20.4, -21.4, -11.6));
     // trees, bushes, grass, rocks, flowers on the grass around
     const trees: [number, number, number][] = [
-      [-21.2, 8.2, 1],
+      [-21.4, 9.8, 0.8],
       [-6.4, 16.6, 0.8],
       [-6.8, -19.4, 0.9],
       [13.2, -19.6, 0.9],
@@ -786,8 +894,6 @@ export class FarmWorld {
 
     // what the farmer can't walk through
     this.rects.push(
-      { x0: -3.5, x1: 3.5, z0: -21.0, z1: -16.2 },
-      { x0: -20.6, x1: -16.9, z0: -2.8, z1: 2.8 },
       { x0: -2.3, x1: 2.3, z0: 14.7, z1: 16.6 },
       { x0: -21.6, x1: -11.7, z0: -20.6, z1: -11.15 },
       { x0: 6.9, x1: 9.5, z0: -19.4, z1: -17.4 },
@@ -1013,6 +1119,7 @@ export class FarmWorld {
     this.oxen.visible = false;
     this.scene.add(this.oxen);
     this.buildPower();
+    this.buildWalkIns();
     this.buildGreenhouse();
     this.buildRestaurant();
     this.buildStorehouse();
@@ -1167,13 +1274,63 @@ export class FarmWorld {
   private storeKey = '';
 
   /** A glass building: its solid frame (casting shadows) and its see-through panes, at (x, z). */
-  private addGlassHouse(x: number, z: number, parts: { frame: Part[]; glass: Part[] }, opacity: number) {
+  private addGlassHouse(x: number, z: number, parts: { frame: Part[]; glass: Part[]; roof?: Part[] }, opacity: number, roofOpacity = 0.42) {
     const fm = new THREE.Mesh(merge(place(parts.frame, at(x, 0, z))), vcMaterial(true));
     fm.castShadow = true;
     fm.receiveShadow = true;
     const gm = new THREE.Mesh(merge(place(parts.glass, at(x, 0, z))), glassMaterial(opacity));
     gm.renderOrder = 3;
     this.scene.add(fm, gm);
+    // a tinted roof: see-through, and it lets the sun through (no shadow), so the farmer inside stays in sight
+    if (parts.roof?.length) {
+      const rm = new THREE.Mesh(merge(place(parts.roof, at(x, 0, z))), glassMaterial(roofOpacity));
+      rm.renderOrder = 3;
+      this.scene.add(rm);
+    }
+  }
+
+  /** The walk-in buildings: the doors the farmer goes in and out by. */
+  private rooms: Room[] = [];
+
+  /** A building the farmer can walk into, at (x, z): its walls (the door left open), the things inside it to walk
+      round (local rects), and its way in. */
+  private addWalkIn(x: number, z: number, o: { w: number; d: number; door: { side: DoorSide; at: number; width: number } }, furniture: readonly (readonly [number, number, number, number])[] = [], block?: Rect) {
+    for (const r of wallRects(x, z, o)) this.rects.push({ ...r, pad: WALL_PAD });
+    for (const [x0, x1, z0, z1] of furniture) this.rects.push({ x0: x + x0, x1: x + x1, z0: z + z0, z1: z + z1, pad: WALL_PAD });
+    const { side, at: t } = o.door;
+    const onX = side === 'x+' || side === 'x-';
+    const sg = side === 'x+' || side === 'z+' ? 1 : -1;
+    const wall = onX ? (sg * o.w) / 2 : (sg * o.d) / 2;
+    const pt = (n: number) => (onX ? new THREE.Vector2(x + wall + sg * n, z + t) : new THREE.Vector2(x + t, z + wall + sg * n));
+    // a wide-open front (the tool shed's, the garage's) needs no way in: the farmer walks straight in
+    if (o.door.width > 1.5) return;
+    this.rooms.push({ x0: x - o.w / 2, x1: x + o.w / 2, z0: z - o.d / 2, z1: z + o.d / 2, out: pt(0.75), in: pt(-0.55), block });
+  }
+
+  /** The walk-in building a spot is in, if any. */
+  private roomAt(x: number, z: number) {
+    return this.rooms.find(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1) ?? null;
+  }
+
+  /** The farmhouse, the tool shed and the tractor's garage: walk-in, under see-through roofs. */
+  private buildWalkIns() {
+    const add = (x: number, z: number, shell: { frame: Part[]; glass: Part[]; roof: Part[] }, inside: Part[], roofOpacity: number) => {
+      const fm = new THREE.Mesh(merge(place(inside, at(x, 0, z))), vcMaterial(true));
+      fm.castShadow = true;
+      fm.receiveShadow = true;
+      this.scene.add(fm);
+      this.addGlassHouse(x, z, shell, 0.14, roofOpacity);
+    };
+    const h = HOUSE_AT;
+    add(h.x, h.z, houseShell(), houseInside(), 0.45);
+    this.addWalkIn(h.x, h.z, HOUSE, HOUSE_FURNITURE);
+    const t = TOOL_SHED_AT;
+    add(t.x, t.z, toolShedShell(), toolShedInside(), 0.4);
+    this.addWalkIn(t.x, t.z, TOOL_SHED, TOOL_SHED_FURNITURE);
+    const g = GARAGE_AT;
+    add(g.x, g.z, garageShell(), garageInside(), 0.4);
+    this.addBoard(g.x, 1.75, g.z + GARAGE.d / 2 + 0.06, 'GARAGE', 'tractor · tools · spares', C.roofDark);
+    this.addWalkIn(g.x, g.z, GARAGE, GARAGE_FURNITURE);
   }
 
   /** A name board over a door, tilted to the camera. */
@@ -1199,10 +1356,13 @@ export class FarmWorld {
     const fm = new THREE.Mesh(merge(floor), vcMaterial(true));
     fm.receiveShadow = true;
     this.scene.add(fm);
-    this.addGlassHouse(g.x, g.z, glassHouse({ w: g.w, d: g.d, h: 1.35, rise: 0.8, frame: '#f4f7f6', glass: '#bfe6f0', door: { side: 'x+', at: 0, width: 0.9 } }), 0.15);
+    this.addGlassHouse(g.x, g.z, glassHouse({ w: g.w, d: g.d, h: 1.35, rise: 0.8, frame: '#f4f7f6', glass: '#bfe6f0', door: GH_DOOR }), 0.15);
     this.addBoard(g.x + 1.2, 1.6, g.z + g.d / 2 + 0.06, 'GREENHOUSE', '4 beds under glass', '#2f8a3a');
-    // the farmer walks round it, in by its door (the button at the door opens it)
-    this.rects.push({ x0: g.x - g.w / 2, x1: g.x + g.w / 2, z0: g.z - g.d / 2, z1: g.z + g.d / 2 });
+    // the farmer walks in by its door, down the aisles between the beds (the button at the door opens it)
+    this.addWalkIn(g.x, g.z, { w: g.w, d: g.d, door: GH_DOOR }, [0, 1, 2, 3].map(i => {
+      const c = ghBedCenter(i);
+      return [c.x - g.x - GH_BED.w / 2 + 0.1, c.x - g.x + GH_BED.w / 2 - 0.1, c.z - g.z - GH_BED.d / 2 + 0.1, c.z - g.z + GH_BED.d / 2 - 0.1] as const;
+    }));
     for (let i = 0; i < 4; i++) {
       const c = ghBedCenter(i);
       const badge = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false }));
@@ -1230,7 +1390,7 @@ export class FarmWorld {
     this.scene.add(fm);
     this.addGlassHouse(r.x, r.z, restaurantShell(), 0.12);
     this.addBoard(r.x + 1.6, 2.25, r.z + r.d / 2 + 0.08, 'RESTAURANT', 'good food from the farm', SB.roof);
-    this.rects.push({ x0: r.x - r.w / 2, x1: r.x + r.w / 2, z0: r.z - r.d / 2, z1: r.z + r.d / 2 });
+    this.addWalkIn(r.x, r.z, { w: r.w, d: r.d, door: RESTAURANT_DOOR_GAP }, RESTAURANT_FURNITURE);
     this.dinerCrowd = new Diners(this.scene);
   }
 
@@ -1248,9 +1408,23 @@ export class FarmWorld {
     fm.receiveShadow = true;
     fm.castShadow = true;
     this.scene.add(fm);
-    this.addGlassHouse(h.x, h.z, glassHouse({ w: h.w, d: h.d, h: 1.6, rise: 0.6, frame: '#2f5d50', glass: '#d6ecef', door: { side: 'z-', at: h.door, width: 0.95 }, plinth: { h: 0.4, color: C.woodPlank } }), 0.15);
+    this.addGlassHouse(h.x, h.z, glassHouse({ w: h.w, d: h.d, h: 1.6, rise: 0.6, frame: '#2f5d50', glass: '#d6ecef', door: SH_DOOR, plinth: { h: 0.4, color: C.woodPlank } }), 0.15);
     this.addBoard(h.x, 1.85, h.z + h.d / 2 + 0.06, 'STOREHOUSE', 'store · harvest · produce', '#2f5d50');
-    this.rects.push({ x0: h.x - h.w / 2, x1: h.x + h.w / 2, z0: h.z - h.d / 2, z1: h.z + h.d / 2 });
+    // walk-in by the door in the back wall: the shelves along the back and the left wall, the pallet, the work table
+    // (the way round to its door goes round the storage annex on its right too)
+    const a = STORAGE_AT;
+    this.addWalkIn(
+      h.x,
+      h.z,
+      { w: h.w, d: h.d, door: SH_DOOR },
+      [
+        [-2.25, 0.55, -1.9, -1.35],
+        [-2.5, -1.95, -0.6, 1.4],
+        [-1.15, 0.35, 0.7, 1.6],
+        [0.95, 2.05, 0.5, 1.3],
+      ],
+      { x0: h.x - h.w / 2, x1: a.x + a.w / 2, z0: Math.min(h.z - h.d / 2, a.z - a.d / 2), z1: Math.max(h.z + h.d / 2, a.z + a.d / 2) },
+    );
   }
 
   /** The storage annex against the storehouse's right-hand wall: a big freezer with its own door (src/world/models.ts
@@ -1529,6 +1703,10 @@ export class FarmWorld {
       m.castShadow = true;
       m.receiveShadow = true;
       m.visible = false;
+      // its roof is see-through, as the farm's buildings' are: the cows under it stay in sight
+      const roof = new THREE.Mesh(merge(place(shedRoof(id), at(-17.4, 0, -18.4))), glassMaterial(0.45));
+      roof.renderOrder = 3;
+      m.add(roof);
       this.sheds[id] = m;
       this.scene.add(m);
     }
@@ -2377,8 +2555,14 @@ export class FarmWorld {
       this.heading = Math.atan2(dir.x, dir.y);
       const step = speed * len * dt;
       const lands = reach <= step;
-      const next = this.pos.clone().addScaledVector(dir, Math.min(reach, step));
-      this.collide(next);
+      // in short hops, so a fast farmer (or a long frame) never steps through a thin wall
+      const go = Math.min(reach, step);
+      const hops = Math.max(1, Math.ceil(go / 0.15));
+      const next = this.pos.clone();
+      for (let i = 0; i < hops; i++) {
+        next.addScaledVector(dir, go / hops);
+        this.collide(next);
+      }
       const blocked = !lands && !!this.target && next.distanceTo(this.pos) < speed * dt * 0.1;
       this.pos.copy(next);
       if (lands && this.target) {
@@ -2407,10 +2591,11 @@ export class FarmWorld {
       }
     }
     for (const r of this.rects) {
-      const x0 = r.x0 - 0.3;
-      const x1 = r.x1 + 0.3;
-      const z0 = r.z0 - 0.3;
-      const z1 = r.z1 + 0.3;
+      const pad = r.pad ?? 0.3;
+      const x0 = r.x0 - pad;
+      const x1 = r.x1 + pad;
+      const z0 = r.z0 - pad;
+      const z1 = r.z1 + pad;
       if (p.x > x0 && p.x < x1 && p.y > z0 && p.y < z1) {
         const out = [p.x - x0, x1 - p.x, p.y - z0, z1 - p.y];
         const m = Math.min(...out);

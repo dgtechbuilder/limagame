@@ -99,6 +99,13 @@ export const STOREHOUSE_AT = { x: 7.4, z: 13.0, w: 5.0, d: 3.8, door: 1.6 };
     room). Its own freezer door is in the front wall, facing the camera. */
 export const STORAGE_AT = { x: STOREHOUSE_AT.x + STOREHOUSE_AT.w / 2 + 1.5, z: 13.2, w: 3.0, d: 3.2, h: 2.25 };
 
+/** The walk-in buildings' places on the farm (built in src/world/models.ts: their sizes, doors and insides). The
+    farmhouse at the top of the yard, the tool shed on the left (open to the yard), and the tractor's garage right
+    behind where the tractor waits (the tractor at x -17.4, z 6.4 faces +x, so behind is towards the west fence). */
+export const HOUSE_AT = { x: 0, z: -18.6 };
+export const TOOL_SHED_AT = { x: -18.75, z: 0 };
+export const GARAGE_AT = { x: -20.5, z: 6.4 };
+
 /** Where the farm's sign stands: at the path side, below the plot. */
 export const signOf = (farm: number) => ({ x: PLOTS[farm].x + PLOT_W / 2 + 0.35, z: PLOTS[farm].z + PLOT_D / 2 + 0.3 });
 

@@ -87,9 +87,22 @@ export function restaurantInside(): Part[] {
   return out;
 }
 
+/** The door's gap in the east wall. */
+export const RESTAURANT_DOOR_GAP = { side: 'x+' as const, at: DOOR_AT, width: 1.1 };
+/** What the farmer walks round inside the hall (hall x0, x1, z0, z1): the kitchen counter and the fridge, the pass, the
+    tables with their stools, the pot plants by the door. The aisle in front of the tables is left clear. */
+export const RESTAURANT_FURNITURE = [
+  [-3.35, 2.25, -2.6, -1.8],
+  [2.55, 3.25, -2.6, -1.8],
+  [-2.75, 0.95, -1.28, -0.82],
+  [-3.25, 2.45, 0.6, 1.2],
+  [3.1, 3.5, -0.95, -0.55],
+  [3.1, 3.5, 1.0, 1.4],
+] as const;
+
 /** The walls and the roof: cream walls to the waist, glass above them and over the roof, terracotta frames. */
 export const restaurantShell = () =>
-  glassHouse({ w: RESTAURANT_AT.w, d: RESTAURANT_AT.d, h: RESTAURANT_AT.h, rise: 0.7, frame: SB.roof, glass: '#d6ecef', door: { side: 'x+', at: DOOR_AT, width: 1.1 }, plinth: { h: 0.75, color: SB.wall } });
+  glassHouse({ w: RESTAURANT_AT.w, d: RESTAURANT_AT.d, h: RESTAURANT_AT.h, rise: 0.7, frame: SB.roof, glass: '#d6ecef', door: RESTAURANT_DOOR_GAP, plinth: { h: 0.75, color: SB.wall } });
 
 /** The way in: outside the door, and just inside it. */
 export const RESTAURANT_DOOR = world(RESTAURANT_AT.w / 2 + 0.9, DOOR_AT);

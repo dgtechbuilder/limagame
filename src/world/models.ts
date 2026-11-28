@@ -872,38 +872,124 @@ export function flowers(): Part[] {
   return out;
 }
 
-export function house(): Part[] {
-  const roofL = new THREE.BoxGeometry(1, 1, 1);
-  return [
-    { geo: G.box, color: C.wall, m: at(0, 1.5, 0, { sx: 6.4, sy: 3, sz: 4.4 }) },
-    { geo: roofL, color: C.roof, m: at(0, 3.55, 1.15, { sx: 7.2, sy: 0.3, sz: 3.0, rx: -0.62 }) },
-    { geo: roofL, color: C.roofDark, m: at(0, 3.55, -1.15, { sx: 7.2, sy: 0.3, sz: 3.0, rx: 0.62 }) },
-    { geo: G.box, color: C.wall, m: at(-3.15, 3.45, 0, { sx: 0.1, sy: 1.2, sz: 3.6 }) },
-    { geo: G.box, color: C.wall, m: at(3.15, 3.45, 0, { sx: 0.1, sy: 1.2, sz: 3.6 }) },
-    { geo: G.box, color: '#a25a3c', m: at(2.0, 4.2, -0.6, { sx: 0.6, sy: 1.4, sz: 0.6 }) },
-    { geo: G.box, color: '#8b4f2e', m: at(0, 1.05, 2.22, { sx: 1.2, sy: 2.1, sz: 0.1 }) },
-    { geo: G.sphere, color: '#f2c230', m: at(0.4, 1.05, 2.3, { s: 0.12 }) },
-    { geo: G.box, color: C.white, m: at(-2.0, 1.7, 2.21, { sx: 1.3, sy: 1.1, sz: 0.08 }) },
-    { geo: G.box, color: C.window, m: at(-2.0, 1.7, 2.26, { sx: 1.05, sy: 0.85, sz: 0.06 }) },
-    { geo: G.box, color: C.white, m: at(2.0, 1.7, 2.21, { sx: 1.3, sy: 1.1, sz: 0.08 }) },
-    { geo: G.box, color: C.window, m: at(2.0, 1.7, 2.26, { sx: 1.05, sy: 0.85, sz: 0.06 }) },
-    { geo: G.box, color: C.woodPlank, m: at(0, 0.12, 2.75, { sx: 2.2, sy: 0.24, sz: 1.0 }) },
-    { geo: G.box, color: '#f3a65a', m: at(-2.0, 1.12, 2.4, { sx: 1.4, sy: 0.18, sz: 0.3 }) },
-    { geo: G.box, color: '#f3a65a', m: at(2.0, 1.12, 2.4, { sx: 1.4, sy: 0.18, sz: 0.3 }) },
-  ];
-}
+/* ---------------- walk-in buildings: the house, the tool shed and the tractor garage ----------------
+   Each is a glass house (glassHouse below) with solid walls to the waist, glass above, and a tinted see-through roof,
+   so the farmer stays in sight inside. Built at the origin, the front (+z) towards the camera. */
 
-export function shed(): Part[] {
+/** The farmhouse: w × d, its door in the middle of the front wall. */
+export const HOUSE = { w: 6.4, d: 4.4, h: 2.3, door: { side: 'z+' as const, at: 0, width: 1.2 } };
+export const houseShell = () => {
+  const s = glassHouse({ w: HOUSE.w, d: HOUSE.d, h: HOUSE.h, rise: 1.1, frame: C.white, glass: '#dceff3', door: HOUSE.door, plinth: { h: 1.0, color: C.wall }, roof: C.roof });
+  // the chimney and the porch step
+  s.frame.push(
+    { geo: G.box, color: '#a25a3c', m: at(2.0, 3.1, -0.9, { sx: 0.55, sy: 1.6, sz: 0.55 }) },
+    { geo: G.box, color: C.woodPlank, m: at(0, 0.12, HOUSE.d / 2 + 0.5, { sx: 2.2, sy: 0.24, sz: 1.0 }) },
+  );
+  return s;
+};
+/** Inside the house: a wooden floor, the bed (back left), a table and two chairs, the kitchen dresser (back right). */
+export function houseInside(): Part[] {
+  const { w, d } = HOUSE;
   return [
-    { geo: G.box, color: C.woodPlank, m: at(0, 1.4, -1.5, { sx: 5, sy: 2.8, sz: 0.25 }) },
-    { geo: G.box, color: C.woodPlank, m: at(-2.4, 1.4, 0, { sx: 0.25, sy: 2.8, sz: 3.2 }) },
-    { geo: G.box, color: C.woodPlank, m: at(2.4, 1.4, 0, { sx: 0.25, sy: 2.8, sz: 3.2 }) },
-    { geo: G.box, color: '#8b5a2b', m: at(0, 3.0, 0, { sx: 5.6, sy: 0.25, sz: 4.0, rx: 0.12 }) },
-    { geo: G.box, color: '#a8703a', m: at(-1.4, 0.45, -0.8, { sx: 0.9, sy: 0.9, sz: 0.9 }) },
-    { geo: G.box, color: '#a8703a', m: at(1.5, 0.35, -0.9, { sx: 0.7, sy: 0.7, sz: 0.7 }) },
-    { geo: G.box, color: '#7b4a22', m: at(0, 0.02, 0, { sx: 4.6, sy: 0.04, sz: 3.0 }) },
+    { geo: G.box, color: '#b98a55', m: at(0, 0.04, 0, { sx: w + 0.1, sy: 0.08, sz: d + 0.1 }) },
+    { geo: G.box, color: '#d9a46b', m: at(0, 0.085, 0, { sx: w - 0.1, sy: 0.02, sz: d - 0.1 }) },
+    // a woven rug
+    { geo: G.box, color: '#e8c867', m: at(-0.2, 0.1, 0.5, { sx: 2.2, sy: 0.01, sz: 1.4 }) },
+    { geo: G.box, color: '#d9573c', m: at(-0.2, 0.105, 0.5, { sx: 1.8, sy: 0.01, sz: 0.2 }) },
+    // the bed: a wooden frame, a red blanket, a white pillow
+    { geo: G.box, color: C.woodDark, m: at(-2.3, 0.3, -1.1, { sx: 1.4, sy: 0.4, sz: 2.0 }) },
+    { geo: G.box, color: '#d9573c', m: at(-2.3, 0.55, -0.9, { sx: 1.3, sy: 0.14, sz: 1.5 }) },
+    { geo: G.box, color: '#ffffff', m: at(-2.3, 0.58, -1.8, { sx: 1.1, sy: 0.16, sz: 0.4 }) },
+    { geo: G.box, color: C.woodDark, m: at(-2.3, 0.7, -2.08, { sx: 1.4, sy: 0.8, sz: 0.1 }) },
+    // the table, a bowl of fruit, two chairs
+    { geo: G.cyl, color: C.woodPlank, m: at(0.4, 0.72, -0.7, { sx: 1.1, sy: 0.06, sz: 1.1 }) },
+    { geo: G.cyl6, color: C.woodDark, m: at(0.4, 0.38, -0.7, { sx: 0.12, sy: 0.7, sz: 0.12 }) },
+    { geo: G.sphere, color: '#f2c230', m: at(0.35, 0.82, -0.7, { s: 0.14 }) },
+    { geo: G.sphere, color: '#e84a3a', m: at(0.5, 0.82, -0.62, { s: 0.12 }) },
+    { geo: G.box, color: C.wood, m: at(-0.35, 0.4, -0.7, { sx: 0.42, sy: 0.08, sz: 0.42 }) },
+    { geo: G.box, color: C.wood, m: at(-0.55, 0.7, -0.7, { sx: 0.06, sy: 0.6, sz: 0.42 }) },
+    { geo: G.box, color: C.wood, m: at(1.15, 0.4, -0.7, { sx: 0.42, sy: 0.08, sz: 0.42 }) },
+    { geo: G.box, color: C.wood, m: at(1.35, 0.7, -0.7, { sx: 0.06, sy: 0.6, sz: 0.42 }) },
+    // the dresser: plates and a pot on its shelves
+    { geo: G.box, color: C.woodDark, m: at(2.2, 0.75, -1.9, { sx: 1.6, sy: 1.4, sz: 0.45 }) },
+    { geo: G.box, color: C.woodPlank, m: at(2.2, 1.0, -1.65, { sx: 1.5, sy: 0.05, sz: 0.1 }) },
+    { geo: G.cyl, color: '#ffffff', m: at(1.8, 1.2, -1.75, { sx: 0.3, sy: 0.04, sz: 0.3, rx: Math.PI / 2 }) },
+    { geo: G.cyl, color: '#7cc8f0', m: at(2.2, 1.2, -1.75, { sx: 0.3, sy: 0.04, sz: 0.3, rx: Math.PI / 2 }) },
+    { geo: G.cyl, color: '#9aa3a8', m: at(2.65, 1.6, -1.9, { sx: 0.34, sy: 0.3, sz: 0.34 }) },
   ];
 }
+/** What the farmer walks round inside the house (local rects: x0, x1, z0, z1). */
+export const HOUSE_FURNITURE = [
+  [-3.0, -1.6, -2.1, -0.1],
+  [-0.15, 0.95, -1.25, -0.15],
+  [1.4, 3.0, -2.2, -1.65],
+] as const;
+
+/** The tool shed, where the seed sacks, the fertilizer and the sprayer are kept: wide open on its front (+x, the
+    yard side, where the pickups stand). w along x, d along z. */
+export const TOOL_SHED = { w: 3.6, d: 5.4, h: 2.1, door: { side: 'x+' as const, at: 0, width: 4.4 } };
+export const toolShedShell = () => glassHouse({ w: TOOL_SHED.w, d: TOOL_SHED.d, h: TOOL_SHED.h, rise: 0.7, frame: C.woodDark, glass: '#e3efe9', door: TOOL_SHED.door, plinth: { h: 1.0, color: C.woodPlank }, roof: '#a8703a' });
+export function toolShedInside(): Part[] {
+  const { w, d } = TOOL_SHED;
+  const back = -w / 2 + 0.35;
+  const out: Part[] = [
+    { geo: G.box, color: '#7b4a22', m: at(0, 0.02, 0, { sx: w, sy: 0.04, sz: d }) },
+    // a rack along the back wall: sacks on the low shelf, tins on the high one
+    { geo: G.box, color: C.woodDark, m: at(back, 0.55, 0, { sx: 0.5, sy: 0.06, sz: d - 0.6 }) },
+    { geo: G.box, color: C.woodDark, m: at(back, 1.25, 0, { sx: 0.5, sy: 0.06, sz: d - 0.6 }) },
+    { geo: G.box, color: '#a8703a', m: at(0.3, 0.45, -1.9, { sx: 0.9, sy: 0.9, sz: 0.9 }) },
+    { geo: G.box, color: '#a8703a', m: at(0.5, 0.35, 1.9, { sx: 0.7, sy: 0.7, sz: 0.7 }) },
+  ];
+  for (const z of [-2.2, -1.6, 2.2]) for (const y of [0.55, 1.25]) out.push({ geo: G.cyl6, color: C.woodDark, m: at(back, y / 2, z, { sx: 0.06, sy: y, sz: 0.06 }) });
+  for (let i = 0; i < 5; i++) out.push({ geo: G.sphere, color: i % 2 ? '#e8d9b0' : '#dcc58e', m: at(back, 0.8, -1.8 + i * 0.85, { sx: 0.4, sy: 0.45, sz: 0.36 }) });
+  for (let i = 0; i < 6; i++) out.push({ geo: G.cyl, color: ['#2f8a3a', '#e0362b', '#2a6fd6'][i % 3], m: at(back, 1.42, -1.9 + i * 0.75, { sx: 0.22, sy: 0.3, sz: 0.22 }) });
+  // a hoe and a rake against the side wall
+  out.push({ geo: G.cyl6, color: '#8b5a2b', m: at(-0.3, 0.8, -d / 2 + 0.2, { sx: 0.05, sy: 1.6, sz: 0.05, rx: 0.15 }) });
+  out.push({ geo: G.cyl6, color: '#8b5a2b', m: at(0.2, 0.8, -d / 2 + 0.2, { sx: 0.05, sy: 1.6, sz: 0.05, rx: 0.15 }) });
+  return out;
+}
+export const TOOL_SHED_FURNITURE = [
+  [-1.8, -1.25, -2.5, 2.5],
+  [-0.15, 0.75, -2.35, -1.45],
+  [0.15, 0.85, 1.55, 2.25],
+] as const;
+
+/** The tractor's garage, right behind where the tractor waits: its whole front (+x, towards the tractor) open, a
+    workbench and the spares inside. */
+export const GARAGE = { w: 2.9, d: 4.2, h: 2.2, door: { side: 'x+' as const, at: 0, width: 3.5 } };
+export const garageShell = () => glassHouse({ w: GARAGE.w, d: GARAGE.d, h: GARAGE.h, rise: 0.6, frame: C.roofDark, glass: '#dceff3', door: GARAGE.door, plinth: { h: 1.0, color: C.wall }, roof: C.roof });
+export function garageInside(): Part[] {
+  const { w, d } = GARAGE;
+  const back = -w / 2 + 0.3;
+  const out: Part[] = [
+    // a concrete floor with an oil stain, and two wheel ramps' worth of yellow lines
+    { geo: G.box, color: '#c8c6bf', m: at(0, 0.04, 0, { sx: w + 0.1, sy: 0.08, sz: d + 0.1 }) },
+    { geo: G.cyl, color: '#8f8c85', m: at(0.3, 0.085, 0.3, { sx: 0.9, sy: 0.01, sz: 0.6 }) },
+    { geo: G.box, color: '#f2c230', m: at(0.4, 0.086, -0.75, { sx: 1.8, sy: 0.01, sz: 0.08 }) },
+    { geo: G.box, color: '#f2c230', m: at(0.4, 0.086, 0.75, { sx: 1.8, sy: 0.01, sz: 0.08 }) },
+    // the workbench along the back wall, a vice, a toolbox
+    { geo: G.box, color: C.woodDark, m: at(back, 0.45, -0.3, { sx: 0.55, sy: 0.85, sz: 1.9 }) },
+    { geo: G.box, color: C.woodPlank, m: at(back, 0.9, -0.3, { sx: 0.6, sy: 0.06, sz: 2.0 }) },
+    { geo: G.box, color: '#3a3f44', m: at(back + 0.05, 1.0, -1.0, { sx: 0.2, sy: 0.14, sz: 0.24 }) },
+    { geo: G.box, color: '#e0362b', m: at(back, 1.03, 0.3, { sx: 0.3, sy: 0.2, sz: 0.55 }) },
+    // the tool board on the back wall over the bench: a spanner, a hammer, a saw
+    { geo: G.box, color: '#e9d8a6', m: at(-w / 2 + 0.08, 1.55, -0.3, { sx: 0.04, sy: 0.6, sz: 1.6 }) },
+    { geo: G.box, color: '#7d8489', m: at(-w / 2 + 0.11, 1.55, -0.8, { sx: 0.03, sy: 0.4, sz: 0.06 }) },
+    { geo: G.box, color: '#8b5a2b', m: at(-w / 2 + 0.11, 1.5, -0.3, { sx: 0.03, sy: 0.36, sz: 0.06 }) },
+    { geo: G.box, color: '#9aa3a8', m: at(-w / 2 + 0.11, 1.55, 0.2, { sx: 0.03, sy: 0.18, sz: 0.5 }) },
+    // an oil drum and a jerrycan in the far corner
+    { geo: G.cyl, color: '#2a6fd6', m: at(back + 0.05, 0.5, 1.5, { sx: 0.55, sy: 0.9, sz: 0.55 }) },
+    { geo: G.box, color: '#e0362b', m: at(back + 0.6, 0.25, 1.65, { sx: 0.3, sy: 0.45, sz: 0.18 }) },
+  ];
+  // spare tyres, stacked by the front corner
+  for (let i = 0; i < 3; i++) out.push({ geo: G.cyl, color: '#2a2a2a', m: at(0.6, 0.12 + i * 0.22, -1.6, { sx: 0.75, sy: 0.2, sz: 0.75 }) });
+  return out;
+}
+export const GARAGE_FURNITURE = [
+  [-1.45, -0.85, -1.3, 0.7],
+  [-1.45, -0.6, 1.15, 2.1],
+  [0.2, 1.0, -2.0, -1.2],
+] as const;
 
 export function stall(): Part[] {
   const out: Part[] = [
@@ -1565,11 +1651,14 @@ export function lampPole(): Part[] {
 
 /* ---------------- the cow shed (src/livestock) ---------------- */
 
+/** The cow sheds' roofs, drawn on their own and see-through (the farm sees the cows under them). */
+export const shedRoof = (kind: 'roofed' | 'zero'): Part[] =>
+  kind === 'roofed' ? [{ geo: G.box, color: '#9aa3a8', m: at(0, 2.3, 0, { sx: 5.4, sy: 0.12, sz: 3.8, rx: 0.12 }) }] : [{ geo: G.box, color: C.roofDark, m: at(0, 2.9, 0, { sx: 6.0, sy: 0.14, sz: 4.4, rx: 0.12 }) }];
+
 /** The roofed shed: timber posts, an iron-sheet roof, a feed trough. Centred at the origin (about 5 × 3.4). */
 export function roofedShed(): Part[] {
   const out: Part[] = [];
   for (const [x, z] of [[-2.4, -1.6], [2.4, -1.6], [-2.4, 1.6], [2.4, 1.6]]) out.push({ geo: G.cyl6, color: C.woodDark, m: at(x, 1.1, z, { sx: 0.18, sy: 2.2, sz: 0.18 }) });
-  out.push({ geo: G.box, color: '#9aa3a8', m: at(0, 2.3, 0, { sx: 5.4, sy: 0.12, sz: 3.8, rx: 0.12 }) });
   out.push({ geo: G.box, color: C.woodPlank, m: at(0, 0.35, -1.5, { sx: 4.4, sy: 0.5, sz: 0.5 }) });
   out.push({ geo: G.box, color: C.hay, m: at(0, 0.62, -1.5, { sx: 4.2, sy: 0.08, sz: 0.4 }) });
   out.push({ geo: G.box, color: '#c9a85c', m: at(0, 0.04, 0.3, { sx: 4.6, sy: 0.06, sz: 2.4 }) });
@@ -1582,7 +1671,6 @@ export function zeroGrazing(): Part[] {
   out.push({ geo: G.box, color: '#e3ddcf', m: at(-2.6, 0.6, 0, { sx: 0.2, sy: 1.0, sz: 3.8 }) });
   out.push({ geo: G.box, color: '#e3ddcf', m: at(2.6, 0.6, 0, { sx: 0.2, sy: 1.0, sz: 3.8 }) });
   for (const [x, z] of [[-2.6, -1.8], [2.6, -1.8], [-2.6, 1.8], [2.6, 1.8]]) out.push({ geo: G.box, color: C.woodDark, m: at(x, 1.4, z, { sx: 0.22, sy: 2.8, sz: 0.22 }) });
-  out.push({ geo: G.box, color: C.roofDark, m: at(0, 2.9, 0, { sx: 6.0, sy: 0.14, sz: 4.4, rx: 0.12 }) });
   out.push({ geo: G.box, color: '#9aa3a8', m: at(0, 2.55, 2.25, { sx: 6.0, sy: 0.14, sz: 0.2 }) });
   out.push({ geo: G.cyl, color: '#2a6fd6', m: at(3.3, 0.7, 2.0, { sx: 0.9, sy: 1.4, sz: 0.9 }) });
   out.push({ geo: G.box, color: '#8f9396', m: at(-1.0, 0.4, -1.4, { sx: 2.6, sy: 0.5, sz: 0.5 }) });
@@ -1624,15 +1712,33 @@ function gable(x: number, y: number, d: number, rise: number): THREE.BufferGeome
   return new THREE.ShapeGeometry(sh).rotateY(Math.PI / 2).translate(x, y, 0);
 }
 
+export type DoorSide = 'x+' | 'x-' | 'z+' | 'z-';
+export interface GlassHouseOpts {
+  w: number;
+  d: number;
+  h: number;
+  rise: number;
+  frame: string;
+  glass: string;
+  /** the wall with the door, where along it (its centre, from the middle of that wall) and how wide the gap is */
+  door: { side: DoorSide; at: number; width: number };
+  /** a low solid wall under the glass */
+  plinth?: { h: number; color: string };
+  /** a tinted roof: its panes (and the gable ends) in this colour, drawn as their own see-through mesh */
+  roof?: string;
+}
+
 /** A glass building's frame and panes, built at the origin: w along x, d along z, walls h high, a gable roof rising
-    `rise` along x. `door`: the wall with the door (+x or -z) and where along it, left open. `plinth`: a solid low wall. */
-export function glassHouse(o: { w: number; d: number; h: number; rise: number; frame: string; glass: string; door: { side: 'x+' | 'z-'; at: number; width: number }; plinth?: { h: number; color: string } }) {
+    `rise` along x. `door`: the wall with the door and where along it, left open. `plinth`: a solid low wall. With
+    `roof`, the roof's panes come back on their own (`roof`), so they can be tinted and a little less clear. */
+export function glassHouse(o: GlassHouseOpts) {
   const { w, d, h, rise } = o;
   const frame: Part[] = [];
   const glass: Part[] = [];
+  const roof: Part[] = [];
   const post = (x: number, z: number, hh = h) => frame.push({ geo: G.box, color: o.frame, m: at(x, hh / 2, z, { sx: 0.07, sy: hh, sz: 0.07 }) });
   const p0 = o.plinth?.h ?? 0;
-  const inDoor = (side: 'x+' | 'z-', t: number) => o.door.side === side && Math.abs(t - o.door.at) < o.door.width / 2;
+  const inDoor = (side: DoorSide, t: number) => o.door.side === side && Math.abs(t - o.door.at) < o.door.width / 2;
   // walls: a pane between each pair of posts (about 1.25 apart), the door's gap left open
   const along = (len: number) => {
     const n = Math.max(2, Math.round(len / 1.25));
@@ -1640,13 +1746,14 @@ export function glassHouse(o: { w: number; d: number; h: number; rise: number; f
   };
   const xs = along(w);
   const zs = along(d);
+  // a post in the door's gap would stand in the way
   for (const x of xs) {
-    post(x, -d / 2);
-    post(x, d / 2);
+    if (!inDoor('z-', x)) post(x, -d / 2);
+    if (!inDoor('z+', x)) post(x, d / 2);
   }
   for (const z of zs.slice(1, -1)) {
-    post(-w / 2, z);
-    post(w / 2, z);
+    if (!inDoor('x-', z)) post(-w / 2, z);
+    if (!inDoor('x+', z)) post(w / 2, z);
   }
   const wallY = p0 + (h - p0) / 2;
   const wallH = h - p0;
@@ -1655,44 +1762,65 @@ export function glassHouse(o: { w: number; d: number; h: number; rise: number; f
   for (let i = 0; i < xs.length - 1; i++) {
     const cx = (xs[i] + xs[i + 1]) / 2;
     const len = xs[i + 1] - xs[i];
-    pane(cx, d / 2, len, true);
-    if (inDoor('z-', cx)) continue;
-    pane(cx, -d / 2, len, true);
+    if (!inDoor('z+', cx)) pane(cx, d / 2, len, true);
+    if (!inDoor('z-', cx)) pane(cx, -d / 2, len, true);
   }
   for (let i = 0; i < zs.length - 1; i++) {
     const cz = (zs[i] + zs[i + 1]) / 2;
     const len = zs[i + 1] - zs[i];
-    pane(-w / 2, cz, len, false);
-    if (inDoor('x+', cz)) continue;
-    pane(w / 2, cz, len, false);
+    if (!inDoor('x-', cz)) pane(-w / 2, cz, len, false);
+    if (!inDoor('x+', cz)) pane(w / 2, cz, len, false);
   }
-  // the door: its frame, and the door itself swung open against the wall
+  // the door: its frame, a lintel over the gap, and the door itself swung open against the wall
   const dw = o.door.width;
-  if (o.door.side === 'x+') {
-    post(w / 2, o.door.at - dw / 2, h);
-    post(w / 2, o.door.at + dw / 2, h);
-    frame.push({ geo: G.box, color: o.frame, m: at(w / 2 + 0.35, h * 0.45, o.door.at + dw / 2 + 0.02, { sx: 0.7, sy: h * 0.9, sz: 0.04 }) });
-    glass.push({ geo: G.box, color: o.glass, m: at(w / 2 + 0.35, h * 0.45, o.door.at + dw / 2 + 0.05, { sx: 0.6, sy: h * 0.8, sz: 0.02 }) });
+  const side = o.door.side;
+  const onX = side === 'x+' || side === 'x-';
+  const sg = side === 'x+' || side === 'z+' ? 1 : -1;
+  const wallAt = onX ? (sg * w) / 2 : (sg * d) / 2;
+  // a point on the door's wall: t along it, n out from it
+  const P = (t: number, n: number) => (onX ? { x: wallAt + sg * n, z: t } : { x: t, z: wallAt + sg * n });
+  for (const t of [o.door.at - dw / 2, o.door.at + dw / 2]) {
+    const q = P(t, 0);
+    post(q.x, q.z, h);
+  }
+  {
+    const q = P(o.door.at, 0);
+    frame.push({ geo: G.box, color: o.frame, m: at(q.x, h - 0.05, q.z, onX ? { sx: 0.08, sy: 0.1, sz: dw } : { sx: dw, sy: 0.1, sz: 0.08 }) });
+  }
+  // a narrow door swings open against the wall outside; a wide one (a garage's) is rolled up under the lintel
+  if (dw <= 1.4) {
+    const q = P(o.door.at + dw / 2 + 0.02, 0.35);
+    frame.push({ geo: G.box, color: o.frame, m: at(q.x, h * 0.45, q.z, onX ? { sx: 0.7, sy: h * 0.9, sz: 0.04 } : { sx: 0.04, sy: h * 0.9, sz: 0.7 }) });
+    if (side === 'x+') glass.push({ geo: G.box, color: o.glass, m: at(w / 2 + 0.35, h * 0.45, o.door.at + dw / 2 + 0.05, { sx: 0.6, sy: h * 0.8, sz: 0.02 }) });
   } else {
-    post(o.door.at - dw / 2, -d / 2, h);
-    post(o.door.at + dw / 2, -d / 2, h);
-    frame.push({ geo: G.box, color: o.frame, m: at(o.door.at + dw / 2 + 0.02, h * 0.45, -d / 2 - 0.35, { sx: 0.04, sy: h * 0.9, sz: 0.7 }) });
+    const q = P(o.door.at, -0.05);
+    frame.push({ geo: G.cyl, color: o.frame, m: at(q.x, h - 0.2, q.z, onX ? { sx: 0.3, sy: dw, sz: 0.3, rx: Math.PI / 2 } : { sx: 0.3, sy: dw, sz: 0.3, rz: Math.PI / 2 }) });
   }
   // the plinth: a low solid wall, the door's gap left open
   if (o.plinth) {
     const pl = o.plinth;
-    const run = (x0: number, x1: number, z0: number, z1: number) => frame.push({ geo: G.box, color: pl.color, m: at((x0 + x1) / 2, pl.h / 2, (z0 + z1) / 2, { sx: Math.max(0.12, x1 - x0), sy: pl.h, sz: Math.max(0.12, z1 - z0) }) });
-    run(-w / 2, w / 2, d / 2, d / 2);
-    run(-w / 2, -w / 2, -d / 2, d / 2);
-    if (o.door.side === 'z-') {
-      run(-w / 2, o.door.at - dw / 2, -d / 2, -d / 2);
-      run(o.door.at + dw / 2, w / 2, -d / 2, -d / 2);
-      run(w / 2, w / 2, -d / 2, d / 2);
-    } else {
-      run(-w / 2, w / 2, -d / 2, -d / 2);
-      run(w / 2, w / 2, -d / 2, o.door.at - dw / 2);
-      run(w / 2, w / 2, o.door.at + dw / 2, d / 2);
-    }
+    const run = (x0: number, x1: number, z0: number, z1: number) => {
+      if (x1 - x0 < 0.01 && z1 - z0 < 0.01) return;
+      frame.push({ geo: G.box, color: pl.color, m: at((x0 + x1) / 2, pl.h / 2, (z0 + z1) / 2, { sx: Math.max(0.12, x1 - x0), sy: pl.h, sz: Math.max(0.12, z1 - z0) }) });
+    };
+    const a = o.door.at - dw / 2;
+    const b = o.door.at + dw / 2;
+    if (side === 'z+') {
+      run(-w / 2, a, d / 2, d / 2);
+      run(b, w / 2, d / 2, d / 2);
+    } else run(-w / 2, w / 2, d / 2, d / 2);
+    if (side === 'z-') {
+      run(-w / 2, a, -d / 2, -d / 2);
+      run(b, w / 2, -d / 2, -d / 2);
+    } else run(-w / 2, w / 2, -d / 2, -d / 2);
+    if (side === 'x-') {
+      run(-w / 2, -w / 2, -d / 2, a);
+      run(-w / 2, -w / 2, b, d / 2);
+    } else run(-w / 2, -w / 2, -d / 2, d / 2);
+    if (side === 'x+') {
+      run(w / 2, w / 2, -d / 2, a);
+      run(w / 2, w / 2, b, d / 2);
+    } else run(w / 2, w / 2, -d / 2, d / 2);
   }
   // the eaves along the long sides, and the rails over the ends
   frame.push({ geo: G.box, color: o.frame, m: at(0, h, -d / 2, { sx: w + 0.08, sy: 0.07, sz: 0.07 }) });
@@ -1708,11 +1836,39 @@ export function glassHouse(o: { w: number; d: number; h: number; rise: number; f
     frame.push({ geo: G.box, color: o.frame, m: at(x, h + rise / 2, -half / 2, { sx: 0.06, sy: 0.06, sz: slope, rx: tilt }) });
     frame.push({ geo: G.box, color: o.frame, m: at(x, h + rise / 2, half / 2, { sx: 0.06, sy: 0.06, sz: slope, rx: -tilt }) });
   }
-  glass.push({ geo: G.box, color: o.glass, m: at(0, h + rise / 2, -half / 2, { sx: w, sy: 0.02, sz: slope, rx: tilt }) });
-  glass.push({ geo: G.box, color: o.glass, m: at(0, h + rise / 2, half / 2, { sx: w, sy: 0.02, sz: slope, rx: -tilt }) });
-  glass.push({ geo: gable(-w / 2, h, d, rise), color: o.glass });
-  glass.push({ geo: gable(w / 2, h, d, rise), color: o.glass });
-  return { frame, glass };
+  const top = o.roof ? roof : glass;
+  const tint = o.roof ?? o.glass;
+  top.push({ geo: G.box, color: tint, m: at(0, h + rise / 2, -half / 2, { sx: w, sy: 0.02, sz: slope, rx: tilt }) });
+  top.push({ geo: G.box, color: tint, m: at(0, h + rise / 2, half / 2, { sx: w, sy: 0.02, sz: slope, rx: -tilt }) });
+  top.push({ geo: gable(-w / 2, h, d, rise), color: tint });
+  top.push({ geo: gable(w / 2, h, d, rise), color: tint });
+  return { frame, glass, roof };
+}
+
+/** What the farmer can't walk through in a walk-in building at (x, z): its four walls, the door's gap left open
+    (world rects, as the farm's `rects`). */
+export function wallRects(x: number, z: number, o: { w: number; d: number; door: { side: DoorSide; at: number; width: number } }) {
+  const { w, d } = o;
+  const t = 0.08;
+  const out: { x0: number; x1: number; z0: number; z1: number }[] = [];
+  const a = o.door.at - o.door.width / 2;
+  const b = o.door.at + o.door.width / 2;
+  // one wall as a run along it (u0..u1) at a fixed place across it (v)
+  const wall = (alongX: boolean, v: number, u0: number, u1: number) => {
+    if (u1 - u0 < 0.01) return;
+    out.push(alongX ? { x0: x + u0, x1: x + u1, z0: z + v - t, z1: z + v + t } : { x0: x + v - t, x1: x + v + t, z0: z + u0, z1: z + u1 });
+  };
+  const side = (s: DoorSide, alongX: boolean, v: number, len: number) => {
+    if (o.door.side === s) {
+      wall(alongX, v, -len / 2, Math.max(-len / 2, a));
+      wall(alongX, v, Math.min(len / 2, b), len / 2);
+    } else wall(alongX, v, -len / 2, len / 2);
+  };
+  side('z-', true, -d / 2, w);
+  side('z+', true, d / 2, w);
+  side('x-', false, -w / 2, d);
+  side('x+', false, w / 2, d);
+  return out;
 }
 
 /** The storage annex beside the storehouse, built at the origin like a big upright freezer: w along x, d along z, h
