@@ -5,7 +5,8 @@ import type { Group, IssueId } from '../livestock/config';
    order they are checked, and a pool of early signs: small things a full check finds before they grow into a
    problem, each with a quick fix that can be done now or planned for a later day. */
 
-export type SubjectId = 'cow' | 'hen' | 'plant' | 'tractor' | 'farm' | 'water' | 'power';
+/** `plant` is the maize plant; `beans`, `kale` and `tomato` are the farm's other crops, checked as the same step */
+export type SubjectId = 'cow' | 'hen' | 'plant' | 'beans' | 'kale' | 'tomato' | 'tractor' | 'farm' | 'water' | 'power';
 
 export interface Spot {
   x: number;

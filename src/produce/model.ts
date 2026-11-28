@@ -3,7 +3,7 @@
    into the store (the storehouse, src/storehouse), where some of it can be made into sauce, jam, pickles or flour; each day
    the stall sells up to 25 kg of it, a day's price a kg. The farmer can choose what to sell; whatever of the day's
    25 kg is left is sold for them when the day ends (the daily sales cycle), so every day shows what the farm's
-   harvests earn, and the profit over what the food cost to grow. The restaurant beside the stall (restaurant.ts)
+   harvests earn, and the profit over what the food cost to grow. The restaurant (restaurant.ts)
    cooks some of the store into meals instead. No screens here (Market.tsx), so the saved game can use it. Money is
    stored money (src/money.ts: 1 = KSh 10).
 

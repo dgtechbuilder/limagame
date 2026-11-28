@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState, type Dispatch, type ReactNode } from 'react';
+import cowUrl from './art/cow.webp';
+import henUrl from './art/hen.webp';
 import { act, jobWaiting } from '../onsite/model';
 import { Info } from '../learn/Info';
 import { MiniGame, type GameSpec } from '../minigames/MiniGame';
@@ -320,9 +322,12 @@ function Health({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
           const sub = subjectFor(g);
           const last = ch.full[sub];
           return (
-            <button key={g} type="button" className={`lv-check${last === l.day ? ' is-done' : ''}`} onClick={() => setRoutine(sub)} disabled={countOf(s, g) === 0}>
-              <i aria-hidden="true">🔍</i>
+            <button key={g} type="button" className={`lv-check is-big${last === l.day ? ' is-done' : ''}`} onClick={() => setRoutine(sub)} disabled={countOf(s, g) === 0}>
+              <span className="lv-check-pic" aria-hidden="true">
+                <img src={g === 'cows' ? cowUrl : henUrl} alt="" draggable={false} />
+              </span>
               <span>
+                <em className="lv-check-go">🔍 Tap to examine</em>
                 <b>{subjectOf(sub).title}</b>
                 <small>{last === l.day ? '✓ Checked today' : last ? `Last full check: day ${last}` : `Every part of the ${g === 'cows' ? 'cows' : 'hens'}, a few seconds each`}</small>
               </span>

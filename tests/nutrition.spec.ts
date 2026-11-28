@@ -13,7 +13,7 @@ import { newTrial, COMMON_PLAN } from '../src/trials/model';
 import { trackSystems } from '../src/systems/track';
 
 /* Nutrition across the game (what each crop gives the people who eat it), the market stall's daily sales cycle (25 kg
-   of the store sold every day, for a profit), and the restaurant beside the stall that cooks the store into meals.
+   of the store sold every day, for a profit), and the restaurant (bottom left of the farm) that cooks the store into meals.
    Played through the reducer, then the pages in the browser. */
 
 let day = '2026-11-15';
@@ -129,7 +129,7 @@ test('the six farms’ harvest keeps maize, and the beans grown between the rows
   expect(produceOf(out.produce).store).toEqual({ maize: 27 + 22, drybeans: 2 * MARKET.bagKg * MARKET.beanShare });
 });
 
-test('the restaurant beside the stall, the nutrition table and the markers on the seeds, in the browser', async ({ page }) => {
+test('the restaurant, the nutrition table and the markers on the seeds, in the browser', async ({ page }) => {
   await boot(page);
   await page.evaluate(() =>
     (window as unknown as Win).__lima.jump({ view: 'world', coins: 50_000, life: { day: 5, date: null, started: 2 }, produce: { store: { maize: 40, drybeans: 12, sukuma: 10, tomatoes: 5, capsicum: 3 } } } as never),
@@ -137,7 +137,7 @@ test('the restaurant beside the stall, the nutrition table and the markers on th
   await page.waitForFunction(() => !!(window as unknown as Win).__limaWorld);
   // a quick farmer, as in the other farm tests (helpers.ts scenario), so a slow machine keeps up with the walk
   await page.evaluate(() => ((window as unknown as Win).__limaWorld!.speedScale = 4));
-  // walk to the restaurant beside the stall and open it
+  // walk to the restaurant, bottom left of the farm, and open it
   await page.evaluate(() => {
     const at = (window as unknown as Win).__lima.places.restaurant;
     (window as unknown as Win).__limaWorld!.walkTo(at.x, at.z);

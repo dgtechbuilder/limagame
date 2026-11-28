@@ -307,12 +307,15 @@ test('examining a sick cow up close: the film visits each sign in order, then th
   // the standard parts to check; one that shows nothing says what healthy looks like
   await exam.getByRole('button', { name: 'Udder', exact: true }).click();
   await expect(exam.locator('.ex-caption')).toContainText('Nothing wrong here');
+  await exam.getByRole('button', { name: 'Whole cow', exact: true }).click();
   await exam.getByRole('button', { name: 'Ears & neck', exact: true }).click();
   await expect(exam.locator('.ex-caption')).toContainText('swollen lump under the ear');
-  // the film: six signs, head to tail, then her feed
+  // the examination: six signs, head to tail, then her feed, each tapped on the cow where the hint points
   await exam.getByRole('button', { name: /Examination/ }).click();
   const titles = ['Tears down her face', 'A runny nose', 'A swollen lump under the ear', 'Fast breathing', 'A high fever', 'She will not eat'];
   for (const [i, t] of titles.entries()) {
+    await exam.locator('.ex-hunt').waitFor();
+    await exam.locator('.ex-hit.is-next').click();
     await expect(exam.locator('.ex-kicker')).toContainText(`Step ${i + 1} of 6`);
     await expect(exam.locator('.ex-caption')).toContainText(t);
     if (t === 'A high fever') await expect(exam.locator('.ex-card')).toContainText('°C');
@@ -331,7 +334,7 @@ test('examining a sick cow up close: the film visits each sign in order, then th
   await expect(page.locator('.lv-issue')).toHaveCount(0);
 });
 
-test('the film plays by itself, and Escape closes only the examination', async ({ page }) => {
+test('the examination waits for a tap on each part the hint shows, and Escape closes only the examination', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => {
     const L = (window as unknown as Win).__lima;
@@ -339,9 +342,24 @@ test('the film plays by itself, and Escape closes only the examination', async (
   });
   await page.getByRole('button', { name: 'Examine the cow up close' }).click();
   await page.getByRole('button', { name: /Start the examination/ }).click();
+  // the hint: a glowing ring and a hand on the udder, and its name on top of the list
+  const hunt = page.locator('.ex-hunt');
+  await expect(hunt).toContainText('Udder');
+  await expect(page.locator('.ex-hit.is-next')).toHaveAttribute('data-part', 'udder');
+  await expect(page.locator('.ex-hint')).toHaveCount(1);
+  // nothing plays by itself; a tap on another part is not the examination's next one
+  await page.waitForTimeout(2500);
+  await expect(page.locator('.ex-caption')).toHaveCount(0);
+  await page.locator('.ex-hit[data-part="eyes"]').click();
+  await expect(hunt).toContainText('The red parts first');
+  await page.locator('.ex-hit.is-next').click();
   await expect(page.locator('.ex-kicker')).toContainText('Step 1 of 2 · Udder');
-  await expect(page.locator('.ex-kicker')).toContainText('Step 2 of 2 · Milk', { timeout: 12_000 });
-  await expect(page.locator('.ex-side')).toBeVisible({ timeout: 12_000 });
+  await page.getByRole('button', { name: 'Next ›' }).click();
+  await expect(page.locator('.ex-hit.is-next')).toHaveAttribute('data-part', 'milk');
+  await page.locator('.ex-hit.is-next').click();
+  await expect(page.locator('.ex-kicker')).toContainText('Step 2 of 2 · Milk');
+  await page.getByRole('button', { name: 'Finish ›' }).click();
+  await expect(page.locator('.ex-side')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog', { name: 'Examine the cow' })).toHaveCount(0);
   await expect(page.getByRole('dialog', { name: 'Animals' })).toBeVisible();

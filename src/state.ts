@@ -771,8 +771,9 @@ export type Action =
   | { type: 'restaurantCook'; dish: DishId; plates: number }
   /** the shop floor (src/shop): a customer at the stall paid for their bags (what they asked for and got) and a tip */
   | { type: 'shopSell'; given: Partial<Record<ProduceId, number>>; asked: Partial<Record<ProduceId, number>>; tip: number; name: string }
-  /** the shop floor: a restaurant customer paid for their meal (a plate of each dish), less half for a burnt dish, and a tip */
-  | { type: 'shopMeal'; dishes: DishId[]; discount: number; tip: number; name: string }
+  /** the shop floor: a restaurant customer paid for their meal (a plate of each dish), less half for the wrong dish,
+      and a tip; ask: the dish or the kind of food they asked for, fit: whether the plate fitted it (analytics) */
+  | { type: 'shopMeal'; dishes: DishId[]; discount: number; tip: number; name: string; ask?: string; fit?: boolean }
   /** the greenhouse: plant a bed (score: the planting mini-game), water a bed (or every bed: -1), pick a ready bed */
   | { type: 'ghPlant'; bed: number; crop: GhCropId; score: number }
   | { type: 'ghWater'; bed: number }

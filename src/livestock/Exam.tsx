@@ -16,13 +16,14 @@ import { lifeOf } from './model';
 
 /* A full check, up close: an animal (or, src/inspect/subjects.ts, anything else on the farm a routine check covers).
    The whole drawing first, its parts listed in sections in the order they are checked. When something is wrong, the
-   parts that show it are red, first in line: START THE EXAMINATION plays them like a film (black bars, a title card,
-   the camera flying to each, a caption with the measure), and at the end the player chooses the fix beside them.
+   parts that show it are red, first in line: START THE EXAMINATION (a title card) has the player tap each red part on
+   the drawing itself, its eyes, its nose, its udder; a glowing ring and a pointing hand show which one is next. Each
+   tap flies the camera there with a caption and the measure, and at the end the player chooses the fix beside them.
    FINISH THE CHECK then asks for the rest: a check of only the red parts misses what is starting elsewhere, so the
-   camera sweeps the parts not seen yet, a couple of seconds each. Healthy parts pass by themselves; an early sign
-   (src/inspect/early.ts) stops the sweep, to be fixed now (a few seconds' work and its cost) or planned for a day.
-   At any time the player can look for themselves: tap a part (on the drawing or in the list), drag to look round,
-   and zoom with the wheel, a pinch or the + and − buttons. */
+   player taps each part not seen yet, the hint moving on to the next. Healthy parts return to the whole drawing by
+   themselves; an early sign (src/inspect/early.ts) waits, to be fixed now (a few seconds' work and its cost) or
+   planned for a day. The list of parts is the progress readout. At any time the player can look for themselves: tap
+   a part on the drawing, drag to look round, and zoom with the wheel, a pinch or the + and − buttons. */
 
 /** A red sign: an animal's problem (exam.ts FINDINGS), or what is wrong now on a machine or place (inspect/urgent.ts). */
 interface Sign {
@@ -39,7 +40,8 @@ interface Step {
   findings: Sign[];
 }
 
-type Mode = 'idle' | 'intro' | 'step' | 'end' | 'free' | 'ask' | 'sweep' | 'done';
+/** hunt: the whole drawing, waiting for the player to tap the part the hint shows; step: a red part, up close; sweep: one of the rest, up close */
+type Mode = 'idle' | 'intro' | 'hunt' | 'step' | 'end' | 'free' | 'ask' | 'sweep' | 'done';
 interface Cam {
   x: number;
   y: number;
@@ -54,8 +56,9 @@ const Z_MIN = 0.86;
 const Z_MAX = 4.5;
 /** the camera's flight to a part (ms), and how long the caption holds after it (ms): the caption bar runs this long */
 const FLY = 1100;
-const HOLD = 4200;
-/** the sweep: its flight, and how long a healthy part and a red one hold (ms) */
+/** a wrong tap's note stays this long (ms) */
+const NUDGE = 2400;
+/** the rest: the flight to a part, and how long a healthy part and a red one hold before the whole drawing comes back (ms) */
 const SWEEP_FLY = 650;
 const SWEEP_FINE = 1500;
 const SWEEP_RED = 2600;
@@ -78,9 +81,15 @@ interface Props {
   onClose: () => void;
   /** the fixes to choose from, at the end */
   decide?: ReactNode;
+  /** a plant check: the crops to switch between (each its own drawing) */
+  crops?: { list: { id: SubjectId; label: string }[]; pick: (id: SubjectId) => void };
+  /** a check in steps (the farm: the plants first, then the farm): where this one is */
+  stepOf?: string;
+  /** and the next step, offered when this one is done */
+  then?: { label: string; go: () => void };
 }
 
-export function Exam({ s, dispatch, subject, issue = null, since = 0, onClose, decide }: Props) {
+export function Exam({ s, dispatch, subject, issue = null, since = 0, onClose, decide, crops, stepOf, then }: Props) {
   const def = subjectOf(subject);
   const day = lifeOf(s.life).day;
   const voice = useVoice();
@@ -116,15 +125,17 @@ export function Exam({ s, dispatch, subject, issue = null, since = 0, onClose, d
   };
 
   const [mode, setMode] = useState<Mode>('idle');
-  const [step, setStep] = useState(0);
-  const [playing, setPlaying] = useState(true);
   const [look, setLook] = useState<string | null>(null);
   const [cam, setCam] = useState<Cam>(WHOLE);
   const [seen, setSeen] = useState<Set<string>>(() => new Set());
   const [dragging, setDragging] = useState(false);
-  /** the sweep: the parts still to see, and where it is */
+  /** the parts to tap, in order: the red ones (the examination) or the rest; the ones tapped so far; the one open now */
+  const [run, setRun] = useState<'red' | 'rest'>('red');
   const [queue, setQueue] = useState<string[]>([]);
-  const [qi, setQi] = useState(0);
+  const [got, setGot] = useState<string[]>([]);
+  const [open, setOpen] = useState<string | null>(null);
+  /** a tap on a part that is not next: a note for a moment */
+  const [nudge, setNudge] = useState<string | null>(null);
   /** an early sign being fixed (its timer runs), or just fixed */
   const [work, setWork] = useState<{ id: string; done: boolean } | null>(null);
   const see = useCallback((id: string) => setSeen(v => (v.has(id) ? v : new Set(v).add(id))), []);
@@ -143,20 +154,25 @@ export function Exam({ s, dispatch, subject, issue = null, since = 0, onClose, d
   }, []);
   const sc = Math.min(size.w / SCENE_W, size.h / SCENE_H);
 
-  const sweepPart = mode === 'sweep' ? queue[qi] : null;
+  const sweepPart = mode === 'sweep' ? open : null;
+  /** the part the hint points at: the next one not tapped yet */
+  const nextId = mode === 'hunt' || mode === 'step' || mode === 'sweep' ? (queue.find(id => !got.includes(id)) ?? null) : null;
+  const stepAt = mode === 'step' && open ? got.indexOf(open) : -1;
+  const curStep = stepAt >= 0 ? (steps.find(x => x.part.id === open) ?? null) : null;
   /** where on the stage the camera's point sits: right of the parts list, above the caption, or left of the summary */
   const anchor = (m: Mode) => {
     if (m === 'step' || m === 'intro') return { x: size.w * 0.56, y: size.h * 0.37 };
     if (m === 'end' || m === 'done') return { x: (size.w - SIDE) / 2, y: size.h / 2 };
     if (m === 'sweep') return { x: RAIL + (size.w - RAIL) / 2, y: size.h * 0.36 };
     if (m === 'free') return { x: RAIL + (size.w - RAIL) / 2, y: size.h * 0.42 };
+    if (m === 'hunt') return { x: RAIL + (size.w - RAIL) / 2, y: size.h * 0.5 };
     return { x: RAIL + (size.w - RAIL) / 2, y: size.h * 0.46 };
   };
   const endZoom = clamp((size.w - SIDE - 16) / (SCENE_W * sc), 0.6, 0.95);
   const restZoom = clamp((size.w - RAIL - 12) / (SCENE_W * sc), 0.6, WHOLE.z);
   const target: Cam =
-    mode === 'step'
-      ? steps[step].part.at
+    mode === 'step' && curStep
+      ? curStep.part.at
       : mode === 'sweep' && sweepPart
         ? partOf(sweepPart).at
         : mode === 'free'
@@ -170,44 +186,48 @@ export function Exam({ s, dispatch, subject, issue = null, since = 0, onClose, d
   const tx = a.x - target.x * sc * target.z;
   const ty = a.y - target.y * sc * target.z;
 
-  /* ---- the film of the red parts ---- */
-  const start = () => {
+  /* ---- tapping the parts: the red ones first (the examination), then the rest ---- */
+  const begin = (r: 'red' | 'rest', ids: string[]) => {
     sfx.action();
     setLook(null);
-    setPlaying(true);
-    setStep(0);
-    setMode('intro');
+    setWork(null);
+    setNudge(null);
+    setRun(r);
+    setQueue(ids);
+    setGot([]);
+    setOpen(null);
+    setMode(r === 'red' ? 'intro' : 'hunt');
   };
+  const start = () => begin('red', steps.map(x => x.part.id));
   useEffect(() => {
     if (mode !== 'intro') return;
-    const t = window.setTimeout(() => setMode('step'), reduced() ? 300 : 1500);
+    const t = window.setTimeout(() => setMode('hunt'), reduced() ? 300 : 1500);
     return () => window.clearTimeout(t);
   }, [mode]);
-  const go = useCallback(
-    (to: number) => {
-      if (to < 0) return;
-      if (to >= steps.length) {
-        setMode('end');
-        return;
-      }
-      setStep(to);
-    },
-    [steps.length],
-  );
-  // each stop: mark it seen, a sound, and read it aloud when Read aloud is on
+  /** a tap on the drawing while the hint shows the way */
+  const tapPart = (id: string) => {
+    if (!queue.includes(id) || got.includes(id)) {
+      if (id !== open) setNudge(id);
+      return;
+    }
+    setWork(null);
+    setNudge(null);
+    setGot(g => [...g, id]);
+    setOpen(id);
+    setMode(run === 'red' ? 'step' : 'sweep');
+  };
   useEffect(() => {
-    if (mode !== 'step') return;
-    const st = steps[step];
-    see(st.part.id);
-    sfx.flow();
-    if (voice) speak(`${st.part.label}. ${st.findings.map(f => `${f.title}. ${f.see}`).join(' ')}`);
-  }, [mode, step, steps, voice, see]);
-  // with no motion the caption bar does not run, so a timer moves the film on
-  useEffect(() => {
-    if (mode !== 'step' || !playing || !reduced()) return;
-    const t = window.setTimeout(() => go(step + 1), FLY + HOLD);
+    if (!nudge) return;
+    const t = window.setTimeout(() => setNudge(null), NUDGE);
     return () => window.clearTimeout(t);
-  }, [mode, step, playing, go]);
+  }, [nudge]);
+  // each red part tapped: mark it seen, a sound, and read it aloud when Read aloud is on
+  useEffect(() => {
+    if (mode !== 'step' || !curStep) return;
+    see(curStep.part.id);
+    sfx.flow();
+    if (voice) speak(`${curStep.part.label}. ${curStep.findings.map(f => `${f.title}. ${f.see}`).join(' ')}`);
+  }, [mode, curStep, voice, see]);
   useEffect(() => () => stopSpeaking(), []);
 
   /* ---- finishing: every part, or the sweep of the rest first ---- */
@@ -229,28 +249,30 @@ export function Exam({ s, dispatch, subject, issue = null, since = 0, onClose, d
       setMode('ask');
     }
   };
-  const sweep = (ids = left) => {
-    sfx.action();
-    setLook(null);
-    setWork(null);
-    setQueue(ids);
-    setQi(0);
-    setMode('sweep');
-  };
+  const sweep = (ids = left) => begin('rest', ids);
   const leaveEarly = () => {
     dispatch({ type: 'checkDone', subject, checked: seen.size });
     onClose();
   };
+  /** done with the part open: back to the whole drawing for the next tap, or on to the end */
   const next = useCallback(() => {
     setWork(null);
-    if (qi + 1 >= queue.length) {
+    setOpen(null);
+    if (queue.some(id => !got.includes(id))) setMode('hunt');
+    else if (run === 'red') setMode('end');
+    else {
       setMode('done');
       if (!reported.current) {
         reported.current = true;
         dispatch({ type: 'checkDone', subject, checked: order.length });
       }
-    } else setQi(qi + 1);
-  }, [qi, queue.length, dispatch, subject, order.length]);
+    }
+  }, [queue, got, run, dispatch, subject, order.length]);
+  const skip = () => {
+    setOpen(null);
+    if (run === 'red') setMode('end');
+    else finishAll();
+  };
   /** what the sweep found at its part: an early sign still to deal with, a red sign, or nothing */
   const sweepSign = sweepPart ? signAt(sweepPart).find(e => !isFixed(e) && plannedFor(e) === undefined) : undefined;
   const sweepRed = sweepPart ? findings.filter(f => f.part === sweepPart) : [];
@@ -261,13 +283,13 @@ export function Exam({ s, dispatch, subject, issue = null, since = 0, onClose, d
       sfx.flow();
       if (voice) speak(`${partOf(sweepPart).label}. An early sign: ${sweepSign.title}. ${sweepSign.risk}`);
     }
-  }, [mode, qi]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mode, open]); // eslint-disable-line react-hooks/exhaustive-deps
   // a healthy part (or a red one already known) moves on by itself
   useEffect(() => {
     if (mode !== 'sweep' || !sweepPart || sweepSign || work) return;
     const t = window.setTimeout(next, SWEEP_FLY + (sweepRed.length ? SWEEP_RED : SWEEP_FINE));
     return () => window.clearTimeout(t);
-  }, [mode, qi, sweepPart, sweepSign, sweepRed.length, work, next]);
+  }, [mode, open, sweepPart, sweepSign, sweepRed.length, work, next]);
 
   /** deal with an early sign now: its few seconds of work, then it is done */
   const fixNow = (e: Shown) => {
@@ -379,22 +401,25 @@ export function Exam({ s, dispatch, subject, issue = null, since = 0, onClose, d
     zoomBy(e.deltaY < 0 ? 1.18 : 1 / 1.18, p.x, p.y);
   };
 
-  /* ---- keys: arrows step through the film, Escape closes the examination (and not the page under it) ---- */
+  /* ---- keys: the right arrow moves on from a red part, Escape closes the examination (and not the page under it) ---- */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopImmediatePropagation();
         e.preventDefault();
         onClose();
-      } else if (mode === 'step' && e.key === 'ArrowRight') go(step + 1);
-      else if (mode === 'step' && e.key === 'ArrowLeft') go(step - 1);
+      } else if (mode === 'step' && e.key === 'ArrowRight') next();
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [mode, step, go, onClose]);
+  }, [mode, next, onClose]);
 
   const film = mode === 'intro' || mode === 'step';
-  const cur = mode === 'step' ? steps[step] : null;
+  const cur = curStep;
+  const tapping = mode === 'hunt' || mode === 'step' || mode === 'sweep';
+  const step = Math.max(0, stepAt);
+  const nextPart = nextId ? partOf(nextId) : null;
+  const toGo = queue.filter(id => !got.includes(id));
   const lookPart = mode === 'free' && look ? partOf(look) : null;
   const lookFindings = lookPart ? findings.filter(f => f.part === lookPart.id) : [];
   const lookSigns = lookPart ? signAt(lookPart.id) : [];
@@ -428,12 +453,13 @@ export function Exam({ s, dispatch, subject, issue = null, since = 0, onClose, d
               marks={marks}
               early={showing.map(e => e.id)}
               spots={spots}
-              rings={canLook || mode === 'ask' ? [...red] : []}
-              amber={canLook || mode === 'ask' || mode === 'done' ? amber : []}
-              todo={mode === 'ask' ? left : []}
+              rings={canLook || mode === 'ask' ? [...red] : mode === 'hunt' && run === 'red' ? toGo.filter(id => id !== nextId) : []}
+              amber={canLook || mode === 'ask' || mode === 'done' || mode === 'hunt' ? amber : []}
+              todo={mode === 'ask' ? left : mode === 'hunt' && run === 'rest' ? toGo.filter(id => id !== nextId) : []}
               pins={mode === 'end' ? steps.map(x => x.part.id) : []}
               focus={focus}
-              onPart={canLook ? lookAt : undefined}
+              hint={mode === 'hunt' ? nextId : null}
+              onPart={canLook ? lookAt : tapping ? tapPart : undefined}
             />
           </div>
         </div>
@@ -457,13 +483,22 @@ export function Exam({ s, dispatch, subject, issue = null, since = 0, onClose, d
 
       <header className="ex-head">
         <p>
-          <b>{film ? 'Examination' : mode === 'end' ? 'What you saw' : mode === 'sweep' ? 'Checking the rest' : mode === 'done' ? 'Check done' : def.title}</b>
-          <span>{issue ? `${def.group === 'cows' ? 'Cows' : 'Hens'} · since day ${since}` : `Day ${day} · a routine check`}</span>
+          <b>{film || (mode === 'hunt' && run === 'red') ? 'Examination' : mode === 'end' ? 'What you saw' : mode === 'sweep' || mode === 'hunt' ? 'Checking the rest' : mode === 'done' ? 'Check done' : def.title}</b>
+          <span>{issue ? `${def.group === 'cows' ? 'Cows' : 'Hens'} · since day ${since}` : `Day ${day} · ${stepOf ?? 'a routine check'}`}</span>
         </p>
-        {film && (
-          <ol className="ex-dots" aria-label={`Step ${step + 1} of ${steps.length}`}>
-            {steps.map((x, i) => (
-              <li key={x.part.id} className={i < step ? 'is-done' : i === step && mode === 'step' ? 'is-on' : ''} />
+        {crops && (mode === 'idle' || mode === 'free' || mode === 'done') && (
+          <span className="ex-crops" role="group" aria-label="Which plant">
+            {crops.list.map(c => (
+              <button key={c.id} type="button" className={c.id === subject ? 'is-on' : ''} aria-pressed={c.id === subject} onClick={() => c.id !== subject && crops.pick(c.id)}>
+                {c.label}
+              </button>
+            ))}
+          </span>
+        )}
+        {(film || mode === 'hunt') && run === 'red' && (
+          <ol className="ex-dots" aria-label={`${got.length} of ${queue.length} red parts tapped`}>
+            {queue.map(id => (
+              <li key={id} className={id === open && mode === 'step' ? 'is-on' : got.includes(id) ? 'is-done' : ''} />
             ))}
           </ol>
         )}
@@ -472,8 +507,23 @@ export function Exam({ s, dispatch, subject, issue = null, since = 0, onClose, d
         </button>
       </header>
 
-      {/* the parts to check, in sections; the red ones first in line */}
+      {/* the parts to check, in sections, as a progress readout; the red ones first in line. The parts are tapped on the drawing. */}
       <nav className="ex-rail" aria-label={`Parts of the ${def.name} to check`}>
+        {mode === 'hunt' && nextPart && (
+          <div className={`ex-hunt${nudge ? ' is-nudge' : ''}`} aria-live="polite">
+            <p className="ex-kicker">
+              {run === 'red' ? 'Red part' : 'Part'} {got.length + 1} of {queue.length}
+            </p>
+            <b>
+              <i aria-hidden="true" /> {nextPart.label}
+            </b>
+            <small>Tap the glowing ring on the {def.name}</small>
+            {nudge && <span>{got.includes(nudge) || seen.has(nudge) ? `${partOf(nudge).label}: already checked.` : run === 'red' ? 'The red parts first.' : 'Not that one yet.'}</span>}
+            <button type="button" className="ex-link" onClick={skip}>
+              Skip to the end
+            </button>
+          </div>
+        )}
         <p className="ex-rail-head">
           {def.rail}
           <span>
@@ -504,16 +554,13 @@ export function Exam({ s, dispatch, subject, issue = null, since = 0, onClose, d
                   const sign = seen.has(id) && signAt(id).some(e => !isFixed(e));
                   const state = !seen.has(id) ? '' : red.has(id) ? ' is-found' : sign ? ' is-early' : ' is-fine';
                   return (
-                    <button
+                    <span
                       key={id}
-                      type="button"
-                      className={`ex-part${red.has(id) ? ' is-red' : ''}${state}${(look === id && mode === 'free') || sweepPart === id ? ' is-on' : ''}`}
-                      onClick={() => lookAt(id)}
-                      tabIndex={canLook || mode === 'sweep' || mode === 'done' ? 0 : -1}
+                      className={`ex-part${red.has(id) ? ' is-red' : ''}${state}${(look === id && mode === 'free') || sweepPart === id ? ' is-on' : ''}${nextId === id && mode === 'hunt' ? ' is-next' : ''}`}
                     >
                       <i aria-hidden="true" />
                       {p.label}
-                    </button>
+                    </span>
                   );
                 })}
               </div>
@@ -539,7 +586,12 @@ export function Exam({ s, dispatch, subject, issue = null, since = 0, onClose, d
               <span aria-hidden="true">▶</span> Check every part
             </button>
           )}
-          <small>or tap a part to look for yourself · drag and zoom to look closer</small>
+          <small>or tap any part of the {def.name} to look for yourself · drag and zoom to look closer</small>
+          {then && (
+            <button type="button" className="ex-link ex-then-link" onClick={then.go}>
+              {then.label} ›
+            </button>
+          )}
         </div>
       )}
 
@@ -547,7 +599,7 @@ export function Exam({ s, dispatch, subject, issue = null, since = 0, onClose, d
       {cur && (
         <div className="ex-caption" key={`c${step}`} aria-live="polite">
           <p className="ex-kicker">
-            Step {step + 1} of {steps.length} · {cur.part.label}
+            Step {step + 1} of {queue.length} · {cur.part.label}
           </p>
           {cur.findings.map(f => (
             <div key={f.mark} className="ex-find">
@@ -556,22 +608,13 @@ export function Exam({ s, dispatch, subject, issue = null, since = 0, onClose, d
             </div>
           ))}
           <div className="ex-ctrl">
-            <button type="button" onClick={() => go(step - 1)} disabled={step === 0}>
-              ‹ Back
+            <button type="button" className="is-next" onClick={next}>
+              {toGo.length === 0 ? 'Finish ›' : 'Next ›'}
             </button>
-            <button type="button" onClick={() => setPlaying(p => !p)} aria-label={playing ? 'Pause' : 'Play'}>
-              {playing ? '❚❚' : '▶'}
-            </button>
-            <button type="button" className="is-next" onClick={() => go(step + 1)}>
-              {step === steps.length - 1 ? 'Finish ›' : 'Next ›'}
-            </button>
-            <button type="button" className="is-skip" onClick={() => setMode('end')}>
+            <button type="button" className="is-skip" onClick={skip}>
               Skip to the end
             </button>
           </div>
-          <span className="ex-timer">
-            <span style={{ animationDuration: `${HOLD}ms`, animationDelay: `${FLY}ms`, animationPlayState: playing ? 'running' : 'paused' }} onAnimationEnd={() => go(step + 1)} />
-          </span>
         </div>
       )}
       {cur && cur.findings.some(f => f.reading) && (
@@ -659,9 +702,9 @@ export function Exam({ s, dispatch, subject, issue = null, since = 0, onClose, d
 
       {/* the sweep: each part not seen yet, a moment each */}
       {mode === 'sweep' && sweepPart && (
-        <div className={`ex-caption is-sweep${sweepSign || work ? ' is-early' : sweepRed.length ? ' is-sign' : ' is-normal'}`} key={`s${qi}`} aria-live="polite">
+        <div className={`ex-caption is-sweep${sweepSign || work ? ' is-early' : sweepRed.length ? ' is-sign' : ' is-normal'}`} key={`s${sweepPart}`} aria-live="polite">
           <p className="ex-kicker">
-            Quick check {qi + 1} of {queue.length} · {partOf(sweepPart).label}
+            Part {got.indexOf(sweepPart) + 1} of {queue.length} · {partOf(sweepPart).label}
           </p>
           {sweepRed.map(f => (
             <div key={f.mark} className="ex-find">
@@ -687,7 +730,12 @@ export function Exam({ s, dispatch, subject, issue = null, since = 0, onClose, d
             </span>
           )}
           <div className="ex-ctrl">
-            <button type="button" className="is-skip" onClick={finishAll}>
+            {!sweepSign && !work && (
+              <button type="button" className="is-next" onClick={next}>
+                {toGo.length === 0 ? 'Finish ›' : 'Next ›'}
+              </button>
+            )}
+            <button type="button" className="is-skip" onClick={skip}>
               Skip to the end
             </button>
           </div>
@@ -712,7 +760,7 @@ export function Exam({ s, dispatch, subject, issue = null, since = 0, onClose, d
           </button>
           <div className="ex-again">
             <button type="button" onClick={start}>
-              ↺ Watch again
+              ↺ Examine again
             </button>
             <button type="button" onClick={() => setMode('idle')}>
               Look for yourself
@@ -745,6 +793,11 @@ export function Exam({ s, dispatch, subject, issue = null, since = 0, onClose, d
             ))}
           </ul>
           <p className="ex-done-sub is-fine">{order.length - red.size - new Set(signs.map(e => e.part)).size} parts healthy</p>
+          {then && (
+            <button type="button" className="ex-finish is-wide ex-then" onClick={then.go}>
+              {then.label} ›
+            </button>
+          )}
           <div className="ex-again">
             <button type="button" onClick={onClose}>
               Close
