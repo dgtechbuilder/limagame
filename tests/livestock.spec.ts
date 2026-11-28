@@ -25,6 +25,37 @@ const game = (patch: Partial<GameState> = {}): GameState => ({ ...initialState, 
 const inCare = (life: Partial<LifeState> = {}, patch: Partial<GameState> = {}): GameState => game({ life: { day: 2, started: 2, date: day, ...life }, ...patch });
 const act = (s: GameState, a: Parameters<typeof reducer>[1]) => reducer(s, a);
 
+test('every new game starts with cows, hens and their first milk and eggs, sold once on day 1', () => {
+  day = '2026-11-15';
+  let s = act(game(), { type: 'climateTick' });
+  // the cows and hens that came with the farm
+  expect(tankOf(s.tank).herd).toEqual({ cows: WATER.herd.cows, hens: WATER.herd.hens });
+  expect(tankOf(s.tank).herd.cows).toBeGreaterThan(0);
+  expect(tankOf(s.tank).herd.hens).toBeGreaterThan(0);
+  // and what they have given already, waiting to be sold before the daily care starts
+  expect(lifeOf(s.life).larder).toEqual(LIFE.larder);
+  const value = Math.round(LIFE.larder.milk * LIFE.milk.price + LIFE.larder.eggs * LIFE.eggs.price);
+  // a small start: about KSh 1,000, not a jump on the starting money
+  expect(value).toBeGreaterThan(0);
+  expect(value).toBeLessThan(initialState.coins * 0.01);
+  const coins = s.coins;
+  s = act(s, { type: 'animalLarder' });
+  expect(s.coins).toBe(coins + value);
+  expect(lifeOf(s.life).larder).toBeNull();
+  expect(lifeOf(s.life).totals).toMatchObject({ milk: LIFE.larder.milk, eggs: LIFE.larder.eggs, earned: value });
+  // once only
+  s = act(s, { type: 'animalLarder' });
+  expect(s.coins).toBe(coins + value);
+  expect(s.toast?.text).toMatch(/sold already/);
+  // the daily care still starts on day 2: the next day's milk and eggs come from it
+  day = '2026-11-16';
+  s = act(s, { type: 'climateTick' });
+  expect(lifeOf(s.life).today).toMatchObject({ milk: 0, eggs: 0, earned: 0 });
+  expect(careLeft(s).map(c => c.id)).toEqual(expect.arrayContaining(['milk', 'eggs']));
+  // a farm saved before the larder existed does not get it
+  expect(lifeOf({ day: 5 }).larder).toBeNull();
+});
+
 test('the animals come into the player’s care on day 2, with the coop, and a dialog says so', () => {
   day = '2026-11-15';
   let s = act(game(), { type: 'climateTick' });
@@ -314,4 +345,18 @@ test('the film plays by itself, and Escape closes only the examination', async (
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog', { name: 'Examine the cow' })).toHaveCount(0);
   await expect(page.getByRole('dialog', { name: 'Animals' })).toBeVisible();
+});
+
+test('in the game on day 1: the Animals page sells the first milk and eggs', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const L = (window as unknown as Win).__lima;
+    L.jump({ view: 'classic', coins: 20000, life: { day: 1, date: new Date().toISOString().slice(0, 10), larder: { milk: 16, eggs: 12 } } });
+  });
+  await page.getByRole('button', { name: /^Animals:/ }).click();
+  await expect(page.getByRole('group', { name: "The farm's first milk and eggs" })).toBeVisible();
+  await page.getByRole('button', { name: /^Sell the first milk and eggs for/ }).click();
+  await expect(page.getByRole('group', { name: "The farm's first milk and eggs" })).toHaveCount(0);
+  const s = await state(page);
+  expect(s.coins).toBe(20000 + Math.round(16 * LIFE.milk.price + 12 * LIFE.eggs.price));
 });
