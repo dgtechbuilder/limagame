@@ -191,13 +191,14 @@ export const LAMPS: { x: number; z: number }[] = [
 export const TRACTOR_BOARD = { x: -17.4, z: 8.6 };
 
 /** The partner billboards across the farm (src/partners/data.ts sets the brand on each): two in the yard either side of
-    the farmhouse path, one by the seed shed and one at the end of the lane, behind the storage annex and beside the mini forest. Each stands on one steel pole
+    the farmhouse path, one by the seed shed and one on the bottom-right corner of the mini forest, against the fence, where
+    it hides only the edge of the trees and none of the farm. Each stands on one steel pole
     and is turned a little (ry) toward the path the farmer walks. */
 export const BILLBOARDS: { slot: SlotId; x: number; z: number; ry: number }[] = [
   { slot: 'world-billboard-west', x: -7.6, z: -14.9, ry: 0.14 },
   { slot: 'world-billboard-east', x: 12.6, z: -14.6, ry: -0.14 },
   { slot: 'world-billboard-shed', x: -19.0, z: -7.8, ry: 0.2 },
-  { slot: 'world-billboard-forest', x: 12.9, z: 9.5, ry: -0.2 },
+  { slot: 'world-billboard-forest', x: 20.6, z: 16.5, ry: -0.35 },
 ];
 /** How often a sweep of light crosses a billboard (seconds), and how long it takes. */
 const SWEEP = { every: 7, takes: 1.1 };

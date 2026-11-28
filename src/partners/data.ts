@@ -184,7 +184,7 @@ export const SLOTS: Slot[] = [
   { id: 'world-billboard-west', surface: '3D farm', where: 'Billboard in the yard, west of the farmhouse path', format: 'Billboard: name, tagline, offer, tap for the offer', brand: 'rutuba' },
   { id: 'world-billboard-east', surface: '3D farm', where: 'Billboard in the yard, east of the coop', format: 'Billboard: name, tagline, offer, tap for the offer', brand: 'kinga' },
   { id: 'world-billboard-shed', surface: '3D farm', where: 'Billboard by the seed shed, west of the farms', format: 'Billboard: name, tagline, offer, tap for the offer', brand: 'shina' },
-  { id: 'world-billboard-forest', surface: '3D farm', where: 'Billboard between the storehouse and the mini forest', format: 'Billboard: name, tagline, offer, tap for the offer', brand: 'tangi' },
+  { id: 'world-billboard-forest', surface: '3D farm', where: 'Billboard on the bottom-right corner of the mini forest', format: 'Billboard: name, tagline, offer, tap for the offer', brand: 'tangi' },
   { id: 'world-tractor', surface: '3D farm', where: 'The farm’s tractor, both sides of the bonnet', format: 'Tractor livery and name on the tractor', brand: 'hello-tractor' },
   { id: 'world-stall', surface: '3D farm', where: 'The market stall’s awning, where harvests are sold', format: 'Awning branding', brand: null },
   { id: 'classic-billboard', surface: 'Classic farm', where: 'Roadside sign on the painted farm', format: 'Rotating sign: every partner in turn', brand: null },
