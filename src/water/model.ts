@@ -47,6 +47,9 @@ export interface TankState {
   paidOut: number;
   /** the irrigation each farm got this cycle, as a share of what its plan wanted: { cycle, want, got } */
   irrigation: { cycle: number; want: number; got: number };
+  /** the farm has had its cows: every new game starts with them, and a save from before gets them once
+      (src/livestock/model.ts giveCows) */
+  cowsGiven?: boolean;
 }
 
 export const newTank = (): TankState => ({
@@ -60,6 +63,7 @@ export const newTank = (): TankState => ({
   cover: null,
   paidOut: 0,
   irrigation: { cycle: 0, want: 0, got: 0 },
+  cowsGiven: true,
 });
 export const tankOf = (t: Partial<TankState> | undefined): TankState => ({ ...newTank(), ...(t ?? {}) });
 

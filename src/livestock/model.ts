@@ -116,6 +116,29 @@ export interface LifeHost {
 }
 
 export const herdOf = (s: Pick<LifeHost, 'tank'>): Herd => tankOf(s.tank).herd;
+
+/** Every farm keeps cows. A game saved before that (one whose cows were sold, died or never came) gets the starting
+    cows once when it opens, healthy and with the cows' problems cleared; a farm that has cows only gets the mark, so
+    nothing is ever doubled. Works on the save as stored, before the defaults are filled in. */
+export function giveCows<T extends { tank?: Partial<TankState>; life?: Partial<LifeState> }>(saved: T): T {
+  const tank = saved.tank;
+  if (!tank || tank.cowsGiven) return saved;
+  const had = tank.herd?.cows ?? WATER.herd.cows;
+  if (had > 0) return { ...saved, tank: { ...tank, cowsGiven: true } };
+  const herd = { hens: WATER.herd.hens, ...(tank.herd ?? {}), cows: WATER.herd.cows };
+  const out: T = { ...saved, tank: { ...tank, herd, cowsGiven: true } };
+  const l = saved.life;
+  if (l) {
+    const text = `${WATER.herd.cows} cows came home to the pen: every farm keeps cows now.`;
+    out.life = {
+      ...l,
+      health: { ...(l.health ?? {}), cows: LIFE.health.start } as Record<Group, number>,
+      issues: (l.issues ?? []).filter(i => issueOf(i.id).group !== 'cows'),
+      log: [{ day: l.day ?? 1, text }, ...(l.log ?? [])],
+    };
+  }
+  return out;
+}
 export const countOf = (s: Pick<LifeHost, 'tank'>, g: Group) => herdOf(s)[g];
 /** The animals are in the player's care (from day 2). */
 export const careOpen = (s: Pick<LifeHost, 'life'>) => lifeOf(s.life).day >= LIFE.startDay;
