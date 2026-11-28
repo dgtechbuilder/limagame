@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { HubSection } from './hub';
+import { Bush, Cottage, Countryside, Fence, Meadow, SB, Scribble, Tree, Tuft } from '../art/storybook';
 
 /* The tractor yard: a small walkable place, seen from above, with a station for each of the tractor screen's sections
    (the practice course, the classroom, the safety board, the oil bay, the workbench, the diesel pump, the ox pen and
@@ -210,40 +211,88 @@ export function TractorYard({ stations, onOpen, look, name, top, corner }: { sta
 function Ground() {
   return (
     <g aria-hidden="true">
-      <rect width={W} height={H} fill="#8cc152" />
-      {Array.from({ length: 40 }, (_, i) => (
-        <path key={i} d={`M${(i * 157) % W} ${60 + ((i * 89) % (H - 60))} l3 -6 l3 6`} stroke="#6fa83c" strokeWidth={1.5} fill="none" />
+      {/* the countryside behind the yard: sage sky, cream clouds, rolling hills and a line of trees */}
+      <Countryside w={W} y={52} seed={3} clouds={4} />
+      {[22, 96, 196, 300, 372, 452, 640].map((x, i) => (
+        <Tree key={x} x={x} y={56 + (i % 2) * 3} r={11 + (i % 3) * 2} tone={(i % 3) as 0 | 1 | 2} shadow={false} />
       ))}
-      {/* the yard: packed earth, a loop of track round the middle */}
-      <rect x={30} y={78} width={600} height={240} rx={40} fill="#d9b77e" />
-      <rect x={160} y={172} width={340} height={70} rx={35} fill="#c9a26a" />
-      <rect x={184} y={186} width={292} height={42} rx={21} fill="#d9b77e" />
-      {Array.from({ length: 18 }, (_, i) => (
-        <circle key={i} cx={60 + ((i * 131) % 540)} cy={96 + ((i * 53) % 200)} r={1.6 + (i % 3)} fill="#b8925d" />
+      <rect y={60} width={W} height={H - 60} fill={SB.grass} />
+      {[
+        [20, 150, 26],
+        [640, 230, 22],
+        [330, 330, 60],
+        [80, 330, 40],
+      ].map(([x, y, r], i) => (
+        <ellipse key={i} cx={x} cy={y} rx={r} ry={r * 0.35} fill={SB.grassLight} opacity={0.55} />
       ))}
-      {/* the fence at the back */}
-      <rect x={0} y={44} width={W} height={4} fill="#8a5a32" />
-      <rect x={0} y={56} width={W} height={4} fill="#8a5a32" />
-      {Array.from({ length: 23 }, (_, i) => (
-        <rect key={i} x={6 + i * 29} y={36} width={6} height={30} rx={2} fill="#a06a3a" />
+      <Meadow x={4} y={70} w={W - 8} h={H - 74} n={160} seed={7} flowers={0.45} avoid={(x, y) => x > 36 && x < 624 && y > 82 && y < 312} />
+      <Fence x0={-6} x1={W + 6} y={70} gap={29} h={22} />
+      {/* the yard: packed earth with a soft edge, a loop of track round the middle */}
+      <rect x={30} y={81} width={600} height={240} rx={42} fill={SB.earthDark} />
+      <rect x={30} y={78} width={600} height={238} rx={40} fill={SB.earth} />
+      {[
+        [120, 200, 50],
+        [560, 210, 46],
+        [330, 110, 70],
+      ].map(([x, y, r], i) => (
+        <ellipse key={i} cx={x} cy={y} rx={r} ry={r * 0.4} fill={SB.path} opacity={0.6} />
       ))}
-      {/* trees and the sky strip */}
-      <rect width={W} height={36} fill="#bfe6f5" />
-      {[30, 200, 360, 455, 640].map((x, i) => (
-        <g key={x} transform={`translate(${x},${30 + (i % 2) * 4})`}>
-          <rect x={-3} y={-2} width={6} height={12} fill="#7a4a24" />
-          <circle r={14} cy={-10} fill="#4c9a2a" />
-          <circle r={9} cx={-9} cy={-4} fill="#5aae33" />
-        </g>
+      <rect x={160} y={172} width={340} height={70} rx={35} fill={SB.earthDark} />
+      <rect x={184} y={186} width={292} height={42} rx={21} fill={SB.earth} />
+      <rect x={172} y={179} width={316} height={56} rx={28} fill="none" stroke={SB.path} strokeWidth={1.2} strokeDasharray="5 6" opacity={0.8} />
+      {Array.from({ length: 22 }, (_, i) => {
+        const x = 52 + ((i * 131) % 556);
+        const y = 96 + ((i * 53) % 206);
+        return (
+          <g key={i}>
+            <ellipse cx={x} cy={y} rx={1.8 + (i % 3)} ry={1.2 + (i % 3) * 0.6} fill={i % 4 ? SB.earthDark : SB.stone} />
+            {i % 4 === 0 && <ellipse cx={x - 0.6} cy={y - 0.5} rx={1} ry={0.5} fill={SB.white} opacity={0.6} />}
+          </g>
+        );
+      })}
+      {[
+        [44, 120],
+        [40, 250],
+        [616, 150],
+        [620, 286],
+        [330, 312],
+        [150, 300],
+      ].map(([x, y], i) => (
+        <Tuft key={i} x={x} y={y} s={0.9} />
       ))}
-      <circle cx={644} cy={12} r={8} fill="#ffd25c" />
-      {/* the sign over the yard */}
-      <g transform="translate(552,22)">
-        <rect x={-74} y={-13} width={148} height={24} rx={6} fill="#6b402b" />
-        <rect x={-70} y={-10} width={140} height={18} rx={4} fill="#ffce7e" />
-        <text y={4} textAnchor="middle" fontSize={8.5} fontWeight={800} fill="#6b402b">
-          🚜 TRACTOR YARD
+      {/* the sign over the yard, on two posts */}
+      <g transform="translate(552,24)">
+        <rect x={-58} y={-4} width={5} height={30} fill={SB.woodDark} />
+        <rect x={53} y={-4} width={5} height={30} fill={SB.woodDark} />
+        <rect x={-74} y={-14} width={148} height={26} rx={6} fill={SB.woodDark} />
+        <rect x={-70} y={-11} width={140} height={19} rx={4} fill={SB.wall} />
+        <Scribble x={-64} y={-1} w={10} color={SB.wallShade} opacity={1} />
+        <Scribble x={52} y={-1} w={10} color={SB.wallShade} opacity={1} />
+        <text y={3.5} textAnchor="middle" fontSize={8.5} fontWeight={800} fill={SB.ink} letterSpacing={0.6}>
+          TRACTOR YARD
         </text>
+      </g>
+    </g>
+  );
+}
+
+/** An ox standing side-on (facing left; scale(-1,1) to face right). */
+function Ox({ x, y, s = 1, face = 1 }: { x: number; y: number; s?: number; face?: number }) {
+  return (
+    <g transform={`translate(${x},${y}) scale(${s * face},${s})`}>
+      <ellipse cy={1} rx={13} ry={2.5} fill={SB.shadow} />
+      {[-8, -4, 5, 9].map(lx => (
+        <rect key={lx} x={lx - 1.3} y={-8} width={2.6} height={9} rx={1} fill="#6e4330" />
+      ))}
+      <path d="M-11 -9 Q-12 -18 -3 -18 L8 -18 Q13 -18 12 -10 Q11 -6 6 -6 L-7 -6 Q-11 -6 -11 -9 Z" fill="#9a6142" />
+      <path d="M-4 -18 Q2 -22 6 -18 Z" fill="#9a6142" />
+      <ellipse cx={1} cy={-11} rx={6} ry={3} fill="#b47a55" opacity={0.7} />
+      <path d="M12 -12 q4 2 3 8" stroke="#6e4330" strokeWidth={1.2} fill="none" strokeLinecap="round" />
+      <g transform="translate(-13,-15)">
+        <path d="M-1 -3 Q-7 -2 -7 3 Q-6 6 -3 6 Q1 5 2 1 Z" fill="#8a5634" />
+        <ellipse cx={-6} cy={4} rx={2.3} ry={1.8} fill="#c9a08a" />
+        <path d="M-1 -3 q-3 -4 1 -6 M1 -2 q4 -3 6 -1" stroke={SB.white} strokeWidth={1.4} fill="none" strokeLinecap="round" />
+        <circle cx={-3} cy={0} r={0.7} fill="#2a1a10" />
       </g>
     </g>
   );
@@ -255,39 +304,56 @@ function Prop({ id }: { id: Station }) {
     case 'train':
       return (
         <g>
-          {/* a practice field from above: a ploughed row up the middle, rocks and a tree in the way */}
-          <rect x={-58} y={-58} width={116} height={40} rx={8} fill="#c79f62" />
-          <rect x={-10} y={-58} width={20} height={40} fill="#5f3a1d" />
-          <line x1={-12} x2={-12} y1={-56} y2={-20} stroke="#fff" strokeWidth={1.2} strokeDasharray="4 3" opacity={0.8} />
-          <line x1={12} x2={12} y1={-56} y2={-20} stroke="#fff" strokeWidth={1.2} strokeDasharray="4 3" opacity={0.8} />
-          <ellipse cx={20} cy={-46} rx={6} ry={4.5} fill="#8e9196" />
-          <ellipse cx={-26} cy={-30} rx={5} ry={4} fill="#8e9196" />
-          <circle cx={-44} cy={-46} r={9} fill="#2f6b2a" />
-          <circle cx={-46} cy={-48} r={5} fill="#3f8a35" />
-          <circle cx={44} cy={-28} r={8} fill="#2f6b2a" />
+          {/* a practice field: ploughed furrows, a guide row up the middle, rocks and trees in the way */}
+          <rect x={-58} y={-56} width={116} height={40} rx={8} fill={SB.earthDark} />
+          <rect x={-58} y={-58} width={116} height={40} rx={8} fill={SB.soil} />
+          {Array.from({ length: 6 }, (_, i) => (
+            <path key={i} d={`M-52 ${-52 + i * 6.4} Q0 ${-54 + i * 6.4} 52 ${-52 + i * 6.4}`} stroke={SB.soilDark} strokeWidth={1.4} fill="none" opacity={0.7} />
+          ))}
+          <rect x={-10} y={-58} width={20} height={40} fill={SB.soilDark} />
+          <line x1={-12} x2={-12} y1={-56} y2={-20} stroke={SB.white} strokeWidth={1.2} strokeDasharray="4 3" opacity={0.85} />
+          <line x1={12} x2={12} y1={-56} y2={-20} stroke={SB.white} strokeWidth={1.2} strokeDasharray="4 3" opacity={0.85} />
+          <ellipse cx={22} cy={-45} rx={6} ry={4.5} fill={SB.stoneDark} />
+          <ellipse cx={21} cy={-46.5} rx={4.5} ry={3} fill={SB.stone} />
+          <ellipse cx={-26} cy={-29} rx={5} ry={4} fill={SB.stoneDark} />
+          <ellipse cx={-27} cy={-30.3} rx={3.6} ry={2.6} fill={SB.stone} />
+          <Tree x={-44} y={-36} r={10} />
+          <Bush x={46} y={-20} r={7} />
         </g>
       );
     case 'learn':
       return (
-        <g>
-          <rect x={-40} y={-66} width={80} height={46} rx={4} fill="#c98a4b" />
-          <polygon points="-48,-64 0,-86 48,-64" fill="#a8452f" />
-          <rect x={-28} y={-58} width={56} height={26} rx={2} fill="#2f4a3a" stroke="#8a5a32" strokeWidth={2} />
-          <text y={-41} textAnchor="middle" fontSize={7} fill="#fff" fontFamily="monospace">
-            A B C ✓
-          </text>
-          <rect x={-6} y={-32} width={12} height={12} fill="#7a4a24" />
+        <g transform="translate(0,-20)">
+          <Cottage w={74} h={34}>
+            <rect x={-28} y={-29} width={46} height={22} rx={2} fill={SB.woodDark} />
+            <rect x={-26} y={-27} width={42} height={18} rx={1.5} fill="#335443" />
+            <text x={-5} y={-15} textAnchor="middle" fontSize={6.5} fill={SB.white} fontFamily="monospace">
+              A B C ✓
+            </text>
+            <rect x={22} y={-20} width={10} height={20} rx={1} fill={SB.woodDark} />
+            <circle cx={30} cy={-10} r={0.9} fill={SB.meadow} />
+          </Cottage>
         </g>
       );
     case 'safety':
       return (
         <g>
-          <rect x={-3} y={-40} width={6} height={24} fill="#7a4a24" />
-          <rect x={-34} y={-76} width={68} height={40} rx={5} fill="#ffd25c" stroke="#6b402b" strokeWidth={2} />
-          <text y={-60} textAnchor="middle" fontSize={11}>
-            🦺⛑️
-          </text>
-          <text y={-43} textAnchor="middle" fontSize={7} fontWeight={800} fill="#6b402b">
+          <ellipse cy={-16} rx={20} ry={3} fill={SB.shadow} />
+          <rect x={-22} y={-44} width={5} height={28} fill={SB.woodDark} />
+          <rect x={17} y={-44} width={5} height={28} fill={SB.woodDark} />
+          <rect x={-36} y={-80} width={72} height={44} rx={6} fill={SB.woodDark} />
+          <rect x={-33} y={-77} width={66} height={38} rx={4} fill="#f3d35a" />
+          {/* a hard hat and a hi-vis vest */}
+          <g transform="translate(-12,-58)">
+            <path d="M-9 2 Q-9 -9 0 -9 Q9 -9 9 2 Z" fill="#e8963a" />
+            <rect x={-11} y={1} width={22} height={3} rx={1.5} fill="#d07a28" />
+            <path d="M-3 -8 Q0 -10 3 -8 L2 1 L-2 1 Z" fill="#f2b35a" />
+          </g>
+          <g transform="translate(13,-58)">
+            <path d="M-8 -9 L-3 -9 L0 -4 L3 -9 L8 -9 L8 5 L-8 5 Z" fill="#e8774f" />
+            <rect x={-8} y={-1} width={16} height={2} fill={SB.white} />
+          </g>
+          <text y={-43} textAnchor="middle" fontSize={6.8} fontWeight={800} fill={SB.ink} letterSpacing={0.3}>
             SAFETY FIRST
           </text>
         </g>
@@ -295,68 +361,107 @@ function Prop({ id }: { id: Station }) {
     case 'service':
       return (
         <g>
-          <rect x={-52} y={-72} width={104} height={52} rx={4} fill="#7c8a96" />
-          <polygon points="-58,-70 0,-88 58,-70" fill="#56636e" />
-          <rect x={-40} y={-60} width={80} height={40} fill="#3a444c" />
-          {[-24, -4].map(x => (
-            <g key={x} transform={`translate(${x},-38)`}>
-              <rect x={-8} y={-14} width={16} height={22} rx={3} fill="#c0432f" />
-              <rect x={-8} y={-8} width={16} height={3} fill="#8f2f20" />
+          <ellipse cy={-19} rx={60} ry={4} fill={SB.shadow} />
+          <rect x={-52} y={-70} width={104} height={50} fill={SB.shed} />
+          <rect x={34} y={-70} width={18} height={50} fill={SB.shedDark} />
+          <path d="M-60 -68 L0 -90 L60 -68 Z" fill={SB.roofDark} />
+          <path d="M-60 -68 L60 -68" stroke="#8a3a2c" strokeWidth={2.4} />
+          <rect x={-38} y={-60} width={70} height={40} fill="#3b4a3c" />
+          {/* the open doors, with their white braces */}
+          {[-50, 32].map(dx => (
+            <g key={dx} transform={`translate(${dx},-60)`}>
+              <rect width={12} height={40} fill={SB.shedDark} />
+              <path d="M1 1 L11 39 M11 1 L1 39" stroke={SB.white} strokeWidth={1.4} opacity={0.85} />
+              <rect width={12} height={40} fill="none" stroke={SB.white} strokeWidth={1.4} opacity={0.85} />
             </g>
           ))}
-          <text x={22} y={-30} fontSize={12.5} textAnchor="middle">
-            🛢️
-          </text>
+          {[-24, -6].map(x => (
+            <g key={x} transform={`translate(${x},-34)`}>
+              <rect x={-7} y={-14} width={14} height={20} rx={3} fill={SB.roof} />
+              <rect x={-7} y={-8} width={14} height={2.4} fill={SB.roofDark} />
+              <rect x={-5} y={-13} width={3} height={17} rx={1.5} fill="#e48a6f" opacity={0.7} />
+            </g>
+          ))}
+          <g transform="translate(16,-30)">
+            <rect x={-6} y={-12} width={12} height={16} rx={3} fill="#4f8db8" />
+            <rect x={-6} y={-6} width={12} height={2} fill="#3a6f96" />
+          </g>
         </g>
       );
     case 'repair':
       return (
         <g>
-          <rect x={-46} y={-44} width={92} height={10} rx={2} fill="#8a5a32" />
-          <rect x={-42} y={-34} width={6} height={16} fill="#6b402b" />
-          <rect x={36} y={-34} width={6} height={16} fill="#6b402b" />
-          <rect x={-46} y={-80} width={92} height={34} rx={3} fill="#a06a3a" />
-          <text y={-58} textAnchor="middle" fontSize={12}>
-            🔧🔩🪛
-          </text>
-          <circle cx={-30} cy={-50} r={7} fill="#2a2a2a" />
+          <ellipse cy={-18} rx={48} ry={3.5} fill={SB.shadow} />
+          <rect x={-46} y={-82} width={92} height={36} rx={3} fill={SB.woodLight} />
+          {[-70, -62, -54].map(y => (
+            <path key={y} d={`M-44 ${y} L44 ${y}`} stroke={SB.wood} strokeWidth={0.8} opacity={0.6} />
+          ))}
+          {/* a spanner, a hammer and a screwdriver on the board */}
+          <g transform="translate(-20,-64) rotate(-30)">
+            <rect x={-1.5} y={-9} width={3} height={18} rx={1.5} fill="#9aa3a8" />
+            <path d="M-4 -12 a4 4 0 1 1 8 0 l-2 1 l-2 -3 l-2 3 Z" fill="#9aa3a8" />
+          </g>
+          <g transform="translate(0,-64)">
+            <rect x={-1.4} y={-6} width={2.8} height={16} rx={1} fill={SB.woodDark} />
+            <rect x={-6} y={-10} width={12} height={5} rx={1.5} fill="#7d878c" />
+          </g>
+          <g transform="translate(20,-64) rotate(25)">
+            <rect x={-2.5} y={2} width={5} height={8} rx={2} fill={SB.roof} />
+            <rect x={-0.8} y={-9} width={1.6} height={12} fill="#9aa3a8" />
+          </g>
+          <rect x={-48} y={-46} width={96} height={9} rx={2} fill={SB.wood} />
+          <rect x={-48} y={-46} width={96} height={3} rx={1.5} fill={SB.woodLight} />
+          <rect x={-42} y={-37} width={6} height={19} fill={SB.woodDark} />
+          <rect x={36} y={-37} width={6} height={19} fill={SB.woodDark} />
+          <circle cx={-28} cy={-28} r={9} fill="#4a4038" />
+          <circle cx={-28} cy={-28} r={4} fill={SB.stone} />
         </g>
       );
     case 'refuel':
       return (
         <g>
-          <rect x={-18} y={-74} width={36} height={56} rx={6} fill="#ffae00" stroke="#c88900" strokeWidth={2} />
-          <rect x={-12} y={-66} width={24} height={14} rx={2} fill="#2a2a2a" />
-          <text y={-55} textAnchor="middle" fontSize={7} fill="#7cff6a" fontFamily="monospace">
+          <ellipse cy={-18} rx={26} ry={3.5} fill={SB.shadow} />
+          <rect x={-18} y={-74} width={36} height={56} rx={7} fill="#e9a13b" />
+          <rect x={8} y={-74} width={10} height={56} rx={4} fill="#d48a2a" />
+          <rect x={-18} y={-78} width={36} height={8} rx={3} fill={SB.roof} />
+          <rect x={-12} y={-66} width={24} height={14} rx={2} fill={SB.wall} />
+          <text y={-56} textAnchor="middle" fontSize={6.5} fontWeight={800} fill={SB.ink} fontFamily="monospace">
             DIESEL
           </text>
-          <path d="M18 -50 Q34 -48 30 -28" stroke="#2a2a2a" strokeWidth={3} fill="none" />
-          <rect x={26} y={-30} width={8} height={10} rx={2} fill="#2a2a2a" />
+          <circle cy={-40} r={5} fill={SB.wall} opacity={0.9} />
+          <path d="M18 -50 Q34 -48 30 -28" stroke="#4a4038" strokeWidth={3} fill="none" strokeLinecap="round" />
+          <rect x={26} y={-30} width={8} height={10} rx={2} fill="#4a4038" />
         </g>
       );
     case 'hire':
       return (
         <g>
-          <rect x={-56} y={-70} width={112} height={50} rx={6} fill="#c9a26a" stroke="#8a5a32" strokeWidth={3} strokeDasharray="2 6" />
-          <text x={-18} y={-34} fontSize={17.5} textAnchor="middle">
-            🐂
-          </text>
-          <text x={20} y={-38} fontSize={16} textAnchor="middle">
-            🐂
-          </text>
+          {/* the ox pen: a patch of grass behind a rail fence */}
+          <rect x={-56} y={-70} width={112} height={50} rx={10} fill={SB.grassLight} opacity={0.7} />
+          <Meadow x={-52} y={-64} w={104} h={40} n={14} seed={21} flowers={0.2} />
+          <Fence x0={-56} x1={56} y={-60} gap={22} h={16} />
+          <Ox x={-16} y={-26} s={1} />
+          <Ox x={22} y={-32} s={0.9} face={-1} />
+          <Fence x0={-56} x1={56} y={-18} gap={28} h={12} />
         </g>
       );
     case 'drive':
       return (
         <g transform="translate(0,-26)">
-          <rect x={-40} y={-26} width={56} height={20} rx={5} fill="#2b8a4a" />
-          <rect x={4} y={-50} width={28} height={30} rx={4} fill="#2b8a4a" stroke="#1d5e33" strokeWidth={2} />
-          <rect x={9} y={-45} width={18} height={14} rx={3} fill="#bfe3f2" />
-          <rect x={-34} y={-36} width={5} height={11} fill="#555" />
-          <circle cx={-26} cy={-2} r={11} fill="#2a2a2a" />
-          <circle cx={-26} cy={-2} r={4.5} fill="#f2c230" />
-          <circle cx={20} cy={-8} r={17} fill="#2a2a2a" />
-          <circle cx={20} cy={-8} r={7} fill="#f2c230" />
+          <ellipse cy={10} rx={46} ry={4} fill={SB.shadow} />
+          <rect x={-40} y={-26} width={56} height={20} rx={6} fill="#4f9a4a" />
+          <rect x={-40} y={-26} width={56} height={6} rx={3} fill="#6fb361" />
+          <rect x={2} y={-52} width={32} height={34} rx={5} fill="#4f9a4a" />
+          <rect x={0} y={-56} width={36} height={6} rx={2} fill={SB.roof} />
+          <rect x={8} y={-46} width={20} height={15} rx={3} fill={SB.waterLight} />
+          <path d="M11 -43 l5 0 l-6 9 Z" fill={SB.white} opacity={0.7} />
+          <rect x={-34} y={-38} width={5} height={13} rx={1.5} fill="#5a524a" />
+          <circle cx={-26} cy={-2} r={11} fill="#3f3a33" />
+          <circle cx={-26} cy={-2} r={5} fill="#f3d35a" />
+          <circle cx={20} cy={-8} r={17} fill="#3f3a33" />
+          <circle cx={20} cy={-8} r={13} fill="none" stroke="#56504a" strokeWidth={2} strokeDasharray="3 3" />
+          <circle cx={20} cy={-8} r={7} fill="#f3d35a" />
+          <circle cx={18} cy={-10} r={2} fill={SB.white} opacity={0.7} />
         </g>
       );
   }
@@ -420,7 +525,7 @@ function Mechanic() {
   }, []);
   return (
     <g transform="translate(486,206)" aria-hidden="true" className="ty-mech">
-      <ellipse cy={14} rx={10} ry={3.5} fill="rgba(0,0,0,0.18)" />
+      <ellipse cy={14} rx={10} ry={3.5} fill={SB.shadow} />
       <rect x={-6} y={-6} width={12} height={18} rx={4} fill="#2a4a7a" />
       <circle cy={-13} r={8} fill="#5a3420" />
       <path d="M-8 -16 Q0 -26 8 -16 Z" fill="#c0432f" />
@@ -447,7 +552,7 @@ function Farmer({ x, y, face, walking, look, name }: { x: number; y: number; fac
   const shirt = look?.shirt ?? '#e8742a';
   return (
     <g transform={`translate(${x},${y})`} className={`ty-farmer${walking ? ' is-walking' : ''}`} aria-label={`${name}, in the yard`}>
-      <ellipse cy={2} rx={11} ry={4} fill="rgba(0,0,0,0.22)" />
+      <ellipse cy={2} rx={11} ry={4} fill={SB.shadow} />
       <g transform={`scale(${face},1)`}>
         <g className="ty-legs">
           <rect className="ty-leg-a" x={-5} y={-10} width={4} height={11} rx={2} fill="#3b4a5a" />

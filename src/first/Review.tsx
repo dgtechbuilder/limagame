@@ -48,130 +48,130 @@ export function CallIcon({ id }: { id: Call }) {
   if (id === 'healthy')
     return (
       <svg {...common}>
-        <path d="M15,27 C15,18 15,12 15,8" stroke="#2f7d27" strokeWidth={2.4} fill="none" />
-        <path d="M15,14 Q5,12 4,4 Q13,4 15,14 Z M15,11 Q25,9 26,2 Q17,2 15,11 Z" fill="#3fae3a" />
+        <path d="M15,27 C15,18 15,12 15,8" stroke="#447833" strokeWidth={2.4} fill="none" />
+        <path d="M15,14 Q5,12 4,4 Q13,4 15,14 Z M15,11 Q25,9 26,2 Q17,2 15,11 Z" fill="#5ea548" />
       </svg>
     );
   if (id === 'water')
     return (
       <svg {...common}>
-        <path d="M15,3 Q24,15 24,19 A9,9 0 0 1 6,19 Q6,15 15,3 Z" fill="#22ade2" stroke="#137aa3" strokeWidth={1.2} />
+        <path d="M15,3 Q24,15 24,19 A9,9 0 0 1 6,19 Q6,15 15,3 Z" fill="#48bca9" stroke="#308679" strokeWidth={1.2} />
       </svg>
     );
   if (id === 'pests')
     return (
       <svg {...common}>
         {[0, 1, 2, 3].map(k => (
-          <circle key={k} cx={8 + k * 5} cy={17 + (k % 2) * 1.5} r={4.2} fill="#7a8a3a" stroke="#3f4520" />
+          <circle key={k} cx={8 + k * 5} cy={17 + (k % 2) * 1.5} r={4.2} fill="#658545" stroke="#4f3e30" />
         ))}
-        <circle cx={5} cy={16} r={4.4} fill="#3a2414" />
-        <path d="M3,18 L5,15 L7,18 M5,15 L5,12.5" stroke="#f2e6c8" strokeWidth={0.9} fill="none" />
+        <circle cx={5} cy={16} r={4.4} fill="#4a3a2c" />
+        <path d="M3,18 L5,15 L7,18 M5,15 L5,12.5" stroke="#eee4cc" strokeWidth={0.9} fill="none" />
       </svg>
     );
   if (id === 'flood')
     return (
       <svg {...common}>
-        <path d="M15,3 Q23,13 23,17 A8,8 0 0 1 7,17 Q7,13 15,3 Z" fill="#22ade2" stroke="#137aa3" strokeWidth={1.2} />
-        <path d="M2,23 q4,-4 7,0 t7,0 t7,0 t5,0 M2,27 q4,-4 7,0 t7,0 t7,0 t5,0" stroke="#137aa3" strokeWidth={1.6} fill="none" />
+        <path d="M15,3 Q23,13 23,17 A8,8 0 0 1 7,17 Q7,13 15,3 Z" fill="#48bca9" stroke="#308679" strokeWidth={1.2} />
+        <path d="M2,23 q4,-4 7,0 t7,0 t7,0 t5,0 M2,27 q4,-4 7,0 t7,0 t7,0 t5,0" stroke="#308679" strokeWidth={1.6} fill="none" />
       </svg>
     );
   if (id === 'disease')
     return (
       <svg {...common}>
-        <path d="M4,22 Q4,6 24,5 Q26,24 8,26 Z" fill="#6fbf3a" stroke="#2a6f24" strokeWidth={1.1} />
-        <circle cx={12} cy={14} r={3} fill="#7a3b10" />
-        <circle cx={19} cy={10} r={2} fill="#7a3b10" />
-        <circle cx={16} cy={19} r={2.2} fill="#7a3b10" />
+        <path d="M4,22 Q4,6 24,5 Q26,24 8,26 Z" fill="#70b44a" stroke="#3d6c2e" strokeWidth={1.1} />
+        <circle cx={12} cy={14} r={3} fill="#6f3d1b" />
+        <circle cx={19} cy={10} r={2} fill="#6f3d1b" />
+        <circle cx={16} cy={19} r={2.2} fill="#6f3d1b" />
       </svg>
     );
   if (id === 'weeds')
     return (
       <svg {...common}>
-        <path d="M4,27 L26,27" stroke="#7a5230" strokeWidth={2} />
-        <path d="M9,27 Q7,17 4,11 M9,27 Q10,15 12,8 M16,27 Q15,17 19,9 M21,27 Q22,19 26,14" stroke="#4fae3c" strokeWidth={2.4} fill="none" strokeLinecap="round" />
-        <circle cx={12} cy={7} r={2.4} fill="#f5d33a" />
+        <path d="M4,27 L26,27" stroke="#735337" strokeWidth={2} />
+        <path d="M9,27 Q7,17 4,11 M9,27 Q10,15 12,8 M16,27 Q15,17 19,9 M21,27 Q22,19 26,14" stroke="#63a54a" strokeWidth={2.4} fill="none" strokeLinecap="round" />
+        <circle cx={12} cy={7} r={2.4} fill="#e2c74d" />
       </svg>
     );
   if (id === 'animals')
     return (
       <svg {...common}>
-        <ellipse cx={14} cy={18} rx={9} ry={5.6} fill="#f3efe6" stroke="#8a7a64" strokeWidth={1.1} />
-        <circle cx={23} cy={14} r={3.6} fill="#f3efe6" stroke="#8a7a64" strokeWidth={1.1} />
-        <path d="M22,10.5 l-1,-4 M25,11 l2,-4 M8,23 v4 M12,23.5 v4 M17,23.5 v4 M21,22 v5" stroke="#5a4a38" strokeWidth={1.4} />
+        <ellipse cx={14} cy={18} rx={9} ry={5.6} fill="#f2eee7" stroke="#867968" strokeWidth={1.1} />
+        <circle cx={23} cy={14} r={3.6} fill="#f2eee7" stroke="#867968" strokeWidth={1.1} />
+        <path d="M22,10.5 l-1,-4 M25,11 l2,-4 M8,23 v4 M12,23.5 v4 M17,23.5 v4 M21,22 v5" stroke="#574a3b" strokeWidth={1.4} />
       </svg>
     );
   if (id === 'hail')
     return (
       <svg {...common}>
-        <path d="M6,15 Q2,15 3,11 Q4,7 9,8 Q11,3 17,5 Q22,3 24,9 Q29,9 27,14 Q27,16 24,15 Z" fill="#9aa7b4" stroke="#5f6b78" strokeWidth={1.1} />
+        <path d="M6,15 Q2,15 3,11 Q4,7 9,8 Q11,3 17,5 Q22,3 24,9 Q29,9 27,14 Q27,16 24,15 Z" fill="#a2aca3" stroke="#647372" strokeWidth={1.1} />
         {[[9, 21], [15, 24], [21, 20], [12, 28], [19, 28]].map(([x, y], k) => (
-          <circle key={k} cx={x} cy={y} r={2.2} fill="#fff" stroke="#6b8aa0" strokeWidth={0.9} />
+          <circle key={k} cx={x} cy={y} r={2.2} fill="#fbf8ee" stroke="#769592" strokeWidth={0.9} />
         ))}
       </svg>
     );
   if (id === 'virus')
     return (
       <svg {...common}>
-        <path d="M4,22 Q4,6 24,5 Q26,24 8,26 Z" fill="#9fcf5a" stroke="#2a6f24" strokeWidth={1.1} />
-        <path d="M7,22 Q14,13 23,7 M9,25 Q16,17 24,11" stroke="#eef2b8" strokeWidth={2} fill="none" strokeLinecap="round" />
-        <path d="M18,6 Q24,5 24,5 Q25,12 22,14 Z" fill="#b08a4a" />
+        <path d="M4,22 Q4,6 24,5 Q26,24 8,26 Z" fill="#90c36a" stroke="#3d6c2e" strokeWidth={1.1} />
+        <path d="M7,22 Q14,13 23,7 M9,25 Q16,17 24,11" stroke="#e9ecbe" strokeWidth={2} fill="none" strokeLinecap="round" />
+        <path d="M18,6 Q24,5 24,5 Q25,12 22,14 Z" fill="#a68754" />
       </svg>
     );
   if (id === 'wind')
     return (
       <svg {...common}>
-        <path d="M3,9 h14 q5,0 5,-4 M3,14 h20 q5,0 5,4 M3,19 h10" stroke="#6b8aa0" strokeWidth={2} fill="none" strokeLinecap="round" />
-        <path d="M8,28 Q15,26 27,22" stroke="#3f9b35" strokeWidth={2.6} fill="none" strokeLinecap="round" />
-        <path d="M18,25 q3,-5 8,-5 M13,26 q2,-4 6,-5" stroke="#4fae3c" strokeWidth={1.8} fill="none" />
+        <path d="M3,9 h14 q5,0 5,-4 M3,14 h20 q5,0 5,4 M3,19 h10" stroke="#769592" strokeWidth={2} fill="none" strokeLinecap="round" />
+        <path d="M8,28 Q15,26 27,22" stroke="#579442" strokeWidth={2.6} fill="none" strokeLinecap="round" />
+        <path d="M18,25 q3,-5 8,-5 M13,26 q2,-4 6,-5" stroke="#63a54a" strokeWidth={1.8} fill="none" />
       </svg>
     );
   if (id === 'striga')
     return (
       <svg {...common}>
-        <path d="M4,27 L26,27" stroke="#7a5230" strokeWidth={2} />
-        <path d="M11,27 L11,6" stroke="#3f9b35" strokeWidth={2.4} />
-        <path d="M20,27 L20,14" stroke="#5f8a3a" strokeWidth={1.6} />
+        <path d="M4,27 L26,27" stroke="#735337" strokeWidth={2} />
+        <path d="M11,27 L11,6" stroke="#579442" strokeWidth={2.4} />
+        <path d="M20,27 L20,14" stroke="#5d8545" strokeWidth={1.6} />
         {[[20, 12], [18, 16], [22, 17], [19, 20], [22, 21]].map(([x, y], k) => (
-          <circle key={k} cx={x} cy={y} r={1.9} fill="#e85aa8" stroke="#a02a6a" strokeWidth={0.5} />
+          <circle key={k} cx={x} cy={y} r={1.9} fill="#d66ca6" stroke="#913969" strokeWidth={0.5} />
         ))}
       </svg>
     );
   if (id === 'erosion')
     return (
       <svg {...common}>
-        <path d="M2,10 L28,22 L28,28 L2,28 Z" fill="#b5653a" stroke="#7a3f1f" strokeWidth={1} />
-        <path d="M2,10 L28,22" stroke="#5f3a1f" strokeWidth={2} />
-        <path d="M9,15 q2,4 0,8 M17,19 q2,3 0,7" stroke="#22ade2" strokeWidth={1.8} fill="none" strokeLinecap="round" />
-        <path d="M6,11 q-1,-5 2,-7 M14,15 q0,-5 3,-6" stroke="#4fae3c" strokeWidth={1.6} fill="none" />
+        <path d="M2,10 L28,22 L28,28 L2,28 Z" fill="#a96946" stroke="#714228" strokeWidth={1} />
+        <path d="M2,10 L28,22" stroke="#593b25" strokeWidth={2} />
+        <path d="M9,15 q2,4 0,8 M17,19 q2,3 0,7" stroke="#48bca9" strokeWidth={1.8} fill="none" strokeLinecap="round" />
+        <path d="M6,11 q-1,-5 2,-7 M14,15 q0,-5 3,-6" stroke="#63a54a" strokeWidth={1.6} fill="none" />
       </svg>
     );
   if (id === 'rodents')
     return (
       <svg {...common}>
-        <path d="M2,26 q6,-7 12,0 Z" fill="#7a5230" />
-        <ellipse cx={18} cy={19} rx={7} ry={4.6} fill="#8a7a6a" stroke="#4a3e32" strokeWidth={1} />
-        <circle cx={24} cy={16} r={3} fill="#8a7a6a" stroke="#4a3e32" strokeWidth={1} />
-        <circle cx={23} cy={13} r={1.6} fill="#c9a8a0" />
-        <path d="M11,20 Q5,22 4,17" stroke="#c9a8a0" strokeWidth={1.2} fill="none" />
+        <path d="M2,26 q6,-7 12,0 Z" fill="#735337" />
+        <ellipse cx={18} cy={19} rx={7} ry={4.6} fill="#877a6d" stroke="#483e34" strokeWidth={1} />
+        <circle cx={24} cy={16} r={3} fill="#877a6d" stroke="#483e34" strokeWidth={1} />
+        <circle cx={23} cy={13} r={1.6} fill="#c3aba6" />
+        <path d="M11,20 Q5,22 4,17" stroke="#c3aba6" strokeWidth={1.2} fill="none" />
       </svg>
     );
   if (id === 'plantEarly' || id === 'plantLate' || id === 'harvestEarly' || id === 'harvestLate')
     return (
       <svg {...common}>
-        <rect x={4} y={6} width={22} height={21} rx={3} fill="#fff8ec" stroke="#7a5230" strokeWidth={1.4} />
-        <rect x={4} y={6} width={22} height={6} rx={3} fill="#c9925a" stroke="#7a5230" strokeWidth={1.4} />
+        <rect x={4} y={6} width={22} height={21} rx={3} fill="#fdf8ee" stroke="#735337" strokeWidth={1.4} />
+        <rect x={4} y={6} width={22} height={6} rx={3} fill="#be9265" stroke="#735337" strokeWidth={1.4} />
         {id.startsWith('plant') ? (
-          <path d="M15,25 L15,18 M15,19 Q10,18 9,14 Q14,14 15,19 Z M15,18 Q20,17 21,13 Q16,13 15,18 Z" fill="#4fae3c" stroke="#2a6f24" strokeWidth={1} />
+          <path d="M15,25 L15,18 M15,19 Q10,18 9,14 Q14,14 15,19 Z M15,18 Q20,17 21,13 Q16,13 15,18 Z" fill="#63a54a" stroke="#3d6c2e" strokeWidth={1} />
         ) : (
-          <path d="M11,25 Q9,18 14,14 Q20,16 18,24 Z" fill="#f2c230" stroke="#8a6a24" strokeWidth={1} />
+          <path d="M11,25 Q9,18 14,14 Q20,16 18,24 Z" fill="#dfb843" stroke="#80662e" strokeWidth={1} />
         )}
       </svg>
     );
   return (
     <svg {...common}>
-      <path d="M7,9 Q15,5 23,9 L25,26 Q15,29 5,26 Z" fill="#c9925a" stroke="#7a5230" strokeWidth={1.2} />
-      <path d="M9,9 Q15,3 21,9" fill="#e9d29a" stroke="#7a5230" strokeWidth={1} />
-      <text x={15} y={21} textAnchor="middle" fontSize={7} fontWeight={700} fill="#fff" fontFamily="Poppins, sans-serif">
+      <path d="M7,9 Q15,5 23,9 L25,26 Q15,29 5,26 Z" fill="#be9265" stroke="#735337" strokeWidth={1.2} />
+      <path d="M9,9 Q15,3 21,9" fill="#e1cfa2" stroke="#735337" strokeWidth={1} />
+      <text x={15} y={21} textAnchor="middle" fontSize={7} fontWeight={700} fill="#fbf8ee" fontFamily="Poppins, sans-serif">
         NPK
       </text>
     </svg>
@@ -416,13 +416,13 @@ export function Review({
               })}
             {miss && step === 'spot' && (
               <g key={miss.id} className="miss-mark" transform={`translate(${miss.x},${miss.y})`}>
-                <path d="M-9,-9 L9,9 M9,-9 L-9,9" stroke="#c0392b" strokeWidth={5} strokeLinecap="round" />
+                <path d="M-9,-9 L9,9 M9,-9 L-9,9" stroke="#ab5240" strokeWidth={5} strokeLinecap="round" />
               </g>
             )}
             {step === 'right' && phase >= 1 && (
               <g className="sparkles">
                 {[120, 230, 340, 450].map((x, i) => (
-                  <path key={x} d="M0,-8 L2,-2 L8,0 L2,2 L0,8 L-2,2 L-8,0 L-2,-2 Z" transform={`translate(${x},${110 + (i % 2) * 30})`} fill="#fff6c2" />
+                  <path key={x} d="M0,-8 L2,-2 L8,0 L2,2 L0,8 L-2,2 L-8,0 L-2,-2 Z" transform={`translate(${x},${110 + (i % 2) * 30})`} fill="#f9f2c8" />
                 ))}
               </g>
             )}

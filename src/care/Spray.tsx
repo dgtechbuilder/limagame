@@ -131,28 +131,28 @@ function KitArt({ on }: { on: string[] }) {
   const has = (k: string) => on.includes(k);
   return (
     <svg viewBox="0 0 120 150" width={180} height={210}>
-      <circle cx={60} cy={26} r={16} fill="#8a5634" />
-      {has('mask') && <rect x={47} y={28} width={26} height={11} rx={4} fill="#e8f1f5" stroke="#9ab" />}
-      <rect x={40} y={44} width={40} height={52} rx={10} fill="#d9433a" />
-      <rect x={26} y={48} width={14} height={40} rx={6} fill="#d9433a" />
-      <rect x={80} y={48} width={14} height={40} rx={6} fill="#d9433a" />
-      <circle cx={33} cy={92} r={7} fill={has('gloves') ? '#f2c230' : '#8a5634'} />
-      <circle cx={87} cy={92} r={7} fill={has('gloves') ? '#f2c230' : '#8a5634'} />
-      <rect x={44} y={96} width={14} height={36} rx={5} fill="#3b4a5a" />
-      <rect x={62} y={96} width={14} height={36} rx={5} fill="#3b4a5a" />
+      <circle cx={60} cy={26} r={16} fill="#81583d" />
+      {has('mask') && <rect x={47} y={28} width={26} height={11} rx={4} fill="#ecf1ec" stroke="#a4b0a4" />}
+      <rect x={40} y={44} width={40} height={52} rx={10} fill="#c36350" />
+      <rect x={26} y={48} width={14} height={40} rx={6} fill="#c36350" />
+      <rect x={80} y={48} width={14} height={40} rx={6} fill="#c36350" />
+      <circle cx={33} cy={92} r={7} fill={has('gloves') ? '#dfb843' : '#81583d'} />
+      <circle cx={87} cy={92} r={7} fill={has('gloves') ? '#dfb843' : '#81583d'} />
+      <rect x={44} y={96} width={14} height={36} rx={5} fill="#415453" />
+      <rect x={62} y={96} width={14} height={36} rx={5} fill="#415453" />
       {has('boots') ? (
         <>
-          <rect x={41} y={120} width={19} height={20} rx={4} fill="#2f7d27" />
-          <rect x={60} y={120} width={19} height={20} rx={4} fill="#2f7d27" />
+          <rect x={41} y={120} width={19} height={20} rx={4} fill="#447833" />
+          <rect x={60} y={120} width={19} height={20} rx={4} fill="#447833" />
         </>
       ) : (
         <>
-          <ellipse cx={51} cy={136} rx={9} ry={4} fill="#8a5634" />
-          <ellipse cx={69} cy={136} rx={9} ry={4} fill="#8a5634" />
+          <ellipse cx={51} cy={136} rx={9} ry={4} fill="#81583d" />
+          <ellipse cx={69} cy={136} rx={9} ry={4} fill="#81583d" />
         </>
       )}
-      <rect x={92} y={60} width={18} height={34} rx={6} fill="#f2c230" opacity={on.length === 3 ? 1 : 0.25} />
-      <path d="M101 60V50h10" stroke="#444" strokeWidth={3} fill="none" opacity={on.length === 3 ? 1 : 0.25} />
+      <rect x={92} y={60} width={18} height={34} rx={6} fill="#dfb843" opacity={on.length === 3 ? 1 : 0.25} />
+      <path d="M101 60V50h10" stroke="#49463f" strokeWidth={3} fill="none" opacity={on.length === 3 ? 1 : 0.25} />
     </svg>
   );
 }

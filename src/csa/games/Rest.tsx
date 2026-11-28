@@ -14,7 +14,7 @@ const H = 260;
 const CELL = { w: 170, h: 96, x0: 28, y0: 34, dx: 192, dy: 112 };
 const at = (i: number) => ({ x: CELL.x0 + (i % 3) * CELL.dx, y: CELL.y0 + Math.floor(i / 3) * CELL.dy });
 const NEXT: Record<'crop' | 'cover' | 'fallow', RotPick> = { crop: 'cover', cover: 'fallow', fallow: null };
-const soilFill = (soil: number) => (soilTone(soil) === 'good' ? '#5b3a1e' : soilTone(soil) === 'ok' ? '#8a6038' : '#c79a62');
+const soilFill = (soil: number) => (soilTone(soil) === 'good' ? '#553a24' : soilTone(soil) === 'ok' ? '#826040' : '#bd996c');
 
 export function RestGame({ seed, drill, onDone }: GameProps) {
   const start = useMemo(() => rotStart(seed), [seed]);
@@ -78,7 +78,7 @@ export function RestGame({ seed, drill, onDone }: GameProps) {
 
   const stage = (
     <svg viewBox={`0 0 ${W} ${H}`} className="csa-svg" aria-label="Six farms seen from above, with their soil">
-      <rect width={W} height={H} fill="#cfe3a2" />
+      <rect width={W} height={H} fill="#c2ddab" />
       {farms.map((f, i) => {
         const { x, y } = at(i);
         const pick = picks[i];
@@ -97,15 +97,15 @@ export function RestGame({ seed, drill, onDone }: GameProps) {
             onClick={() => tap(i)}
             onKeyDown={e => e.key === 'Enter' && tap(i)}
           >
-            <rect x={x} y={y} width={CELL.w} height={CELL.h} rx={8} fill={showPick === 'cover' ? '#3f8a26' : showPick === 'fallow' ? '#93cf33' : soilFill(soil)} stroke={pick && !shown ? '#ffd257' : '#00000033'} strokeWidth={pick && !shown ? 3 : 1} />
+            <rect x={x} y={y} width={CELL.w} height={CELL.h} rx={8} fill={showPick === 'cover' ? '#4b8433' : showPick === 'fallow' ? '#7bbf48' : soilFill(soil)} stroke={pick && !shown ? '#eeca68' : '#00000033'} strokeWidth={pick && !shown ? 3 : 1} />
             {/* rows of crop, or the rest's plants */}
             {Array.from({ length: 4 }, (_, r) =>
               Array.from({ length: 6 }, (_, c) => {
                 const px = x + 18 + c * 27;
                 const py = y + 30 + r * 18;
-                if (showPick === 'cover') return <circle key={`${r}${c}`} cx={px} cy={py - 4} r={6} fill="#6fcf4a" />;
-                if (showPick === 'fallow') return <path key={`${r}${c}`} d={`M${px - 5} ${py} l 3 -10 l 2 10 l 3 -8 l 2 8`} stroke="#4f8a24" strokeWidth={1.6} fill="none" />;
-                return <Sprout key={`${r}${c}`} x={px} y={py} g={shown ? (0.3 + 0.7 * Math.min(1, grownBags / ROT.bags)) * (running ? t : 1) : 0.15} tone={soilTone(soil) === 'poor' ? '#b9c25a' : '#3e9b2f'} />;
+                if (showPick === 'cover') return <circle key={`${r}${c}`} cx={px} cy={py - 4} r={6} fill="#7cc25c" />;
+                if (showPick === 'fallow') return <path key={`${r}${c}`} d={`M${px - 5} ${py} l 3 -10 l 2 10 l 3 -8 l 2 8`} stroke="#4f8431" strokeWidth={1.6} fill="none" />;
+                return <Sprout key={`${r}${c}`} x={px} y={py} g={shown ? (0.3 + 0.7 * Math.min(1, grownBags / ROT.bags)) * (running ? t : 1) : 0.15} tone={soilTone(soil) === 'poor' ? '#b0b864' : '#54933d'} />;
               }),
             )}
             <rect x={x + 4} y={y + 4} width={CELL.w - 8} height={18} rx={4} fill="#ffffffd9" />
@@ -114,7 +114,7 @@ export function RestGame({ seed, drill, onDone }: GameProps) {
               {f.streak >= SOIL.streakFrom ? ` · ${f.streak} in a row` : ''}
             </text>
             {shown && (
-              <text x={x + CELL.w - 10} y={y + CELL.h - 8} textAnchor="end" className="csa-svg-note" fill="#fff">
+              <text x={x + CELL.w - 10} y={y + CELL.h - 8} textAnchor="end" className="csa-svg-note" fill="#fbf8ee">
                 {lastPick ? `${REST[lastPick].icon} +soil` : `${shown.per[i]} bags`}
               </text>
             )}

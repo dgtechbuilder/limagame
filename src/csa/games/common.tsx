@@ -69,11 +69,11 @@ export function animate(ms: number, frame: (t: number) => void, done: () => void
 }
 
 /** A small sprout, drawn at (x, y): its height grows with g (0 to 1). */
-export function Sprout({ x, y, g = 1, tone = '#3e9b2f' }: { x: number; y: number; g?: number; tone?: string }) {
+export function Sprout({ x, y, g = 1, tone = '#54933d' }: { x: number; y: number; g?: number; tone?: string }) {
   const h = 4 + 16 * g;
   return (
     <g transform={`translate(${x} ${y})`} aria-hidden="true">
-      <path d={`M0 0 L0 ${-h}`} stroke="#4b7a2a" strokeWidth={2} strokeLinecap="round" />
+      <path d={`M0 0 L0 ${-h}`} stroke="#4c7635" strokeWidth={2} strokeLinecap="round" />
       <path d={`M0 ${-h * 0.55} q -7 -2 -9 -8 q 7 0 9 8`} fill={tone} />
       <path d={`M0 ${-h * 0.8} q 7 -2 9 -8 q -7 0 -9 8`} fill={tone} />
       {g > 0.7 && <path d={`M0 ${-h} q -4 -6 0 -10 q 4 4 0 10`} fill={tone} />}

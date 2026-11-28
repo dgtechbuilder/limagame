@@ -94,14 +94,14 @@ export function HalfMoonGame({ onDone }: GameProps) {
     <svg viewBox={`0 0 ${W} ${H}`} className="csa-svg" aria-label="The slope from above, uphill at the top">
       <defs>
         <linearGradient id="hm-slope" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#e5c48d" />
-          <stop offset="1" stopColor="#c99a5f" />
+          <stop offset="0" stopColor="#dcc296" />
+          <stop offset="1" stopColor="#be996a" />
         </linearGradient>
       </defs>
       <rect width={W} height={H} fill="url(#hm-slope)" />
       {/* the contour lines: the slope's same-height lines, across it */}
       {[40, 100, 160, 222].map(y => (
-        <path key={y} d={`M0 ${y} Q150 ${y - 6} 300 ${y} T600 ${y}`} stroke="#b88a52" strokeWidth={1} strokeDasharray="3 5" fill="none" />
+        <path key={y} d={`M0 ${y} Q150 ${y - 6} 300 ${y} T600 ${y}`} stroke="#ae895c" strokeWidth={1} strokeDasharray="3 5" fill="none" />
       ))}
       <g className="csa-slope-tag" aria-hidden="true">
         <text x={W - 8} y={16} textAnchor="end">▲ UPHILL</text>
@@ -109,7 +109,7 @@ export function HalfMoonGame({ onDone }: GameProps) {
       </g>
       {/* rain */}
       {phase === 'rain' &&
-        Array.from({ length: 40 }, (_, i) => <line key={i} x1={(i * 53) % W} y1={((i * 37 + t * 900) % H) - 10} x2={((i * 53) % W) - 3} y2={((i * 37 + t * 900) % H) + 2} stroke="#4fa8de" strokeWidth={1.4} opacity={0.7} />)}
+        Array.from({ length: 40 }, (_, i) => <line key={i} x1={(i * 53) % W} y1={((i * 37 + t * 900) % H) - 10} x2={((i * 53) % W) - 3} y2={((i * 37 + t * 900) % H) + 2} stroke="#6cc1b8" strokeWidth={1.4} opacity={0.7} />)}
       {/* the streams of runoff, down the slope */}
       {showWater &&
         run.ends.map(e => {
@@ -117,8 +117,8 @@ export function HalfMoonGame({ onDone }: GameProps) {
           const y = Math.min(endY, flow * (H + 40));
           return (
             <g key={e.k}>
-              <line x1={e.x} y1={0} x2={e.x} y2={y} stroke={e.moon === null ? '#8d6a45' : '#3aa7e0'} strokeWidth={e.moon === null ? 2.5 : 2} strokeLinecap="round" opacity={0.85} />
-              {e.moon === null && y >= H && <circle cx={e.x} cy={H - 3} r={4} fill="#8d6a45" />}
+              <line x1={e.x} y1={0} x2={e.x} y2={y} stroke={e.moon === null ? '#866a4c' : '#5bbfb2'} strokeWidth={e.moon === null ? 2.5 : 2} strokeLinecap="round" opacity={0.85} />
+              {e.moon === null && y >= H && <circle cx={e.x} cy={H - 3} r={4} fill="#866a4c" />}
             </g>
           );
         })}
@@ -148,11 +148,11 @@ export function HalfMoonGame({ onDone }: GameProps) {
           onKeyDown={e => e.key === 'Enter' && tapMoon(i)}
         >
           <rect x={moonX(m.col) - 44} y={moonY(m.row) - 26} width={88} height={52} fill="transparent" />
-          {phase === 'grow' && held.has(i) && <ellipse cx={moonX(m.col)} cy={moonY(m.row) - 4} rx={(m.seed ? 46 : 26) * t} ry={(m.seed ? 26 : 14) * t} fill="#7fb44a" opacity={0.55} />}
-          {showWater && held.has(i) && <path d={pool(m)} fill="#3aa7e0" opacity={(0.25 + 0.6 * flow) * (phase === 'grow' ? 1 - 0.6 * t : 1)} />}
-          {m.manure && <circle cx={moonX(m.col)} cy={moonY(m.row) + 2} r={7} fill="#5a3a1f" />}
-          <path d={bank(m)} stroke="#7a4b27" strokeWidth={9} fill="none" strokeLinecap="round" />
-          <path d={bank(m)} stroke="#a8713f" strokeWidth={4} fill="none" strokeLinecap="round" />
+          {phase === 'grow' && held.has(i) && <ellipse cx={moonX(m.col)} cy={moonY(m.row) - 4} rx={(m.seed ? 46 : 26) * t} ry={(m.seed ? 26 : 14) * t} fill="#79aa59" opacity={0.55} />}
+          {showWater && held.has(i) && <path d={pool(m)} fill="#5bbfb2" opacity={(0.25 + 0.6 * flow) * (phase === 'grow' ? 1 - 0.6 * t : 1)} />}
+          {m.manure && <circle cx={moonX(m.col)} cy={moonY(m.row) + 2} r={7} fill="#543a25" />}
+          <path d={bank(m)} stroke="#724c2f" strokeWidth={9} fill="none" strokeLinecap="round" />
+          <path d={bank(m)} stroke="#9e724a" strokeWidth={4} fill="none" strokeLinecap="round" />
           {m.seed && <Sprout x={moonX(m.col)} y={moonY(m.row) + 4} g={phase === 'grow' ? t : 0.15} />}
         </g>
       ))}
