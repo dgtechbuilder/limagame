@@ -231,13 +231,16 @@ export const PLACES: Record<Place, { x: number; z: number; r: number }> = {
   hire: { x: -14.6, z: 6.4, r: 1.2 },
   /** Each place's white square sits on open ground the camera can see: the camera looks down from the south (+z), so
       a roof or an awning hides the ground just north of it. The market's and the restaurant's squares stand out in
-      front of their awnings, the storehouse's on the lane before its door, the house's below the porch step. */
+      front of their awnings, the storehouse's on the grass before its front wall, the house's below the porch step. */
   market: { x: 0, z: 11.6, r: 1.3 },
   /** the mini restaurant beside the stall: meals from the store (src/produce/restaurant.ts) */
   restaurant: { x: 3.4, z: 11.9, r: 0.95 },
-  /** the greenhouse's door, facing the market path, and the storehouse's door, on the lane (src/greenhouse, src/storehouse) */
+  /** the greenhouse's door, facing the market path (src/greenhouse) */
   greenhouse: { x: GREENHOUSE_AT.x + GREENHOUSE_AT.w / 2 + 1.3, z: GREENHOUSE_AT.z - 0.3, r: 0.85 },
-  storehouse: { x: STOREHOUSE_AT.x + STOREHOUSE_AT.door, z: STOREHOUSE_AT.z - STOREHOUSE_AT.d / 2 - 1.95, r: 0.85 },
+  /** the storehouse's square, in front of the building where the camera sees it (src/storehouse), towards its left
+      end so a daily tidy-up bush (src/tidy) never grows on it. Its door stays in the back wall on the lane: opting in
+      here walks the farmer round to it (STOREHOUSE_WALK), then the store opens. */
+  storehouse: { x: STOREHOUSE_AT.x - STOREHOUSE_AT.w / 2 + 0.3, z: STOREHOUSE_AT.z + STOREHOUSE_AT.d / 2 + 0.9, r: 0.85 },
   /** the storage annex's freezer door, in its front wall (src/storehouse: the store and its cold room) */
   storage: { x: STORAGE_AT.x, z: STORAGE_AT.z + STORAGE_AT.d / 2 + 1.0, r: 0.85 },
   house: { x: 0, z: -14.1, r: 1.0 },
@@ -247,6 +250,17 @@ export const PLACES: Record<Place, { x: number; z: number; r: number }> = {
   /** beside the power yard's fence, on the grass above the lane's corner: the Power page */
   power: { x: 13.5, z: -11.4, r: 1.1 },
 };
+
+/** The storehouse's door, in its back wall on the lane. */
+export const STOREHOUSE_DOOR = { x: STOREHOUSE_AT.x + STOREHOUSE_AT.door, z: STOREHOUSE_AT.z - STOREHOUSE_AT.d / 2 - 1.95 };
+/** From the storehouse's square to its door: round the storage annex's right-hand side (the restaurant closes the way
+    round the left), between the annex and the mini forest, then across to the lane. The turns keep clear of the tree
+    at the forest's corner and of the forest billboard's pole. */
+export const STOREHOUSE_WALK = [
+  { x: STORAGE_AT.x + STORAGE_AT.w / 2 + 0.65, z: STORAGE_AT.z + STORAGE_AT.d / 2 + 0.6 },
+  { x: STORAGE_AT.x + STORAGE_AT.w / 2 + 0.7, z: STORAGE_AT.z - STORAGE_AT.d / 2 - 0.6 },
+  STOREHOUSE_DOOR,
+];
 
 /** How many cows and hens there are, and the coop (src/livestock): the 3D farm shows them. */
 export interface FarmLife {
@@ -334,6 +348,8 @@ export class FarmWorld {
   private pos = new THREE.Vector2(0, -12.6);
   private heading = 0;
   private target: THREE.Vector2 | null = null;
+  /** a walk with turns (walkRoute): the spots still to walk to after the target, and what happens on the last one */
+  private route: { stops: THREE.Vector2[]; then: () => void } | null = null;
   private joy = new THREE.Vector2();
   private keys = new Set<string>();
   private walking = 0;
@@ -556,7 +572,32 @@ export class FarmWorld {
   }
 
   walkTo(x: number, z: number) {
+    this.route = null;
     this.target = new THREE.Vector2(x, z);
+  }
+
+  /** Walk spot by spot (round a building), then `then()` on the last one. Anything that stops the walk on the way (a
+      tap, the joystick, the keys, a wall) drops the rest of it, and `then` never runs. */
+  walkRoute(stops: { x: number; z: number }[], then: () => void) {
+    const [first, ...rest] = stops.map(s => new THREE.Vector2(s.x, s.z));
+    if (!first) return then();
+    this.route = { stops: rest, then };
+    this.target = first;
+  }
+
+  /** The farmer is on the spot walked to: on to the route's next spot, or the walk is over. */
+  private reached() {
+    const r = this.route;
+    if (r) {
+      const next = r.stops.shift();
+      if (next) {
+        this.target = next;
+        return;
+      }
+      this.route = null;
+      r.then();
+    }
+    this.ev.arrived?.();
   }
 
   setJoystick(dx: number, dy: number) {
@@ -2287,7 +2328,7 @@ export class FarmWorld {
       if (reach < 0.15) {
         this.target = null;
         dir.set(0, 0);
-        this.ev.arrived?.();
+        this.reached();
       }
     }
     const speed = 4.6 * this.speedScale * (this.riding ? RIDE_SPEED * this.tractorSpeed * (this.rig ? TRACTOR_PLOT[this.rig.tractor].speed : 1) : 1);
@@ -2305,10 +2346,12 @@ export class FarmWorld {
         // this step ends on the spot (unless something solid stands there)
         const there = next.distanceTo(this.target) < 0.15;
         this.target = null;
-        if (there) this.ev.arrived?.();
+        if (there) this.reached();
       } else if (blocked) this.target = null;
       this.walking = Math.min(1, this.walking + dt * 8);
     } else this.walking = Math.max(0, this.walking - dt * 8);
+    // the walk was stopped on the way (a tap, the joystick, the keys, a wall): the rest of the route goes with it
+    if (this.route && !this.target) this.route = null;
   }
 
   private collide(p: THREE.Vector2) {

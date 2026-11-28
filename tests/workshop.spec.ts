@@ -130,7 +130,9 @@ test('Working safely, by hand: up the slope, off the tractor safely, only the dr
   await page.locator('.ws [data-person="farmer"]').click();
   await expect(page.locator('.ws-say.is-bad')).toContainText('hand brake');
   await shot(page, '5-getoff-unsafe');
-  await expect(page.locator('g[data-person="farmer"]')).toBeVisible({ timeout: 6_000 });
+  // the alarm runs 2.4 s of game time, but each frame counts at most 50 ms (workshop/kit.tsx useFrames): on a slow CI
+  // runner drawing a few frames a second it takes well over 6 s before the farmer is back in the seat
+  await expect(page.locator('g[data-person="farmer"]')).toBeVisible({ timeout: 30_000 });
   for (const c of ['tool', 'pto', 'brake', 'engine']) await ctl(page, c).click();
   await page.locator('.ws [data-person="farmer"]').click();
   await expect(won(page)).toBeVisible();

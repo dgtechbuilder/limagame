@@ -44,7 +44,7 @@ import {
   type TreatJob,
   type SprayFor,
 } from './field';
-import { BILLBOARDS, FarmWorld, PLACES, STAGE_H, STAGE_W, TRACTOR_BOARD, type Fx } from './engine';
+import { BILLBOARDS, FarmWorld, PLACES, STAGE_H, STAGE_W, STOREHOUSE_WALK, TRACTOR_BOARD, type Fx } from './engine';
 import { slotBrand, type SlotId } from '../partners/data';
 import { useSlotView } from '../partners/track';
 import { BrandMark, openOffer } from '../partners/ui';
@@ -760,7 +760,17 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       const n = ghNeeds(st.greenhouse, day).statuses;
       const first = (['ready', 'thirsty', 'empty'] as const).map(k => n.indexOf(k)).find(i => i >= 0) ?? 0;
       if (p === 'greenhouse') return dispatch({ type: 'open', modal: { kind: 'greenhouse', bed: first } });
-      return dispatch({ type: 'open', modal: { kind: 'storehouse', tab: n.includes('ready') ? 'harvest' : 'store' } });
+      // the storehouse's square is out front, its door at the back on the lane: the farmer walks round to the door
+      // first, and the store opens there (unless the walk is stopped on the way, or another screen opened meanwhile)
+      const w = eng.current;
+      if (!w) return;
+      say('Walking round to the storehouse door');
+      return w.walkRoute(STOREHOUSE_WALK, () => {
+        const now = sRef.current;
+        if (now.modal) return;
+        const ready = ghNeeds(now.greenhouse, lifeOf(now.life).day).statuses.includes('ready');
+        dispatch({ type: 'open', modal: { kind: 'storehouse', tab: ready ? 'harvest' : 'store' } });
+      });
     }
     if (p === 'house') {
       const tk = nextTask(st.field, tr, dayNumber(), st.coins);
