@@ -1348,6 +1348,13 @@ button.card:active { transform: scale(0.98); }
 .menu-item small { font-size: 7px; opacity: 0.75; padding-left: 4px; }
 .tc-bonus { font-size: 7px; font-weight: 600; color: #2f6a1a; background: #e8f5dc; border-radius: 8px; padding: 2px 8px; margin: 0; white-space: nowrap; }
 .hud-menu { left: 12px; top: 124px; }
+/* the quick mute, beside the Settings button (src/world/World.tsx MuteButton) */
+.hud-mute {
+  position: absolute; left: 74px; top: 72px; z-index: 5; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+  background: radial-gradient(circle at 50% 35%, #f6a64b, #d9731f); box-shadow: 0 0 0 2px #fff3d6, 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+.hud-mute.is-muted { background: radial-gradient(circle at 50% 35%, #a8a196, #7d766c); }
+.hud-mute:active { transform: scale(0.94); }
 .hud-tractor { left: 12px; top: 184px; }
 .hud-tractor.is-on > svg { background: radial-gradient(circle at 50% 35%, #7bd24a, #3f9a1c); }
 .hud-rig {

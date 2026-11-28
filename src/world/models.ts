@@ -918,7 +918,9 @@ export function stall(): Part[] {
 }
 
 /** The mini restaurant beside the market stall: a small kiosk with a green roof, a serving counter with a cooking pot
-    and plates, and a bench for customers in front. Centred at the origin, its counter toward +z. */
+    and plates, a fridge in the back corner (it hums as the farmer walks up: src/audio/farm.ts) and a bench for
+    customers in front. Centred at the origin, its counter toward +z. */
+export const RESTAURANT_FRIDGE = { x: 0.78, z: -0.4 };
 export function restaurant(): Part[] {
   const wood = '#8b5a2b';
   const out: Part[] = [
@@ -941,6 +943,12 @@ export function restaurant(): Part[] {
     { geo: G.box, color: '#e9e3c9', m: at(0.05, 1.42, -0.61, { sx: 0.7, sy: 0.05, sz: 0.02 }) },
     // a bench in front for customers
     { geo: G.box, color: C.woodPlank, m: at(0, 0.42, 1.3, { sx: 1.6, sy: 0.08, sz: 0.34 }) },
+    // the fridge: a white upright with a freezer door on top, a seam, two handles and a little grille at its foot
+    { geo: G.box, color: '#f4f6f7', m: at(RESTAURANT_FRIDGE.x, 0.82, RESTAURANT_FRIDGE.z, { sx: 0.44, sy: 1.5, sz: 0.42 }) },
+    { geo: G.box, color: '#b9c2c8', m: at(RESTAURANT_FRIDGE.x, 1.18, RESTAURANT_FRIDGE.z + 0.212, { sx: 0.42, sy: 0.02, sz: 0.01 }) },
+    { geo: G.box, color: '#8d969c', m: at(RESTAURANT_FRIDGE.x - 0.16, 1.34, RESTAURANT_FRIDGE.z + 0.225, { sx: 0.025, sy: 0.18, sz: 0.02 }) },
+    { geo: G.box, color: '#8d969c', m: at(RESTAURANT_FRIDGE.x - 0.16, 0.86, RESTAURANT_FRIDGE.z + 0.225, { sx: 0.025, sy: 0.34, sz: 0.02 }) },
+    { geo: G.box, color: '#4a5258', m: at(RESTAURANT_FRIDGE.x, 0.13, RESTAURANT_FRIDGE.z + 0.212, { sx: 0.36, sy: 0.06, sz: 0.01 }) },
   ];
   for (const x of [0.15, 0.55]) {
     out.push({ geo: G.cyl, color: '#ffffff', m: at(x, 1.09, 0.6, { sx: 0.3, sy: 0.03, sz: 0.3 }) });

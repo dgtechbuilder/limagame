@@ -9,7 +9,10 @@
                    minute (only when the farm has hens, or cows).
    Settings → Sound sets each level (src/audio/volume.ts); the overall volume starts at 2%, so all of it is only
    lightly heard. Browsers start sound only after a tap, so App.tsx calls startAudio() on the first one. The audio
-   rests while the game is in the background. */
+   rests while the game is in the background.
+   The farm work, the farm's air and the fridge and freezer hums are in src/audio/farm.ts, on this same context.
+   Mixing (docs/audio.md): every kind of sound has its own bus and Settings level; the music bus runs through a duck,
+   so a reward cue or a finished building dips the score for a moment and is heard clearly over it. */
 
 import { gainOf, onVolume, type VolumeChannel } from './volume';
 
@@ -17,17 +20,21 @@ export type Ground = 'grass' | 'soil';
 
 /** what played, newest last (the play-tests read it through window.__lima) */
 export const audioLog: string[] = [];
-const log = (what: string) => {
+export const log = (what: string) => {
   audioLog.push(what);
   if (audioLog.length > 80) audioLog.shift();
 };
 
 /* each kind of sound's own trim, under its Settings level: the music sits under everything else */
-const TRIM: Record<Exclude<VolumeChannel, 'effects'>, number> = { music: 0.42, steps: 1, animals: 0.8 };
+type Bus = Exclude<VolumeChannel, 'effects'>;
+const BUSES: Bus[] = ['music', 'steps', 'animals', 'work', 'ambience'];
+const TRIM: Record<Bus, number> = { music: 0.42, steps: 1, animals: 0.8, work: 0.75, ambience: 0.6 };
 
 let ac: AudioContext | null = null;
 let noise: AudioBuffer | null = null;
-const bus = {} as Record<Exclude<VolumeChannel, 'effects'>, GainNode>;
+const bus = {} as Record<Bus, GainNode>;
+/** the score's duck: 1 normally, dipped for a moment under a big cue */
+let ducker: GainNode | null = null;
 let started = false;
 
 function context(): AudioContext | null {
@@ -44,10 +51,12 @@ function context(): AudioContext | null {
   comp.threshold.value = -12;
   comp.ratio.value = 4;
   comp.connect(ac.destination);
-  for (const ch of ['music', 'steps', 'animals'] as const) {
+  ducker = ac.createGain();
+  ducker.connect(comp);
+  for (const ch of BUSES) {
     const g = ac.createGain();
     g.gain.value = gainOf(ch) * TRIM[ch];
-    g.connect(comp);
+    g.connect(ch === 'music' ? ducker : comp);
     bus[ch] = g;
   }
   noise = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
@@ -55,23 +64,42 @@ function context(): AudioContext | null {
   for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
   onVolume(() => {
     if (!ac) return;
-    for (const ch of ['music', 'steps', 'animals'] as const) bus[ch].gain.setTargetAtTime(gainOf(ch) * TRIM[ch], ac.currentTime, 0.08);
+    for (const ch of BUSES) bus[ch].gain.setTargetAtTime(gainOf(ch) * TRIM[ch], ac.currentTime, 0.08);
   });
   return ac;
 }
 
 const running = () => !!ac && ac.state === 'running';
 
+/** The live context and its buses, once sound is running (src/audio/farm.ts plays on them); null before the first tap. */
+export function core(): { ac: AudioContext; bus: Record<Bus, GainNode>; noise: AudioBuffer } | null {
+  return running() && noise ? { ac: ac!, bus, noise } : null;
+}
+
+/** Dip the score under a cue that should be heard clearly: down to `to` (0–1) fast, held, then slowly back.
+    (The way mobile base-builders keep a reward or a finished building on top of the music.) */
+export function duck(to: number, hold: number) {
+  if (!ac || !ducker) return;
+  const g = ducker.gain;
+  const t = ac.currentTime;
+  g.cancelScheduledValues(t);
+  g.setValueAtTime(g.value, t);
+  g.linearRampToValueAtTime(Math.min(g.value, to), t + 0.06);
+  g.setValueAtTime(Math.min(g.value, to), t + 0.06 + hold);
+  g.linearRampToValueAtTime(1, t + 0.06 + hold + 0.9);
+  log(`duck:${Math.round(to * 100)}`);
+}
+
 /* ---------------- small building blocks ---------------- */
 
-function env(g: GainNode, t: number, peak: number, attack: number, len: number) {
+export function env(g: GainNode, t: number, peak: number, attack: number, len: number) {
   g.gain.setValueAtTime(0.0001, t);
   g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), t + attack);
   g.gain.exponentialRampToValueAtTime(0.0001, t + len);
 }
 
 /** a burst of filtered noise */
-function hiss(out: AudioNode, t: number, len: number, type: BiquadFilterType, f: number, q: number, peak: number, attack = 0.004, sweepTo?: number) {
+export function hiss(out: AudioNode, t: number, len: number, type: BiquadFilterType, f: number, q: number, peak: number, attack = 0.004, sweepTo?: number) {
   const a = ac!;
   const src = a.createBufferSource();
   src.buffer = noise;
@@ -88,8 +116,8 @@ function hiss(out: AudioNode, t: number, len: number, type: BiquadFilterType, f:
   src.stop(t + len + 0.05);
 }
 
-const jit = (n: number, by = 0.1) => n * (1 + (Math.random() * 2 - 1) * by);
-const hz = (midi: number) => 440 * Math.pow(2, (midi - 69) / 12);
+export const jit = (n: number, by = 0.1) => n * (1 + (Math.random() * 2 - 1) * by);
+export const hz = (midi: number) => 440 * Math.pow(2, (midi - 69) / 12);
 
 /* ---------------- footsteps ---------------- */
 
