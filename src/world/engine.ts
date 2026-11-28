@@ -13,6 +13,7 @@ import { JOB_INFO, ROUTINE, TRACTOR_PLOT, toolJobs, toolName, type PlotJob, type
 import { CHECK_DAYS, CROP_WORDS, checkKey, cropOf, farmName, harvestFarm, hazardFor, isResting, plotGrowth, restOf, type Trial, type TrialHazard } from '../trials/model';
 import { REST } from '../soil/model';
 import { footstep, type Ground } from '../audio/ambience';
+import { built, farmNight, farmSounds, hearAt, powerOn, workDone, working, type HumSpot } from '../audio/farm';
 import {
   FULL,
   PLOTS,
@@ -98,6 +99,7 @@ import {
   signTexture,
   stall,
   restaurant,
+  RESTAURANT_FRIDGE,
   tree,
   trough,
   vcMaterial,
@@ -175,6 +177,14 @@ export const WATER_TANK = { x: 19.8, z: 3.9 };
 /** The power yard (src/power), top right of the farm above the pond: solar panels, the power hut (inverter and
     batteries), the generator and the diesel tank. */
 export const POWER_YARD = { x0: 14.8, z0: -18.4, x1: 21.8, z1: -5.0 };
+/** Where the restaurant stands (turned to face the lane), and the machines that hum as the farmer walks up to them:
+    the restaurant's fridge and the storage annex's freezer (src/audio/farm.ts). */
+const RESTAURANT_AT = { x: 3.5, z: 15.75 };
+export const HUM_SPOTS: HumSpot[] = [
+  // the restaurant is turned half a turn, so its own x and z run the other way
+  { kind: 'fridge', x: RESTAURANT_AT.x - RESTAURANT_FRIDGE.x, z: RESTAURANT_AT.z - RESTAURANT_FRIDGE.z },
+  { kind: 'freezer', x: STORAGE_AT.x, z: STORAGE_AT.z },
+];
 /** The farm's light poles (src/power: day 4), along the paths and by the buildings; the first few carry a real light. */
 export const LAMPS: { x: number; z: number }[] = [
   { x: -2.4, z: -12.2 },
@@ -191,13 +201,14 @@ export const LAMPS: { x: number; z: number }[] = [
 export const TRACTOR_BOARD = { x: -17.4, z: 8.6 };
 
 /** The partner billboards across the farm (src/partners/data.ts sets the brand on each): two in the yard either side of
-    the farmhouse path, one by the seed shed and one at the end of the lane, behind the storage annex and beside the mini forest. Each stands on one steel pole
+    the farmhouse path, one by the seed shed and one on the bottom-right corner of the mini forest, against the fence, where
+    it hides only the edge of the trees and none of the farm. Each stands on one steel pole
     and is turned a little (ry) toward the path the farmer walks. */
 export const BILLBOARDS: { slot: SlotId; x: number; z: number; ry: number }[] = [
   { slot: 'world-billboard-west', x: -7.6, z: -14.9, ry: 0.14 },
   { slot: 'world-billboard-east', x: 12.6, z: -14.6, ry: -0.14 },
   { slot: 'world-billboard-shed', x: -19.0, z: -7.8, ry: 0.2 },
-  { slot: 'world-billboard-forest', x: 12.9, z: 9.5, ry: -0.2 },
+  { slot: 'world-billboard-forest', x: 20.6, z: 16.5, ry: -0.35 },
 ];
 /** How often a sweep of light crosses a billboard (seconds), and how long it takes. */
 const SWEEP = { every: 7, takes: 1.1 };
@@ -444,6 +455,8 @@ export class FarmWorld {
     this.scene.add(this.farmer.root);
     this.buildAnimals();
     this.buildParticles();
+    // the farm's air and the hums of the restaurant's fridge and the storage annex's freezer (src/audio/farm.ts)
+    farmSounds(HUM_SPOTS);
     this.scene.add(this.arrow);
     this.arrow.visible = false;
     this.ring.visible = false;
@@ -479,6 +492,7 @@ export class FarmWorld {
 
   dispose() {
     this.disposed = true;
+    farmSounds(null);
     this.firstFrame?.();
     this.firstFrame = null;
     cancelAnimationFrame(this.raf);
@@ -620,7 +634,7 @@ export class FarmWorld {
     smooth.push(...place(shed(), at(-18.6, 0, 0, { ry: Math.PI / 2 })));
     smooth.push(...place(stall(), at(0, 0, 15.6, { ry: Math.PI })));
     // the mini restaurant beside the stall, its counter facing the lane
-    smooth.push(...place(restaurant(), at(3.5, 0, 15.75, { ry: Math.PI })));
+    smooth.push(...place(restaurant(), at(RESTAURANT_AT.x, 0, RESTAURANT_AT.z, { ry: Math.PI })));
     this.obstacles.push({ x: 3.5, z: 15.9, r: 0.95 });
     smooth.push(...place(board(), at(4.4, 0, -12.4)));
     // partner billboards (a slot with no partner has no billboard): one pole each, the only thing that blocks
@@ -1024,6 +1038,13 @@ export class FarmWorld {
     const key = `${p.parts.join()}:${p.lit}`;
     if (key === this.powerKey) return;
     this.powerKey = key;
+    // a part just put in sounds as built; the main switch thrown, as the power coming on (not the farm as it opens)
+    const fresh = p.parts.filter(x => !this.powerHad.includes(x));
+    this.powerHad = p.parts;
+    if (this.settled()) {
+      if (fresh.includes('switchOn')) powerOn();
+      else if (fresh.length) built(`power:${fresh[0]}`);
+    }
     for (const id of ['panels', 'battery', 'generator', 'fuel']) this.powerParts[id].visible = p.parts.includes(id);
     this.powerParts.inverter.visible = p.parts.includes('inverter');
     this.lampGroup.visible = p.parts.includes('lights');
@@ -1031,11 +1052,18 @@ export class FarmWorld {
     this.applyNight();
   }
   private lit = false;
+  private powerHad: string[] = [];
+  private readonly bornAt = performance.now();
+  /** the farm has been open a moment: a change now is the player's doing, not the save being drawn */
+  private settled() {
+    return performance.now() - this.bornAt > 1500;
+  }
 
   /** Night mode: a dark sky, a moon, the farmer's lantern; the house windows and (once lit) the farm's lights glow. */
   setNight(on: boolean) {
     if (on === this.nightOn) return;
     this.nightOn = on;
+    farmNight(on);
     this.applyNight();
   }
   isNight() {
@@ -1429,9 +1457,16 @@ export class FarmWorld {
   private sheds: Record<'roofed' | 'zero', THREE.Mesh> = {} as never;
 
   /** The herd and the coop as the farm has them now: stolen or dead animals are gone, a built coop stands. */
+  private lifeHad: FarmLife | null = null;
   setLife(l: FarmLife) {
     const key = `${l.cows}:${l.hens}:${l.coop}:${l.shed}`;
     if (key === this.lifeKey) return;
+    // the coop or the cow shed just built
+    if (this.settled() && this.lifeHad) {
+      if (l.coop && l.coop !== this.lifeHad.coop) built(`coop:${l.coop}`);
+      else if (l.shed && l.shed !== this.lifeHad.shed) built(`shed:${l.shed}`);
+    }
+    this.lifeHad = l;
     this.lifeKey = key;
     this.cows.forEach((c, i) => (c.m.root.visible = i < l.cows));
     const hens = Math.min(this.hens.length, l.hens);
@@ -1908,6 +1943,7 @@ export class FarmWorld {
     this.work = 0.45;
     this.workFx = fx;
     this.burst(fx, this.pos.x, this.pos.y, 2);
+    working(fx, null);
   }
 
   /** A row's clearing or planting is done: every plot of it is drawn at once (the state catches up) and reported. */
@@ -1920,6 +1956,7 @@ export class FarmWorld {
       this.burst(fx, c.x, c.z, 4);
     }
     this.dirty = true;
+    workDone(fx);
     this.ev.mark(farm, job, bits, false);
   }
 
@@ -1943,6 +1980,7 @@ export class FarmWorld {
     this.tidyKey = key;
     this.tidy = items;
     for (const g of gone) this.burst(g.kind === 'bush' ? 'clear' : 'stone', g.x, g.z, 10);
+    if (gone.length) workDone(gone[0].kind === 'bush' ? 'clear' : 'stone');
     if (this.tidyMesh) {
       this.scene.remove(this.tidyMesh);
       this.tidyMesh.geometry.dispose();
@@ -1996,6 +2034,7 @@ export class FarmWorld {
     const dz = item.z - this.pos.y;
     if (Math.hypot(dx, dz) > 0.05) this.heading = Math.atan2(dx, dz);
     this.burst(this.workFx, item.x + (Math.random() - 0.5) * 0.6, item.z + (Math.random() - 0.5) * 0.6, 2);
+    working(this.workFx, null);
   }
 
   /* ---------------- jobs done by hand (src/onsite: the button and the timer are World.tsx's) ---------------- */
@@ -2005,6 +2044,7 @@ export class FarmWorld {
     this.work = 0.45;
     this.workFx = fx;
     this.jobTool = tool ?? 'none';
+    working(fx, tool);
     const f = face ?? { x: this.pos.x, z: this.pos.y };
     const dx = f.x - this.pos.x;
     const dz = f.z - this.pos.y;
@@ -2046,12 +2086,14 @@ export class FarmWorld {
   jobFinished(at: { x: number; z: number }, fx: Fx) {
     if (Math.hypot(at.x - FEEDER.x, at.z - FEEDER.z) < 0.8 && (fx === 'hay' || fx === 'water')) {
       this.pour(fx, 12);
+      workDone(fx);
       if (fx === 'hay') this.feedLevel = 1;
       this.dirty = true;
       return;
     }
     this.burst(fx, at.x, at.z, 10);
     this.dirty = true;
+    workDone(fx, this.jobTool === 'none' ? null : this.jobTool);
   }
 
   /** Carry a part or a tool on the back (to the first spot of a job that brings one). */
@@ -2150,6 +2192,7 @@ export class FarmWorld {
     this.doWork(dt);
     this.places();
     this.animateFarmer(dt, time);
+    hearAt(this.pos.x, this.pos.y);
     this.animateAnimals(dt, time);
     this.animateHire(dt);
     this.animateParticles(dt);

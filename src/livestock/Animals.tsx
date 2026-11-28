@@ -29,6 +29,7 @@ import {
   dirty,
   eggsToday,
   issueRisk,
+  larderValue,
   lifeOf,
   milkToday,
   preventCost,
@@ -124,7 +125,7 @@ export function AnimalsPage({ s, dispatch, tab: startTab }: Props) {
 function Locked() {
   return (
     <p className="lv-locked" role="note">
-      Your cows and hens come into your care on <b>day {LIFE.startDay}</b>: sleep at the farmhouse to end day 1 (or come back tomorrow). Then you feed, water and milk, build the
+      The cows and hens came with the farm: they come into your care on <b>day {LIFE.startDay}</b>: sleep at the farmhouse to end day 1 (or come back tomorrow). Then you feed, water and milk, build the
       chicken coop, and keep the farm safe from thieves.
     </p>
   );
@@ -155,6 +156,18 @@ function Today({ s, dispatch, go }: { s: GameState; dispatch: Dispatch<Action>; 
   const w = animalWater(s);
   return (
     <div className="lv-today">
+      {l.larder && (
+        <div className="lv-larder" role="group" aria-label="The farm's first milk and eggs">
+          <span className="lv-larder-icon" aria-hidden="true">🥛🥚</span>
+          <p>
+            <b>Your first milk and eggs.</b> The cows and hens that came with the farm gave {l.larder.milk} L of milk this morning, and there is a tray of {l.larder.eggs} eggs in the
+            farmhouse. Sell them to start your farm money.
+          </p>
+          <Btn tone="go" onClick={() => dispatch({ type: 'animalLarder' })} label={`Sell the first milk and eggs for ${money(larderValue(l.larder))}`}>
+            Sell · {money(larderValue(l.larder))}
+          </Btn>
+        </div>
+      )}
       <div className="cl-tiles">
         {(['cows', 'hens'] as Group[]).map(g => (
           <div key={g} className="cl-tile">

@@ -5,9 +5,10 @@
      completed flow (the story told, the first session done, a season sold, a harvest in, a tractor job or a day
      of the tractor business finished).
    The feel follows the reward sounds of mobile base-building games: short, punchy, major key, metallic shimmer.
-   Settings → Sound effects turns them off; they play at Settings → Sound's level (src/audio/volume.ts). */
+   The background score ducks under each one (src/audio/ambience.ts duck). Settings → Sound effects turns them off; they play at Settings → Sound's level (src/audio/volume.ts). */
 
 import { gainOf } from './audio/volume';
+import { duck } from './audio/ambience';
 
 export type SfxKind = 'action' | 'flow';
 
@@ -182,6 +183,9 @@ async function play(kind: SfxKind) {
     level.gain.value = gainOf('effects');
     src.connect(level).connect(ac.destination);
     src.start();
+    // the score dips under the cue, so the reward is heard clearly over it (more for a fanfare than for a ding)
+    if (kind === 'flow') duck(0.4, 1.3);
+    else duck(0.7, 0.35);
     // the audio thread rests once the cue has played
     sleep = window.setTimeout(() => void ac.suspend().catch(() => undefined), (buf.duration + 0.5) * 1000);
   } catch {

@@ -56,6 +56,7 @@ import { JOB_INFO, KIND_WORDS, toolJobs, toolName, tractorName, type PlotKind } 
 import type { Rig } from '../plots/TractorPick';
 import { currency, money, moneyShort } from '../money';
 import { sfx } from '../sfx';
+import { setVolume, volumeSettings } from '../audio/volume';
 import { progressAlerts } from '../components/ProgressButton';
 import { RiskHud, useRisk } from '../risk/RiskHud';
 import { WaterButton } from '../water/WaterButton';
@@ -741,7 +742,8 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       // the coop is upgraded from day 1, the cow shed from day 3; the daily care starts on day 2
       if (p === 'coop' && coopOpen(st) && (!l.coop || !careOpen(st))) return dispatch({ type: 'open', modal: { kind: 'animals', tab: 'coop' } });
       if (p === 'pen' && shedOpen(st) && !l.shed) return dispatch({ type: 'open', modal: { kind: 'animals', tab: 'shed' } });
-      if (!careOpen(st)) return say(`The cows are in your care from day ${LIFE.startDay}: sleep at the farmhouse first`);
+      // before the care starts, the pen opens on the milk and eggs the farm started with, while they wait to be sold
+      if (!careOpen(st) && !l.larder) return say(`The cows are in your care from day ${LIFE.startDay}: sleep at the farmhouse first`);
       return dispatch({ type: 'open', modal: { kind: 'animals', tab: 'today' } });
     }
     if (p === 'hire') return setHub(hireInfo(st).ready ? 'hire' : 'yard');
@@ -1133,6 +1135,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
         <GearIcon />
         <span>SETTINGS</span>
       </button>
+      <MuteButton s={s} dispatch={dispatch} />
       <button
         type="button"
         className="hud-round hud-menu"
@@ -1864,6 +1867,28 @@ function BillboardTag({ bill, dispatch }: { bill: NonNullable<Anchors['bill']>; 
       <i>Partner</i>
       <b>{b.name}</b>
       <span>See offer ›</span>
+    </button>
+  );
+}
+
+/** The farm's quick mute, beside the Settings button: every sound off or back on (Settings → Sound → Mute), levels kept. */
+function MuteButton({ s, dispatch }: { s: GameState; dispatch: Dispatch<Action> }) {
+  const vol = volumeSettings(s.settings.volume);
+  const toggle = () => {
+    const next = { ...vol, muted: !vol.muted };
+    setVolume(next);
+    dispatch({ type: 'settings', patch: { volume: next } });
+  };
+  return (
+    <button type="button" className={`hud-mute${vol.muted ? ' is-muted' : ''}`} aria-pressed={vol.muted} onClick={toggle} aria-label={vol.muted ? 'Sound is muted: turn it back on' : 'Mute every sound'} title={vol.muted ? 'Sound off' : 'Sound on'}>
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+        <path d="M4 9h4l5-4v14l-5-4H4z" fill="#fff" />
+        {vol.muted ? (
+          <path d="M16 9l5 6M21 9l-5 6" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" />
+        ) : (
+          <path d="M16 8.5a5 5 0 0 1 0 7M18.6 6a8.5 8.5 0 0 1 0 12" stroke="#fff" strokeWidth="2" strokeLinecap="round" fill="none" />
+        )}
+      </svg>
     </button>
   );
 }
