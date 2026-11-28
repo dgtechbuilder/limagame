@@ -17,12 +17,16 @@ const emit = () => listeners.forEach(l => l());
 const subscribe = (l: () => void) => (listeners.add(l), () => listeners.delete(l));
 const snapshot = () => stack;
 
+/** Who hears a word's card being opened (useAnalytics). */
+export const infoListeners: ((t: Term) => void)[] = [];
+
 /** Open a word's card (on top of a lesson, Back returns to the lesson). */
 export function openTerm(id: string) {
   const t = termFor(id);
   if (!t) return;
   stack = [...stack, { kind: 'term', id: t.id }];
   emit();
+  infoListeners.forEach(l => l(t));
 }
 /** Open a Farm basics lesson. */
 export function openLesson(index: number) {

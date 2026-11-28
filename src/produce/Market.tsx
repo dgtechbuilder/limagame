@@ -7,7 +7,12 @@ import { coldRoom } from '../systems/track';
 import { dayText } from '../training/data';
 import { CompareTable, FoodCard, NutriChips, NutriTotal, PlateBars } from '../nutrition/Nutri';
 import { GROUPS, nutritionOf } from '../nutrition/data';
-import { CROP_IDS, MARKET, PRODUCE, PRODUCE_IDS, growCost, leftToday, priceOf, produceName, produceOf, profitOf, storeKg, type ProduceId } from './model';
+import { CROP_IDS, MARKET, PRODUCE, PRODUCE_IDS, atRisk, gradePriceOf, gradesOf, growCost, leftToday, lotsOf, priceOf, produceName, produceOf, profitOf, storeKg, storeValue, type GradePicks, type ProduceId } from './model';
+import { GRADED, GRADES, STORAGE, gradeName, gradeOf, isGraded, methodOf, nightsLeft, qualityOf, type Grade } from './quality';
+import { FoodIcon } from './FoodIcon';
+import { Info } from '../learn/Info';
+import { dropWords, storeCtx } from '../systems/track';
+import { askNotify, notifyPermission } from './remind';
 import { DISHES, RESTAURANT, dishOf, foodFor, plateNutrition, platesInStore, platesLeft, quote, type Dish, type DishId } from './restaurant';
 import { recipeIcons } from '../shop/model';
 
@@ -58,35 +63,84 @@ export function MarketPage({ s, dispatch }: { s: GameState; dispatch: Dispatch<A
 
 function SellTab({ s, dispatch, left, cold }: { s: GameState; dispatch: Dispatch<Action>; left: number; cold: boolean }) {
   const p = produceOf(s.produce);
+  const ctx = storeCtx(s);
+  // graded crops are sold grade by grade; what the storehouse made (one grade) by the kg
+  const [picks, setPicks] = useState<GradePicks>({});
   const [want, setWant] = useState<Partial<Record<ProduceId, number>>>({});
-  const have = PRODUCE_IDS.filter(id => (p.store[id] ?? 0) > 0);
-  const total = Math.round(Object.values(want).reduce((n, v) => n + (v ?? 0), 0) * 10) / 10;
-  const earn = (Object.entries(want) as [ProduceId, number][]).reduce((n, [id, kg]) => n + kg * priceOf(id, cold), 0);
-  const change = (id: ProduceId, by: number) =>
+  const graded = GRADED.filter(id => (p.store[id] ?? 0) > 0);
+  const made = PRODUCE_IDS.filter(id => !isGraded(id) && (p.store[id] ?? 0) > 0);
+  const have = [...graded, ...made];
+  const pickKg = Object.values(picks).reduce((n, g) => n + (g ? g[0] + g[1] + g[2] : 0), 0);
+  const total = Math.round((pickKg + Object.values(want).reduce((n, v) => n + (v ?? 0), 0)) * 10) / 10;
+  const earn =
+    (Object.entries(picks) as [ProduceId, [number, number, number]][]).reduce((n, [id, g]) => n + g.reduce((m, kg, i) => m + kg * gradePriceOf(id, i as Grade, cold), 0), 0) +
+    (Object.entries(want) as [ProduceId, number][]).reduce((n, [id, kg]) => n + kg * priceOf(id, cold), 0);
+  const soldFood: Partial<Record<ProduceId, number>> = { ...want };
+  for (const [id, g] of Object.entries(picks) as [ProduceId, [number, number, number]][]) soldFood[id] = (soldFood[id] ?? 0) + g[0] + g[1] + g[2];
+  const room = (now: number) => left - (total - now);
+  const changeGrade = (id: ProduceId, g: Grade, by: number) =>
+    setPicks(w => {
+      const cur: [number, number, number] = [...(w[id] ?? [0, 0, 0])] as [number, number, number];
+      const now = cur[g];
+      cur[g] = Math.round(Math.max(0, Math.min(now + by, gradesOf(p, id)[g], room(now))) * 10) / 10;
+      return { ...w, [id]: cur };
+    });
+  const changeMade = (id: ProduceId, by: number) =>
     setWant(w => {
       const now = w[id] ?? 0;
-      const room = left - (total - now);
-      const next = Math.max(0, Math.min(now + by, p.store[id] ?? 0, room));
-      return { ...w, [id]: Math.round(next * 10) / 10 };
+      return { ...w, [id]: Math.round(Math.max(0, Math.min(now + by, p.store[id] ?? 0, room(now))) * 10) / 10 };
     });
+  const risk = atRisk(p, ctx);
+  const riskLoss = risk.reduce((n, d) => n + d.loss, 0);
+  // pick what drops tonight, worst loss first, up to the day's kg left
+  const pickRisk = () => {
+    const next: GradePicks = {};
+    let room0 = left;
+    for (const d of [...risk].sort((a, b) => b.loss / b.kg - a.loss / a.kg)) {
+      const kg = Math.min(d.kg, room0);
+      if (kg <= 0) break;
+      const cur = (next[d.id] ??= [0, 0, 0]);
+      cur[d.from] = Math.round((cur[d.from] + kg) * 10) / 10;
+      room0 -= kg;
+    }
+    setPicks(next);
+    setWant({});
+  };
   return (
     <>
       <div className="pg-tiles">
         <Tile label="Left to sell today" value={`${left} kg`} sub={`of ${MARKET.dailyKg} kg a day`} tone={left > 0 ? 'good' : 'bad'} />
-        <Tile label="In the store" value={`${Math.round(storeKg(p))} kg`} sub="from your harvests" />
+        <Tile label="In the store" value={`${Math.round(storeKg(p))} kg`} sub={`worth ${money(have.reduce((n, id) => n + storeValue(p, id, cold), 0))}`} />
         <Tile label="Sold in all" value={`${Math.round(p.totals.kg)} kg`} sub={`${money(p.totals.earned)} · profit ${money(p.totals.earned - p.totals.cost)}`} />
-        <Tile label="This sale" value={`${total} kg`} sub={`${money(earn)} · profit ${money(earn - growCost(want))}`} />
+        <Tile label="This sale" value={`${total} kg`} sub={`${money(earn)} · profit ${money(earn - growCost(soldFood))}`} />
       </div>
+      {risk.length > 0 && (
+        <div className="mk-risk" role="status" aria-label="Sell before prices drop">
+          <i aria-hidden="true">⏳</i>
+          <span>
+            <b>
+              Sell before prices drop tonight <Info term="qualityScore" size={14} />
+            </b>
+            <small>
+              {dropWords(risk, 4)}: {money(riskLoss)} less if it waits.
+            </small>
+          </span>
+          <button type="button" className="gold-btn" onClick={pickRisk} disabled={left <= 0}>
+            Pick it to sell
+          </button>
+        </div>
+      )}
       <div className="pg-row nu-auto">
         <i aria-hidden="true">🔁</i>
         <span className="pg-row-text">
           <b>Daily selling {p.auto ? 'on' : 'off'}</b>
-          <small>{p.auto ? `Every evening the stall sells what is left of the day’s ${MARKET.dailyKg} kg: a share of everything in the store. Choose below to sell more of one crop.` : `Only what you choose is sold. Turn it on to sell the day’s ${MARKET.dailyKg} kg every evening.`}</small>
+          <small>{p.auto ? `Every evening the stall sells what is left of the day’s ${MARKET.dailyKg} kg: a share of everything in the store, what is closest to dropping a grade first.` : `Only what you choose is sold. Turn it on to sell the day’s ${MARKET.dailyKg} kg every evening.`}</small>
         </span>
         <button type="button" className={`pg-toggle${p.auto ? ' is-on' : ''}`} aria-pressed={p.auto} onClick={() => dispatch({ type: 'produceAuto', on: !p.auto })}>
           {p.auto ? 'On' : 'Off'}
         </button>
       </div>
+      <RemindRow on={!!p.remind} dispatch={dispatch} />
       <div className="fm-open">
         <span>
           <b>Serve customers at the stall</b>
@@ -101,30 +155,41 @@ function SellTab({ s, dispatch, left, cold }: { s: GameState; dispatch: Dispatch
           <p className="nu-store">
             <NutriTotal total={nutritionOf(p.store)} prefix="Your store feeds" />
           </p>
-          <div className="fm-grid" role="list" aria-label="Food in the store">
-            {have.map(id => (
-              <div key={id} role="listitem" className={`fm-card fm-sell${(want[id] ?? 0) > 0 ? ' is-on' : ''}`} aria-label={PRODUCE[id].name}>
-                <i aria-hidden="true">{PRODUCE[id].icon}</i>
-                <b>{PRODUCE[id].name.replace(/ \(.*\)/, '')}</b>
-                <small>
-                  {money(priceOf(id, cold))} a kg · {p.store[id]} kg
-                </small>
-                <small className="fm-cost">
-                  {PRODUCE[id].made ? 'made' : 'grown'} for {money(PRODUCE[id].cost)} a kg
-                </small>
-                <NutriChips food={id} max={2} compact />
-                <span className="pg-stepper">
-                  <button type="button" aria-label={`5 kg less ${PRODUCE[id].name}`} onClick={() => change(id, -5)}>
-                    −
-                  </button>
-                  <b aria-label={`${PRODUCE[id].name} to sell`}>{want[id] ?? 0} kg</b>
-                  <button type="button" aria-label={`5 kg more ${PRODUCE[id].name}`} onClick={() => change(id, 5)}>
-                    +
-                  </button>
-                </span>
-              </div>
+          <p className="pg-h mk-h">
+            Sell by grade <Info term="grades" size={14} /> <span className="mk-h-note">Each grade has its own price a kg. How a crop is stored decides how fast it drops a grade.</span>
+          </p>
+          <div className="mk-foods" role="list" aria-label="Food in the store">
+            {graded.map(id => (
+              <GradedCard key={id} id={id} s={s} cold={cold} picks={picks[id]} onChange={(g, by) => changeGrade(id, g, by)} dispatch={dispatch} />
             ))}
           </div>
+          {made.length > 0 && (
+            <>
+              <p className="pg-h">Made in the storehouse: keeps for months</p>
+              <div className="fm-grid" role="list" aria-label="Made in the storehouse">
+                {made.map(id => (
+                  <div key={id} role="listitem" className={`fm-card fm-sell${(want[id] ?? 0) > 0 ? ' is-on' : ''}`} aria-label={PRODUCE[id].name}>
+                    <FoodIcon id={id} size={26} />
+                    <b>{PRODUCE[id].name.replace(/ \(.*\)/, '')}</b>
+                    <small>
+                      {money(priceOf(id, cold))} a kg · {p.store[id]} kg
+                    </small>
+                    <small className="fm-cost">made for {money(PRODUCE[id].cost)} a kg</small>
+                    <NutriChips food={id} max={2} compact />
+                    <span className="pg-stepper">
+                      <button type="button" aria-label={`5 kg less ${PRODUCE[id].name}`} onClick={() => changeMade(id, -5)}>
+                        −
+                      </button>
+                      <b aria-label={`${PRODUCE[id].name} to sell`}>{want[id] ?? 0} kg</b>
+                      <button type="button" aria-label={`5 kg more ${PRODUCE[id].name}`} onClick={() => changeMade(id, 5)}>
+                        +
+                      </button>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </>
       ) : (
         <p className="cl-empty">The storehouse is empty. Harvest the six farms, or pick the greenhouse: some of every harvest is kept there to sell, {MARKET.dailyKg} kg a day.</p>
@@ -135,7 +200,9 @@ function SellTab({ s, dispatch, left, cold }: { s: GameState; dispatch: Dispatch
           className="gold-btn mg-big"
           disabled={total <= 0 || left <= 0}
           onClick={() => {
-            dispatch({ type: 'produceSell', items: want });
+            if (pickKg > 0) dispatch({ type: 'produceSellGrades', picks });
+            if (Object.values(want).some(v => (v ?? 0) > 0)) dispatch({ type: 'produceSell', items: want });
+            setPicks({});
             setWant({});
           }}
         >
@@ -143,6 +210,102 @@ function SellTab({ s, dispatch, left, cold }: { s: GameState; dispatch: Dispatch
         </button>
       )}
     </>
+  );
+}
+
+/** One crop in the store: its storage, and its three grades with their price, kg and nights before they drop. */
+function GradedCard({ id, s, cold, picks, onChange, dispatch }: { id: ProduceId; s: GameState; cold: boolean; picks?: [number, number, number]; onChange: (g: Grade, by: number) => void; dispatch: Dispatch<Action> }) {
+  const p = produceOf(s.produce);
+  const q = qualityOf(id);
+  const m = methodOf(id, p.storage, storeCtx(s));
+  const lots = lotsOf(p, id);
+  const kg = gradesOf(p, id);
+  const name = PRODUCE[id].name.replace(/ \(.*\)/, '');
+  const step = q.dry ? 5 : 1;
+  return (
+    <div role="listitem" className={`mk-food${picks && picks.some(x => x > 0) ? ' is-on' : ''}`} aria-label={PRODUCE[id].name}>
+      <div className="mk-food-head">
+        <FoodIcon id={id} size={30} />
+        <span className="mk-food-name">
+          <b>
+            {name} <Info term={q.term} size={13} />
+          </b>
+          <small>
+            {p.store[id]} kg · grown for {money(PRODUCE[id].cost)} a kg
+          </small>
+        </span>
+        <button type="button" className="mk-store-btn" onClick={() => dispatch({ type: 'open', modal: { kind: 'storehouse', tab: 'store' } })} aria-label={`${name} is stored: ${STORAGE[m].name}. Change how it is stored`}>
+          <small>Stored</small>
+          <b>{STORAGE[m].name}</b>
+        </button>
+        <Info term={STORAGE[m].term} size={13} />
+      </div>
+      <NutriChips food={id} max={2} compact />
+      <ul className="mk-grades" aria-label={`${name} by grade`}>
+        {GRADES.map(g => {
+          const at = lots.filter(x => gradeOf(x.q) === g);
+          const nights = at.length ? Math.min(...at.map(x => nightsLeft(id, x.q, m))) : 0;
+          const n = picks?.[g] ?? 0;
+          return (
+            <li key={g} className={`mk-grade g${g + 1}${kg[g] <= 0 ? ' is-empty' : ''}`} aria-label={`${name} ${gradeName(g)}`}>
+              <span className="mk-grade-tag">{gradeName(g)}</span>
+              <span className="mk-grade-text">
+                <b>
+                  {money(gradePriceOf(id, g, cold))} a kg · {kg[g]} kg
+                </b>
+                <small>
+                  {q.grades[g].name}
+                  {kg[g] > 0 && <em className={nights <= 1 ? 'is-soon' : undefined}>{nights <= 1 ? (g === 2 ? ' · spoils tonight' : ' · drops tonight') : ` · ${g === 2 ? 'spoils' : 'drops'} in ${nights} nights`}</em>}
+                </small>
+              </span>
+              <span className="pg-stepper">
+                <button type="button" aria-label={`${step} kg less ${name} ${gradeName(g)}`} onClick={() => onChange(g, -step)} disabled={n <= 0}>
+                  −
+                </button>
+                <b aria-label={`${name} ${gradeName(g)} to sell`}>{n} kg</b>
+                <button type="button" aria-label={`${step} kg more ${name} ${gradeName(g)}`} onClick={() => onChange(g, step)} disabled={kg[g] <= n}>
+                  +
+                </button>
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+/** The daily reminder to come back and sell: on the morning's news in the game, and a phone notification if allowed. */
+function RemindRow({ on, dispatch }: { on: boolean; dispatch: Dispatch<Action> }) {
+  const perm = notifyPermission();
+  return (
+    <div className="pg-row nu-auto">
+      <i aria-hidden="true">🔔</i>
+      <span className="pg-row-text">
+        <b>Daily sell reminder {on ? 'on' : 'off'}</b>
+        <small>
+          {on
+            ? perm === 'granted'
+              ? 'Each morning: a notification on this phone, and the farm’s news, with what drops a grade tonight.'
+              : perm === 'denied'
+                ? 'Each morning on the farm’s news. Notifications are blocked for this game in the browser’s settings.'
+                : 'Each morning on the farm’s news, with what drops a grade tonight.'
+            : 'Turn it on for a nudge each morning to sell before prices drop.'}
+        </small>
+      </span>
+      <button
+        type="button"
+        className={`pg-toggle${on ? ' is-on' : ''}`}
+        aria-pressed={on}
+        aria-label={`Daily sell reminder ${on ? 'on' : 'off'}`}
+        onClick={() => {
+          if (!on) void askNotify();
+          dispatch({ type: 'produceRemind', on: !on });
+        }}
+      >
+        {on ? 'On' : 'Off'}
+      </button>
+    </div>
   );
 }
 
