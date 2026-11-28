@@ -237,7 +237,7 @@ export const PLACES: Record<Place, { x: number; z: number; r: number }> = {
   power: { x: 13.5, z: -11.4, r: 1.1 },
   /** on the grass above the mini forest's sign, between the pond path and the forest (the camera looks from the south,
       so the billboard and the storage annex further down would hide a square on the ground): the Mini forest page (src/forest) */
-  forest: { x: 14.3, z: 3.3, r: 1.0 },
+  forest: { x: 14.5, z: 3.3, r: 1.0 },
 };
 
 /** How many cows and hens there are, and the coop (src/livestock): the 3D farm shows them. */
