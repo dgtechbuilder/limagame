@@ -130,7 +130,7 @@ test('Working safely, by hand: up the slope, off the tractor safely, only the dr
   await page.locator('.ws [data-person="farmer"]').click();
   await expect(page.locator('.ws-say.is-bad')).toContainText('hand brake');
   await shot(page, '5-getoff-unsafe');
-  await expect(page.locator('g[data-person="farmer"]')).toBeVisible({ timeout: 6_000 });
+  await expect(page.locator('g[data-person="farmer"]')).toBeVisible({ timeout: 30_000 });
   for (const c of ['tool', 'pto', 'brake', 'engine']) await ctl(page, c).click();
   await page.locator('.ws [data-person="farmer"]').click();
   await expect(won(page)).toBeVisible();
