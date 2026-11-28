@@ -22,6 +22,10 @@ export const LIFE = {
   milk: { perCow: 10, price: 5 },
   /** a healthy hen's eggs a day, and the price an egg (KSh 15) */
   eggs: { perHen: 0.8, price: 1.5 },
+  /** what the cows and hens that came with the farm have already given when a new game starts: this morning's milk
+      (after the story's morning care, src/first) and a tray of eggs from the last few days. It waits in the farmhouse
+      to be sold on day 1, before the daily care starts (about KSh 1,000). */
+  larder: { milk: 16, eggs: 12 },
   /** what a cow or a hen costs to buy (KSh 80,000 and KSh 700), and the share of it a sale brings back */
   price: { cow: 8000, hen: 70, sellShare: 0.8 },
   health: {

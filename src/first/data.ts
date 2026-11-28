@@ -245,7 +245,7 @@ export const STORY: StoryPage[] = [
         { id: 'henWater', icon: '💧', button: 'Water the hens', doing: 'Filling…', done: 'Watered' },
         { id: 'eggs', icon: '🥚', button: 'Collect the eggs', doing: 'Collecting…', done: 'Collected' },
       ],
-      cheer: { title: 'Well done, {name}!', line: 'Fed and watered every day, cows give milk and hens lay eggs. You will care for them every morning.' },
+      cheer: { title: 'Well done, {name}!', line: 'Fed and watered every day, cows give milk and hens lay eggs. Today\'s milk and a tray of eggs wait in the farmhouse: sell them from the cow pen. You will care for them every morning.' },
     },
     button: 'Next',
   },
