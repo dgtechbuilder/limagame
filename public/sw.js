@@ -198,6 +198,23 @@ async function status() {
 
 let warming = null;
 
+// the daily sell reminder (src/produce/remind.ts): a tap opens the game on the market stall
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const url = abs(event.notification.data?.url || './');
+  event.waitUntil(
+    (async () => {
+      const open = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      const c = open.find(w => w.url.startsWith(scope()));
+      if (c) {
+        await c.focus();
+        return c.navigate ? c.navigate(url).catch(() => undefined) : undefined;
+      }
+      return self.clients.openWindow(url);
+    })(),
+  );
+});
+
 self.addEventListener('message', event => {
   const data = event.data || {};
   const reply = msg => event.source && event.source.postMessage(msg);

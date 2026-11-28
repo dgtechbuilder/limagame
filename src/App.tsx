@@ -46,6 +46,7 @@ import { AchievementsPage } from './screens/Achievements';
 import { PartnersPage } from './screens/Partners';
 import { GlossaryPage } from './learn/Glossary';
 import { InfoLayer } from './learn/Info';
+import { useSellReminder } from './produce/remind';
 
 import { ArtContext, VoiceContext } from './art/style';
 import { speak, stopSpeaking } from './speech';
@@ -127,6 +128,7 @@ export default function App() {
   const [s, gameDispatch] = useGame();
   // Mixpanel (src/analytics): reads the game as it is played; the dispatch is the game's own, noted on the way
   const dispatch = useAnalytics(s, gameDispatch);
+  useSellReminder(s);
   // money is shown in the currency of the player's country (src/money.ts): set before anything below is drawn
   setCountry(s.settings.country);
   // Data saver (Settings → Display; src/net/connection.ts): set before anything below picks a picture

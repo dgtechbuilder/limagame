@@ -163,7 +163,7 @@ test('the restaurant beside the stall, the nutrition table and the markers on th
   await market.getByRole('button', { name: /Nutrition/ }).click();
   await expect(page).toHaveURL(/#\/market\/nutrition$/);
   const table = market.getByRole('table', { name: /Nutrition in 100 g/ });
-  await expect(table.getByRole('row')).toHaveCount(9);
+  await expect(table.getByRole('row')).toHaveCount(10);
   await table.getByRole('button', { name: /Dry beans/ }).click();
   await expect(market.locator('.nu-card').first()).toContainText('Dry beans');
   // the stall: the daily selling switch, and markers on every crop in the store

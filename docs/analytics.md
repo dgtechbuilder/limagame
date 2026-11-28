@@ -34,6 +34,21 @@ itself unlocks the farm on any phone, so it is never sent). Player profile: coun
 | `forest_sale_decision` | In the mini forest, after the "Before you sell" card that sets the money against the CO₂, credits and land lost: `decision` is `harvested` (a crop taken: nuts, fruit, pods, cut grass), `felled` (a stand sold for wood) or `kept_standing` (the player saw what felling would do and kept it) | `plant` (croton, baobab, napier…), `plant_kind` (tree, bush, grass); for a sale `money_usd`, `co2_kg` back in the air and `credits_cancelled`. Harvests and fellings also send `activity_completed` (harvest_completed / sale_completed, `where: mini_forest`). |
 | `learn_page_viewed` | A Farm words section or Farm basics (`glossary/<section>`), a climate-smart lesson page (`csa/<practice>`), or a mini forest plant's card (`forest/<plant>`) | `partner_id`: the brand in that section's partner category (Fertilizer → feed, Seed → seed, Water → water, Tractors → machines, Solar → power, Training → basics). |
 
+### The daily produce market (added 2026-11-28)
+
+Beyond the 10-event plan, for the stall sold by grade and the store's storage (`src/produce/quality.ts`):
+
+| Event | When it fires | Properties |
+|---|---|---|
+| `produce_sold` | The farmer sells at the stall grade by grade (Market stall › Sell today) | `kg`, `earned_usd`, `foods` (comma-separated ids), `grade1_kg`, `grade2_kg`, `grade3_kg`, `farm_day`. Also counted as `activity_completed` / `sale_completed` (`where: market_stall`). |
+| `storage_changed` | A crop is stored another way (Storehouse › Store) | `food`, `method` (floor, pallets, hermetic, crates, cooler, cold), `from_method` (missing: the default), `cost_usd` (hermetic bags and the charcoal cooler are bought the first time). |
+| `produce_spoiled` | A night in the store took some food below Grade 3 | `kg` spoiled that night (or nights, after a gap). |
+| `sell_reminder_set` | The daily sell reminder is turned on or off | `enabled`. |
+| `notification_permission` | The browser answers the notification prompt (asked when the reminder is first turned on) | `result`: granted, denied or default; `asked_from: sell_reminder`. |
+| `sell_reminder_shown` | The day's reminder notification is shown (once a day, from 7 am, while the game is open or in the background) | `reminder_kind`: `drop` (something drops a grade tonight) or `sell` (kg left to sell), `kg`. |
+| `sell_reminder_opened` | The game is opened from a reminder notification | (none) |
+| `info_viewed` | Any ⓘ word card is opened, the storage and grade words included | `term_id`, `section` (the Farm words section), `screen` (the page it was opened on). |
+
 ## Consent
 
 After the player has seen 7 pages (screens, counted by the game's address changing; `CONSENT_AFTER` in
