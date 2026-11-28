@@ -33,6 +33,7 @@ const TractorGamePage = lazyPage(() => import('./minifarm/MiniFarm'), m => m.Tra
 const MarketPage = lazyPage(() => import('./produce/Market'), m => m.MarketPage, 1);
 const ShopFloor = lazyPage(() => import('./shop/Shop'), m => m.ShopFloor, 1);
 const EventsPage = lazyPage(() => import('./events/Events'), m => m.EventsPage, 1);
+const ForestPage = lazyPage(() => import('./forest/Forest'), m => m.ForestPage, 1);
 const GreenhousePage = lazyPage(() => import('./greenhouse/Greenhouse'), m => m.GreenhousePage, 1);
 const StorehousePage = lazyPage(() => import('./storehouse/Storehouse'), m => m.StorehousePage, 1);
 const KakumaPage = lazyPage(() => import('./events/Kakuma'), m => m.KakumaPage, 1);
@@ -426,6 +427,11 @@ export default function App() {
         {m?.kind === 'greenhouse' && (
           <LoadGuard onBack={goHome}><Suspense fallback={<ActivityLoading label="Opening the greenhouse…" />}>
             <GreenhousePage s={s} dispatch={dispatch} bed={m.bed} />
+          </Suspense></LoadGuard>
+        )}
+        {m?.kind === 'forest' && (
+          <LoadGuard onBack={goHome}><Suspense fallback={<ActivityLoading label="Opening the mini forest…" />}>
+            <ForestPage s={s} dispatch={dispatch} tab={m.tab ?? 'tree'} plant={m.plant} />
           </Suspense></LoadGuard>
         )}
         {m?.kind === 'storehouse' && (

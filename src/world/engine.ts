@@ -235,6 +235,9 @@ export const PLACES: Record<Place, { x: number; z: number; r: number }> = {
   coop: { x: 8.2, z: -16.0, r: 1.0 },
   /** beside the power yard's fence, on the grass above the lane's corner: the Power page */
   power: { x: 13.5, z: -11.4, r: 1.1 },
+  /** on the grass above the mini forest's sign, between the pond path and the forest (the camera looks from the south,
+      so the billboard and the storage annex further down would hide a square on the ground): the Mini forest page (src/forest) */
+  forest: { x: 14.3, z: 3.3, r: 1.0 },
 };
 
 /** How many cows and hens there are, and the coop (src/livestock): the 3D farm shows them. */
@@ -862,6 +865,23 @@ export class FarmWorld {
         g.ellipse(0, 0, 30, 36, 0, 0, Math.PI * 2);
         g.fill();
       },
+      // the mini forest: three round storybook trees on a mound, the middle one taller (the HUD button's icon, forest/art.tsx)
+      tree: g => {
+        g.fillStyle = '#fff';
+        g.beginPath();
+        g.ellipse(0, 40, 46, 9, 0, 0, Math.PI * 2);
+        g.fill();
+        g.fillRect(-4, -6, 8, 46);
+        g.fillRect(-30, 8, 6, 32);
+        g.fillRect(24, 8, 6, 32);
+        g.beginPath();
+        g.arc(-27, 2, 17, 0, Math.PI * 2);
+        g.arc(27, 2, 17, 0, Math.PI * 2);
+        g.fill();
+        g.beginPath();
+        g.arc(0, -18, 25, 0, Math.PI * 2);
+        g.fill();
+      },
       bolt: g => {
         g.fillStyle = '#fff';
         g.beginPath();
@@ -891,6 +911,7 @@ export class FarmWorld {
       ['greenhouse', 'Grow', 'sprout', 1.5],
       ['storehouse', 'Store', 'crate', 1.5],
       ['storage', 'Storage', 'snow', 1.5],
+      ['forest', 'Forest', 'tree', 1.7],
     ];
     for (const [p, label, glyph, size] of zones) {
       const mat = sharpText(new THREE.MeshBasicMaterial({ map: zoneTexture(label, glyphs[glyph]), transparent: true, depthWrite: false }));

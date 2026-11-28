@@ -1,3 +1,4 @@
+import { ForestIcon } from '../forest/art';
 import { LoadGuard } from '../net/LoadGuard';
 import { Suspense, useEffect, useMemo, useRef, useState, type Dispatch, type PointerEvent as RPointerEvent } from 'react';
 import { KakumaPopup } from '../events/Kakuma';
@@ -736,6 +737,8 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
     if (p === 'mission') return dispatch({ type: 'trials', open: true });
     // the cow pen and the chicken coop: the animals' page (a coop still to build opens on it)
     if (p === 'power') return dispatch({ type: 'open', modal: { kind: 'power', tab: powerOn(st) ? 'today' : 'build' } });
+    // the mini forest's sign: its trees, bushes and grasses (src/forest)
+    if (p === 'forest') return dispatch({ type: 'open', modal: { kind: 'forest', tab: 'tree' } });
     if (p === 'pen' || p === 'coop') {
       const l = lifeOf(st.life);
       // the coop is upgraded from day 1, the cow shed from day 3; the daily care starts on day 2
@@ -1424,7 +1427,7 @@ export function World({ s, dispatch, paused }: { s: GameState; dispatch: Dispatc
       {!working && !tidying && !jobWork && !anchors.job && !anchors.plot && !anchors.riding && placeBtn && !overlay && !(s.roundsOpen || s.trialsOpen || s.bizOpen || s.modal) && (
         <div className="hud-place" style={{ left: Math.min(STAGE_W - 150, Math.max(150, anchors.farmer.x)), top: Math.min(STAGE_H - 60, anchors.farmer.y + 70) }}>
           <button type="button" data-pad-primary className={`hud-plot is-enter is-${anchors.place}`} onClick={enterPlace} aria-label={placeBtn.aria}>
-            {placeBtn.icon ? <TaskGlyph icon={placeBtn.icon} /> : <span className="hud-place-emoji" aria-hidden>{placeBtn.emoji}</span>}
+            {placeBtn.forest ? <span className="hud-place-emoji" aria-hidden><ForestIcon size={22} /></span> : placeBtn.icon ? <TaskGlyph icon={placeBtn.icon} /> : <span className="hud-place-emoji" aria-hidden>{placeBtn.emoji}</span>}
             <span>
               <b>{placeBtn.label}</b>
               <i>{placeSub ?? placeBtn.sub}</i>
@@ -1620,7 +1623,7 @@ function PlotTimer({ at, start, ms, verb, what }: { at: { x: number; y: number }
 /* ---------------- icons ---------------- */
 
 /** What the button on each place's white square says: the player taps it to start that activity. */
-function placeButton(p: Place, carry: GameState['field']['carry']): { label: string; sub: string; aria: string; icon?: TaskIcon; emoji?: string } {
+function placeButton(p: Place, carry: GameState['field']['carry']): { label: string; sub: string; aria: string; icon?: TaskIcon; emoji?: string; forest?: true } {
   const pick = (item: 'seeds' | 'fertilizer' | 'sprayer' | 'water', label: string, icon: TaskIcon) => {
     const held = carry === item;
     return { label, sub: held ? 'In your hands' : 'Tap to pick up', aria: `${label}${held ? ' (already carrying it)' : ''}`, icon };
@@ -1656,6 +1659,8 @@ function placeButton(p: Place, carry: GameState['field']['carry']): { label: str
       return { label: 'Open the storehouse', sub: 'Store, harvest, produce', aria: 'Open the storehouse', emoji: '📦' };
     case 'storage':
       return { label: 'Open the storage', sub: 'Freezer cold room', aria: 'Open the storage', emoji: '❄️' };
+    case 'forest':
+      return { label: 'Visit the mini forest', sub: 'Native trees, bushes, grass', aria: 'Visit the mini forest', forest: true };
   }
 }
 

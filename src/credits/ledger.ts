@@ -50,3 +50,16 @@ export function earn(l0: Ledger | undefined, type: CreditType, amount: number, c
     entries: [{ id: Date.now() + ++entryId, type, amount, coins, label, date }, ...l.entries].slice(0, 60),
   };
 }
+
+/** Credits cancelled (a reversal): the carbon they were paid for went back into the air, as when trees that earned
+    them are felled (src/forest). The money already paid stays paid; the next payments wait until the credits are
+    earned again (climate/track.ts pays only credits above the last payment). */
+export function reverse(l0: Ledger | undefined, type: CreditType, amount: number, label: string, date: string): Ledger {
+  const l = ledgerOf(l0);
+  if (amount <= 0) return l;
+  return {
+    ...l,
+    earned: { ...l.earned, [type]: Math.max(0, l.earned[type] - amount) },
+    entries: [{ id: Date.now() + ++entryId, type, amount: -amount, coins: 0, label, date }, ...l.entries].slice(0, 60),
+  };
+}

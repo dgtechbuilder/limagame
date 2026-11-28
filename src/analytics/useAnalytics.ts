@@ -14,6 +14,7 @@ import { BRANDS, type PartnerCategory } from '../partners/data';
 import { cloudPlayerId } from '../net/cloud';
 import { trackListeners } from '../first/track';
 import { countPage, mpIdentify, mpOn, mpPeopleSet, mpRegister, mpTrack } from './mixpanel';
+import { forestOf, plantOf } from '../forest/model';
 import { pathOf } from '../route';
 import { browserOf, deepLinked, deviceOf, hashedId, keep, kept, landingOf, locale, randomId, referrerOf, secsSince, today, utmOf } from './context';
 
@@ -60,6 +61,8 @@ function learnPage(s: GameState): string | null {
   const m = s.modal;
   if (m?.kind === 'glossary') return `glossary/${m.tab ?? 'basics'}`;
   if (m?.kind === 'climate' && m.tab === 'csa' && m.practice) return `csa/${m.practice}`;
+  // a mini forest plant's card: what it is and what it does for the climate (src/forest)
+  if (m?.kind === 'forest' && m.plant) return `forest/${m.plant}`;
   return null;
 }
 
@@ -336,6 +339,17 @@ export function useAnalytics(s: GameState, dispatch: Dispatch<Action>): Dispatch
         activity(st, 'harvest_completed', a.score, { where: 'greenhouse' });
         win(p, st, 'greenhouse_harvest');
       }
+    // the mini forest: a harvest or a sale after seeing its climate cost, or the stand kept standing
+    for (const a of did('forestSell'))
+      if (st.forest !== p.forest) {
+        const last = forestOf(st.forest).log[0];
+        const usd = Math.round(toUsd(last.coins) * 100) / 100;
+        activity(st, a.kind === 'fell' ? 'sale_completed' : 'harvest_completed', usd, { where: 'mini_forest', plant: a.id });
+        mpTrack('forest_sale_decision', { session_id: session.id, decision: a.kind === 'fell' ? 'felled' : 'harvested', plant: a.id, plant_kind: plantOf(a.id).kind, money_usd: usd, co2_kg: Math.round(last.co2), credits_cancelled: last.credits, country: countryCode(st) });
+        if (a.kind === 'crop') win(p, st, 'forest_harvest');
+      }
+    for (const a of did('forestKeep'))
+      if (st.forest !== p.forest) mpTrack('forest_sale_decision', { session_id: session.id, decision: 'kept_standing', plant: a.id, plant_kind: plantOf(a.id).kind, country: countryCode(st) });
     for (const a of did('tractorDone')) {
       activity(st, 'tractor_job_completed', a.score, { stars: a.stars });
       win(p, st, 'tractor_job');

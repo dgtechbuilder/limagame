@@ -2,6 +2,8 @@
    planted, a tile ploughed from the tractor seat, a treatment done, a harvest sold) and record its climate effect.
    Kept out of the main reducer so the farming rules stay readable; the numbers are in model.ts. */
 
+import { lifeOf } from '../livestock/model';
+import { creditForest } from '../forest/model';
 import { pumpCo2, type Source } from './model';
 import { earn } from '../credits/ledger';
 import { addEntry } from '../wallet/model';
@@ -101,7 +103,9 @@ export function settleDays(land: GameState, s: GameState, today = payClock.today
     landKg: { stored: pay.landKg.stored + l.stored * days, lost: pay.landKg.lost + l.lost * days },
     areas: totals,
   };
-  let next: GameState = { ...s, climate: { ...c1, pay: pay1 }, coins: s.coins + coins, ledger: coins > 0 ? earn(s.ledger, 'co2', credits, coins, when, today) : s.ledger };
+  // each stand of the mini forest is credited with its share (src/forest): felling it cancels those credits
+  const forest = creditForest(s.forest, lifeOf(land.life).day, days);
+  let next: GameState = { ...s, forest, climate: { ...c1, pay: pay1 }, coins: s.coins + coins, ledger: coins > 0 ? earn(s.ledger, 'co2', credits, coins, when, today) : s.ledger };
   // into the farmer's wallet, with its own words (src/wallet)
   if (coins > 0) next = addEntry(next, 'climate', `Climate payment · ${when}`, coins, next.coins, { credits: Math.round(credits * 100) / 100 });
   if (levelUp) next = { ...next, points: next.points + levelUp.points, toast: toast(`Climate level up: ${levelUp.name} · +${levelUp.points} points`) };
