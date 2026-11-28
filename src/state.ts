@@ -14,7 +14,7 @@ import { trackWater } from './water/track';
 import { DIMENSIONS, ROWS_PER_FARM } from './strategy/data';
 import { riskReduce, type RiskAction, type RiskState } from './risk/model';
 import { LIFE, type CareId, type CoopId, type Group, type IssueId, type PreventId, type ShedId } from './livestock/config';
-import { buildCoop, buildShed, doCare, doPrevent, fixIssue, lifeOf, sellLarder, type LifeEvent, type LifeState } from './livestock/model';
+import { buildCoop, buildShed, doCare, doPrevent, fixIssue, giveCows, lifeOf, sellLarder, type LifeEvent, type LifeState } from './livestock/model';
 import { checkDone, checkFix, checkPlan, type ChecksState } from './inspect/model';
 import type { SubjectId } from './inspect/types';
 import { addEntry, trackWallet, type WalletState } from './wallet/model';
@@ -2354,7 +2354,8 @@ function loadSaved(): GameState {
   try {
     const raw = window.localStorage.getItem(SAVE_KEY);
     if (!raw) return initialState;
-    const saved = JSON.parse(raw);
+    // every farm keeps cows: a game saved without them gets the starting cows once
+    const saved = giveCows(JSON.parse(raw));
     // Saves from before the farm had one owner may carry a reminder about neighbours.
     if (typeof saved.note === 'string' && /Achieng|neighbour/i.test(saved.note)) saved.note = 'Check every bed often: open Rounds.';
     // Saves from before the maize prices were real (a bag at KSh 240) take the new ones, unless the player typed their own.

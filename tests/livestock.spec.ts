@@ -8,7 +8,7 @@ import { COMMON_PLAN, harvestFarm, newTrial, type Trial } from '../src/trials/mo
 import { tankOf } from '../src/water/model';
 import { WATER } from '../src/water/config';
 import { CARE, LIFE, coopOption, issueOf } from '../src/livestock/config';
-import { animalNight, animalWater, careLeft, eggsToday, lifeOf, milkToday, type LifeState } from '../src/livestock/model';
+import { animalNight, animalWater, careLeft, eggsToday, giveCows, lifeOf, milkToday, type LifeState } from '../src/livestock/model';
 import { MEASURES, STORE_THEFT, measureOf } from '../src/security/config';
 import { cutFor, exposure, harvestLessTheft, securityOf, theftNight } from '../src/security/model';
 
@@ -54,6 +54,39 @@ test('every new game starts with cows, hens and their first milk and eggs, sold 
   expect(careLeft(s).map(c => c.id)).toEqual(expect.arrayContaining(['milk', 'eggs']));
   // a farm saved before the larder existed does not get it
   expect(lifeOf({ day: 5 }).larder).toBeNull();
+});
+
+test('a game saved without cows gets the starting cows once when it opens; a farm with cows is left as it is', () => {
+  // a save whose cows were all sold (or died): the cows come home, healthy, their problems gone, the hens as they were
+  const old = { coins: 9000, tank: { level: 300, herd: { cows: 0, hens: 7 } }, life: { day: 9, health: { cows: 20, hens: 60 }, issues: [{ id: 'ecf' as const, since: 8 }, { id: 'newcastle' as const, since: 8 }], log: [] } };
+  const got = giveCows(old);
+  expect(got.tank.herd).toEqual({ cows: WATER.herd.cows, hens: 7 });
+  expect(got.tank.cowsGiven).toBe(true);
+  expect(got.tank.level).toBe(300);
+  expect(got.coins).toBe(9000);
+  expect(lifeOf(got.life).health).toEqual({ cows: LIFE.health.start, hens: 60 });
+  expect(lifeOf(got.life).issues.map(i => i.id)).toEqual(['newcastle']);
+  expect(lifeOf(got.life).log[0]).toMatchObject({ day: 9, text: expect.stringMatching(/cows came home/) });
+  // once only: if they are sold again, they stay sold
+  const sold = { ...got, tank: { ...got.tank, herd: { cows: 0, hens: 7 } } };
+  expect(giveCows(sold)).toBe(sold);
+  // a farm that already has cows keeps its own number, never doubled
+  const four = giveCows({ tank: { herd: { cows: 4, hens: 2 } } });
+  expect(four.tank.herd).toEqual({ cows: 4, hens: 2 });
+  expect(four.tank.cowsGiven).toBe(true);
+  // a new game is marked already, and a save with no tank has the starting cows by default
+  expect(tankOf(undefined).cowsGiven).toBe(true);
+  expect(giveCows({ coins: 1 })).toEqual({ coins: 1 });
+});
+
+test('an old save opened in the browser has its cows on the farm', async ({ page }) => {
+  await boot(page);
+  const saved = { ...(await state(page)), onboarded: true, tank: { level: 300, herd: { cows: 0, hens: 4 } } };
+  await page.evaluate(s => window.localStorage.setItem('lima-farming-game:v2', JSON.stringify(s)), saved);
+  await boot(page, false);
+  const s = await state(page);
+  expect(tankOf(s.tank).herd.cows).toBe(WATER.herd.cows);
+  expect(tankOf(s.tank).cowsGiven).toBe(true);
 });
 
 test('the animals come into the player’s care on day 2, with the coop, and a dialog says so', () => {
