@@ -88,6 +88,181 @@ export const PLANT_EARLY: Early[] = [
   },
 ];
 
+/** The bed's own early signs, the same under every crop. */
+const BED_EARLY = (ids: string[]) => PLANT_EARLY.filter(e => ids.includes(e.id));
+
+export const BEANS_EARLY: Early[] = [
+  {
+    id: 'beanAphids',
+    part: 'young',
+    title: 'Black aphids on the young tips',
+    see: 'The newest leaves are curled, with black insects packed on them.',
+    risk: 'They stunt the plant and spread bean mosaic down the row.',
+    fix: { label: 'Pinch off the worst tips; spray soapy water', doing: 'Spraying the tips…', cost: 1, secs: 2 },
+  },
+  {
+    id: 'flowerDrop',
+    part: 'flowers',
+    title: 'Flowers falling off',
+    see: 'Bare flower stalks, and lilac flowers lying on the soil.',
+    risk: 'No flowers, no pods: dry soil at flowering costs the most beans.',
+    fix: { label: 'Water deeply this evening; mulch', doing: 'Watering…', cost: 0, secs: 2 },
+  },
+  {
+    id: 'podBorer',
+    part: 'pods',
+    title: 'A small hole in a pod',
+    see: 'A neat hole in the side of a young pod, with droppings by it.',
+    risk: 'Pod borer eats the seeds inside, pod after pod.',
+    fix: { label: 'Pick the holed pods; spray neem', doing: 'Picking pods…', cost: 3, secs: 3 },
+  },
+  {
+    id: 'rust',
+    part: 'leaves',
+    title: 'Rusty spots on the leaves',
+    see: 'Small orange-brown pustules that rub off on your finger.',
+    risk: 'Bean rust spreads in damp weather and the leaves drop early.',
+    fix: { label: 'Pick off the spotted leaves and burn them', doing: 'Picking leaves…', cost: 0, secs: 3 },
+  },
+  {
+    id: 'beanFly',
+    part: 'stem',
+    title: 'The stem swollen and split at the base',
+    see: 'Just above the soil the stem is thick, brown and cracked.',
+    risk: 'Bean fly maggots tunnel the stem: the plant wilts and dies.',
+    fix: { label: 'Earth up round the stem; pull the dead ones', doing: 'Earthing up…', cost: 0, secs: 3 },
+  },
+  {
+    id: 'noNodules',
+    part: 'base',
+    title: 'No pink nodules on the roots',
+    see: 'Dig gently: the roots are pale, with none of the small pink balls.',
+    risk: 'Without them the beans cannot feed themselves on nitrogen.',
+    fix: { label: 'Side-dress a little manure; inoculate the next seed', doing: 'Side-dressing…', cost: 4, secs: 3 },
+  },
+  ...BED_EARLY(['weedsBase', 'dripBlock', 'soilCrack']),
+  {
+    id: 'mosaic',
+    part: 'rows',
+    title: 'Mottled yellow leaves on the next plant',
+    see: 'Light and dark green patches, the leaves puckered.',
+    risk: 'Bean mosaic virus: aphids carry it down the row.',
+    fix: { label: 'Pull that plant out and burn it', doing: 'Pulling it out…', cost: 0, secs: 3 },
+  },
+];
+
+export const KALE_EARLY: Early[] = [
+  {
+    id: 'holes',
+    part: 'young',
+    title: 'Small holes in the young leaves',
+    see: 'Pinholes and windows in the new leaves, and a tiny green caterpillar.',
+    risk: 'Diamondback moth: in a week the leaves are lace.',
+    fix: { label: 'Pick off the caterpillars; spray neem', doing: 'Picking caterpillars…', cost: 2, secs: 3 },
+  },
+  {
+    id: 'kaleAphids',
+    part: 'under',
+    title: 'Grey, waxy aphids under a leaf',
+    see: 'Turn the leaf: grey clusters, and the leaf is cupped.',
+    risk: 'Cabbage aphids spoil the leaves for sale.',
+    fix: { label: 'Spray soapy water under the leaves', doing: 'Spraying…', cost: 1, secs: 2 },
+  },
+  {
+    id: 'blackRot',
+    part: 'leaves',
+    title: 'A yellow V at the leaf edge, black veins',
+    see: 'A yellow wedge from the edge in, its veins turned black.',
+    risk: 'Black rot: it runs through the plant and to the next.',
+    fix: { label: 'Cut off the leaf; clean the knife', doing: 'Cutting it off…', cost: 0, secs: 2 },
+  },
+  {
+    id: 'tornScars',
+    part: 'scars',
+    title: 'Leaves torn off, not cut',
+    see: 'Ragged scars down the stem, one going soft and brown.',
+    risk: 'Rot gets into the stem through a torn scar.',
+    fix: { label: 'Trim the scars clean; pick with a knife, downwards', doing: 'Trimming…', cost: 0, secs: 2 },
+  },
+  {
+    id: 'cutworm',
+    part: 'stem',
+    title: 'A notch chewed at the base of the stem',
+    see: 'A grey caterpillar curled in the soil by a bitten stem.',
+    risk: 'Cutworms cut young plants off at the ground overnight.',
+    fix: { label: 'Dig it out; a collar of paper round the stem', doing: 'Digging round…', cost: 0, secs: 3 },
+  },
+  ...BED_EARLY(['weedsBase', 'dripBlock', 'soilCrack']),
+  {
+    id: 'rowYellow',
+    part: 'rows',
+    title: 'The next plant yellowing',
+    see: 'Its lower leaves are yellow with dark veins.',
+    risk: 'Black rot spreads down a wet row.',
+    fix: { label: 'Pull that plant out and burn it', doing: 'Pulling it out…', cost: 0, secs: 3 },
+  },
+];
+
+export const TOMATO_EARLY: Early[] = [
+  {
+    id: 'mines',
+    part: 'leaves',
+    title: 'Pale winding mines in the leaves',
+    see: 'See-through blotches with dark droppings inside.',
+    risk: 'Tuta absoluta: it moves into the stems and fruit.',
+    fix: { label: 'Pick off the mined leaves; set a pheromone trap', doing: 'Picking leaves…', cost: 4, secs: 3 },
+  },
+  {
+    id: 'blight',
+    part: 'leaves',
+    title: 'Brown spots with rings, low down',
+    see: 'Target-like brown spots on the oldest leaves.',
+    risk: 'Early blight climbs the plant leaf by leaf.',
+    fix: { label: 'Remove the low leaves; keep water off them', doing: 'Removing leaves…', cost: 0, secs: 3 },
+  },
+  {
+    id: 'whitefly',
+    part: 'under',
+    title: 'Whiteflies under the leaves',
+    see: 'Touch the plant: a cloud of tiny white flies lifts off.',
+    risk: 'They suck the sap and carry leaf-curl virus.',
+    fix: { label: 'Hang a yellow sticky trap; spray soapy water', doing: 'Hanging a trap…', cost: 2, secs: 2 },
+  },
+  {
+    id: 'ber',
+    part: 'fruit',
+    title: 'A dark, sunken patch under a fruit',
+    see: 'The bottom of a green tomato is brown and leathery.',
+    risk: 'Blossom end rot: uneven watering, and every fruit on the truss is lost.',
+    fix: { label: 'Pick it off; water evenly, every day', doing: 'Picking it off…', cost: 0, secs: 2 },
+  },
+  {
+    id: 'tightTie',
+    part: 'stake',
+    title: 'A tie cutting into the stem',
+    see: 'The string is tight and the stem is pinched under it.',
+    risk: 'The stem breaks there when the fruit gets heavy.',
+    fix: { label: 'Retie it loosely, in a figure of eight', doing: 'Retying…', cost: 0, secs: 2 },
+  },
+  {
+    id: 'suckers',
+    part: 'stem',
+    title: 'Side shoots in the leaf joints',
+    see: 'A new shoot growing between the stem and a leaf.',
+    risk: 'Suckers take the food from the fruit: small tomatoes.',
+    fix: { label: 'Pinch out the side shoots', doing: 'Pinching out…', cost: 0, secs: 2 },
+  },
+  ...BED_EARLY(['weedsBase', 'dripBlock', 'soilCrack']),
+  {
+    id: 'wilt',
+    part: 'rows',
+    title: 'The next plant wilting by day',
+    see: 'Its leaves droop in the sun and come back at night.',
+    risk: 'Bacterial wilt: it lives in the soil and moves along the row.',
+    fix: { label: 'Pull it out with its roots; burn it', doing: 'Pulling it out…', cost: 0, secs: 3 },
+  },
+];
+
 export const TRACTOR_EARLY: Early[] = [
   {
     id: 'lowOil',

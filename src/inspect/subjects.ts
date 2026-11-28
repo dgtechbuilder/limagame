@@ -1,10 +1,21 @@
 import { PARTS } from '../livestock/exam';
 import { COW_EARLY, HEN_EARLY } from './early';
-import { FARM_EARLY, PLANT_EARLY, POWER_EARLY, TRACTOR_EARLY, WATER_EARLY } from './earlyFarm';
+import { BEANS_EARLY, FARM_EARLY, KALE_EARLY, PLANT_EARLY, POWER_EARLY, TOMATO_EARLY, TRACTOR_EARLY, WATER_EARLY } from './earlyFarm';
+import type { Part } from './types';
 import type { SubjectDef, SubjectId } from './types';
 
 /* Everything a full check covers: its parts (where the camera looks, what healthy looks like), the sections they are
    checked in, and its early signs. The animals' parts are in src/livestock/exam.ts PARTS. */
+
+/** What every crop's bed shows round the plant: its roots, the soil, the weeds, the drip line and the next plant. */
+const bed = (roots: string, next: string): Part[] => [
+  { id: 'base', label: 'Roots', at: { x: 240, y: 244, z: 2.1 }, normal: roots },
+  { id: 'soil', label: 'Soil', at: { x: 110, y: 244, z: 2.0 }, normal: 'Moist a finger deep, covered with mulch, not cracked.' },
+  { id: 'weeds', label: 'Weeds round it', at: { x: 306, y: 214, z: 2.2 }, normal: 'Bare of weeds in a hand’s width round the stem.' },
+  { id: 'drip', label: 'Drip line', at: { x: 196, y: 230, z: 2.4 }, normal: 'A wet patch round every emitter while the line runs.' },
+  { id: 'rows', label: 'Next plants', at: { x: 400, y: 160, z: 1.7 }, normal: next },
+];
+const ROUND_IT = { label: 'Round it', parts: ['weeds', 'drip', 'rows'] };
 
 export const SUBJECTS: Partial<Record<SubjectId, SubjectDef>> = {
   cow: {
@@ -68,6 +79,79 @@ export const SUBJECTS: Partial<Record<SubjectId, SubjectDef>> = {
       { label: 'Round it', parts: ['weeds', 'drip', 'rows'] },
     ],
     early: PLANT_EARLY,
+  },
+  beans: {
+    id: 'beans',
+    name: 'bean plant',
+    title: 'Examine the beans',
+    rail: 'Check the beans',
+    whole: 'Whole plant',
+    ground: '#cfe8f0',
+    parts: [
+      { id: 'young', label: 'Young tips', at: { x: 240, y: 84, z: 2.6 }, normal: 'The newest leaves open flat and clean: no curling, no insects.' },
+      { id: 'flowers', label: 'Flowers', at: { x: 212, y: 126, z: 2.6 }, normal: 'Lilac flowers in small clusters, staying on until the pods set.' },
+      { id: 'pods', label: 'Pods', at: { x: 266, y: 172, z: 2.3 }, normal: 'Firm green pods filling evenly, no holes, no spots.' },
+      { id: 'leaves', label: 'Leaves', at: { x: 296, y: 130, z: 2.2 }, normal: 'Three leaflets each, even green, no spots or rust.' },
+      { id: 'under', label: 'Leaf undersides', at: { x: 174, y: 182, z: 2.6 }, normal: 'Turn a leaf over: clean, no eggs, no insects.' },
+      { id: 'stem', label: 'Stem', at: { x: 238, y: 200, z: 2.4 }, normal: 'Green and firm right down to the soil, not swollen or split.' },
+      ...bed('White roots dotted with small pink nodules: they fix nitrogen from the air.', 'The plants beside it look the same: viruses spread down a row.'),
+    ],
+    sections: [
+      { label: 'Top & pods', parts: ['young', 'flowers', 'pods'] },
+      { label: 'Leaves & stem', parts: ['leaves', 'under', 'stem'] },
+      { label: 'Roots & soil', parts: ['base', 'soil'] },
+      ROUND_IT,
+    ],
+    early: BEANS_EARLY,
+  },
+  kale: {
+    id: 'kale',
+    name: 'kale plant',
+    title: 'Examine the kale',
+    rail: 'Check the kale',
+    whole: 'Whole plant',
+    ground: '#cfe8f0',
+    parts: [
+      { id: 'bud', label: 'Growing bud', at: { x: 240, y: 56, z: 2.8 }, normal: 'The bud at the top is tight and green: new leaves keep coming from it.' },
+      { id: 'young', label: 'Young leaves', at: { x: 270, y: 74, z: 2.5 }, normal: 'Upright and whole, no holes, no caterpillars.' },
+      { id: 'leaves', label: 'Big leaves', at: { x: 318, y: 102, z: 2.0 }, normal: 'Blue-green and crisp, the edges green to the tip.' },
+      { id: 'under', label: 'Leaf undersides', at: { x: 172, y: 142, z: 2.6 }, normal: 'Turn a leaf over: clean, no grey clusters, no eggs.' },
+      { id: 'scars', label: 'Picking scars', at: { x: 240, y: 158, z: 2.6 }, normal: 'Clean, dry scars where leaves were cut off downwards.' },
+      { id: 'stem', label: 'Stem', at: { x: 240, y: 204, z: 2.4 }, normal: 'Thick and firm down to the soil, no notches.' },
+      ...bed('Strong white roots spreading out under the plant.', 'The plants beside it look the same: rot spreads down a wet row.'),
+    ],
+    sections: [
+      { label: 'The top', parts: ['bud', 'young', 'leaves'] },
+      { label: 'Under & stem', parts: ['under', 'scars', 'stem'] },
+      { label: 'Roots & soil', parts: ['base', 'soil'] },
+      ROUND_IT,
+    ],
+    early: KALE_EARLY,
+  },
+  tomato: {
+    id: 'tomato',
+    name: 'tomato plant',
+    title: 'Examine the tomatoes',
+    rail: 'Check the tomato',
+    whole: 'Whole plant',
+    ground: '#cfe8f0',
+    parts: [
+      { id: 'tip', label: 'Growing tip', at: { x: 240, y: 38, z: 2.8 }, normal: 'Fresh, flat new leaves at the top: no curling, no mines.' },
+      { id: 'flowers', label: 'Flowers', at: { x: 200, y: 80, z: 2.6 }, normal: 'Yellow flowers opening on each truss; a tap on the truss helps them set.' },
+      { id: 'fruit', label: 'Fruit', at: { x: 258, y: 160, z: 2.4 }, normal: 'Smooth, firm fruit, green to red, no dark patches underneath.' },
+      { id: 'leaves', label: 'Leaves', at: { x: 182, y: 124, z: 2.2 }, normal: 'Even green leaflets, no spots, no pale tunnels.' },
+      { id: 'under', label: 'Leaf undersides', at: { x: 316, y: 176, z: 2.5 }, normal: 'Turn a leaf over: clean, no white flies lifting off.' },
+      { id: 'stake', label: 'Stake & ties', at: { x: 262, y: 104, z: 2.3 }, normal: 'The stake firm, the ties loose loops in a figure of eight.' },
+      { id: 'stem', label: 'Stem', at: { x: 236, y: 202, z: 2.4 }, normal: 'One main stem, firm and hairy, no side shoots in the joints.' },
+      ...bed('Fine white roots spreading wide; no brown, rotten ones.', 'The plants beside it look the same: wilt spreads along the row.'),
+    ],
+    sections: [
+      { label: 'The top', parts: ['tip', 'flowers', 'fruit'] },
+      { label: 'Leaves & stem', parts: ['leaves', 'under', 'stake', 'stem'] },
+      { label: 'Roots & soil', parts: ['base', 'soil'] },
+      ROUND_IT,
+    ],
+    early: TOMATO_EARLY,
   },
   tractor: {
     id: 'tractor',
@@ -189,4 +273,12 @@ export const SUBJECTS: Partial<Record<SubjectId, SubjectDef>> = {
 export const CHECK_ORDER: SubjectId[] = ['cow', 'hen', 'plant', 'tractor', 'farm', 'water', 'power'];
 
 export const subjectOf = (id: SubjectId) => SUBJECTS[id]!;
+/** The farm's crops, checked as one step ("Examine the plant"): the maize, then the others; each its own drawing. */
+export const PLANTS: { id: SubjectId; label: string }[] = [
+  { id: 'plant', label: 'Maize' },
+  { id: 'beans', label: 'Beans' },
+  { id: 'kale', label: 'Kale' },
+  { id: 'tomato', label: 'Tomatoes' },
+];
+export const isPlant = (id: SubjectId) => PLANTS.some(p => p.id === id);
 export const subjectFor = (group: 'cows' | 'hens'): SubjectId => (group === 'cows' ? 'cow' : 'hen');

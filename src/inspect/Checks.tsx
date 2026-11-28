@@ -9,7 +9,7 @@ import { lifeOf } from '../livestock/model';
 import { money } from '../money';
 import type { Action, GameState } from '../state';
 import { checksOf, earlyToday, plannedOf } from './model';
-import { CHECK_ORDER, subjectOf } from './subjects';
+import { CHECK_ORDER, PLANTS, isPlant, subjectOf } from './subjects';
 import type { SubjectId } from './types';
 import { urgentOf } from './urgent';
 
@@ -91,5 +91,27 @@ export function ChecksPage({ s, dispatch, subject: first }: { s: GameState; disp
 /** One check opened from here: an animal's with its problem showing as red parts, the rest with what is red now. */
 export function CheckExam({ s, dispatch, subject, onClose }: { s: GameState; dispatch: Dispatch<Action>; subject: SubjectId; onClose: () => void }) {
   if (subjectOf(subject).group) return <Routine s={s} dispatch={dispatch} subject={subject} onClose={onClose} />;
+  if (subject === 'farm' || isPlant(subject)) return <PlantsThenFarm s={s} dispatch={dispatch} subject={subject} onClose={onClose} />;
   return <Exam s={s} dispatch={dispatch} subject={subject} onClose={onClose} />;
+}
+
+/** Checking the farm is two steps: a plant up close first (maize, beans, kale or tomatoes, each drawn like the
+    animals), then the farm itself. A plant's own card opens the first step alone. */
+function PlantsThenFarm({ s, dispatch, subject, onClose }: { s: GameState; dispatch: Dispatch<Action>; subject: SubjectId; onClose: () => void }) {
+  const farm = subject === 'farm';
+  const [stage, setStage] = useState<'plant' | 'farm'>('plant');
+  const [crop, setCrop] = useState<SubjectId>(farm ? 'plant' : subject);
+  if (stage === 'farm') return <Exam key="farm" s={s} dispatch={dispatch} subject="farm" stepOf="step 2 of 2: the farm" onClose={onClose} />;
+  return (
+    <Exam
+      key={crop}
+      s={s}
+      dispatch={dispatch}
+      subject={crop}
+      crops={{ list: PLANTS, pick: setCrop }}
+      stepOf={farm ? 'step 1 of 2: the plants' : undefined}
+      then={farm ? { label: 'Step 2: examine the farm', go: () => setStage('farm') } : undefined}
+      onClose={onClose}
+    />
+  );
 }

@@ -1,6 +1,6 @@
 import type { Group, IssueId } from '../livestock/config';
 import { roll, rollInt } from '../livestock/rand';
-import { SUBJECTS, subjectOf } from './subjects';
+import { SUBJECTS, isPlant, subjectOf } from './subjects';
 import type { Early, SubjectId } from './types';
 
 /* Full checks: what a check of every part finds early, and what is done about it. Each farm day, each subject shows a
@@ -131,7 +131,8 @@ export function checkDone<S extends CheckHost>(s: S, subject: SubjectId, checked
   if (checked < total) return { state: s, text: `Checked ${checked} of ${total} parts of the ${def.name}` };
   const first = ch.full[subject] !== day;
   return {
-    state: { ...s, points: s.points + (first ? CHECKS.points.full : 0), checks: { ...ch, full: { ...ch.full, [subject]: day } } },
+    // any crop checked all over counts as the day's plant check too (the Farm checks card)
+    state: { ...s, points: s.points + (first ? CHECKS.points.full : 0), checks: { ...ch, full: { ...ch.full, [subject]: day, ...(isPlant(subject) ? { plant: day } : {}) } } },
     text: `Every part of the ${def.name} checked${first ? ` · +${CHECKS.points.full} points` : ''}`,
   };
 }
