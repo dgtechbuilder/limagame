@@ -39,7 +39,7 @@ const REGION_WORD: Record<RegionId, string> = { horn: 'horn-of-africa', sahel: '
 const KAKUMA: Record<KakumaTab, string> = { about: 'about', foods: 'foods', life: 'food-and-life', donate: 'donate' };
 const BRAND_WORD = Object.fromEntries(BRANDS.map(b => [b.id, b.id])) as Record<BrandId, string>;
 const SHOP: Record<ShopTab, string> = { food: 'food', fertilizer: 'fertilizer', tank: 'water-tanks', equipment: 'equipment' };
-const CHECKS: Record<SubjectId, string> = { cow: 'cow', hen: 'hen', plant: 'plant', tractor: 'tractor', farm: 'farm', water: 'water', power: 'power' };
+const CHECKS: Record<SubjectId, string> = { cow: 'cow', hen: 'hen', plant: 'plant', beans: 'beans', kale: 'kale', tomato: 'tomatoes', tractor: 'tractor', farm: 'farm', water: 'water', power: 'power' };
 const MISSION: Record<TrialsTab, string> = { farms: 'six-farms', sustain: 'sustainability' };
 const BIZ: Record<BizTab, string> = { today: 'today', hub: 'hub', calendar: 'calendar', trend: 'my-trend', partners: 'partners', fleet: 'fleet' };
 const STEPS: Record<StepId, string> = { landprep: 'land-prep', planting: 'planting', fertilizer: 'fertilizer', pesticides: 'pesticides', water: 'water', harvest: 'harvest' };

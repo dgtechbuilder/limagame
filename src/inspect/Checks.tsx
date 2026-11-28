@@ -1,4 +1,4 @@
-import { useEffect, type Dispatch } from 'react';
+import { useEffect, useState, type Dispatch } from 'react';
 import { NavBar } from '../components/Nav';
 import { CloseX } from '../components/Success';
 import { Exam } from '../livestock/Exam';
