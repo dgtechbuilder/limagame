@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
 import { boot, state, type Win } from './helpers';
 import { initialState, reducer, type GameState } from '../src/state';
 import { CHECKS, checkFix, earlyToday, plannedOf } from '../src/inspect/model';
@@ -18,6 +18,35 @@ const game = (life: Partial<LifeState> = {}, patch: Partial<GameState> = {}): Ga
   life: { day: 6, started: 2, date: '2026-11-20', ...life },
   ...patch,
 });
+
+/** Tap the part the hint points at, on the drawing itself. */
+const tapNext = async (exam: Locator) => {
+  await exam.locator('.ex-hunt').waitFor();
+  await exam.locator('.ex-hit.is-next').click();
+};
+/** Tap every part the hint shows until the check is done; each early sign is fixed (the first) or planned. */
+async function tapTheRest(exam: Locator, fixFirst: boolean, fixAll = false) {
+  let fixed = false;
+  for (let i = 0; i < 80 && !(await exam.locator('.ex-done').count()); i++) {
+    if (await exam.locator('.ex-hunt').count()) {
+      await exam.locator('.ex-hit.is-next').click();
+      continue;
+    }
+    const fix = exam.locator('.ex-caption.is-sweep .is-fix');
+    if (await fix.count()) {
+      if (fixAll || (fixFirst && !fixed)) {
+        await fix.click();
+        await expect(exam.locator('.ex-work')).toBeVisible();
+        fixed = true;
+      } else await exam.locator('.ex-caption.is-sweep .ex-plan button').first().click();
+      await exam.locator('.ex-caption.is-sweep .ex-work').waitFor({ state: 'detached', timeout: 10_000 });
+      continue;
+    }
+    const next = exam.locator('.ex-caption.is-sweep .is-next');
+    if (await next.count()) await next.click().catch(() => undefined);
+    else await exam.page().waitForTimeout(150);
+  }
+}
 
 test('every part of every check is in exactly one section, in the order they are checked; every early sign is on a part', () => {
   expect(CHECK_ORDER).toEqual(['cow', 'hen', 'plant', 'tractor', 'farm', 'water', 'power']);
@@ -103,9 +132,12 @@ test('examining the sick cow: red parts first in their sections, then Finish ask
   await expect(exam.locator('.ex-sec-head').first()).toContainText('Head');
   await expect(exam.locator('.ex-part.is-red')).toHaveCount(6);
   await expect(exam.locator('.ex-first')).toContainText('6 red parts first');
-  // only the red parts, by the film
+  // only the red parts: each tapped on the cow, where the hint points
   await exam.getByRole('button', { name: /Start the examination/ }).click();
-  for (let i = 0; i < 6; i++) await exam.getByRole('button', { name: /^(Next|Finish) ›$/ }).click();
+  for (let i = 0; i < 6; i++) {
+    await tapNext(exam);
+    await exam.getByRole('button', { name: /^(Next|Finish) ›$/ }).click();
+  }
   await expect(exam.locator('.ex-list li')).toHaveCount(6);
   // Finish the check: nine parts are not checked yet, so it asks for them
   await exam.getByRole('button', { name: /Finish the check/ }).click();
@@ -113,20 +145,9 @@ test('examining the sick cow: red parts first in their sections, then Finish ask
   await expect(ask).toContainText('6 of 6 red parts seen');
   await expect(ask).toContainText('9 parts not checked yet');
   await ask.getByRole('button', { name: 'Check the other 9' }).click();
-  // the sweep: healthy parts pass by themselves; each early sign waits to be fixed or planned
+  // the rest, tapped one by one: healthy parts go back to the whole cow by themselves; each early sign waits to be fixed or planned
   const signs = earlyToday(undefined, 'cow', 6, ['ecf']);
-  let fixed = false;
-  for (let i = 0; i < 40 && !(await exam.locator('.ex-done').count()); i++) {
-    const fix = exam.locator('.ex-caption.is-sweep .is-fix');
-    if (await fix.count()) {
-      if (!fixed) {
-        await fix.click();
-        await expect(exam.locator('.ex-work')).toBeVisible();
-        fixed = true;
-      } else await exam.locator('.ex-caption.is-sweep .ex-plan button').first().click();
-    }
-    await page.waitForTimeout(600);
-  }
+  await tapTheRest(exam, true);
   await expect(exam.locator('.ex-done')).toBeVisible();
   await expect(exam.locator('.ex-done-head')).toContainText('15 of 15');
   await expect(exam.locator('.ex-early-list li')).toHaveCount(signs.length);
@@ -152,11 +173,7 @@ test('a routine check of the hens, nothing wrong: every part in one sweep, and t
   await expect(exam.locator('.ex-sec')).toHaveCount(3);
   await expect(exam.locator('.ex-part.is-red')).toHaveCount(0);
   await exam.getByRole('button', { name: /Check every part/ }).click();
-  for (let i = 0; i < 40 && !(await exam.locator('.ex-done').count()); i++) {
-    const plan = exam.locator('.ex-caption.is-sweep .ex-plan button');
-    if (await plan.count()) await plan.first().click();
-    await page.waitForTimeout(600);
-  }
+  await tapTheRest(exam, false);
   await expect(exam.locator('.ex-done-head')).toContainText('11 of 11');
   await exam.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(page.locator('.lv-check').nth(1)).toContainText('Checked today');
@@ -191,18 +208,16 @@ test('Farm checks: a card for each check; the tractor’s red parts first, the r
   await expect(exam.locator('.ex-part.is-red')).toHaveCount(2);
   // the film of the two red parts, then Finish asks for the other eleven
   await exam.getByRole('button', { name: /Start the examination/ }).click();
+  await tapNext(exam);
   await expect(exam.locator('.ex-caption')).toContainText('Worn: due a service');
   await exam.getByRole('button', { name: /^(Next|Finish) ›$/ }).click();
+  await tapNext(exam);
   await expect(exam.locator('.ex-caption')).toContainText('Almost out of diesel');
   await exam.getByRole('button', { name: /^(Next|Finish) ›$/ }).click();
   await exam.getByRole('button', { name: /Finish the check/ }).click();
   await page.getByRole('alertdialog', { name: 'Check the rest too?' }).getByRole('button', { name: 'Check the other 11' }).click();
   const signs = earlyToday(undefined, 'tractor', 4);
-  for (let i = 0; i < 40 && !(await exam.locator('.ex-done').count()); i++) {
-    const fix = exam.locator('.ex-caption.is-sweep .is-fix');
-    if (await fix.count()) await fix.click();
-    await page.waitForTimeout(600);
-  }
+  await tapTheRest(exam, true, true);
   await expect(exam.locator('.ex-done-head')).toContainText('13 of 13');
   // a sign on a part already seen in the film is fixed from the summary
   for (let i = 0; i < 6 && (await exam.locator('.ex-done .is-fix').count()); i++) {
@@ -215,6 +230,43 @@ test('Farm checks: a card for each check; the tractor’s red parts first, the r
   expect(Object.keys(s.checks.fixed).sort()).toEqual(signs.map(e => `tractor:${e.id}`).sort());
   await exam.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(hub.locator('.ck-card').nth(3)).toContainText('Checked today');
+});
+
+test('checking the farm: a plant first (maize, beans, kale or tomatoes, each drawn up close), then the farm', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const L = (window as unknown as Win).__lima;
+    L.jump({ view: 'classic', coins: 20000, life: { day: 3, started: 2, date: new Date().toISOString().slice(0, 10) }, modal: { kind: 'checks', subject: 'farm' } });
+  });
+  // step 1: the plant, with a tab for each crop
+  const plant = page.getByRole('dialog', { name: 'Examine the plant' });
+  await expect(plant.locator('.ex-head')).toContainText('step 1 of 2');
+  await expect(plant.locator('.ex-crops button')).toHaveText(['Maize', 'Beans', 'Kale', 'Tomatoes']);
+  for (const [tab, title, n] of [
+    ['Beans', 'Examine the beans', 11],
+    ['Kale', 'Examine the kale', 11],
+    ['Tomatoes', 'Examine the tomatoes', 12],
+  ] as const) {
+    await page.locator('.ex-crops').getByRole('button', { name: tab }).click();
+    const exam = page.getByRole('dialog', { name: title });
+    await expect(exam.locator('.ex-part')).toHaveCount(n);
+    await expect(exam.locator('.ex-hit')).toHaveCount(n);
+  }
+  // the beans, every part tapped on the drawing
+  await page.locator('.ex-crops').getByRole('button', { name: 'Beans' }).click();
+  const beans = page.getByRole('dialog', { name: 'Examine the beans' });
+  await beans.getByRole('button', { name: /Check every part/ }).click();
+  await tapTheRest(beans, false);
+  await expect(beans.locator('.ex-done-head')).toContainText('11 of 11');
+  const s = await state(page);
+  expect(s.checks.full.beans).toBe(3);
+  expect(s.checks.full.plant).toBe(3);
+  // step 2: the farm
+  await beans.getByRole('button', { name: /Step 2: examine the farm/ }).click();
+  const farm = page.getByRole('dialog', { name: 'Examine the farm' });
+  await expect(farm.locator('.ex-head')).toContainText('step 2 of 2');
+  await expect(farm.locator('.ex-part')).toHaveCount(11);
+  await expect(farm.locator('.ex-crops')).toHaveCount(0);
 });
 
 test('each new check opens from its own page or address, drawn with its parts', async ({ page }) => {
@@ -232,13 +284,13 @@ test('each new check opens from its own page or address, drawn with its parts', 
   await page.keyboard.press('Escape');
   for (const [id, title, n] of [
     ['plant', 'Examine the plant', 12],
-    ['farm', 'Examine the farm', 11],
+    ['farm', 'Examine the plant', 12],
   ] as const) {
     await page.evaluate(sub => (window as unknown as Win).__lima.dispatch({ type: 'open', modal: { kind: 'checks', subject: sub } }), id);
     const exam = page.getByRole('dialog', { name: title });
     await expect(exam.locator('.ex-part')).toHaveCount(n);
-    // tap a part to look for yourself
-    await exam.locator('.ex-part').first().click();
+    // tap a part on the drawing to look for yourself
+    await exam.locator('.ex-hit').nth(2).click();
     await expect(exam.locator('.ex-caption.is-look')).toBeVisible();
     await page.keyboard.press('Escape');
   }
