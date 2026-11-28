@@ -4,6 +4,7 @@
 
    No screens here (the page is Wallet.tsx), so the saved game can use it. */
 
+import { plantOf } from '../forest/model';
 import type { Action, GameState } from '../state';
 import { achClock } from '../achievements/track';
 import { lifeOf } from '../livestock/model';
@@ -176,6 +177,8 @@ function describe(a: Action, prev: GameState, next: GameState): { kind: WalletKi
       return { kind: 'farm', label: a.type === 'ghPlant' ? `Planted greenhouse bed ${a.bed + 1}` : 'Greenhouse' };
     case 'storeMake':
       return { kind: 'produce', label: 'Storehouse: jars, sugar and milling' };
+    case 'forestSell':
+      return { kind: 'farm', label: a.kind === 'fell' ? `Mini forest: ${plantOf(a.id).name} felled` : `Mini forest: ${plantOf(a.id).name} harvest` };
     case 'finDeposit':
       return { kind: 'savings', label: 'Into SACCO savings' };
     case 'finWithdraw':

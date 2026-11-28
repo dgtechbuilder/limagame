@@ -34,6 +34,10 @@ import { FARM_ACRES, PLOT_ACRES } from '../farmSize';
 import { fromUsd } from '../money';
 import { FACTORS, LEVELS, type Delta, type Factor, type Source } from './model';
 import { REST } from '../soil/model';
+import { FOREST, FOREST_FULL, forestOf, forestRate, isGrown, PLANTS } from '../forest/model';
+import { lifeOf } from '../livestock/model';
+
+const AREA_ACRES_FOREST = FOREST.acres;
 
 export type LandUse = 'farmed' | 'bare' | 'idle' | 'resting';
 
@@ -49,7 +53,7 @@ export const LAND_FACTORS = {
   bareSoil: { value: 0.01, unit: 'soil points lost a plot a day', what: 'Bare soil wears out', estimate: true },
   idle: { value: 0, unit: 'kg CO₂ an acre a day', what: 'Land not farmed: nothing new is counted or paid' },
   floor: { value: 0.2, unit: 'kg CO₂ stored an acre a day', what: 'The least a crop in the ground stores, whatever the practice' },
-  forest: { value: 11, unit: 'kg CO₂ stored an acre a day', what: 'A young mixed forest growing back (about 10 t CO₂ a hectare a year)', estimate: true },
+  forest: { value: FOREST_FULL / AREA_ACRES_FOREST, unit: 'kg CO₂ stored an acre a day', what: 'The mini forest fully grown: native trees, bushes and grasses, each at its published rate (src/forest/model.ts)' },
   pasture: { value: 0.5, unit: 'kg CO₂ stored an acre a day', what: 'Grass that is grazed, not bare: roots build the soil', estimate: true },
   cowMethane: { value: 4.6, unit: 'kg CO₂e a cow a day', what: 'Methane from a cow’s digestion (60 kg CH₄ a year × 28)', source: IPCC_CATTLE },
   cowManure: { value: 0.6, unit: 'kg CO₂e a cow a day', what: 'Methane and N₂O from the cow’s manure in the pen', estimate: true },
@@ -266,20 +270,25 @@ export function areasOf(s: GameState): AreaNow[] {
           : 'Idle: seed it to start storing carbon.',
   });
 
-  // the mini forest
-  const fStored = AREA_SIZE.forest * LAND_FACTORS.forest.value;
+  // the mini forest: each native tree, bush and grass at its own rate (src/forest), less where a stand was felled or cut
+  const fDay = lifeOf(s.life).day;
+  const fStored = forestRate(s.forest, fDay);
+  const fo = forestOf(s.forest);
+  const young = PLANTS.filter(p => !isGrown(fo.stands[p.id], fDay)).length;
   const forest = area({
     id: 'forest',
     name: 'Mini forest',
     icon: '🌳',
     size: `${AREA_SIZE.forest} acres`,
-    use: 'Idle land, left to grow',
+    use: young ? `${young} stand${young === 1 ? '' : 's'} growing back` : 'Native trees, bushes and grass',
     stored: fStored,
     emit: {},
     lost: 0,
     water: 0,
     soil: 0,
-    note: `Biggest carbon store: ${kg1(fStored)} CO₂ a day, and home to pest-eating birds.`,
+    note: young
+      ? `Storing ${kg1(fStored)} CO₂ a day, less than the ${kg1(FOREST_FULL)} it stores grown: felled stands are growing back.`
+      : `Biggest carbon store: ${kg1(fStored)} CO₂ a day, and home to pest-eating birds.`,
   });
 
   // the grazing pen

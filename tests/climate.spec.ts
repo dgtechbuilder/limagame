@@ -1,3 +1,4 @@
+import { FOREST_FULL } from '../src/forest/model';
 import { expect, test, type Page } from '@playwright/test';
 import { boot, scenario, state } from './helpers';
 import { money } from '../src/money';
@@ -146,13 +147,13 @@ test('Land & pay and Farm areas: the six farms plot by plot, every area, and the
   await expect(dialog(page).getByRole('img', { name: 'Land today: 0 plots farmed, 0 bare, 120 idle' })).toBeVisible();
   await expect(dialog(page).getByText(/About \$\d+\.\d\d tonight/)).toBeVisible();
 
-  // past midnight: the game's minute check pays the day's credits: the manure's 4, the forest's 11, the pen's 0.1
+  // past midnight: the game's minute check pays the day's credits: the manure's 4, the mini forest's 8.4 (its native plants, src/forest), the pen's 0.1
   await page.clock.fastForward('05:00');
   await expect.poll(async () => (await state(page)).coins).toBeGreaterThan(960);
   s = await state(page);
   const p = s.climate.pay.payments[0];
   expect(p).toMatchObject({ label: 'Sun 15 Nov', idle: 120 });
-  expect(p.credits).toBeCloseTo(4 + 11 + 0.1, 6);
+  expect(p.credits).toBeCloseTo(4 + FOREST_FULL / 10 + 0.1, 6);
   // the water credits are paid at midnight too (src/water): the tank's day
   const water = s.ledger.entries.filter((e: { type: string }) => e.type === 'water').reduce((n: number, e: { coins: number }) => n + e.coins, 0);
   expect(water).toBeGreaterThan(0);
@@ -167,5 +168,5 @@ test('Land & pay and Farm areas: the six farms plot by plot, every area, and the
   await expect.poll(() => page.evaluate(() => window.location.hash)).toBe('#/climate/farm-areas');
   const table = dialog(page).getByRole('table', { name: 'Every area of the farm, today' });
   for (const name of ['Six farms', 'Farm Moja', 'Mini forest', 'Grazing pen', 'Cows and hens', 'Pond', 'Homestead']) await expect(table.getByRole('rowheader', { name: new RegExp(name) })).toBeVisible();
-  await expect(table.getByRole('row', { name: /Mini forest/ })).toContainText('+110 kg');
+  await expect(table.getByRole('row', { name: /Mini forest/ })).toContainText('+84 kg');
 });

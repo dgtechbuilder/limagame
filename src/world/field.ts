@@ -376,7 +376,7 @@ export interface Task {
   target: { farm: number; at: 'plot' | 'sign' } | { place: Place };
 }
 
-export type Place = 'mission' | 'shed-seeds' | 'shed-fertilizer' | 'shed-sprayer' | 'pond' | 'hire' | 'market' | 'restaurant' | 'house' | 'pen' | 'coop' | 'power' | 'greenhouse' | 'storehouse' | 'storage';
+export type Place = 'mission' | 'shed-seeds' | 'shed-fertilizer' | 'shed-sprayer' | 'pond' | 'hire' | 'market' | 'restaurant' | 'house' | 'pen' | 'coop' | 'power' | 'greenhouse' | 'storehouse' | 'storage' | 'forest';
 export type TaskIcon = 'plan' | 'hoe' | 'seeds' | 'fertilizer' | 'check' | 'weed' | 'water' | 'spray' | 'drain' | 'goat' | 'birds' | 'tractor' | 'corn' | 'sleep' | 'wait' | 'results';
 
 /** The task card's icon for each scheduled care job. */

@@ -47,6 +47,7 @@ export function MainMenu({ s, dispatch }: { s: GameState; dispatch: Dispatch<Act
         { label: 'Restaurant', note: 'Cook your harvest into meals', run: () => open({ kind: 'market', tab: 'restaurant' }) },
         { label: 'Nutrition', note: 'What maize, beans and sukuma give', run: () => open({ kind: 'market', tab: 'nutrition' }) },
         { label: 'Greenhouse', note: 'Four beds: tomatoes, capsicum, strawberries…', run: () => open({ kind: 'greenhouse', bed: 0 }) },
+        { label: 'Mini forest', note: 'Native trees, bushes, grass and their climate impact', run: () => open({ kind: 'forest', tab: 'tree' }) },
         { label: 'Storehouse', note: 'Store your harvest, make sauce, jam, flour', run: () => open({ kind: 'storehouse', tab: 'store' }) },
         { label: 'Animals', note: 'Cows, hens, the coop and the cow shed', run: () => open({ kind: 'animals' }) },
         { label: 'Farm checks', note: 'Examine the cow, chicken, plant, tractor, farm, water and power', run: () => open({ kind: 'checks' }) },
