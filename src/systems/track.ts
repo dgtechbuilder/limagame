@@ -16,7 +16,8 @@ import { addEntry } from '../wallet/model';
 import { POWER, POWER_STEPS } from '../power/config';
 import { has, lightsEggs, loadOn, powerOf, powerOn, runDay } from '../power/model';
 import { HUB, hubOf } from '../tractor/hub';
-import { MARKET, PRODUCE, daySale, stock, storeNight, type ProduceId } from '../produce/model';
+import { MARKET, PRODUCE, atRisk, daySale, qualityNight, stock, storeNight, type ProduceId } from '../produce/model';
+import { gradeName, type GradeDrop, type StoreCtx } from '../produce/quality';
 import { achClock } from '../achievements/track';
 import { GREENHOUSE, ghCropOf, greenhouseNight, greenhouseOf } from '../greenhouse/model';
 import { cropOf } from '../trials/model';
@@ -25,6 +26,17 @@ import { money } from '../money';
 
 /** Fresh produce keeps (and fetches more) in the cold room the power system runs. */
 export const coldRoom = (s: Pick<GameState, 'power'>) => loadOn(s, 'cooler');
+/** What the store has to keep its food in today: the storehouse (from the day it opens), the cold room, what was bought. */
+export const storeCtx = (s: Pick<GameState, 'power' | 'produce' | 'life'>, day = lifeOf(s.life).day): StoreCtx => ({ storehouse: day >= GREENHOUSE.openDay, coldRoom: coldRoom(s), owned: s.produce?.owned ?? [] });
+
+const foodWord = (id: ProduceId) => PRODUCE[id].name.toLowerCase().replace(/ \(.*\)/, '');
+/** The drops in a few words: "12 kg tomatoes to Grade 2, 4 kg spinach spoils". */
+export const dropWords = (drops: GradeDrop[], max = 3) =>
+  [...drops]
+    .sort((a, b) => b.loss - a.loss)
+    .slice(0, max)
+    .map(d => `${d.kg} kg ${foodWord(d.id)} ${d.to === null ? 'spoils' : `to ${gradeName(d.to)}`}`)
+    .join(', ');
 /** The workshop's power tools make tractor work cheaper. */
 export const repairCut = (s: Pick<GameState, 'power'>) => (loadOn(s, 'workshop') ? POWER.repairCut : 0);
 /** The rain a day's gutters catch, by the season. */
@@ -77,12 +89,18 @@ function endDay(s: GameState, ended: number): GameState {
     saleLog.push({ day: ended, kg: sale.kg, earned: sale.earned, profit: sale.earned - sale.cost, items: sale.items });
   }
   next = { ...next, produce: storeNight(next.produce, coldRoom(next), ended >= GREENHOUSE.openDay) };
+  // the graded food loses quality by how it is stored: some drops a grade, and what falls below Grade 3 spoils
+  const qn = qualityNight(next.produce, storeCtx(next, ended));
+  next = { ...next, produce: qn.p };
+  nightLog.push(...qn.drops);
   return next;
 }
 
 /** The last day's sale at the stall, for the morning's words. */
 type DaySale = { day: number; kg: number; earned: number; profit: number; items: Partial<Record<ProduceId, number>> };
 const saleLog: DaySale[] = [];
+/** What dropped a grade (or spoiled) in the store last night. */
+const nightLog: GradeDrop[] = [];
 const saleWords = (x: DaySale) =>
   (Object.entries(x.items) as [ProduceId, number][])
     .sort((a, b) => b[1] - a[1])
@@ -114,11 +132,21 @@ export function trackSystems(prev: GameState, s: GameState, a: Action): GameStat
   const d1 = lifeOf(next.life).day;
   if (d1 > d0 && next.fs.phase === 'done') {
     saleLog.length = 0;
+    nightLog.length = 0;
     for (let d = d0; d < d1; d++) next = endDay(next, d);
     // the power system counts from the day it was switched on
     const p = powerOf(next.power);
     if (p.parts.switchOn) next = { ...next, power: { ...p, day: d1 } };
     const lines = morningNews(next, d1);
+    // the daily reminder: what drops a grade tonight if it is not sold today (and what went last night)
+    const risk = atRisk(next.produce, storeCtx(next, d1));
+    let remindText = '';
+    if (risk.length) {
+      const loss = risk.reduce((n, d) => n + d.loss, 0);
+      const went = nightLog.filter(d => d.to === null);
+      remindText = `Tonight ${dropWords(risk)}: ${money(loss)} less at the stall if it waits.${went.length ? ` Last night ${dropWords(went)}.` : ''} Sell it today, or store it better.`;
+      if (!next.success) lines.push({ icon: '⏳', title: 'Sell before prices drop', text: remindText, go: { kind: 'market', tab: 'sell' } });
+    }
     // the stall's sale: on the morning's news when there is news, otherwise a short message
     const sold = saleLog[saleLog.length - 1];
     if (sold) {
@@ -126,6 +154,8 @@ export function trackSystems(prev: GameState, s: GameState, a: Action): GameStat
       if (lines.length && !next.success) lines.push({ icon: '🧺', title: `The stall sold ${sold.kg} kg on day ${sold.day}`, text, go: { kind: 'market', tab: 'sales' } });
       else next = { ...next, toast: toast(`Market stall, day ${sold.day}: ${sold.kg} kg sold · +${money(sold.earned)} · profit ${money(sold.profit)}`) };
     }
+    // the night's own news took the morning: the reminder is a message instead
+    if (remindText && next.success) next = { ...next, toast: toast([sold ? next.toast?.text : '', `Sell before prices drop: ${remindText}`].filter(Boolean).join(' · ')) };
     if (lines.length && !next.success) next = { ...next, success: { kind: 'morning', id: ++morningId, day: d1, lines } };
   }
 

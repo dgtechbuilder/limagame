@@ -114,7 +114,8 @@ test('the storehouse makes sauce, jam, pickles and flour from the store: worth m
 
 test('an old save with Farms 7 and 8 crops loads, and their addresses open the greenhouse and the storehouse', () => {
   const p = produceOf({ store: { maize: 10, spinach: 20, watermelon: 5 } as never });
-  expect(p.store).toEqual({ maize: 10 });
+  // spinach is grown again (the daily produce market, tests/market-grades.spec.ts): only watermelon is dropped
+  expect(p.store).toEqual({ maize: 10, spinach: 20 });
   const s = onDay(5);
   expect(routeTo(s, '#/new-farms/7')).toContainEqual({ type: 'open', modal: { kind: 'greenhouse', bed: 0 } });
   expect(routeTo(s, '#/new-farms/8')).toContainEqual({ type: 'open', modal: { kind: 'storehouse', tab: 'store' } });

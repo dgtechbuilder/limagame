@@ -160,7 +160,10 @@ function describe(a: Action, prev: GameState, next: GameState): { kind: WalletKi
     case 'powerFuel':
       return { kind: 'power', label: 'Diesel for the generator' };
     case 'produceSell':
+    case 'produceSellGrades':
       return { kind: 'produce', label: 'Sold at the market stall' };
+    case 'storageSet':
+      return { kind: 'produce', label: `Storage: ${a.method === 'hermetic' ? 'hermetic bags' : 'charcoal cooler'}` };
     case 'restaurantCook':
       return { kind: 'produce', label: 'Meals sold at the restaurant' };
     case 'shopSell':

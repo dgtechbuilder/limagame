@@ -26,12 +26,13 @@ import { POWER, partOptionOf, stepOf, type LoadId, type StepId as PowerStepId } 
 import { fuelTankL, loadsAvailable, powerOf, stepBlock, type PowerState } from './power/model';
 import { HUB, hubOf, levelOf as hubLevel, lessonOf, type HubSection, type HubState } from './tractor/hub';
 import { DRILLS, drillOf } from './tractor/training';
-import { PRODUCE, produceOf, sell as sellProduce, sellTo, stock, type ProduceId, type ProduceState } from './produce/model';
+import { PRODUCE, produceOf, sell as sellProduce, sellGrades, sellTo, stock, type GradePicks, type ProduceId, type ProduceState } from './produce/model';
+import { STORAGE, methodsFor, isGraded, canUse, type StorageId } from './produce/quality';
 import { cook as cookMeal, dishOf, RESTAURANT, type DishId } from './produce/restaurant';
 import { harvestLine, nutritionOf, peopleDays } from './nutrition/data';
 import { BED_NAMES, GREENHOUSE, ghCropOf, greenhouseOf, pickBed, plantBed, type GhCropId, type GreenhouseState } from './greenhouse/model';
 import { make as makeProduct, recipeOf, STOREHOUSE, type RecipeId, type StorehouseState } from './storehouse/model';
-import { trackSystems, coldRoom, repairCut } from './systems/track';
+import { trackSystems, coldRoom, repairCut, storeCtx } from './systems/track';
 import { trackLife } from './livestock/track';
 import { MEASURES, measureOf, type MeasureId } from './security/config';
 import { cropsTaken, harvestLessTheft, securityOf, storeTheftShare, type SecurityState } from './security/model';
@@ -736,6 +737,12 @@ export type Action =
   | { type: 'tractorHub'; section: HubSection; score: number; id?: string; litres?: number; label?: string; /** Train: the drill passed (src/tractor/training.ts) */ drill?: string }
   /** the market stall: kg of each produce to sell */
   | { type: 'produceSell'; items: Partial<Record<ProduceId, number>> }
+  /** sell at the stall grade by grade: kg of [Grade 1, Grade 2, Grade 3] for each crop */
+  | { type: 'produceSellGrades'; picks: GradePicks }
+  /** store a crop another way (hermetic bags and the charcoal cooler are bought the first time) */
+  | { type: 'storageSet'; food: ProduceId; method: StorageId }
+  /** the daily reminder to come back and sell before prices drop */
+  | { type: 'produceRemind'; on: boolean }
   /** the market stall: sell what is left of the day's 25 kg by itself when the day ends (the daily sales cycle) */
   | { type: 'produceAuto'; on: boolean }
   /** the restaurant: cook some plates of a dish from the store and sell them */
@@ -822,7 +829,7 @@ function trackFinance(prev: GameState, next: GameState): GameState {
 /** Flows: finishing one of these ends a whole piece of play. */
 const FLOWS = new Set<Action['type']>(['checkDone', 'achClaimAll', 'completeSale', 'trialHarvest', 'bizRun', 'bizHireOut', 'bizContract', 'bizGraduate', 'tractorDone']);
 /** Actions: finishing one of these is one thing done. Some only count when they earned something (their message). */
-const ACTIONS = new Set<Action['type']>(['achClaim', 'achDaily', 'levelClaim', 'partnerSave', 'buy', 'sell', 'bookTraining', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo', 'tidyClear', 'csaDone', 'animalCare', 'animalLarder', 'animalPrevent', 'checkFix', 'coopBuild', 'shedBuild', 'herdBuy', 'securityBuy', 'powerInstall', 'powerFuel', 'tractorHub', 'produceSell', 'restaurantCook', 'shopSell', 'shopMeal', 'ghPlant', 'ghWater', 'ghHarvest', 'storeMake', 'shedChoose', 'kakumaGive', 'kakumaGiveStore', 'give']);
+const ACTIONS = new Set<Action['type']>(['achClaim', 'achDaily', 'levelClaim', 'partnerSave', 'buy', 'sell', 'bookTraining', 'task', 'finishStep', 'water', 'harvest', 'redeem', 'collect', 'newSeason', 'trialNew', 'trialPlant', 'trialNextDay', 'trialRecipe', 'plotSet', 'bizPartner', 'bizBuy', 'bizDemo', 'tidyClear', 'csaDone', 'animalCare', 'animalLarder', 'animalPrevent', 'checkFix', 'coopBuild', 'shedBuild', 'herdBuy', 'securityBuy', 'powerInstall', 'powerFuel', 'tractorHub', 'produceSell', 'produceSellGrades', 'storageSet', 'restaurantCook', 'shopSell', 'shopMeal', 'ghPlant', 'ghWater', 'ghHarvest', 'storeMake', 'shedChoose', 'kakumaGive', 'kakumaGiveStore', 'give']);
 const EARNED = new Set<Action['type']>(['roundResult', 'trialCheck', 'fieldMark']);
 const FS_ORDER: FsPhase[] = ['create', 'story', 'walk1', 'update', 'review1', 'walkRetry', 'retry', 'walk2', 'review2', 'done'];
 
@@ -1801,6 +1808,29 @@ function play(s: GameState, a: Action): GameState {
       const r = sellProduce(s.produce, a.items, day, achClock.today(), coldRoom(s));
       if ('error' in r) return { ...s, toast: toast(r.error) };
       return { ...s, coins: s.coins + r.earned, produce: r.p, ...gainXp(s, 0.03), toast: toast(`Sold ${r.kg} kg at the stall · +${money(r.earned)} · profit ${money(r.earned - r.cost)}`) };
+    }
+    case 'produceSellGrades': {
+      const day = lifeOf(s.life).day;
+      const r = sellGrades(s.produce, a.picks, day, achClock.today(), coldRoom(s));
+      if ('error' in r) return { ...s, toast: toast(r.error) };
+      return { ...s, coins: s.coins + r.earned, produce: r.p, ...gainXp(s, 0.03), toast: toast(`Sold ${r.kg} kg at the stall · +${money(r.earned)} · profit ${money(r.earned - r.cost)}`) };
+    }
+    case 'storageSet': {
+      const p = produceOf(s.produce);
+      const m = STORAGE[a.method];
+      if (!m || !isGraded(a.food) || !methodsFor(a.food).includes(a.method)) return { ...s, toast: toast(`${produceName(a.food)} can’t be kept that way`) };
+      const owned = p.owned ?? [];
+      const buy = m.buy && !owned.includes(a.method) ? m.buy : 0;
+      if (buy > s.coins) return { ...s, toast: toast(`${m.name} cost ${money(buy)}: not enough money`) };
+      const nextOwned = buy ? [...owned, a.method] : owned;
+      const ctx = { ...storeCtx(s), owned: nextOwned };
+      if (!canUse(a.method, ctx)) return { ...s, toast: toast(m.needs === 'coldRoom' ? 'The cold room needs the power system’s cooler switched on' : 'Crates in the shade come with the storehouse') };
+      const produce = { ...p, owned: nextOwned, storage: { ...(p.storage ?? {}), [a.food]: a.method } };
+      return { ...s, coins: s.coins - buy, produce, toast: toast(`${produceName(a.food)}: ${m.name.toLowerCase()}${buy ? ` · bought for ${money(buy)}` : ''}`) };
+    }
+    case 'produceRemind': {
+      const p = produceOf(s.produce);
+      return { ...s, produce: { ...p, remind: a.on }, toast: toast(a.on ? 'A reminder each morning to sell before prices drop' : 'Daily sell reminder off') };
     }
     case 'produceAuto': {
       const p = produceOf(s.produce);
