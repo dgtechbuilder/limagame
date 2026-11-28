@@ -803,6 +803,7 @@ export function parentOf(m: Modal): Modal | null {
   if (m.kind === 'climate' && m.practice) return { kind: 'climate', tab: 'csa' };
   if (m.kind === 'events' && m.region) return { kind: 'events', tab: 'regions' };
   if (m.kind === 'partners' && m.brand) return { kind: 'partners', tab: 'offers' };
+  if (m.kind === 'forest' && m.plant) return { kind: 'forest', tab: m.tab };
   return null;
 }
 
